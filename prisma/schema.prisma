@@ -1,0 +1,330 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum QuoteStatus {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  NEED_INFO
+  SENT
+  ACCEPTED
+  REJECTED
+}
+
+enum OrderStatus {
+  PENDING_DEPOSIT
+  IN_PRODUCTION
+  QA
+  READY_TO_SHIP
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String? // hashed
+  emailVerified DateTime?
+  image         String?
+  role          UserRole  @default(CUSTOMER)
+  companyId     String?
+  company       Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  quotesCreated    Quote[]       @relation("QuoteCreator")
+  ordersCreated    Order[]        @relation("OrderCreator")
+  messages         Message[]
+  invoices         Invoice[]
+  auditLogs        AuditLog[]
+  accounts         Account[]
+  sessions         Session[]
+
+  @@index([companyId])
+  @@index([email])
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  address     String?
+  city        String?
+  state       String?
+  country     String?
+  postalCode  String?
+  phone       String?
+  website     String?
+  taxId       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  quotes      Quote[]
+  orders      Order[]
+  invoices    Invoice[]
+
+  @@index([name])
+}
+
+model Quote {
+  id                String        @id @default(cuid())
+  companyId         String
+  company           Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdById       String
+  createdBy         User           @relation("QuoteCreator", fields: [createdById], references: [id])
+  status            QuoteStatus   @default(DRAFT)
+  
+  // Form fields
+  productCategory   String?
+  productDescription String?
+  targetCustomer    String?
+  packagingType     String?
+  labelingNeeds     String[] // JSON array
+  estimatedQuantity String? // range like "1000-5000"
+  targetUnitCost    Float?
+  timeline          String?
+  deadline          DateTime?
+  shippingDestination String?
+  
+  // Flexible JSON data
+  formData          Json? // For additional fields
+  
+  // Admin response
+  adminNotes        String?
+  totalEstimate     Float?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  attachments       QuoteAttachment[]
+  lineItems         QuoteLineItem[]
+  messages          Message[]
+  orders            Order[]
+
+  @@index([companyId])
+  @@index([createdById])
+  @@index([status])
+}
+
+model QuoteAttachment {
+  id          String   @id @default(cuid())
+  quoteId     String
+  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  fileName    String
+  fileUrl     String
+  fileSize    Int?
+  mimeType    String?
+  uploadedAt  DateTime @default(now())
+
+  @@index([quoteId])
+}
+
+model QuoteLineItem {
+  id          String   @id @default(cuid())
+  quoteId     String
+  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int?
+  unitPrice   Float?
+  totalPrice  Float?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([quoteId])
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  quoteId           String?
+  quote             Quote?      @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  companyId         String
+  company           Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdById       String
+  createdBy         User         @relation("OrderCreator", fields: [createdById], references: [id])
+  status            OrderStatus  @default(PENDING_DEPOSIT)
+  
+  // Shipping
+  shippingAddress   String?
+  shippingCity      String?
+  shippingState     String?
+  shippingCountry   String?
+  shippingPostalCode String?
+  trackingNumber    String?
+  
+  // Financial
+  subtotal          Float       @default(0)
+  tax               Float       @default(0)
+  shipping          Float       @default(0)
+  total             Float       @default(0)
+  depositPaid       Float       @default(0)
+  balanceDue        Float       @default(0)
+  
+  // Dates
+  estimatedShipDate DateTime?
+  shippedAt         DateTime?
+  deliveredAt       DateTime?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  items             OrderItem[]
+  messages          Message[]
+  invoices          Invoice[]
+
+  @@index([companyId])
+  @@index([createdById])
+  @@index([status])
+  @@index([quoteId])
+}
+
+model OrderItem {
+  id            String   @id @default(cuid())
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sku           String?
+  name          String
+  description   String?
+  quantity      Int
+  unitPrice     Float
+  totalPrice    Float
+  packagingSpec String? // JSON
+  createdAt     DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  quoteId     String?
+  quote       Quote?   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  orderId     String?
+  order       Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content     String
+  isInternal  Boolean  @default(false) // Admin-only notes
+  createdAt   DateTime @default(now())
+
+  attachments Attachment[]
+
+  @@index([quoteId])
+  @@index([orderId])
+  @@index([userId])
+}
+
+model Attachment {
+  id          String   @id @default(cuid())
+  messageId   String
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  fileName    String
+  fileUrl     String
+  fileSize    Int?
+  mimeType    String?
+  uploadedAt  DateTime @default(now())
+
+  @@index([messageId])
+}
+
+model Invoice {
+  id                    String        @id @default(cuid())
+  orderId               String?
+  order                 Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  companyId             String
+  company               Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdById           String
+  createdBy             User          @relation(fields: [createdById], references: [id])
+  invoiceNumber         String        @unique
+  status                InvoiceStatus @default(DRAFT)
+  amount                Float
+  tax                   Float         @default(0)
+  total                 Float
+  dueDate               DateTime?
+  paidAt                DateTime?
+  stripePaymentIntentId String?
+  notes                 String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([orderId])
+  @@index([companyId])
+  @@index([status])
+  @@index([invoiceNumber])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  entityType  String   // "Quote", "Order", "Invoice"
+  entityId    String
+  action      String   // "status_change", "created", "updated"
+  oldValue    String?
+  newValue    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// NextAuth models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
