@@ -4,26 +4,45 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { ChevronDown } from "lucide-react"
 
-const brandGroups = [
+type BrandProduct = {
+  label: string
+  href: string
+  key: string
+}
+
+type ParentBrand = {
+  name: string
+  key: string
+  description?: string
+  products: BrandProduct[]
+}
+
+// Organized by parent brand instead of by category.
+// To add a new company in the future, just add another entry here.
+const parentBrands: ParentBrand[] = [
   {
-    title: "Coffee",
-    items: [
-      { label: "WAY Coffee", href: "#brand-way-coffee", key: "way-coffee" },
-      { label: "Office Roast", href: "#brand-office-roast", key: "office-roast" },
+    name: "WAY",
+    key: "way",
+    description: "Multi-category private label platform",
+    products: [
+      { label: "WAY Coffee", href: "/brands/way-coffee", key: "way-coffee" },
+      { label: "WAY Snacks", href: "/brands/way-snacks", key: "way-snacks" },
+      { label: "WAY Candy", href: "/brands/way-candy", key: "way-candy" },
     ],
   },
   {
-    title: "Snacks",
-    items: [{ label: "WAY Snacks", href: "#brand-way-snacks", key: "way-snacks" }],
-  },
-  {
-    title: "Candy",
-    items: [{ label: "WAY Candy", href: "#brand-way-candy", key: "way-candy" }],
+    name: "Office Roast",
+    key: "office-roast",
+    description: "Workplace & hospitality coffee brand",
+    products: [
+      { label: "Office Roast Coffee", href: "/brands/office-roast", key: "office-roast" },
+    ],
   },
 ]
 
 export function OurBrandsMenu() {
   const [open, setOpen] = useState(false)
+  const [expandedParent, setExpandedParent] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -52,46 +71,66 @@ export function OurBrandsMenu() {
 
       {open && (
         <div
-          className="absolute left-0 top-full mt-2 w-[min(900px,90vw)] rounded-2xl border border-gray-200 bg-white shadow-[0_18px_40px_rgba(0,0,0,.12)] p-4 md:p-5"
+          className="absolute left-0 top-full mt-3 w-[min(900px,90vw)] rounded-2xl border border-slate-200 bg-white/95 shadow-[0_24px_60px_rgba(15,23,42,0.18)] backdrop-blur-md p-4 md:p-5"
           role="menu"
           aria-label="Our Brands"
         >
-          <div className="flex justify-end mb-3">
+          {/* Header row */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col">
+              <span className="text-[11px] font-semibold tracking-[0.18em] text-slate-500 uppercase">
+                Brand families
+              </span>
+              <span className="text-xs text-slate-500">
+                Open a brand to see its product lines
+              </span>
+            </div>
             <Link
               href="/brands"
-              className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 underline-offset-4 hover:underline"
             >
-              See All Brands
+              See all brands
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {brandGroups.map((group) => (
-              <div key={group.title}>
-                <div className="text-sm font-bold text-gray-900 mb-2">
-                  {group.title}
+
+          {/* Parent brands as simple collapsible list (no boxes) */}
+          <div className="space-y-1">
+            {parentBrands.map((brand) => {
+              const isExpanded = expandedParent === brand.key
+              return (
+                <div key={brand.key} className="py-0.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedParent((prev) => (prev === brand.key ? null : brand.key))
+                    }
+                    className="w-full flex items-center justify-between gap-3 px-1.5 py-1.5 text-left text-sm font-semibold text-slate-900 hover:text-blue-600"
+                  >
+                    <span>{brand.name}</span>
+                    <ChevronDown
+                      className={`h-4 w-4 text-slate-500 transition-transform ${
+                        isExpanded ? "rotate-180" : "rotate-0"
+                      }`}
+                    />
+                  </button>
+
+                  {isExpanded && (
+                    <div className="pl-4 pt-0.5 pb-1">
+                      {brand.products.map((product) => (
+                        <Link
+                          key={product.key}
+                          href={product.href}
+                          onClick={() => setOpen(false)}
+                          className="block py-1 text-sm text-slate-700 hover:text-blue-600 transition-colors"
+                        >
+                          {product.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-1">
-                  {group.items.map((item) => (
-                    <Link
-                      key={item.key}
-                      href={item.href}
-                      onClick={(e) => {
-                        const id = item.href.startsWith("#") ? item.href.slice(1) : undefined
-                        const section = id ? document.getElementById(id) : null
-                        if (section) {
-                          e.preventDefault()
-                          section.scrollIntoView({ behavior: "smooth", block: "start" })
-                        }
-                        setOpen(false)
-                      }}
-                      className="block rounded-xl px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

@@ -275,6 +275,46 @@ model Invoice {
   @@index([invoiceNumber])
 }
 
+model Brand {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  parentId    String?
+  parent      Brand?   @relation("BrandParent", fields: [parentId], references: [id])
+  children    Brand[]  @relation("BrandParent")
+  heroImage   String?
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products    Product[]
+
+  @@index([slug])
+  @@index([parentId])
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  brandId       String
+  brand         Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  name          String
+  bullets       String[] @default([])
+  imageUrl      String?
+  amazonUrl     String
+  asin          String   @unique
+  priceAmount   Float?
+  priceCurrency String?  @default("USD")
+  rating        Float?
+  reviewCount   Int?
+  lastSyncedAt  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([brandId])
+  @@index([asin])
+}
+
 model AuditLog {
   id          String   @id @default(cuid())
   userId      String?

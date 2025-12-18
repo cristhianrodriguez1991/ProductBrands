@@ -198,55 +198,145 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Coffee brands */}
-            <div id="brand-way-coffee" className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <h3 className="text-xl font-bold mb-2 text-gray-900">WAY Coffee</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Rich, aromatic coffee blends crafted for cafes, hotels, and retail shelves.
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-                <li>Single-origin and blended coffees</li>
-                <li>Ground, whole bean, and capsule formats</li>
-                <li>Custom roast profiles &amp; flavor infusions</li>
-              </ul>
+            {/* WAY Coffee - detailed product section */}
+            <div
+              id="brand-way-coffee"
+              className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col justify-between"
+            >
+              <div>
+                <h3 className="text-xl font-bold mb-2 text-gray-900">WAY Coffee</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Rich, aromatic coffee blends crafted for cafés, hotels, offices, and retail
+                  shelves.
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 mb-4">
+                  <li>Single-origin and blended coffees</li>
+                  <li>Ground, whole bean, and capsule formats</li>
+                  <li>Custom roast profiles &amp; flavor infusions</li>
+                  <li>Packaging ready for Amazon FBA and retail</li>
+                </ul>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <a
+                  href="https://www.amazon.com/s?k=WAY+Coffee"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  View WAY Coffee on Amazon
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
+                <Link href="/quote">
+                  <Button variant="outline" size="sm" className="text-xs">
+                    Start a WAY Coffee project
+                  </Button>
+                </Link>
+              </div>
             </div>
 
-            <div id="brand-office-roast" className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <h3 className="text-xl font-bold mb-2 text-gray-900">Office Roast</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Turn every break room into a café with convenient, barista-quality coffee.
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-                <li>Pods, capsules, and bulk formats</li>
-                <li>Equipment programs &amp; service</li>
-                <li>Branded accessories and POS materials</li>
-              </ul>
+            {/* Office Roast - detailed product section */}
+            <div
+              id="brand-office-roast"
+              className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col justify-between"
+            >
+              <div>
+                <h3 className="text-xl font-bold mb-2 text-gray-900">Office Roast</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Effortless coffee programs that turn every break room into a café experience.
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 mb-4">
+                  <li>Pods, capsules, and bulk formats for offices and hospitality</li>
+                  <li>Equipment programs &amp; service support</li>
+                  <li>Branded accessories and counter displays</li>
+                  <li>Subscription-ready packaging for Amazon and DTC</li>
+                </ul>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <a
+                  href="https://www.amazon.com/s?k=Office+Roast+Coffee"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  View Office Roast on Amazon
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
+                <Link href="/quote">
+                  <Button variant="outline" size="sm" className="text-xs">
+                    Start an Office Roast project
+                  </Button>
+                </Link>
+              </div>
             </div>
 
-            {/* Snacks */}
-            <div id="brand-way-snacks" className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <h3 className="text-xl font-bold mb-2 text-gray-900">WAY Snacks</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Better-for-you and indulgent snacks designed to stand out on the shelf.
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-                <li>Chips, nuts, bars, and trail mixes</li>
-                <li>Clean-label and functional ingredients</li>
-                <li>Custom flavors, formats, and packaging</li>
-              </ul>
+            {/* WAY Snacks - detailed product section */}
+            <div
+              id="brand-way-snacks"
+              className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col justify-between"
+            >
+              <div>
+                <h3 className="text-xl font-bold mb-2 text-gray-900">WAY Snacks</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Better-for-you and indulgent snacks designed to stand out on shelf and online.
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 mb-4">
+                  <li>Chips, nuts, bars, and trail mixes</li>
+                  <li>Clean-label and functional ingredient options</li>
+                  <li>Single-serve and family-size packaging</li>
+                  <li>Retail, vending, and Amazon-ready case packs</li>
+                </ul>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <a
+                  href="https://www.amazon.com/s?k=WAY+Snacks"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  View WAY Snacks on Amazon
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
+                <Link href="/quote">
+                  <Button variant="outline" size="sm" className="text-xs">
+                    Start a WAY Snacks project
+                  </Button>
+                </Link>
+              </div>
             </div>
 
-            {/* Candy */}
-            <div id="brand-way-candy" className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <h3 className="text-xl font-bold mb-4 text-gray-900">WAY Candy</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Playful, premium confections that turn everyday moments into something special.
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-                <li>Gummies, chocolates, and seasonal assortments</li>
-                <li>Eye-catching wrappers and giftable formats</li>
-                <li>Custom molds, shapes, and flavor profiles</li>
-              </ul>
+            {/* WAY Candy - detailed product section */}
+            <div
+              id="brand-way-candy"
+              className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col justify-between"
+            >
+              <div>
+                <h3 className="text-xl font-bold mb-2 text-gray-900">WAY Candy</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Playful, premium confections for everyday moments, seasonal programs, and gifting.
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 mb-4">
+                  <li>Gummies, chocolates, and seasonal assortments</li>
+                  <li>Eye-catching wrappers and giftable formats</li>
+                  <li>Custom molds, shapes, and flavor profiles</li>
+                  <li>Amazon and retail-ready multipacks and displays</li>
+                </ul>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <a
+                  href="https://www.amazon.com/s?k=WAY+Candy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  View WAY Candy on Amazon
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
+                <Link href="/quote">
+                  <Button variant="outline" size="sm" className="text-xs">
+                    Start a WAY Candy project
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>

@@ -30,6 +30,7 @@ export default withAuth(
           req.nextUrl.pathname === "/" ||
           req.nextUrl.pathname.startsWith("/api") ||
           req.nextUrl.pathname.startsWith("/services") ||
+          req.nextUrl.pathname.startsWith("/brands") ||
           req.nextUrl.pathname.startsWith("/industries") ||
           req.nextUrl.pathname.startsWith("/process") ||
           req.nextUrl.pathname.startsWith("/pricing") ||
