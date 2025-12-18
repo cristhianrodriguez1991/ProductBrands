@@ -184,6 +184,74 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Brand Sections for Our Brands mega menu anchors */}
+      <section className="py-16 md:py-20 bg-white border-t">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+              Explore Our Signature Brands
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              From bold coffees to indulgent snacks and sweets, we build private label brands
+              that your customers remember.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Coffee brands */}
+            <div id="brand-way-coffee" className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="text-xl font-bold mb-2 text-gray-900">WAY Coffee</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Rich, aromatic coffee blends crafted for cafes, hotels, and retail shelves.
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+                <li>Single-origin and blended coffees</li>
+                <li>Ground, whole bean, and capsule formats</li>
+                <li>Custom roast profiles &amp; flavor infusions</li>
+              </ul>
+            </div>
+
+            <div id="brand-office-roast" className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="text-xl font-bold mb-2 text-gray-900">Office Roast</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Turn every break room into a café with convenient, barista-quality coffee.
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+                <li>Pods, capsules, and bulk formats</li>
+                <li>Equipment programs &amp; service</li>
+                <li>Branded accessories and POS materials</li>
+              </ul>
+            </div>
+
+            {/* Snacks */}
+            <div id="brand-way-snacks" className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="text-xl font-bold mb-2 text-gray-900">WAY Snacks</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Better-for-you and indulgent snacks designed to stand out on the shelf.
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+                <li>Chips, nuts, bars, and trail mixes</li>
+                <li>Clean-label and functional ingredients</li>
+                <li>Custom flavors, formats, and packaging</li>
+              </ul>
+            </div>
+
+            {/* Candy */}
+            <div id="brand-way-candy" className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="text-xl font-bold mb-4 text-gray-900">WAY Candy</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Playful, premium confections that turn everyday moments into something special.
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+                <li>Gummies, chocolates, and seasonal assortments</li>
+                <li>Eye-catching wrappers and giftable formats</li>
+                <li>Custom molds, shapes, and flavor profiles</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Why Choose Us - Factory/Company Info */}
       <section className="py-16 md:py-20 bg-gray-50">
         <div className="container mx-auto px-4">

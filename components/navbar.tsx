@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
+import { OurBrandsMenu } from "@/components/our-brands-menu"
 
 export function Navbar() {
   return (
@@ -16,6 +17,10 @@ export function Navbar() {
           >
             Home
           </Link>
+
+          {/* Our Brands mega menu */}
+          <OurBrandsMenu />
+
           <Link
             href="/services"
             className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
