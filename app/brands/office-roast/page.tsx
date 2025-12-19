@@ -1,9 +1,9 @@
 import Link from "next/link"
-import Image from "next/image"
 import { Navbar } from "@/components/navbar"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, CheckCircle } from "lucide-react"
 import { getBrandBySlug } from "@/lib/brand-catalog"
+import { AmazonProductCard } from "@/components/amazon-product-card"
 
 export const metadata = {
   title: "Office Roast - Product Brands",
@@ -82,97 +82,31 @@ export default function OfficeRoastPage() {
           </div>
 
           {/* Product grid based on seed data */}
-          <div className="border-t border-slate-200 pt-8">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-              <div>
-                <h2 className="text-lg md:text-xl font-semibold text-gray-900">
-                  Office Roast products on Amazon
-                </h2>
-                <p className="text-xs text-gray-500">
-                  Powered by manual catalog seed. Amazon pricing and availability may change.
-                </p>
-              </div>
-              <div className="text-xs text-gray-500">
-                Last synced: manual seed (PA‑API not configured yet)
-              </div>
+          <div className="border-t border-slate-200 pt-12">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+                Shop Office Roast
+              </h2>
+              <p className="text-base text-gray-600 max-w-2xl mx-auto">
+                Perfect coffee for your workplace. Consistent quality, exceptional taste.
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {brand?.products.map((product) => {
-                const title =
-                  product.title || "Product details coming soon"
-                const description =
-                  product.description ||
-                  "Details coming soon. We will add full product information as your catalog grows."
-                const bullets = product.bullets && product.bullets.length > 0
-                  ? product.bullets.slice(0, 3)
-                  : []
-
-                return (
-                  <div
-                    key={product.asin}
-                    className="rounded-xl border border-slate-200 bg-white p-4 flex flex-col justify-between"
-                  >
-                    {/* Image */}
-                    <div className="mb-3">
-                      {product.imageUrl ? (
-                        <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden bg-slate-100">
-                          <Image
-                            src={product.imageUrl}
-                            alt={title}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div className="aspect-[4/3] w-full rounded-lg bg-slate-100 flex items-center justify-center text-[11px] text-slate-400">
-                          No image yet
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Text content */}
-                    <div className="space-y-1 mb-3">
-                      <p className="text-sm font-semibold text-gray-900">
-                        {title}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {description}
-                      </p>
-                      <p className="text-xs text-gray-500">ASIN: {product.asin}</p>
-                      <p className="text-xs text-gray-500">
-                        Price &amp; reviews: see live on Amazon
-                      </p>
-                    </div>
-
-                    {/* Bullets */}
-                    {bullets.length > 0 ? (
-                      <div className="space-y-1 mb-3">
-                        <ul className="list-disc list-inside text-xs text-gray-600 space-y-0.5">
-                          {bullets.map((bullet, i) => (
-                            <li key={i}>{bullet}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : (
-                      <p className="mb-3 text-xs text-gray-500">
-                        Feature details coming soon.
-                      </p>
-                    )}
-
-                    {/* Amazon link */}
-                    <a
-                      href={product.amazonUrl}
-                      target="_blank"
-                      rel="nofollow sponsored noopener"
-                      className="mt-2 inline-flex items-center justify-center rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700"
-                    >
-                      Buy on Amazon
-                      <ArrowRight className="ml-2 h-3 w-3" />
-                    </a>
-                  </div>
-                )
-              })}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {brand?.products.map((product) => (
+                <AmazonProductCard
+                  key={product.asin}
+                  product={{
+                    asin: product.asin,
+                    amazonUrl: product.amazonUrl,
+                    title: product.title,
+                    imageUrl: product.imageUrl,
+                    description: product.description,
+                    bullets: product.bullets,
+                  }}
+                  showFullDetails={false}
+                />
+              ))}
             </div>
           </div>
 

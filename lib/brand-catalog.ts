@@ -8,6 +8,10 @@ type SeedProduct = {
   imageUrl?: string
   description?: string
   bullets?: string[]
+  priceAmount?: number | null
+  priceCurrency?: string
+  rating?: number | null
+  reviewCount?: number | null
 }
 
 export type SeedBrand = {
@@ -24,12 +28,18 @@ type Catalog = {
 let catalogCache: Catalog | null = null
 
 export function loadBrandCatalog(): Catalog {
+  // Clear cache in development to pick up file changes
+  if (process.env.NODE_ENV === "development") {
+    catalogCache = null
+  }
+  
   if (catalogCache) return catalogCache
 
   const filePath = path.join(process.cwd(), "data", "brandCatalog.seed.json")
   const raw = fs.readFileSync(filePath, "utf8")
   const parsed = JSON.parse(raw) as Catalog
-  // TODO: Replace seed catalog with PA-API sync when credentials are available
+  // Product data is managed manually in the seed file
+  // PA-API is optional and only used if you want to auto-sync data from Amazon
   catalogCache = parsed
   return parsed
 }

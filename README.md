@@ -82,6 +82,15 @@ S3_PUBLIC_URL=""
 # Stripe (optional)
 STRIPE_SECRET_KEY=""
 STRIPE_PUBLISHABLE_KEY=""
+
+# Amazon Product Advertising API (PA-API v5)
+# Get these from: https://webservices.amazon.com/paapi5/documentation/
+# See AMAZON_PAAPI_SETUP.md for detailed setup instructions
+AMAZON_PAAPI_ACCESS_KEY=""
+AMAZON_PAAPI_SECRET_KEY=""
+AMAZON_PAAPI_PARTNER_TAG=""
+AMAZON_PAAPI_REGION="us-east-1"
+AMAZON_MARKETPLACE="www.amazon.com"
 ```
 
 ### Local Development with Docker

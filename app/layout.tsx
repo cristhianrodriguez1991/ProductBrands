@@ -3,7 +3,6 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import { Providers } from "./providers"
-import { ChatWidget } from "@/components/chat/chat-widget"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -28,7 +27,6 @@ export default function RootLayout({
         <Providers>
           {children}
           <Toaster />
-          <ChatWidget />
         </Providers>
       </body>
     </html>

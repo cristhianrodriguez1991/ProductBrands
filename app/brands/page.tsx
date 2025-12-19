@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Coffee, ShoppingBag, Candy } from "lucide-react"
+import { Coffee, ShoppingBag } from "lucide-react"
 
 export const metadata = {
   title: "Our Brands - Product Brands",
@@ -82,22 +82,6 @@ export default function BrandsIndexPage() {
             </Card>
           </Link>
 
-          <Link href="/brands/way-candy" className="md:col-span-3">
-            <Card className="h-full cursor-pointer hover:shadow-lg transition-shadow border-2 hover:border-blue-500">
-              <CardHeader className="text-center pb-3">
-                <div className="h-16 w-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Candy className="h-8 w-8 text-pink-600" />
-                </div>
-                <CardTitle className="text-lg">WAY Candy</CardTitle>
-                <CardDescription className="text-sm">
-                  Confections and seasonal assortments for gifting and impulse.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-xs text-gray-600 text-center">
-                Click to see product details and Amazon link.
-              </CardContent>
-            </Card>
-          </Link>
         </div>
       </section>
     </div>

@@ -8,37 +8,37 @@
         {
           "asin": "B0DYG17PNV",
           "amazonUrl": "https://www.amazon.com/dp/B0DYG17PNV",
-          "title": "WAY Coffee Dark Roast Single-Serve Pods",
-          "imageUrl": "https://m.media-amazon.com/images/I/81pYh8kYH-L._AC_SL1500_.jpg",
-          "description": "Bold dark-roast coffee crafted for consistent flavor and everyday energy. Ideal for home, office, and private-label programs.",
+          "title": "WAY Coffee Medium Roast Ground Coffee - Signature Blend (12 Oz)",
+          "imageUrl": "https://m.media-amazon.com/images/I/61PuvQpWh0L._SL1500_.jpg",
+          "description": "Smooth and balanced medium-roast ground coffee with our signature blend. Perfect for daily brewing.",
           "bullets": [
-            "Rich dark-roast flavor",
-            "Single-serve coffee pods",
-            "Perfect for daily brewing"
+            "Medium roast ground coffee",
+            "Signature blend",
+            "12 oz package"
           ]
         },
         {
           "asin": "B0DS2TXFZV",
           "amazonUrl": "https://www.amazon.com/dp/B0DS2TXFZV",
-          "title": "WAY Coffee Medium Roast Single-Serve Pods",
-          "imageUrl": "https://m.media-amazon.com/images/I/81pYh8kYH-L._AC_SL1500_.jpg",
-          "description": "Smooth and balanced medium-roast coffee with a clean finish, designed for easy everyday drinking.",
+          "title": "WAY Coffee Medium Roast Ground Coffee - 100% Colombian (12 Oz)",
+          "imageUrl": "https://m.media-amazon.com/images/I/61PBXkzf8CL._SL1500_.jpg",
+          "description": "Premium 100% Colombian medium-roast ground coffee with a smooth, clean finish.",
           "bullets": [
-            "Balanced medium roast",
-            "Smooth, clean taste",
-            "Convenient single-serve pods"
+            "100% Colombian coffee",
+            "Medium roast ground",
+            "12 oz package"
           ]
         },
         {
           "asin": "B0DPJDP71H",
           "amazonUrl": "https://www.amazon.com/dp/B0DPJDP71H",
-          "title": "WAY Coffee Light Roast Single-Serve Pods",
-          "imageUrl": "https://m.media-amazon.com/images/I/81pYh8kYH-L._AC_SL1500_.jpg",
-          "description": "Bright and aromatic light-roast coffee with a crisp finish, perfect for morning routines.",
+          "title": "WAY Coffee Medium Roast Whole Bean Coffee - The Original (12 Oz)",
+          "imageUrl": "https://m.media-amazon.com/images/I/61M1SKdSnZL._SL1500_.jpg",
+          "description": "The original WAY Coffee medium-roast whole bean coffee. Fresh, aromatic, and perfect for grinding at home.",
           "bullets": [
-            "Light roast profile",
-            "Aromatic and smooth",
-            "Great for mornings"
+            "Whole bean coffee",
+            "Medium roast",
+            "12 oz package"
           ]
         }
       ]
@@ -52,95 +52,199 @@
         {
           "asin": "B0G7RM86Q6",
           "amazonUrl": "https://www.amazon.com/dp/B0G7RM86Q6",
-          "title": "WAY Snacks Assorted Gummy Candy Mix",
-          "imageUrl": "https://m.media-amazon.com/images/I/81W8cYwWZRL._AC_SL1500_.jpg",
-          "description": "A colorful assortment of chewy gummy candies perfect for parties, offices, and everyday snacking.",
+          "title": "Cinnamon Sticks 14 oz – Premium Whole Cinnamon, Rich Aroma & Flavor, Fresh Bulk Spice for Cooking, Baking & Teas",
+          "imageUrl": "https://m.media-amazon.com/images/I/81Oiryrpq2L._SL1500_.jpg",
+          "description": "Premium whole cinnamon sticks with rich aroma and flavor, perfect for cooking, baking, and teas.",
           "bullets": [
-            "Assorted gummy candy mix",
-            "Great for sharing",
-            "Fun, chewy texture"
+            "Premium whole cinnamon sticks",
+            "14 oz package",
+            "Rich aroma and flavor",
+            "Perfect for cooking, baking & teas"
           ]
         },
         {
           "asin": "B0FVG1WNB2",
           "amazonUrl": "https://www.amazon.com/dp/B0FVG1WNB2",
-          "title": "WAY Snacks Individually Wrapped Strawberry Candies",
-          "imageUrl": "https://m.media-amazon.com/images/I/81GJQ9Kp9PL._AC_SL1500_.jpg",
-          "description": "Sweet strawberry-flavored candies individually wrapped for freshness and convenience.",
+          "title": "Individually Wrapped Candy Different sizes and Flavors (2LB, Strawberry)",
+          "imageUrl": "https://m.media-amazon.com/images/I/81i7gw1-vQL._SL1500_.jpg",
+          "description": "Individually wrapped candies in different sizes and flavors. Strawberry variety in a 2LB package.",
           "bullets": [
-            "Strawberry-flavored candy",
             "Individually wrapped",
-            "Perfect for bowls or giveaways"
+            "Different sizes and flavors",
+            "2LB package",
+            "Strawberry variety"
           ]
         },
         {
           "asin": "B0FQCXW1HV",
           "amazonUrl": "https://www.amazon.com/dp/B0FQCXW1HV",
-          "title": "WAY Snacks Raw Peanuts in Shell",
-          "imageUrl": "https://m.media-amazon.com/images/I/81Z6B7pGZUL._AC_SL1500_.jpg",
-          "description": "Natural raw peanuts in shell, ideal for roasting, boiling, or snacking.",
+          "title": "Raw Peanuts in Shell 2 lb Bag – Unsalted, Natural & Healthy Snack – Plain Peanuts for Squirrels, Birds & Wildlife Feed",
+          "imageUrl": "https://m.media-amazon.com/images/I/81ITLB5cbHL._AC_SL1500_.jpg",
+          "description": "Natural, unsalted raw peanuts in shell. Perfect healthy snack or wildlife feed.",
           "bullets": [
             "Raw peanuts in shell",
-            "Natural and unprocessed",
-            "Great for roasting or boiling"
+            "2 lb bag",
+            "Unsalted and natural",
+            "Perfect for snacking or wildlife feed"
           ]
         },
         {
           "asin": "B0FZCS8SMC",
           "amazonUrl": "https://www.amazon.com/dp/B0FZCS8SMC",
-          "title": "WAY Snacks Raw Peanuts in Shell – Bulk Pack",
-          "imageUrl": "https://m.media-amazon.com/images/I/81Z6B7pGZUL._AC_SL1500_.jpg",
-          "description": "Bulk pack of raw peanuts in shell for families, events, or food service.",
+          "title": "Raw Peanuts in Shell 1 lb Bag – Unsalted, Natural & Healthy Snack – Plain Peanuts for Squirrels, Birds & Wildlife Feed",
+          "imageUrl": "https://m.media-amazon.com/images/I/81UT92QR9gL._AC_SL1500_.jpg",
+          "description": "Natural, unsalted raw peanuts in shell. Perfect healthy snack or wildlife feed.",
           "bullets": [
-            "Bulk peanut pack",
-            "Raw and natural",
-            "Ideal for sharing"
+            "Raw peanuts in shell",
+            "1 lb bag",
+            "Unsalted and natural",
+            "Perfect for snacking or wildlife feed"
           ]
         },
         {
           "asin": "B0FP73SR97",
           "amazonUrl": "https://www.amazon.com/dp/B0FP73SR97",
-          "title": "WAY Snacks Unsalted Roasted Peanuts in Shell",
-          "imageUrl": "https://m.media-amazon.com/images/I/81X3m5kZ3-L._AC_SL1500_.jpg",
-          "description": "Roasted peanuts in shell with no added salt for a classic, natural taste.",
+          "title": "Peanuts In Shell | Unsalted & Roasted - Healthy natural snack, Perfect for office, share and TO-GO | Value Pack | 2LB",
+          "imageUrl": "https://m.media-amazon.com/images/I/815ez-E6xyL._SL1500_.jpg",
+          "description": "Unsalted and roasted peanuts in shell. Healthy natural snack perfect for office, sharing, and on-the-go.",
           "bullets": [
-            "Unsalted roasted peanuts",
-            "Crunchy texture",
-            "Classic snack option"
+            "Unsalted and roasted",
+            "2LB value pack",
+            "Perfect for office and sharing",
+            "Healthy natural snack"
           ]
         },
         {
           "asin": "B0FNRSHLFQ",
           "amazonUrl": "https://www.amazon.com/dp/B0FNRSHLFQ",
-          "title": "WAY Snacks Salted Roasted Peanuts in Shell",
-          "imageUrl": "https://m.media-amazon.com/images/I/81X3m5kZ3-L._AC_SL1500_.jpg",
-          "description": "Roasted peanuts in shell lightly salted for bold, satisfying flavor.",
+          "title": "Peanuts In Shell | Roasted & Salted - Healthy natural snack, Perfect for office, share and TO-GO | Value Pack | 2LB",
+          "imageUrl": "https://m.media-amazon.com/images/I/81XDAOo1lxL._SL1500_.jpg",
+          "description": "Roasted and salted peanuts in shell. Healthy natural snack perfect for office, sharing, and on-the-go.",
           "bullets": [
-            "Lightly salted peanuts",
-            "Roasted in shell",
-            "Great for snacking"
+            "Roasted and salted",
+            "2LB value pack",
+            "Perfect for office and sharing",
+            "Healthy natural snack"
           ]
         },
         {
           "asin": "B0FMKMF8DW",
           "amazonUrl": "https://www.amazon.com/dp/B0FMKMF8DW",
-          "title": "WAY Snacks Gummy Candy Belts & Peach Wedges",
-          "imageUrl": "https://m.media-amazon.com/images/I/81kCk0wzE2L._AC_SL1500_.jpg",
-          "description": "A fun mix of sour belts and peach-flavored gummy wedges.",
+          "title": "Sour Gummy Candy Fun Mix | Belts, Peach Rings, Wedges, Worms, Bears - Party Favors, On the Go Package - Assorted Mix Bulk (1 Pound)",
+          "imageUrl": "https://m.media-amazon.com/images/I/91oPXVL3tXL._SL1500_.jpg",
+          "description": "Fun mix of sour gummy candy including belts, peach rings, wedges, worms, and bears. Perfect for party favors and on-the-go snacking.",
           "bullets": [
-            "Sour and sweet mix",
-            "Soft chewy gummies",
-            "Great for candy lovers"
+            "Assorted sour gummy mix",
+            "Belts, peach rings, wedges, worms, bears",
+            "1 pound bulk package",
+            "Perfect for party favors"
+          ]
+        },
+        {
+          "asin": "B0FNXCMTNB",
+          "amazonUrl": "https://www.amazon.com/dp/B0FNXCMTNB",
+          "title": "Ultimate Assorted Candy Party Mix - Office Roast - | Individually Wrapped Candy | - Chews and Sweets For Office, Parties, Kids, and Home | Gift Friendly Pack (2 Lb)",
+          "imageUrl": "https://m.media-amazon.com/images/I/9102pTXFOLL._SL1500_.jpg",
+          "description": "Ultimate assorted candy party mix with individually wrapped candies. Perfect for offices, parties, kids, and home. Gift-friendly 2 lb pack.",
+          "bullets": [
+            "Ultimate assorted candy party mix",
+            "Individually wrapped candies",
+            "2 lb gift-friendly pack",
+            "Perfect for office, parties, kids, and home"
+          ]
+        },
+        {
+          "asin": "B0FP6QR74P",
+          "amazonUrl": "https://www.amazon.com/dp/B0FP6QR74P",
+          "title": "Individually Wrapped Candy Different sizes and Flavors (2LB, Peppermint)",
+          "imageUrl": "https://m.media-amazon.com/images/I/81zeqHO2kJL._SL1500_.jpg",
+          "description": "Individually wrapped candies in different sizes and flavors. Peppermint variety in a 2LB package.",
+          "bullets": [
+            "Individually wrapped",
+            "Different sizes and flavors",
+            "2LB package",
+            "Peppermint variety"
+          ]
+        },
+        {
+          "asin": "B0G4F3CQ5K",
+          "amazonUrl": "https://www.amazon.com/dp/B0G4F3CQ5K",
+          "title": "Cracked Corn for Animals 10 LB – All-Natural Dried Feed for Birds, Ducks, Chickens, Wildlife Deer & Backyard Animals",
+          "imageUrl": "https://m.media-amazon.com/images/I/91wnko9dQWL._AC_SL1500_.jpg",
+          "description": "All-natural dried cracked corn feed for birds, ducks, chickens, wildlife, deer, and backyard animals. 10 lb bag.",
+          "bullets": [
+            "All-natural dried cracked corn",
+            "10 lb bag",
+            "Perfect for birds, ducks, chickens, wildlife, deer",
+            "Backyard animal feed"
+          ]
+        },
+        {
+          "asin": "B0G4F24DZQ",
+          "amazonUrl": "https://www.amazon.com/dp/B0G4F24DZQ",
+          "title": "Premium Black Sunflower Seeds 8 LB – Natural Wild Bird Seed for Backyard Feeders, High-Energy Food for Songbirds",
+          "imageUrl": "https://m.media-amazon.com/images/I/81F0m75UvZL._AC_SL1500_.jpg",
+          "description": "Premium black sunflower seeds for wild birds. Natural high-energy food perfect for backyard feeders and songbirds. 8 lb bag.",
+          "bullets": [
+            "Premium black sunflower seeds",
+            "8 lb bag",
+            "Natural wild bird seed",
+            "High-energy food for songbirds"
+          ]
+        },
+        {
+          "asin": "B0FTGJG45N",
+          "amazonUrl": "https://www.amazon.com/dp/B0FTGJG45N",
+          "title": "Cracked Corn for Animals 5 lb Bag – All-Natural Dried Feed for Birds, Ducks, Chickens, Wildlife Deer & Backyard Animals",
+          "imageUrl": "https://m.media-amazon.com/images/I/81fsmRrfyQL._AC_SL1500_.jpg",
+          "description": "All-natural dried cracked corn feed for birds, ducks, chickens, wildlife, deer, and backyard animals. 5 lb bag.",
+          "bullets": [
+            "All-natural dried cracked corn",
+            "5 lb bag",
+            "Perfect for birds, ducks, chickens, wildlife, deer",
+            "Backyard animal feed"
+          ]
+        },
+        {
+          "asin": "B0FNRYQ33D",
+          "amazonUrl": "https://www.amazon.com/dp/B0FNRYQ33D",
+          "title": "Whole Grain Rolled Oats | Value Size | Healthy Snack, perfect for breakfast - Easy Cook | 2 lbs value bag",
+          "imageUrl": "https://m.media-amazon.com/images/I/81cgCVAm2vL._SL1500_.jpg",
+          "description": "Whole grain rolled oats in a 2 lb value bag. Healthy snack perfect for breakfast. Easy to cook.",
+          "bullets": [
+            "Whole grain rolled oats",
+            "2 lbs value bag",
+            "Healthy snack perfect for breakfast",
+            "Easy to cook"
+          ]
+        },
+        {
+          "asin": "B0FMJ6SHMG",
+          "amazonUrl": "https://www.amazon.com/dp/B0FMJ6SHMG",
+          "title": "Office Roast Sour Gummy Bears Candy | Chewy Blue Candy Razz | Blue Raspberry Jelly Bears for, Gender Reveal, Baby Showers, Party, Office & More | Gift Friendly | 1 Pound Container",
+          "imageUrl": "https://m.media-amazon.com/images/I/71R2gw+nPTL._SL1024_.jpg",
+          "description": "Sour gummy bears candy in blue raspberry flavor. Chewy blue candy razz jelly bears perfect for gender reveals, baby showers, parties, office, and more. Gift-friendly 1 pound container.",
+          "bullets": [
+            "Sour gummy bears candy",
+            "Blue raspberry flavor",
+            "1 pound container",
+            "Perfect for gender reveals, baby showers, parties, office"
+          ]
+        },
+        {
+          "asin": "B0DG65385L",
+          "amazonUrl": "https://www.amazon.com/dp/B0DG65385L",
+          "title": "Ultimate Candy Variety Pack | Individually Wrapped Candy | - Chews and Sweets For Office, Parties, Kids, and Home | Gift Friendly Pack | (60 Count)",
+          "imageUrl": "https://m.media-amazon.com/images/I/81u8Xr3zNpL._SL1500_.jpg",
+          "description": "Ultimate candy variety pack with individually wrapped candies. Chews and sweets perfect for office, parties, kids, and home. Gift-friendly 60 count pack.",
+          "bullets": [
+            "Ultimate candy variety pack",
+            "Individually wrapped candies",
+            "60 count pack",
+            "Perfect for office, parties, kids, and home"
           ]
         }
       ]
-    },
-
-    {
-      "slug": "way-candy",
-      "name": "WAY Candy",
-      "parentSlug": "way",
-      "products": []
     },
 
     {
@@ -151,37 +255,54 @@
         {
           "asin": "B0FPGQDP2V",
           "amazonUrl": "https://www.amazon.com/dp/B0FPGQDP2V",
-          "title": "Office Roast Coffee Creamer Variety Pack",
-          "imageUrl": "https://m.media-amazon.com/images/I/81XxkJ0ZxQL._AC_SL1500_.jpg",
-          "description": "A convenient assortment of coffee creamers designed for offices and breakrooms.",
+          "title": "Variety Pack Creamers Liquid Creamer Singles | Gift Assortment Box | Coffee Cream | Sweet and Creamy, Chocolate Caramel, Caramel Macchiato, Original & Irish Cream - No Refrigeration - Box Of 100",
+          "imageUrl": "https://m.media-amazon.com/images/I/9164B7y1lQL._SL1500_.jpg",
+          "description": "Liquid creamer variety pack with multiple flavors. No refrigeration needed. Perfect for offices and coffee stations.",
           "bullets": [
-            "Variety of creamer flavors",
-            "Individually portioned",
-            "Perfect for office coffee stations"
+            "Variety pack of liquid creamers",
+            "Sweet and Creamy, Chocolate Caramel, Caramel Macchiato, Original & Irish Cream",
+            "Box of 100 singles",
+            "No refrigeration required"
           ]
         },
         {
           "asin": "B0DSJT1NP4",
           "amazonUrl": "https://www.amazon.com/dp/B0DSJT1NP4",
-          "title": "Office Roast Coffee Variety Pack – Individually Wrapped",
-          "imageUrl": "https://m.media-amazon.com/images/I/81RZ8bP9xVL._AC_SL1500_.jpg",
-          "description": "Individually wrapped coffee options for convenience and freshness.",
+          "title": "Office Roast Variety Pack - Assorted Sweeteners for Coffee, Tea & Beverages – Includes Sucralose, Saccharin, Raw Brown & White Sugar – Convenient, Individually Wrapped Packets (400 Count Total)",
+          "imageUrl": "https://m.media-amazon.com/images/I/71+yqCF4NRL._SL1500_.jpg",
+          "description": "Assorted sweeteners variety pack including Sucralose, Saccharin, Raw Brown & White Sugar. Perfect for coffee, tea, and beverages.",
           "bullets": [
-            "Individually wrapped",
-            "Multiple coffee varieties",
-            "Ideal for offices and hospitality"
+            "Assorted sweeteners variety pack",
+            "Includes Sucralose, Saccharin, Raw Brown & White Sugar",
+            "400 count total",
+            "Individually wrapped packets"
           ]
         },
         {
           "asin": "B0G5B65WK9",
           "amazonUrl": "https://www.amazon.com/dp/B0G5B65WK9",
-          "title": "Office Roast Sweetener Variety Pack",
-          "imageUrl": "https://m.media-amazon.com/images/I/81Z5h1r8YUL._AC_SL1500_.jpg",
-          "description": "A variety of sweeteners conveniently packaged for office and food service use.",
+          "title": "Variety Pack Sweeteners - Assorted mix for Tea, Coffee & Beverages – Includes Saccharin, Sucralose, White Sugar & Raw Brown Turbinado – Convenient, Individually Wrapped Packets (400 Count Total)",
+          "imageUrl": "https://m.media-amazon.com/images/I/71MHOGuDnkL._SL1500_.jpg",
+          "description": "Assorted sweeteners mix for tea, coffee, and beverages. Includes Saccharin, Sucralose, White Sugar & Raw Brown Turbinado.",
           "bullets": [
-            "Multiple sweetener types",
-            "Individually packaged",
-            "Great for coffee stations"
+            "Assorted sweeteners mix",
+            "Includes Saccharin, Sucralose, White Sugar & Raw Brown Turbinado",
+            "400 count total",
+            "Individually wrapped packets"
+          ]
+        },
+        {
+          "asin": "B0DCPRF21C",
+          "amazonUrl": "https://www.amazon.com/Variety-Assorted-Office-Roast-Compatible/dp/B0DCPRF21C/ref=ast_sto_dp_puis",
+          "title": "Famous Brands K-Cups Variety Pack | Gift Box | Single Serve Pods | Assorted Pack By Office Roast | Compatible with Keurig | 20 Count Total",
+          "imageUrl": "https://m.media-amazon.com/images/I/61h854wPPnL.jpg",
+          "description": "Famous Brands K-Cups variety pack in a gift box. Single serve pods assorted pack by Office Roast, compatible with Keurig machines. 20 count total.",
+          "bullets": [
+            "Famous Brands K-Cups variety pack",
+            "Gift box packaging",
+            "Single serve pods",
+            "Compatible with Keurig",
+            "20 count total"
           ]
         }
       ]

@@ -11,6 +11,8 @@ const nextConfig = {
         hostname: "images-na.ssl-images-amazon.com",
       },
     ],
+    // Add your production image domains here
+    domains: ["productbrands.com", "www.productbrands.com"],
   },
   experimental: {
     serverActions: {
@@ -18,6 +20,41 @@ const nextConfig = {
     },
   },
   output: "standalone",
+  // Production optimizations
+  compress: true,
+  poweredByHeader: false,
+  // Security headers
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+        ],
+      },
+    ];
+  },
+  // Redirect www to non-www (or vice versa)
+  async redirects() {
+    return [
+      {
+        source: "/home",
+        destination: "/",
+        permanent: true,
+      },
+    ];
+  },
 }
 
 module.exports = nextConfig
