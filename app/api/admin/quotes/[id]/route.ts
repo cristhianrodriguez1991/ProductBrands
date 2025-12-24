@@ -3,9 +3,10 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
+import { QuoteStatus } from "@prisma/client"
 
 const updateQuoteSchema = z.object({
-  status: z.string().optional(),
+  status: z.enum(["DRAFT", "SUBMITTED", "IN_REVIEW", "NEED_INFO", "SENT", "ACCEPTED", "REJECTED"]).optional(),
   adminNotes: z.string().optional(),
   totalEstimate: z.number().nullable().optional(),
   lineItems: z.array(z.any()).optional(),
@@ -28,7 +29,7 @@ export async function PATCH(
     const quote = await prisma.quote.update({
       where: { id: params.id },
       data: {
-        status: data.status,
+        ...(data.status && { status: data.status as QuoteStatus }),
         adminNotes: data.adminNotes,
         totalEstimate: data.totalEstimate,
       },
