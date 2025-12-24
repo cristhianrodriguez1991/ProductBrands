@@ -1,6 +1,12 @@
 import { Resend } from "resend"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy initialization - only create Resend instance when needed
+function getResend() {
+  if (!process.env.RESEND_API_KEY) {
+    return null
+  }
+  return new Resend(process.env.RESEND_API_KEY)
+}
 
 export async function sendEmail({
   to,
@@ -13,7 +19,9 @@ export async function sendEmail({
   html: string
   from?: string
 }) {
-  if (!process.env.RESEND_API_KEY) {
+  const resend = getResend()
+  
+  if (!resend) {
     console.log("Email would be sent:", { to, subject, html })
     return { success: true, id: "mock" }
   }
