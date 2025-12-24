@@ -1,0 +1,76 @@
+═══════════════════════════════════════════════════════════════
+  NEXT STEPS - DO THESE NOW
+═══════════════════════════════════════════════════════════════
+
+Your deployment should be complete! Now follow these steps:
+
+═══════════════════════════════════════════════════════════════
+STEP 1: SET UP NEON DATABASE (2 minutes)
+═══════════════════════════════════════════════════════════════
+
+1. Go to: https://neon.tech
+2. Sign up (free, no credit card needed)
+3. Create project: product-brands
+4. Copy the connection string
+5. Save it - you'll need it next!
+
+See: SETUP_NEON_QUICK.md for detailed steps
+
+═══════════════════════════════════════════════════════════════
+STEP 2: ADD ENVIRONMENT VARIABLES TO VERCEL
+═══════════════════════════════════════════════════════════════
+
+1. Go to: https://vercel.com/dashboard
+2. Click your project: product-brands
+3. Settings → Environment Variables
+4. Add these variables:
+
+   DATABASE_URL = [Your Neon connection string]
+   NEXTAUTH_URL = https://productbrands.com
+   NEXTAUTH_SECRET = BOO/xB8uIhPYlSVsazbNwZY2oxNL5/L2grBD516zUUs=
+   EMAIL_FROM = noreply@productbrands.com
+   CONTACT_EMAIL = info@productbrands.com
+   RESEND_API_KEY = [Leave empty for now]
+
+   IMPORTANT: Check "Production" for all variables!
+
+See: ADD_ENV_VARS_QUICK.md for details
+
+═══════════════════════════════════════════════════════════════
+STEP 3: REDEPLOY
+═══════════════════════════════════════════════════════════════
+
+After adding variables:
+1. Go to Deployments tab
+2. Click three dots on latest deployment
+3. Click Redeploy
+4. Wait 2-3 minutes
+
+═══════════════════════════════════════════════════════════════
+STEP 4: RUN DATABASE MIGRATIONS
+═══════════════════════════════════════════════════════════════
+
+Run this command:
+  npx prisma db push
+
+Optional - Seed initial data:
+  npm run db:seed
+
+═══════════════════════════════════════════════════════════════
+STEP 5: TEST YOUR SITE
+═══════════════════════════════════════════════════════════════
+
+Visit your deployment URL and test:
+- Homepage loads
+- Can register account
+- Can login
+- Customer portal works
+
+═══════════════════════════════════════════════════════════════
+
+Full guide: NEXT_STEPS_AFTER_DEPLOY.md
+
+
+
+
+

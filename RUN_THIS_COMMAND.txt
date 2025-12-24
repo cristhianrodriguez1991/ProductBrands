@@ -1,0 +1,46 @@
+═══════════════════════════════════════════════════════════════
+  RUN THIS COMMAND NOW
+═══════════════════════════════════════════════════════════════
+
+In your terminal/command prompt, run:
+
+  vercel login
+
+═══════════════════════════════════════════════════════════════
+WHERE:
+═══════════════════════════════════════════════════════════════
+
+You can run it in THIS terminal window (the one you're using now),
+or open a new one:
+
+OPTION 1: Use Current Terminal
+───────────────────────────────
+Just type: vercel login
+(You're already in the right directory: C:\Users\yanca\OneDrive\Desktop\ProductBrands)
+
+OPTION 2: Open New Terminal
+────────────────────────────
+1. Press: Windows Key + X
+2. Select: "Windows PowerShell" or "Terminal"
+3. Navigate to project:
+   cd "C:\Users\yanca\OneDrive\Desktop\ProductBrands"
+4. Run: vercel login
+
+═══════════════════════════════════════════════════════════════
+WHAT WILL HAPPEN:
+═══════════════════════════════════════════════════════════════
+
+1. Command will run
+2. Browser will open automatically
+3. You'll see Vercel login page
+4. Login or sign up
+5. Authorize the CLI
+6. Return to terminal - you'll see "Success! You are now logged in."
+7. Come back here and say "done" or "ready" and I'll deploy!
+
+═══════════════════════════════════════════════════════════════
+
+
+
+
+

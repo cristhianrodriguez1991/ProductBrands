@@ -1,0 +1,62 @@
+═══════════════════════════════════════════════════════════════
+  DEPLOY NOW - Quick Instructions
+═══════════════════════════════════════════════════════════════
+
+IMPORTANT: Even if you're logged into Vercel in your browser,
+you need to authenticate the CLI separately.
+
+═══════════════════════════════════════════════════════════════
+STEP 1: Authenticate CLI
+═══════════════════════════════════════════════════════════════
+
+Run this command:
+  vercel login
+
+This will:
+  - Open your browser
+  - Ask you to authorize CLI access
+  - Return to terminal when done
+
+═══════════════════════════════════════════════════════════════
+STEP 2: Deploy
+═══════════════════════════════════════════════════════════════
+
+After CLI authentication, run:
+  vercel --prod
+
+Or:
+  vercel deploy --prod --yes
+
+═══════════════════════════════════════════════════════════════
+WHAT HAPPENS DURING DEPLOYMENT:
+═══════════════════════════════════════════════════════════════
+
+1. Vercel will ask some questions:
+   - "Set up and deploy?" → Type Y or press Enter
+   - "Which scope?" → Select your account
+   - "Link to existing project?" → Type N (first time)
+   - "What's your project's name?" → Press Enter (product-brands)
+   - "In which directory is your code located?" → Press Enter
+   - "Want to override the settings?" → Type N
+
+2. Vercel will build your app (2-5 minutes)
+
+3. You'll get a deployment URL like:
+   https://product-brands-xxxxx.vercel.app
+
+═══════════════════════════════════════════════════════════════
+AFTER DEPLOYMENT:
+═══════════════════════════════════════════════════════════════
+
+1. Add environment variables (see ENV_VARIABLES_TO_ADD.txt)
+2. Set up database (see SETUP_DATABASE.md)
+3. Run migrations: npx prisma db push
+4. Connect domain: productbrands.com
+5. Redeploy after adding variables
+
+═══════════════════════════════════════════════════════════════
+
+
+
+
+

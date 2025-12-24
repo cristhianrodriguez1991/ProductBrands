@@ -1,0 +1,84 @@
+═══════════════════════════════════════════════════════════════
+  COPY THESE TO VERCEL DASHBOARD → SETTINGS → ENV VARIABLES
+═══════════════════════════════════════════════════════════════
+
+IMPORTANT: Select "Production" environment for ALL variables
+
+═══════════════════════════════════════════════════════════════
+REQUIRED VARIABLES (Copy these one by one):
+═══════════════════════════════════════════════════════════════
+
+1. DATABASE_URL
+   Value: [You'll get this from Neon/Supabase/Vercel Postgres]
+   Example: postgresql://user:pass@host:5432/productbrands?sslmode=require
+   
+2. NEXTAUTH_URL
+   Value: https://productbrands.com
+   
+3. NEXTAUTH_SECRET
+   Value: BOO/xB8uIhPYlSVsazbNwZY2oxNL5/L2grBD516zUUs=
+   
+4. EMAIL_FROM
+   Value: noreply@productbrands.com
+   
+5. CONTACT_EMAIL
+   Value: info@productbrands.com
+   
+6. RESEND_API_KEY
+   Value: [Get from resend.com - sign up and create API key]
+
+═══════════════════════════════════════════════════════════════
+OPTIONAL VARIABLES (Add if you're using these features):
+═══════════════════════════════════════════════════════════════
+
+7. GOOGLE_CLIENT_ID
+   Value: [If using Google OAuth]
+   
+8. GOOGLE_CLIENT_SECRET
+   Value: [If using Google OAuth]
+   
+9. S3_ENDPOINT
+   Value: https://s3.amazonaws.com
+   [If using AWS S3 for file uploads]
+   
+10. S3_REGION
+    Value: us-east-1
+    
+11. S3_ACCESS_KEY_ID
+    Value: [Your AWS access key]
+    
+12. S3_SECRET_ACCESS_KEY
+    Value: [Your AWS secret key]
+    
+13. S3_BUCKET_NAME
+    Value: product-brands-production
+    
+14. S3_PUBLIC_URL
+    Value: https://cdn.productbrands.com
+    
+15. STRIPE_SECRET_KEY
+    Value: [If using Stripe payments]
+    
+16. STRIPE_PUBLISHABLE_KEY
+    Value: [If using Stripe payments]
+
+═══════════════════════════════════════════════════════════════
+INSTRUCTIONS:
+═══════════════════════════════════════════════════════════════
+
+1. Go to: https://vercel.com/dashboard
+2. Click your project
+3. Go to: Settings → Environment Variables
+4. Click "Add New"
+5. Copy variable name and value from above
+6. Select "Production" environment
+7. Click "Save"
+8. Repeat for all variables
+9. After adding all, go to Deployments → Click "Redeploy"
+
+═══════════════════════════════════════════════════════════════
+
+
+
+
+

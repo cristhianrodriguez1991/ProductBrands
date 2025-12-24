@@ -1,0 +1,7 @@
+DATABASE_URL for Vercel:
+
+postgresql://neondb_owner:npg_0BjVpNHbtrf7@ep-dark-field-ahhqbnn4-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+
+Note: Removed channel_binding=require as it can cause connection issues with some clients.
+If you need channel_binding, use: channel_binding=prefer instead.
+
