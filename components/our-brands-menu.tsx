@@ -25,8 +25,8 @@ const parentBrands: ParentBrand[] = [
     key: "way",
     description: "Multi-category private label platform",
     products: [
-      { label: "WAY Coffee", href: "/brands/way-coffee", key: "way-coffee" },
-      { label: "WAY Snacks", href: "/brands/way-snacks", key: "way-snacks" },
+      // Unified WAY page (no category split)
+      { label: "WAY", href: "/brands/way", key: "way" },
     ],
   },
   {
