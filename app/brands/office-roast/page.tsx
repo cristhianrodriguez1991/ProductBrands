@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { Navbar } from "@/components/navbar"
 import { CheckCircle } from "lucide-react"
 import { getBrandBySlug } from "@/lib/brand-catalog"
@@ -109,7 +110,9 @@ export default function OfficeRoastPage() {
               </p>
             </div>
 
-            <OfficeRoastTabs brand={brand} categories={categories} />
+            <Suspense fallback={<div className="text-center py-8">Loading categories...</div>}>
+              <OfficeRoastTabs brand={brand} categories={categories} />
+            </Suspense>
           </div>
 
           {/* Disclaimer */}

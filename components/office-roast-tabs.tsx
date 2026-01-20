@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { SeedBrand } from "@/lib/brand-catalog"
 import { AmazonProductCard } from "@/components/amazon-product-card"
 
@@ -16,6 +17,8 @@ type OfficeRoastTabsProps = {
 }
 
 export function OfficeRoastTabs({ brand, categories }: OfficeRoastTabsProps) {
+  const searchParams = useSearchParams()
+  
   // Filter categories to only show those with products
   const categoriesWithProducts = categories.filter((category) => {
     const productsInCategory = brand.products.filter(
@@ -24,10 +27,20 @@ export function OfficeRoastTabs({ brand, categories }: OfficeRoastTabsProps) {
     return productsInCategory.length > 0
   })
 
-  // Set initial active tab to first category with products
-  const [activeTab, setActiveTab] = useState(
-    categoriesWithProducts.length > 0 ? categoriesWithProducts[0].id : ""
-  )
+  // Get category from URL params or default to first category
+  const categoryFromUrl = searchParams.get("category")
+  const initialTab = categoryFromUrl && categoriesWithProducts.find(cat => cat.id === categoryFromUrl)
+    ? categoryFromUrl
+    : categoriesWithProducts.length > 0 ? categoriesWithProducts[0].id : ""
+
+  const [activeTab, setActiveTab] = useState(initialTab)
+
+  // Update active tab when URL param changes
+  useEffect(() => {
+    if (categoryFromUrl && categoriesWithProducts.find(cat => cat.id === categoryFromUrl)) {
+      setActiveTab(categoryFromUrl)
+    }
+  }, [categoryFromUrl, categoriesWithProducts])
 
   // Get active category and its products
   const activeCategory = categoriesWithProducts.find((cat) => cat.id === activeTab)
@@ -39,13 +52,19 @@ export function OfficeRoastTabs({ brand, categories }: OfficeRoastTabsProps) {
     <>
       {/* Tab Navigation */}
       <div className="mb-10">
-        <nav className="flex flex-wrap gap-3 justify-center" aria-label="Tabs">
+        <nav className="flex gap-2 justify-center flex-nowrap overflow-x-auto scrollbar-hide" aria-label="Tabs">
           {categoriesWithProducts.map((category) => (
             <button
               key={category.id}
-              onClick={() => setActiveTab(category.id)}
+              onClick={() => {
+                setActiveTab(category.id)
+                // Update URL without page reload
+                const url = new URL(window.location.href)
+                url.searchParams.set("category", category.id)
+                window.history.pushState({}, "", url.toString())
+              }}
               className={`
-                px-6 py-3 text-sm font-semibold rounded-full transition-all duration-300
+                px-4 py-2 text-xs font-semibold rounded-full transition-all duration-300 whitespace-nowrap flex-shrink-0
                 ${
                   activeTab === category.id
                     ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105"

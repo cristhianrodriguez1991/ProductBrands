@@ -39,6 +39,17 @@ const parentBrands: ParentBrand[] = [
   },
 ]
 
+// Office Roast categories - defined statically since we can't use getBrandBySlug in client component
+const OFFICE_ROAST_CATEGORIES = [
+  { id: "Coffee", title: "Coffee" },
+  { id: "Coffee Creamers", title: "Coffee Creamers" },
+  { id: "Sweeteners", title: "Sweeteners" },
+  { id: "Hard Candies", title: "Hard Candies" },
+  { id: "Snacks & Groceries", title: "Snacks & Groceries" },
+  { id: "Grain & Seeds", title: "Grain & Seeds" },
+  { id: "Wildlife Food", title: "Wildlife Food" },
+]
+
 export function OurBrandsMenu() {
   const [open, setOpen] = useState(false)
   const [expandedParent, setExpandedParent] = useState<string | null>(null)
@@ -115,9 +126,40 @@ export function OurBrandsMenu() {
                   const isExpanded = expandedParent === brand.key
                   const isSingleProduct = brand.products.length === 1
                   
-                  // Office Roast is a single brand (not a parent with sub-brands), so make it a direct link
-                  // WAY has multiple sub-brands, so it's expandable
-                  if (brand.key === "office-roast" || isSingleProduct) {
+                  // Office Roast has categories, so make it expandable
+                  if (brand.key === "office-roast" && OFFICE_ROAST_CATEGORIES.length > 0) {
+                    return (
+                      <div
+                        key={brand.key}
+                        className="relative"
+                        onMouseEnter={() => {
+                          if (hoverTimeout) {
+                            clearTimeout(hoverTimeout)
+                            setHoverTimeout(null)
+                          }
+                          setExpandedParent(brand.key)
+                        }}
+                      >
+                        <div
+                          className={`flex items-center justify-between gap-2 px-3 py-2 cursor-pointer transition-colors ${
+                            expandedParent === brand.key
+                              ? "bg-blue-50 text-blue-600 border-r-2 border-blue-600"
+                              : "hover:bg-slate-50 text-slate-900"
+                          }`}
+                        >
+                          <span className="text-sm font-medium">{brand.name}</span>
+                          <ChevronRight
+                            className={`h-3.5 w-3.5 text-slate-400 transition-transform flex-shrink-0 ${
+                              expandedParent === brand.key ? "rotate-90 text-blue-600" : "rotate-0"
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    )
+                  }
+                  
+                  // Single product brands (other than Office Roast)
+                  if (isSingleProduct) {
                     return (
                       <Link
                         key={brand.key}
@@ -176,6 +218,47 @@ export function OurBrandsMenu() {
                   {(() => {
                     const brand = parentBrands.find((b) => b.key === expandedParent)
                     if (!brand) return null
+                    
+                    // Show categories for Office Roast
+                    if (brand.key === "office-roast" && OFFICE_ROAST_CATEGORIES.length > 0) {
+                      return (
+                        <div>
+                          <h3 className="text-base font-semibold text-slate-900 mb-2">
+                            {brand.name}
+                          </h3>
+                          <p className="text-xs text-slate-500 mb-3">
+                            Browse by category
+                          </p>
+                          <div className="space-y-0.5">
+                            <Link
+                              href="/brands/office-roast"
+                              onClick={() => {
+                                setOpen(false)
+                                setExpandedParent(null)
+                              }}
+                              className="block py-1.5 px-2.5 text-sm text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            >
+                              All Products
+                            </Link>
+                            {OFFICE_ROAST_CATEGORIES.map((category) => (
+                              <Link
+                                key={category.id}
+                                href={`/brands/office-roast?category=${encodeURIComponent(category.id)}`}
+                                onClick={() => {
+                                  setOpen(false)
+                                  setExpandedParent(null)
+                                }}
+                                className="block py-1.5 px-2.5 text-sm text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              >
+                                {category.title}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    }
+                    
+                    // Show products for other brands
                     return (
                       <div>
                         <h3 className="text-base font-semibold text-slate-900 mb-2">
