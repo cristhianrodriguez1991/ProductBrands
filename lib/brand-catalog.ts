@@ -12,6 +12,14 @@ type SeedProduct = {
   priceCurrency?: string
   rating?: number | null
   reviewCount?: number | null
+  category?:
+    | "Hard Candies"
+    | "Snacks & Groceries"
+    | "Coffee"
+    | "Coffee Creamers"
+    | "Sweeteners"
+    | "Grain & Seeds"
+    | "Wildlife Food"
 }
 
 export type SeedBrand = {

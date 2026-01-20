@@ -14,6 +14,48 @@ export const metadata = {
 export default function OfficeRoastPage() {
   const brand = getBrandBySlug("office-roast")
 
+  if (!brand) {
+    return null
+  }
+
+  const categories: { id: string; title: string; description: string }[] = [
+    {
+      id: "Coffee",
+      title: "Coffee",
+      description: "Pods, capsules, and coffee formats ideal for offices and hospitality programs.",
+    },
+    {
+      id: "Coffee Creamers",
+      title: "Coffee Creamers",
+      description: "Shelf‑stable creamers that make it easy to keep every break room stocked.",
+    },
+    {
+      id: "Sweeteners",
+      title: "Sweeteners",
+      description: "Assorted sweeteners for coffee, tea, and other beverages.",
+    },
+    {
+      id: "Hard Candies",
+      title: "Hard Candies",
+      description: "Individually wrapped candies and mixes for reception bowls and snack areas.",
+    },
+    {
+      id: "Snacks & Groceries",
+      title: "Snacks & Groceries",
+      description: "Everyday pantry items and snacks suited for office and amenity spaces.",
+    },
+    {
+      id: "Grain & Seeds",
+      title: "Grain & Seeds",
+      description: "Bulk grains and seeds for kitchens, cafes, and bulk programs.",
+    },
+    {
+      id: "Wildlife Food",
+      title: "Wildlife Food",
+      description: "Feed products for outdoor areas, grounds, and wildlife‑friendly properties.",
+    },
+  ]
+
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
@@ -61,52 +103,56 @@ export default function OfficeRoastPage() {
               </ul>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-              <h2 className="text-sm font-semibold text-gray-900">
-                Build your Office Roast coffee program
-              </h2>
-              <p className="text-xs text-gray-600">
-                Use the products below as a blueprint for stocking offices, hotels, and
-                multi‑tenant buildings.
-              </p>
-              <Link href="/quote">
-                <Button className="w-full mb-2 flex items-center justify-center gap-2">
-                  Start an Office Roast project
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <p className="text-[11px] text-gray-500">
-                We can structure programs around per‑location or per‑employee budgets.
-              </p>
-            </div>
           </div>
 
           {/* Product grid based on seed data */}
           <div className="border-t border-slate-200 pt-12">
             <div className="text-center mb-10">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-                Shop Office Roast
+                Shop Office Roast by Category
               </h2>
               <p className="text-base text-gray-600 max-w-2xl mx-auto">
-                Perfect coffee for your workplace. Consistent quality, exceptional taste.
+                Explore Office Roast products organized into clear categories for coffee programs,
+                snacks, and facility stocking.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {brand?.products.map((product) => (
-                <AmazonProductCard
-                  key={product.asin}
-                  product={{
-                    asin: product.asin,
-                    amazonUrl: product.amazonUrl,
-                    title: product.title,
-                    imageUrl: product.imageUrl,
-                    description: product.description,
-                    bullets: product.bullets,
-                  }}
-                  showFullDetails={false}
-                />
-              ))}
+            <div className="space-y-12">
+              {categories.map((category) => {
+                const productsInCategory = brand.products.filter(
+                  (product: any) => product.category === category.id
+                )
+
+                if (productsInCategory.length === 0) return null
+
+                return (
+                  <section key={category.id}>
+                    <div className="mb-6">
+                      <h3 className="text-2xl font-bold text-gray-900">{category.title}</h3>
+                      <p className="text-sm text-gray-600 mt-1 max-w-2xl">
+                        {category.description}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {productsInCategory.map((product) => (
+                        <AmazonProductCard
+                          key={product.asin}
+                          product={{
+                            asin: product.asin,
+                            amazonUrl: product.amazonUrl,
+                            title: product.title,
+                            imageUrl: product.imageUrl,
+                            description: product.description,
+                            bullets: product.bullets,
+                          }}
+                          showFullDetails={false}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                )
+              })}
             </div>
           </div>
 

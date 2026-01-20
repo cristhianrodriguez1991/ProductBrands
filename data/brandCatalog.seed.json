@@ -67,7 +67,8 @@
             "Sweet and Creamy, Chocolate Caramel, Caramel Macchiato, Original & Irish Cream",
             "Box of 100 singles",
             "No refrigeration required"
-          ]
+          ],
+          "category": "Coffee Creamers"
         },
         {
           "asin": "B0DSJT1NP4",
@@ -80,7 +81,8 @@
             "Includes Sucralose, Saccharin, Raw Brown & White Sugar",
             "400 count total",
             "Individually wrapped packets"
-          ]
+          ],
+          "category": "Sweeteners"
         },
         {
           "asin": "B0G5B65WK9",
@@ -93,7 +95,8 @@
             "Includes Saccharin, Sucralose, White Sugar & Raw Brown Turbinado",
             "400 count total",
             "Individually wrapped packets"
-          ]
+          ],
+          "category": "Sweeteners"
         },
         {
           "asin": "B0DCPRF21C",
@@ -107,7 +110,8 @@
             "Single serve pods",
             "Compatible with Keurig",
             "20 count total"
-          ]
+          ],
+          "category": "Coffee"
         },
         {
           "asin": "B0FX3BGJYW",
@@ -120,7 +124,8 @@
             "4 LB bulk value bag",
             "Individually wrapped with juicy center",
             "Great for pinata stuffers, party treats & candy buffets"
-          ]
+          ],
+          "category": "Hard Candies"
         },
         {
           "asin": "B0G7RM86Q6",
@@ -133,7 +138,8 @@
             "14 oz package",
             "Rich aroma and flavor",
             "Perfect for cooking, baking & teas"
-          ]
+          ],
+          "category": "Snacks & Groceries"
         },
         {
           "asin": "B0FVG1WNB2",
@@ -146,7 +152,8 @@
             "Different sizes and flavors",
             "2LB package",
             "Strawberry variety"
-          ]
+          ],
+          "category": "Hard Candies"
         },
         {
           "asin": "B0FQCXW1HV",
@@ -159,7 +166,8 @@
             "2 lb bag",
             "Unsalted and natural",
             "Perfect for snacking or wildlife feed"
-          ]
+          ],
+          "category": "Snacks & Groceries"
         },
         {
           "asin": "B0FZCS8SMC",
@@ -172,7 +180,8 @@
             "1 lb bag",
             "Unsalted and natural",
             "Perfect for snacking or wildlife feed"
-          ]
+          ],
+          "category": "Snacks & Groceries"
         },
         {
           "asin": "B0FP73SR97",
@@ -185,7 +194,8 @@
             "2LB value pack",
             "Perfect for office and sharing",
             "Healthy natural snack"
-          ]
+          ],
+          "category": "Snacks & Groceries"
         },
         {
           "asin": "B0FNRSHLFQ",
@@ -198,7 +208,8 @@
             "2LB value pack",
             "Perfect for office and sharing",
             "Healthy natural snack"
-          ]
+          ],
+          "category": "Snacks & Groceries"
         },
         {
           "asin": "B0FMKMF8DW",
@@ -211,7 +222,8 @@
             "Belts, peach rings, wedges, worms, bears",
             "1 pound bulk package",
             "Perfect for party favors"
-          ]
+          ],
+          "category": "Hard Candies"
         },
         {
           "asin": "B0FNXCMTNB",
@@ -224,7 +236,8 @@
             "Individually wrapped candies",
             "2 lb gift-friendly pack",
             "Perfect for office, parties, kids, and home"
-          ]
+          ],
+          "category": "Hard Candies"
         },
         {
           "asin": "B0FP6QR74P",
@@ -237,7 +250,8 @@
             "Different sizes and flavors",
             "2LB package",
             "Peppermint variety"
-          ]
+          ],
+          "category": "Hard Candies"
         },
         {
           "asin": "B0G4F3CQ5K",
@@ -250,7 +264,8 @@
             "10 lb bag",
             "Perfect for birds, ducks, chickens, wildlife, deer",
             "Backyard animal feed"
-          ]
+          ],
+          "category": "Wildlife Food"
         },
         {
           "asin": "B0G4F24DZQ",
@@ -263,7 +278,8 @@
             "8 lb bag",
             "Natural wild bird seed",
             "High-energy food for songbirds"
-          ]
+          ],
+          "category": "Grain & Seeds"
         },
         {
           "asin": "B0FTGJG45N",
@@ -276,7 +292,8 @@
             "5 lb bag",
             "Perfect for birds, ducks, chickens, wildlife, deer",
             "Backyard animal feed"
-          ]
+          ],
+          "category": "Wildlife Food"
         },
         {
           "asin": "B0FNRYQ33D",
@@ -289,7 +306,8 @@
             "2 lbs value bag",
             "Healthy snack perfect for breakfast",
             "Easy to cook"
-          ]
+          ],
+          "category": "Grain & Seeds"
         },
         {
           "asin": "B0FMJ6SHMG",
@@ -302,7 +320,8 @@
             "Blue raspberry flavor",
             "1 pound container",
             "Perfect for gender reveals, baby showers, parties, office"
-          ]
+          ],
+          "category": "Hard Candies"
         },
         {
           "asin": "B0DG65385L",
@@ -315,7 +334,8 @@
             "Individually wrapped candies",
             "60 count pack",
             "Perfect for office, parties, kids, and home"
-          ]
+          ],
+          "category": "Hard Candies"
         }
       ]
     }
