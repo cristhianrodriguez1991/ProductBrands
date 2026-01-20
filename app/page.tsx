@@ -19,12 +19,13 @@ export default function Home() {
             {/* Background Image - Full Width with Natural Bleed */}
             <div className="absolute inset-0 lg:right-0 lg:left-auto lg:w-[95%] h-full rounded-lg overflow-hidden">
               <Image
-                src="/images/hero/pivate-label-hero.png"
+                src="/images/hero/pivate-label-hero.jpg"
                 alt="Private Label Products Manufacturing"
                 fill
                 className="object-contain object-right"
                 priority
                 quality={90}
+                unoptimized
               />
             </div>
 
