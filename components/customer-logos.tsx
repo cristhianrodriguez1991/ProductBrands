@@ -96,18 +96,19 @@ export function CustomerLogosCarousel() {
             key={`${customer.name}-${index}`}
             className="flex-shrink-0 relative h-24 md:h-28 lg:h-32 w-40 md:w-48 lg:w-56 flex items-center justify-center"
           >
-            <div className="relative w-full h-full flex items-center justify-center">
+            <div className="relative w-full h-full flex items-center justify-center py-2">
               <Image
                 src={customer.logo}
                 alt={customer.name}
-                width={280}
-                height={120}
+                width={200}
+                height={80}
                 className="object-contain"
                 style={{ 
-                  maxWidth: "100%", 
-                  maxHeight: "100%",
+                  maxWidth: "90%", 
+                  maxHeight: "90%",
                   width: "auto",
-                  height: "auto"
+                  height: "auto",
+                  objectFit: "contain"
                 }}
                 onError={(e) => {
                   // Fallback to text if logo image is missing
