@@ -38,37 +38,35 @@ export function OfficeRoastTabs({ brand, categories }: OfficeRoastTabsProps) {
   return (
     <>
       {/* Tab Navigation */}
-      <div className="mb-8">
-        <div className="border-b border-gray-200 overflow-x-auto">
-          <nav className="flex space-x-1" aria-label="Tabs">
-            {categoriesWithProducts.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => setActiveTab(category.id)}
-                className={`
-                  px-6 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors duration-200
-                  ${
-                    activeTab === category.id
-                      ? "border-blue-600 text-blue-600 bg-blue-50"
-                      : "border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
-                  }
-                `}
-              >
-                {category.title}
-              </button>
-            ))}
-          </nav>
-        </div>
+      <div className="mb-10">
+        <nav className="flex flex-wrap gap-3 justify-center" aria-label="Tabs">
+          {categoriesWithProducts.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => setActiveTab(category.id)}
+              className={`
+                px-6 py-3 text-sm font-semibold rounded-full transition-all duration-300
+                ${
+                  activeTab === category.id
+                    ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105"
+                    : "bg-white text-gray-700 border-2 border-gray-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50"
+                }
+              `}
+            >
+              {category.title}
+            </button>
+          ))}
+        </nav>
       </div>
 
       {/* Active Tab Content */}
       {activeCategory && (
-        <div>
-          <div className="mb-6">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+        <div className="animate-in fade-in duration-300">
+          <div className="mb-8 text-center">
+            <h3 className="text-3xl font-bold text-gray-900 mb-3">
               {activeCategory.title}
             </h3>
-            <p className="text-sm text-gray-600 max-w-2xl">
+            <p className="text-base text-gray-600 max-w-2xl mx-auto">
               {activeCategory.description}
             </p>
           </div>
