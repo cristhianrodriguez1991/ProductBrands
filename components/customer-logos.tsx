@@ -9,6 +9,8 @@ const customers = [
   { name: "PageMD", nameShort: "PageMD", logo: "/images/customers/pageMD.png" },
   { name: "Southern", nameShort: "Southern", logo: "/images/customers/SOUTHERN.png" },
   { name: "WAY Coffee", nameShort: "WAY Coffee", logo: "/images/customers/Way-Coffee-.png" },
+  // Spacer to separate WAY brands
+  { name: "", nameShort: "", logo: "", isSpacer: true },
   { name: "WAY Snacks", nameShort: "WAY Snacks", logo: "/images/customers/way-snacks.png" },
 ]
 
@@ -91,32 +93,43 @@ export function CustomerLogosCarousel() {
         ref={scrollRef}
         className="h-32 md:h-40 lg:h-48 flex items-center overflow-x-auto px-10 md:px-14 lg:px-20 gap-12 md:gap-16 lg:gap-20 scroll-smooth scrollbar-hide"
       >
-        {customers.map((customer, index) => (
-          <div
-            key={`${customer.name}-${index}`}
-            className="flex-shrink-0 relative h-24 md:h-28 lg:h-32 flex items-center justify-center"
-          >
-            <Image
-              src={customer.logo}
-              alt={customer.name}
-              width={280}
-              height={120}
-              className="object-contain max-h-full w-auto"
-              onError={(e) => {
-                // Fallback to text if logo image is missing
-                e.currentTarget.style.display = "none"
-                const parent = e.currentTarget.parentElement
-                if (parent && parent.querySelector("span") === null) {
-                  const span = document.createElement("span")
-                  span.textContent = customer.nameShort || customer.name
-                  span.className =
-                    "text-xs md:text-sm font-semibold text-gray-700"
-                  parent.appendChild(span)
-                }
-              }}
-            />
-          </div>
-        ))}
+        {customers.map((customer, index) => {
+          if (customer.isSpacer) {
+            return (
+              <div
+                key={`spacer-${index}`}
+                className="flex-shrink-0 w-16 md:w-24 lg:w-32"
+              />
+            )
+          }
+          return (
+            <div
+              key={`${customer.name}-${index}`}
+              className="flex-shrink-0 relative h-24 md:h-28 lg:h-32 w-32 md:w-40 lg:w-48 flex items-center justify-center"
+            >
+              <Image
+                src={customer.logo}
+                alt={customer.name}
+                width={280}
+                height={120}
+                className="object-contain max-h-full max-w-full w-auto h-auto"
+                style={{ maxWidth: "100%", maxHeight: "100%" }}
+                onError={(e) => {
+                  // Fallback to text if logo image is missing
+                  e.currentTarget.style.display = "none"
+                  const parent = e.currentTarget.parentElement
+                  if (parent && parent.querySelector("span") === null) {
+                    const span = document.createElement("span")
+                    span.textContent = customer.nameShort || customer.name
+                    span.className =
+                      "text-xs md:text-sm font-semibold text-gray-700"
+                    parent.appendChild(span)
+                  }
+                }}
+              />
+            </div>
+          )
+        })}
       </div>
 
       {/* Right arrow */}
