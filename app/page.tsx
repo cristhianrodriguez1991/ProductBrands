@@ -12,44 +12,52 @@ export default function Home() {
       <Navbar />
 
 
-      {/* Hero Section - Clean and Product-Focused */}
-      <section className="bg-gradient-to-b from-blue-50 to-white py-12 md:py-16">
+      {/* Hero Section - Blended Image and Text */}
+      <section className="relative py-12 md:py-16 overflow-hidden">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center max-w-7xl mx-auto">
-            {/* Left Column - Text Content */}
-            <div className="text-center lg:text-left">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-gray-900">
-                Custom Private Label Products
-                <span className="block text-blue-600 mt-2">Manufacturer & Supplier</span>
-              </h1>
-              <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-2xl mx-auto lg:mx-0">
-                We help brands of all sizes grow with the highest quality private label products—sourcing, branding, packaging, and fulfillment solutions across any category.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-10">
-                <Link href="/quote">
-                  <Button size="lg" className="text-base px-8 py-6">
-                    Request a Quote
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </Link>
-                <Link href="/contact">
-                  <Button size="lg" variant="outline" className="text-base px-8 py-6">
-                    Contact Us
-                  </Button>
-                </Link>
-              </div>
-            </div>
-
-            {/* Right Column - Hero Image */}
-            <div className="w-full rounded-lg overflow-hidden shadow-xl">
+          <div className="relative max-w-7xl mx-auto">
+            {/* Background Image - Full Width */}
+            <div className="absolute inset-0 lg:right-0 lg:left-auto lg:w-1/2 h-full rounded-lg overflow-hidden">
               <Image
                 src="/images/hero/private-label-hero.jpg"
                 alt="Private Label Products Manufacturing"
-                width={800}
-                height={600}
-                className="w-full h-auto object-cover rounded-lg"
+                fill
+                className="object-cover object-center"
                 priority
+                quality={90}
               />
+              {/* Gradient fade from right (image) to left (text) */}
+              <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent lg:bg-gradient-to-l lg:from-transparent lg:via-white/60 lg:to-white" />
+            </div>
+
+            {/* Content Overlay - Text and Buttons */}
+            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center min-h-[400px] md:min-h-[500px]">
+              {/* Left Column - Text Content */}
+              <div className="text-center lg:text-left px-4 lg:px-8">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-gray-900">
+                  Custom Private Label Products
+                  <span className="block text-blue-600 mt-2">Manufacturer & Supplier</span>
+                </h1>
+                <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-2xl mx-auto lg:mx-0">
+                  We help brands of all sizes grow with the highest quality private label products—sourcing, branding, packaging, and fulfillment solutions across any category.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                  <Link href="/quote">
+                    <Button size="lg" className="text-base px-8 py-6">
+                      Request a Quote
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </Link>
+                  <Link href="/contact">
+                    <Button size="lg" variant="outline" className="text-base px-8 py-6">
+                      Contact Us
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Right Column - Spacer for Image (image is in background) */}
+              <div className="hidden lg:block" />
             </div>
           </div>
         </div>
