@@ -94,28 +94,35 @@ export function CustomerLogosCarousel() {
         {customers.map((customer, index) => (
           <div
             key={`${customer.name}-${index}`}
-            className="flex-shrink-0 relative h-24 md:h-28 lg:h-32 w-32 md:w-40 lg:w-48 flex items-center justify-center"
+            className="flex-shrink-0 relative h-24 md:h-28 lg:h-32 w-40 md:w-48 lg:w-56 flex items-center justify-center"
           >
-            <Image
-              src={customer.logo}
-              alt={customer.name}
-              width={280}
-              height={120}
-              className="object-contain max-h-full max-w-full w-auto h-auto"
-              style={{ maxWidth: "100%", maxHeight: "100%" }}
-              onError={(e) => {
-                // Fallback to text if logo image is missing
-                e.currentTarget.style.display = "none"
-                const parent = e.currentTarget.parentElement
-                if (parent && parent.querySelector("span") === null) {
-                  const span = document.createElement("span")
-                  span.textContent = customer.nameShort || customer.name
-                  span.className =
-                    "text-xs md:text-sm font-semibold text-gray-700"
-                  parent.appendChild(span)
-                }
-              }}
-            />
+            <div className="relative w-full h-full flex items-center justify-center">
+              <Image
+                src={customer.logo}
+                alt={customer.name}
+                width={280}
+                height={120}
+                className="object-contain"
+                style={{ 
+                  maxWidth: "100%", 
+                  maxHeight: "100%",
+                  width: "auto",
+                  height: "auto"
+                }}
+                onError={(e) => {
+                  // Fallback to text if logo image is missing
+                  e.currentTarget.style.display = "none"
+                  const parent = e.currentTarget.parentElement
+                  if (parent && parent.querySelector("span") === null) {
+                    const span = document.createElement("span")
+                    span.textContent = customer.nameShort || customer.name
+                    span.className =
+                      "text-xs md:text-sm font-semibold text-gray-700"
+                    parent.appendChild(span)
+                  }
+                }}
+              />
+            </div>
           </div>
         ))}
       </div>
