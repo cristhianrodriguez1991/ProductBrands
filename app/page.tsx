@@ -26,8 +26,10 @@ export default function Home() {
                 priority
                 quality={90}
               />
-              {/* Gradient fade from right (image) to left (text) */}
-              <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent lg:bg-gradient-to-l lg:from-transparent lg:via-white/60 lg:to-white" />
+              {/* Subtle gradient fade only on left edges */}
+              <div className="absolute inset-0 bg-gradient-to-r from-white/40 via-transparent to-transparent lg:bg-gradient-to-l lg:from-transparent lg:via-transparent lg:to-white/30" />
+              {/* Left edge fade for corners */}
+              <div className="absolute left-0 top-0 bottom-0 w-32 md:w-48 lg:w-64 bg-gradient-to-r from-white to-transparent" />
             </div>
 
             {/* Content Overlay - Text and Buttons */}
