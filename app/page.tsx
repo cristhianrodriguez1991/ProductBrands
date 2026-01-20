@@ -16,8 +16,8 @@ export default function Home() {
       <section className="relative py-12 md:py-16 overflow-hidden">
         <div className="container mx-auto px-4">
           <div className="relative max-w-7xl mx-auto">
-            {/* Background Image - Full Width */}
-            <div className="absolute inset-0 lg:right-0 lg:left-auto lg:w-1/2 h-full rounded-lg overflow-hidden">
+            {/* Background Image - Full Width with Natural Bleed */}
+            <div className="absolute inset-0 lg:right-0 lg:left-auto lg:w-[55%] h-full rounded-lg overflow-hidden">
               <Image
                 src="/images/hero/private-label-hero.jpg"
                 alt="Private Label Products Manufacturing"
@@ -26,14 +26,20 @@ export default function Home() {
                 priority
                 quality={90}
               />
-              {/* Very subtle left edge fade only */}
-              <div className="absolute left-0 top-0 bottom-0 w-16 md:w-24 lg:w-32 bg-gradient-to-r from-white/60 via-white/20 to-transparent" />
+              {/* Smooth diagonal gradient for natural bleed - only fades left edge */}
+              <div className="absolute inset-0 bg-gradient-to-r from-white via-white/30 via-transparent to-transparent lg:bg-gradient-to-l lg:from-transparent lg:via-transparent lg:via-white/25 lg:to-white/50" 
+                style={{
+                  background: 'linear-gradient(to right, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 15%, rgba(255,255,255,0.1) 25%, transparent 35%)'
+                }}
+              />
             </div>
 
             {/* Content Overlay - Text and Buttons */}
             <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center min-h-[400px] md:min-h-[500px]">
-              {/* Left Column - Text Content */}
-              <div className="text-center lg:text-left px-4 lg:px-8">
+              {/* Left Column - Text Content with subtle background for readability */}
+              <div className="text-center lg:text-left px-4 lg:px-8 relative">
+                {/* Subtle background blur for text readability where it overlaps image */}
+                <div className="absolute inset-0 -z-10 bg-white/70 lg:bg-transparent backdrop-blur-sm lg:backdrop-blur-none rounded-lg lg:rounded-none" />
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-gray-900">
                   Custom Private Label Products
                   <span className="block text-blue-600 mt-2">Manufacturer & Supplier</span>
