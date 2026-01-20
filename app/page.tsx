@@ -1,10 +1,9 @@
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowRight, CheckCircle, Package, Tag, Truck, Shield, Factory, Award, Globe, Users } from "lucide-react"
 import { Navbar } from "@/components/navbar"
-import { ImageSlideshow } from "@/components/image-slideshow"
-import { heroImages } from "@/lib/hero-images"
 import { CustomerLogosCarousel } from "@/components/customer-logos"
 
 export default function Home() {
@@ -40,13 +39,15 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right Column - Image Slideshow */}
-            <div className="w-full bg-gray-100 rounded-lg overflow-hidden">
-              <ImageSlideshow 
-                images={heroImages}
-                autoPlay={true}
-                interval={5000}
-                className="w-full"
+            {/* Right Column - Hero Image */}
+            <div className="w-full rounded-lg overflow-hidden shadow-xl">
+              <Image
+                src="/images/hero/private-label-hero.jpg"
+                alt="Private Label Products Manufacturing"
+                width={800}
+                height={600}
+                className="w-full h-auto object-cover rounded-lg"
+                priority
               />
             </div>
           </div>
