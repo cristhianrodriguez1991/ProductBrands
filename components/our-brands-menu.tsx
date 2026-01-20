@@ -103,7 +103,7 @@ export function OurBrandsMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="true"
         aria-expanded={open}
-        className="inline-flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-amber-600 transition-colors"
+        className="inline-flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
       >
         Our Brands
         <ChevronRight className={`h-4 w-4 transition-transform ${open ? "rotate-90" : "rotate-0"}`} />
@@ -142,15 +142,15 @@ export function OurBrandsMenu() {
                       >
                         <div
                           className={`flex items-center justify-between gap-2 px-3 py-2 cursor-pointer transition-colors ${
-                          expandedParent === brand.key
-                            ? "bg-amber-50 text-amber-600 border-r-2 border-amber-600"
-                            : "hover:bg-slate-50 text-slate-900"
+                            expandedParent === brand.key
+                              ? "bg-blue-50 text-blue-600 border-r-2 border-blue-600"
+                              : "hover:bg-slate-50 text-slate-900"
                           }`}
                         >
                           <span className="text-sm font-medium">{brand.name}</span>
                           <ChevronRight
                             className={`h-3.5 w-3.5 text-slate-400 transition-transform flex-shrink-0 ${
-                              expandedParent === brand.key ? "rotate-90 text-amber-600" : "rotate-0"
+                              expandedParent === brand.key ? "rotate-90 text-blue-600" : "rotate-0"
                             }`}
                           />
                         </div>
@@ -236,7 +236,7 @@ export function OurBrandsMenu() {
                                 setOpen(false)
                                 setExpandedParent(null)
                               }}
-                              className="block py-1.5 px-2.5 text-sm text-slate-700 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors"
+                              className="block py-1.5 px-2.5 text-sm text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                             >
                               All Products
                             </Link>
@@ -248,7 +248,7 @@ export function OurBrandsMenu() {
                                   setOpen(false)
                                   setExpandedParent(null)
                                 }}
-                                className="block py-1.5 px-2.5 text-sm text-slate-700 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors"
+                                className="block py-1.5 px-2.5 text-sm text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                               >
                                 {category.title}
                               </Link>
@@ -273,7 +273,7 @@ export function OurBrandsMenu() {
                                 setOpen(false)
                                 setExpandedParent(null)
                               }}
-                              className="block py-1.5 px-2.5 text-sm text-slate-700 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors"
+                              className="block py-1.5 px-2.5 text-sm text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                             >
                               {product.label}
                             </Link>
