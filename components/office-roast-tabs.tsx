@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { SeedBrand } from "@/lib/brand-catalog"
 import { AmazonProductCard } from "@/components/amazon-product-card"
 
@@ -18,6 +18,7 @@ type OfficeRoastTabsProps = {
 
 export function OfficeRoastTabs({ brand, categories }: OfficeRoastTabsProps) {
   const searchParams = useSearchParams()
+  const router = useRouter()
   
   // Filter categories to only show those with products
   const categoriesWithProducts = categories.filter((category) => {
@@ -37,10 +38,14 @@ export function OfficeRoastTabs({ brand, categories }: OfficeRoastTabsProps) {
 
   // Update active tab when URL param changes
   useEffect(() => {
-    if (categoryFromUrl && categoriesWithProducts.find(cat => cat.id === categoryFromUrl)) {
-      setActiveTab(categoryFromUrl)
+    const urlCategory = searchParams.get("category")
+    if (urlCategory && categoriesWithProducts.find(cat => cat.id === urlCategory)) {
+      setActiveTab(urlCategory)
+    } else if (!urlCategory && categoriesWithProducts.length > 0) {
+      // If no category in URL, set to first category
+      setActiveTab(categoriesWithProducts[0].id)
     }
-  }, [categoryFromUrl, categoriesWithProducts])
+  }, [searchParams, categoriesWithProducts])
 
   // Get active category and its products
   const activeCategory = categoriesWithProducts.find((cat) => cat.id === activeTab)
@@ -58,10 +63,10 @@ export function OfficeRoastTabs({ brand, categories }: OfficeRoastTabsProps) {
               key={category.id}
               onClick={() => {
                 setActiveTab(category.id)
-                // Update URL without page reload
-                const url = new URL(window.location.href)
-                url.searchParams.set("category", category.id)
-                window.history.pushState({}, "", url.toString())
+                // Update URL using Next.js router
+                const params = new URLSearchParams(searchParams.toString())
+                params.set("category", category.id)
+                router.push(`/brands/office-roast?${params.toString()}`, { scroll: false })
               }}
               className={`
                 px-4 py-2 text-xs font-semibold rounded-full transition-all duration-300 whitespace-nowrap flex-shrink-0
