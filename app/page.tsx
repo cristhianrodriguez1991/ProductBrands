@@ -11,6 +11,7 @@ export default function Home() {
     <div className="flex flex-col min-h-screen bg-white">
       <Navbar />
 
+
       {/* Hero Section - Clean and Product-Focused */}
       <section className="bg-gradient-to-b from-blue-50 to-white py-12 md:py-16">
         <div className="container mx-auto px-4">
