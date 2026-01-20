@@ -5,11 +5,11 @@ import Image from "next/image"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 const customers = [
-  { name: "Amazon", nameShort: "Amazon", logo: "/images/customers/Amazon.jpg" },
-  { name: "Apple", nameShort: "Apple", logo: "/images/customers/apple.png" },
-  { name: "H&M", nameShort: "H&M", logo: "/images/customers/HM.png" },
-  { name: "Nivea", nameShort: "Nivea", logo: "/images/customers/nivea.png" },
-  { name: "Pepsi", nameShort: "Pepsi", logo: "/images/customers/pepsi.png" },
+  { name: "Office Roast", nameShort: "Office Roast", logo: "/images/customers/office-roast.png" },
+  { name: "PageMD", nameShort: "PageMD", logo: "/images/customers/pageMD.png" },
+  { name: "Southern", nameShort: "Southern", logo: "/images/customers/SOUTHERN.png" },
+  { name: "WAY Coffee", nameShort: "WAY Coffee", logo: "/images/customers/Way-Coffee-.png" },
+  { name: "WAY Snacks", nameShort: "WAY Snacks", logo: "/images/customers/way-snacks.png" },
 ]
 
 export function CustomerLogosCarousel() {

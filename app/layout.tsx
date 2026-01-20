@@ -14,6 +14,10 @@ export const metadata: Metadata = {
     description: "We help businesses launch private-label products across any category—sourcing, branding, labeling, packaging, and fulfillment—through one streamlined partner.",
     type: "website",
   },
+  icons: {
+    icon: "/images/favicon.png",
+    apple: "/images/favicon.png",
+  },
 }
 
 export default function RootLayout({
