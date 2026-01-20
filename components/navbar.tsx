@@ -10,45 +10,50 @@ export function Navbar() {
         <div className="flex-shrink-0">
           <Logo />
         </div>
-        <div className="hidden md:flex items-center gap-6">
-          <Link
-            href="/"
-            className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
-          >
-            Home
-          </Link>
-
-          {/* Our Brands mega menu */}
-          <OurBrandsMenu />
-
+        <div className="hidden md:flex items-center gap-8">
           <Link
             href="/services"
-            className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+            className="text-sm font-medium text-gray-700 hover:text-amber-600 transition-colors"
           >
-            Private Label
+            Capabilities
+          </Link>
+          <OurBrandsMenu />
+          <Link
+            href="/industries"
+            className="text-sm font-medium text-gray-700 hover:text-amber-600 transition-colors"
+          >
+            Industries
           </Link>
           <Link
             href="/process"
-            className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+            className="text-sm font-medium text-gray-700 hover:text-amber-600 transition-colors"
           >
-            About Us
+            Process
+          </Link>
+          <Link
+            href="/process"
+            className="text-sm font-medium text-gray-700 hover:text-amber-600 transition-colors"
+          >
+            About
           </Link>
           <Link
             href="/contact"
-            className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+            className="text-sm font-medium text-gray-700 hover:text-amber-600 transition-colors"
           >
             Contact
           </Link>
-          <Link href="/login">
-            <Button variant="outline" size="sm" className="text-xs">
-              Client Portal
-            </Button>
-          </Link>
-          <Link href="/quote">
-            <Button size="sm" className="text-xs">
-              Get a Quote
-            </Button>
-          </Link>
+          <div className="flex items-center gap-3 ml-4">
+            <Link href="/contact">
+              <Button variant="outline" size="sm" className="text-xs border-gray-300 hover:border-amber-600 hover:text-amber-600">
+                Download Catalog
+              </Button>
+            </Link>
+            <Link href="/quote">
+              <Button size="sm" className="text-xs bg-amber-600 hover:bg-amber-700 text-white">
+                Get a Quote
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     </nav>
