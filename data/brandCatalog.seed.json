@@ -48,7 +48,80 @@
       "slug": "way-snacks",
       "name": "WAY Snacks",
       "parentSlug": "way",
+      "products": []
+    },
+
+    {
+      "slug": "office-roast",
+      "name": "Office Roast",
+      "parentSlug": null,
       "products": [
+        {
+          "asin": "B0FPGQDP2V",
+          "amazonUrl": "https://www.amazon.com/dp/B0FPGQDP2V",
+          "title": "Variety Pack Creamers Liquid Creamer Singles | Gift Assortment Box | Coffee Cream | Sweet and Creamy, Chocolate Caramel, Caramel Macchiato, Original & Irish Cream - No Refrigeration - Box Of 100",
+          "imageUrl": "https://m.media-amazon.com/images/I/9164B7y1lQL._SL1500_.jpg",
+          "description": "Liquid creamer variety pack with multiple flavors. No refrigeration needed. Perfect for offices and coffee stations.",
+          "bullets": [
+            "Variety pack of liquid creamers",
+            "Sweet and Creamy, Chocolate Caramel, Caramel Macchiato, Original & Irish Cream",
+            "Box of 100 singles",
+            "No refrigeration required"
+          ]
+        },
+        {
+          "asin": "B0DSJT1NP4",
+          "amazonUrl": "https://www.amazon.com/dp/B0DSJT1NP4",
+          "title": "Office Roast Variety Pack - Assorted Sweeteners for Coffee, Tea & Beverages – Includes Sucralose, Saccharin, Raw Brown & White Sugar – Convenient, Individually Wrapped Packets (400 Count Total)",
+          "imageUrl": "https://m.media-amazon.com/images/I/71+yqCF4NRL._SL1500_.jpg",
+          "description": "Assorted sweeteners variety pack including Sucralose, Saccharin, Raw Brown & White Sugar. Perfect for coffee, tea, and beverages.",
+          "bullets": [
+            "Assorted sweeteners variety pack",
+            "Includes Sucralose, Saccharin, Raw Brown & White Sugar",
+            "400 count total",
+            "Individually wrapped packets"
+          ]
+        },
+        {
+          "asin": "B0G5B65WK9",
+          "amazonUrl": "https://www.amazon.com/dp/B0G5B65WK9",
+          "title": "Variety Pack Sweeteners - Assorted mix for Tea, Coffee & Beverages – Includes Saccharin, Sucralose, White Sugar & Raw Brown Turbinado – Convenient, Individually Wrapped Packets (400 Count Total)",
+          "imageUrl": "https://m.media-amazon.com/images/I/71MHOGuDnkL._SL1500_.jpg",
+          "description": "Assorted sweeteners mix for tea, coffee, and beverages. Includes Saccharin, Sucralose, White Sugar & Raw Brown Turbinado.",
+          "bullets": [
+            "Assorted sweeteners mix",
+            "Includes Saccharin, Sucralose, White Sugar & Raw Brown Turbinado",
+            "400 count total",
+            "Individually wrapped packets"
+          ]
+        },
+        {
+          "asin": "B0DCPRF21C",
+          "amazonUrl": "https://www.amazon.com/Variety-Assorted-Office-Roast-Compatible/dp/B0DCPRF21C/ref=ast_sto_dp_puis",
+          "title": "Famous Brands K-Cups Variety Pack | Gift Box | Single Serve Pods | Assorted Pack By Office Roast | Compatible with Keurig | 20 Count Total",
+          "imageUrl": "https://m.media-amazon.com/images/I/61h854wPPnL.jpg",
+          "description": "Famous Brands K-Cups variety pack in a gift box. Single serve pods assorted pack by Office Roast, compatible with Keurig machines. 20 count total.",
+          "bullets": [
+            "Famous Brands K-Cups variety pack",
+            "Gift box packaging",
+            "Single serve pods",
+            "Compatible with Keurig",
+            "20 count total"
+          ]
+        },
+        {
+          "asin": "B0FX3BGJYW",
+          "amazonUrl": "https://www.amazon.com/Strawberry-Filled-Candy-Bulk-Value/dp/B0FX3BGJYW?ref_=ast_sto_dp&th=1",
+          "title": "Strawberry Filled Bon Bon Candy | 4 LB Bulk Value Bag | – Individually Wrapped Fruit Hard Candies with Juicy Center, for Pinata Stuffers, Party Treats & Candy Buffet Favors",
+          "imageUrl": "https://m.media-amazon.com/images/I/81mR1iH1JLL._SL1500_.jpg",
+          "description": "Strawberry filled bon bon hard candies in a 4 LB bulk value bag. Individually wrapped fruit candies with a juicy center, perfect for pinata stuffers, party treats, and candy buffet favors.",
+          "bullets": [
+            "Strawberry filled bon bon hard candies",
+            "4 LB bulk value bag",
+            "Individually wrapped with juicy center",
+            "Great for pinata stuffers, party treats & candy buffets"
+          ]
+        },
         {
           "asin": "B0G7RM86Q6",
           "amazonUrl": "https://www.amazon.com/dp/B0G7RM86Q6",
@@ -242,80 +315,6 @@
             "Individually wrapped candies",
             "60 count pack",
             "Perfect for office, parties, kids, and home"
-          ]
-        }
-      ]
-    },
-
-    {
-      "slug": "office-roast",
-      "name": "Office Roast",
-      "parentSlug": null,
-      "products": [
-        {
-          "asin": "B0FPGQDP2V",
-          "amazonUrl": "https://www.amazon.com/dp/B0FPGQDP2V",
-          "title": "Variety Pack Creamers Liquid Creamer Singles | Gift Assortment Box | Coffee Cream | Sweet and Creamy, Chocolate Caramel, Caramel Macchiato, Original & Irish Cream - No Refrigeration - Box Of 100",
-          "imageUrl": "https://m.media-amazon.com/images/I/9164B7y1lQL._SL1500_.jpg",
-          "description": "Liquid creamer variety pack with multiple flavors. No refrigeration needed. Perfect for offices and coffee stations.",
-          "bullets": [
-            "Variety pack of liquid creamers",
-            "Sweet and Creamy, Chocolate Caramel, Caramel Macchiato, Original & Irish Cream",
-            "Box of 100 singles",
-            "No refrigeration required"
-          ]
-        },
-        {
-          "asin": "B0DSJT1NP4",
-          "amazonUrl": "https://www.amazon.com/dp/B0DSJT1NP4",
-          "title": "Office Roast Variety Pack - Assorted Sweeteners for Coffee, Tea & Beverages – Includes Sucralose, Saccharin, Raw Brown & White Sugar – Convenient, Individually Wrapped Packets (400 Count Total)",
-          "imageUrl": "https://m.media-amazon.com/images/I/71+yqCF4NRL._SL1500_.jpg",
-          "description": "Assorted sweeteners variety pack including Sucralose, Saccharin, Raw Brown & White Sugar. Perfect for coffee, tea, and beverages.",
-          "bullets": [
-            "Assorted sweeteners variety pack",
-            "Includes Sucralose, Saccharin, Raw Brown & White Sugar",
-            "400 count total",
-            "Individually wrapped packets"
-          ]
-        },
-        {
-          "asin": "B0G5B65WK9",
-          "amazonUrl": "https://www.amazon.com/dp/B0G5B65WK9",
-          "title": "Variety Pack Sweeteners - Assorted mix for Tea, Coffee & Beverages – Includes Saccharin, Sucralose, White Sugar & Raw Brown Turbinado – Convenient, Individually Wrapped Packets (400 Count Total)",
-          "imageUrl": "https://m.media-amazon.com/images/I/71MHOGuDnkL._SL1500_.jpg",
-          "description": "Assorted sweeteners mix for tea, coffee, and beverages. Includes Saccharin, Sucralose, White Sugar & Raw Brown Turbinado.",
-          "bullets": [
-            "Assorted sweeteners mix",
-            "Includes Saccharin, Sucralose, White Sugar & Raw Brown Turbinado",
-            "400 count total",
-            "Individually wrapped packets"
-          ]
-        },
-        {
-          "asin": "B0DCPRF21C",
-          "amazonUrl": "https://www.amazon.com/Variety-Assorted-Office-Roast-Compatible/dp/B0DCPRF21C/ref=ast_sto_dp_puis",
-          "title": "Famous Brands K-Cups Variety Pack | Gift Box | Single Serve Pods | Assorted Pack By Office Roast | Compatible with Keurig | 20 Count Total",
-          "imageUrl": "https://m.media-amazon.com/images/I/61h854wPPnL.jpg",
-          "description": "Famous Brands K-Cups variety pack in a gift box. Single serve pods assorted pack by Office Roast, compatible with Keurig machines. 20 count total.",
-          "bullets": [
-            "Famous Brands K-Cups variety pack",
-            "Gift box packaging",
-            "Single serve pods",
-            "Compatible with Keurig",
-            "20 count total"
-          ]
-        },
-        {
-          "asin": "B0FX3BGJYW",
-          "amazonUrl": "https://www.amazon.com/Strawberry-Filled-Candy-Bulk-Value/dp/B0FX3BGJYW?ref_=ast_sto_dp&th=1",
-          "title": "Strawberry Filled Bon Bon Candy | 4 LB Bulk Value Bag | – Individually Wrapped Fruit Hard Candies with Juicy Center, for Pinata Stuffers, Party Treats & Candy Buffet Favors",
-          "imageUrl": "https://m.media-amazon.com/images/I/81mR1iH1JLL._SL1500_.jpg",
-          "description": "Strawberry filled bon bon hard candies in a 4 LB bulk value bag. Individually wrapped fruit candies with a juicy center, perfect for pinata stuffers, party treats, and candy buffet favors.",
-          "bullets": [
-            "Strawberry filled bon bon hard candies",
-            "4 LB bulk value bag",
-            "Individually wrapped with juicy center",
-            "Great for pinata stuffers, party treats & candy buffets"
           ]
         }
       ]
