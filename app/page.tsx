@@ -20,7 +20,7 @@ export default function Home() {
         <div className="w-full">
           <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px]">
             <Image
-              src="/images/hero/pivate-label-hero.jpg"
+              src="/images/hero/pivate-label-hero.png"
               alt="Custom Private Label Products Manufacturer & Supplier"
               fill
               className="object-cover object-center w-full h-full"
