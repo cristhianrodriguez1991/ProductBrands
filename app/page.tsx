@@ -13,8 +13,6 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-white">
       <Navbar />
-
-
       {/* Hero Section - Banner Image */}
       <section className="relative w-full overflow-hidden">
         <div className="w-full">
