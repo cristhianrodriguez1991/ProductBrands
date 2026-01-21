@@ -54,25 +54,6 @@
     @apply border-border;
   }
   
-  html {
-    /* Base scaling: scales from 100% at 1280px to 150% at 2560px */
-    font-size: clamp(100%, 0.625vw + 20%, 150%);
-  }
-  
-  @media (min-width: 1920px) {
-    html {
-      /* Scale up on larger screens - maintains 150% zoom appearance */
-      font-size: clamp(150%, 0.5vw + 50%, 200%);
-    }
-  }
-  
-  @media (min-width: 2560px) {
-    html {
-      /* Scale up more on very large screens like 4K/5K monitors */
-      font-size: clamp(175%, 0.4vw + 65%, 250%);
-    }
-  }
-  
   body {
     @apply bg-background text-foreground;
   }
