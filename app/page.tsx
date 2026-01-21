@@ -16,18 +16,34 @@ export default function Home() {
 
 
       {/* Hero Section - Banner Image */}
-      <section className="relative w-full pt-12 pb-4 md:pt-16 md:pb-6 overflow-hidden">
+      <section className="relative w-full overflow-hidden">
         <div className="w-full">
-          <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px]">
+          <div className="relative w-full h-[50vh] md:h-[60vh] lg:h-[70vh] min-h-[400px] md:min-h-[500px] lg:min-h-[600px]">
             <Image
               src="/images/hero/pivate-label-hero.png"
               alt="Custom Private Label Products Manufacturer & Supplier"
               fill
-              className="object-cover object-center w-full h-full"
+              className="object-contain object-center"
               priority
               quality={90}
               unoptimized
             />
+            {/* Buttons Overlay */}
+            <div className="absolute inset-0 flex items-end justify-start pb-8 md:pb-12 lg:pb-16 px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link href="/quote">
+                  <Button size="lg" className="text-base px-8 py-6 bg-blue-600 hover:bg-blue-700 text-white">
+                    Request a Quote
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+                <Link href="/contact">
+                  <Button size="lg" variant="outline" className="text-base px-8 py-6 bg-white/90 hover:bg-white border-2 border-gray-300">
+                    Contact Us
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
