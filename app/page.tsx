@@ -15,64 +15,19 @@ export default function Home() {
       <Navbar />
 
 
-      {/* Hero Section - Blended Image and Text */}
-      <section className="relative pt-12 pb-4 md:pt-16 md:pb-6 overflow-hidden w-full">
-        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <div className="relative w-full">
-            {/* Background Image - Full Width with Natural Bleed */}
-            <div className="absolute inset-0 lg:right-0 lg:left-auto w-full lg:w-[100%] h-full rounded-lg overflow-hidden">
-              <Image
-                src="/images/hero/pivate-label-hero.jpg"
-                alt="Private Label Products Manufacturing"
-                fill
-                className="object-contain object-center lg:object-right"
-                priority
-                quality={90}
-                unoptimized
-              />
-            </div>
-
-            {/* Mobile Image - Shows below text on mobile */}
-            <div className="lg:hidden relative w-full h-[300px] md:h-[400px] mt-8 rounded-lg overflow-hidden">
-              <Image
-                src="/images/hero/pivate-label-hero.jpg"
-                alt="Private Label Products Manufacturing"
-                fill
-                className="object-contain object-center"
-                quality={90}
-                unoptimized
-              />
-            </div>
-
-            {/* Content Overlay - Text and Buttons */}
-            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center min-h-[400px] md:min-h-[500px]">
-              {/* Left Column - Text Content with subtle background for readability */}
-              <div className="text-center lg:text-left px-4 lg:px-8 relative z-20 bg-white/80 lg:bg-transparent rounded-lg lg:rounded-none p-4 lg:p-0">
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-gray-900">
-                  Custom Private Label Products
-                  <span className="block text-blue-600 mt-2">Manufacturer & Supplier</span>
-                </h1>
-                <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-2xl mx-auto lg:mx-0">
-                  We help brands of all sizes grow with the highest quality private label products—sourcing, branding, packaging,<br className="hidden lg:inline" /> and fulfillment solutions across any category.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                  <Link href="/quote">
-                    <Button size="lg" className="text-base px-8 py-6">
-                      Request a Quote
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </Button>
-                  </Link>
-                  <Link href="/contact">
-                    <Button size="lg" variant="outline" className="text-base px-8 py-6">
-                      Contact Us
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-
-              {/* Right Column - Spacer for Image (image is in background) */}
-              <div className="hidden lg:block" />
-            </div>
+      {/* Hero Section - Banner Image */}
+      <section className="relative w-full pt-12 pb-4 md:pt-16 md:pb-6 overflow-hidden">
+        <div className="w-full">
+          <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px]">
+            <Image
+              src="/images/hero/pivate-label-hero.jpg"
+              alt="Custom Private Label Products Manufacturer & Supplier"
+              fill
+              className="object-cover object-center w-full h-full"
+              priority
+              quality={90}
+              unoptimized
+            />
           </div>
         </div>
       </section>
