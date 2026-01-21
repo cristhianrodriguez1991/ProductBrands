@@ -1,5 +1,8 @@
+"use client"
+
 import Link from "next/link"
 import Image from "next/image"
+import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowRight, CheckCircle, Package, Tag, Truck, Shield, Factory, Award, Globe, Users } from "lucide-react"
@@ -13,7 +16,7 @@ export default function Home() {
 
 
       {/* Hero Section - Blended Image and Text */}
-      <section className="relative py-12 md:py-16 overflow-hidden">
+      <section className="relative pt-12 pb-4 md:pt-16 md:pb-6 overflow-hidden">
         <div className="container mx-auto px-4">
           <div className="relative max-w-7xl mx-auto">
             {/* Background Image - Full Width with Natural Bleed */}
@@ -39,7 +42,7 @@ export default function Home() {
                   <span className="block text-blue-600 mt-2">Manufacturer & Supplier</span>
                 </h1>
                 <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-2xl mx-auto lg:mx-0">
-                  We help brands of all sizes grow with the highest quality private label products—sourcing, branding, packaging, and fulfillment solutions across any category.
+                  We help brands of all sizes grow with the highest quality private label products—sourcing, branding, packaging,<br className="hidden lg:inline" /> and fulfillment solutions across any category.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                   <Link href="/quote">
@@ -63,92 +66,165 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Main Services/Products Grid */}
-      <section className="py-16 md:py-20 bg-gray-50">
+      {/* Transition Element */}
+      <div className="relative h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent mx-auto max-w-4xl my-2"></div>
+
+      {/* Private Label Products - Staggered Layout */}
+      <section className="pt-2 pb-12 md:pb-16 bg-white">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">Our Services</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Complete private label solutions from sourcing to fulfillment
-            </p>
+          <div className="text-center mb-4 mt-8 md:mt-12">
+            <div className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-2 inline-flex items-baseline gap-2">
+              <span className="text-blue-600 inline-block opacity-0 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>You Design.</span>
+              <span className="text-orange-500 inline-block opacity-0 animate-fade-in-up" style={{ animationDelay: '0.5s' }}>We Make.</span>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="bg-white hover:shadow-lg transition-shadow border-2 hover:border-blue-500">
-              <CardHeader className="text-center pb-4">
-                <div className="h-20 w-20 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Package className="h-10 w-10 text-blue-600" />
-                </div>
-                <CardTitle className="text-xl">Sourcing</CardTitle>
-                <CardDescription className="text-base">
-                  Find and vet suppliers for your products
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <ul className="space-y-2 text-sm text-gray-600 text-center">
-                  <li>• Supplier vetting</li>
-                  <li>• Quality assurance</li>
-                  <li>• Cost negotiation</li>
-                </ul>
-              </CardContent>
-            </Card>
 
-            <Card className="bg-white hover:shadow-lg transition-shadow border-2 hover:border-orange-500">
-              <CardHeader className="text-center pb-4">
-                <div className="h-20 w-20 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Tag className="h-10 w-10 text-orange-600" />
-                </div>
-                <CardTitle className="text-xl">Branding & Labeling</CardTitle>
-                <CardDescription className="text-base">
-                  Custom branding and label design
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <ul className="space-y-2 text-sm text-gray-600 text-center">
-                  <li>• Logo design</li>
-                  <li>• Label printing</li>
-                  <li>• Brand guidelines</li>
-                </ul>
-              </CardContent>
-            </Card>
+          {/* Product 1 - Text Left, Image Right */}
+          <motion.div 
+            className="mb-12 md:mb-16"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-6 items-center">
+              {/* Text Content */}
+              <motion.div 
+                className="order-2 lg:order-1 lg:col-span-2 p-4 lg:p-6"
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                <h3 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900 uppercase tracking-wide">
+                  Custom Pillow Bags
+                </h3>
+                <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-4">
+                  We offer ready-to-use pillow-style bags that can be customized with your brand and product. These bags are perfect for snacks, nuts, coffee, candy, pet treats, and many other dry products.
+                </p>
+                <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-4">
+                  We handle the packaging so you can focus on growing your brand—simple, reliable, and designed to scale as you grow.
+                </p>
+                <p className="text-base md:text-lg text-gray-700 font-semibold leading-relaxed">
+                  You choose the product. We package it with your brand.
+                </p>
+              </motion.div>
+              {/* Image */}
+              <motion.div 
+                className="order-1 lg:order-2 lg:col-span-3 relative h-[400px] md:h-[450px] lg:h-[500px] rounded-lg overflow-hidden bg-white p-4 lg:p-6"
+                initial={{ opacity: 0, x: 30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                <Image
+                  src="/images/products/product1.png"
+                  alt="Custom Pillow Bags - Private Label Packaging"
+                  fill
+                  className="object-contain"
+                  unoptimized
+                />
+              </motion.div>
+            </div>
+          </motion.div>
 
-            <Card className="bg-white hover:shadow-lg transition-shadow border-2 hover:border-green-500">
-              <CardHeader className="text-center pb-4">
-                <div className="h-20 w-20 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Package className="h-10 w-10 text-green-600" />
-                </div>
-                <CardTitle className="text-xl">Packaging</CardTitle>
-                <CardDescription className="text-base">
-                  Professional packaging solutions
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <ul className="space-y-2 text-sm text-gray-600 text-center">
-                  <li>• Custom design</li>
-                  <li>• Product assembly</li>
-                  <li>• Quality control</li>
-                </ul>
-              </CardContent>
-            </Card>
+          {/* Product 2 - Image Left, Text Right (Staggered) */}
+          <motion.div 
+            className="mb-12 md:mb-16"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-6 items-center">
+              {/* Image */}
+              <motion.div 
+                className="lg:col-span-3 relative h-[300px] md:h-[350px] lg:h-[400px] rounded-lg overflow-hidden bg-white p-4 lg:p-6"
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                <Image
+                  src="/images/products/Product2.png"
+                  alt="Stand-Up Pouches (Doypack Bags) - Private Label Packaging"
+                  fill
+                  className="object-contain"
+                  unoptimized
+                />
+              </motion.div>
+              {/* Text Content */}
+              <motion.div 
+                className="lg:col-span-2 p-4 lg:p-6"
+                initial={{ opacity: 0, x: 30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                <h3 className="text-2xl md:text-3xl font-bold mb-3 text-gray-900 uppercase tracking-wide">
+                  Stand-Up Pouches (Doypack Bags)
+                </h3>
+                <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-3">
+                  We offer stand-up pouch bags (Doypack) with zipper and non-zipper options, designed to showcase your brand with a premium look. These bags are ideal for snacks, coffee, powders, supplements, pet food, and many other products.
+                </p>
+                <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-3">
+                  Doypack bags stand upright on shelves, offer great product visibility, and can include features like resealable zippers or clear windows—making them perfect for both retail and online sales.
+                </p>
+                <p className="text-base md:text-lg text-gray-700 font-semibold leading-relaxed">
+                  Modern packaging. Flexible options. Your brand in front.
+                </p>
+              </motion.div>
+            </div>
+          </motion.div>
 
-            <Card className="bg-white hover:shadow-lg transition-shadow border-2 hover:border-purple-500">
-              <CardHeader className="text-center pb-4">
-                <div className="h-20 w-20 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Truck className="h-10 w-10 text-purple-600" />
-                </div>
-                <CardTitle className="text-xl">Fulfillment</CardTitle>
-                <CardDescription className="text-base">
-                  End-to-end order fulfillment
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <ul className="space-y-2 text-sm text-gray-600 text-center">
-                  <li>• Warehousing</li>
-                  <li>• Pick & pack</li>
-                  <li>• Shipping</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Product 3 - Text Left, Image Right */}
+          <motion.div 
+            className="mb-12 md:mb-16"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-12 items-center">
+              {/* Text Content */}
+              <motion.div 
+                className="order-2 lg:order-1 lg:col-span-2 p-4 lg:p-6"
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                <h3 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900 uppercase tracking-wide">
+                  Plastic Containers
+                </h3>
+                <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-4">
+                  We offer plastic containers in round and square formats, designed for custom private label packaging. These containers are ideal for snacks, powders, supplements, candy, dry foods, personal care products, and more.
+                </p>
+                <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-4">
+                  Available in multiple sizes and styles, our containers provide a clean, professional look while keeping your product protected and easy to use. Perfect for retail shelves, e-commerce, and subscription brands.
+                </p>
+                <p className="text-base md:text-lg text-gray-700 font-semibold leading-relaxed">
+                  Simple packaging. Strong presentation. Your brand inside.
+                </p>
+              </motion.div>
+              {/* Image */}
+              <motion.div 
+                className="order-1 lg:order-2 lg:col-span-3 relative h-[400px] md:h-[450px] lg:h-[500px] rounded-lg overflow-hidden bg-white p-4 lg:p-6"
+                initial={{ opacity: 0, x: 30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                <Image
+                  src="/images/products/Product3.png"
+                  alt="Plastic Containers - Private Label Packaging"
+                  fill
+                  className="object-contain"
+                  unoptimized
+                />
+              </motion.div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
