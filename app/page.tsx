@@ -20,7 +20,7 @@ export default function Home() {
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <div className="relative w-full">
             {/* Background Image - Full Width with Natural Bleed - Hidden on mobile */}
-            <div className="hidden lg:block absolute inset-0 lg:right-0 lg:left-auto lg:w-[95%] h-full rounded-lg overflow-hidden">
+            <div className="hidden lg:block absolute inset-0 lg:right-0 lg:left-auto lg:w-[70%] xl:w-[65%] 2xl:w-[60%] h-full rounded-lg overflow-hidden">
               <Image
                 src="/images/hero/pivate-label-hero.jpg"
                 alt="Private Label Products Manufacturing"
