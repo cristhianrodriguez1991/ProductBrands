@@ -14,8 +14,8 @@ export default function Home() {
     <div className="flex flex-col min-h-screen bg-white">
       <Navbar />
       {/* Hero Section - Banner Image */}
-      <section className="relative w-full overflow-hidden m-0 p-0">
-        <div className="w-full m-0 p-0">
+      <section className="relative w-full overflow-hidden -mt-1">
+        <div className="w-full">
           <div className="relative w-full h-[60vh] md:h-[65vh] lg:h-[70vh] min-h-[500px] md:min-h-[550px] lg:min-h-[600px]">
             <Image
               src="/images/hero/pivate-label-hero.png"

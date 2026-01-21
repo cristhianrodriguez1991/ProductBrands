@@ -57,7 +57,7 @@ export function OfficeRoastTabs({ brand, categories }: OfficeRoastTabsProps) {
     <>
       {/* Tab Navigation */}
       <div className="mb-10">
-        <nav className="flex gap-2 justify-center flex-nowrap overflow-x-auto scrollbar-hide" aria-label="Tabs">
+        <nav className="flex gap-2 justify-start md:justify-center flex-nowrap overflow-x-auto scrollbar-hide pb-2" aria-label="Tabs">
           {categoriesWithProducts.map((category) => (
             <button
               key={category.id}
