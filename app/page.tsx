@@ -16,8 +16,8 @@ export default function Home() {
 
 
       {/* Hero Section - Blended Image and Text */}
-      <section className="relative pt-12 pb-4 md:pt-16 md:pb-6 overflow-hidden">
-        <div className="container mx-auto px-4">
+      <section className="relative pt-12 pb-4 md:pt-16 md:pb-6 overflow-hidden w-full">
+        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <div className="relative w-full">
             {/* Background Image - Full Width with Natural Bleed */}
             <div className="absolute inset-0 lg:right-0 lg:left-auto lg:w-[95%] h-full rounded-lg overflow-hidden">
@@ -70,8 +70,8 @@ export default function Home() {
       <div className="relative h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent w-full my-2"></div>
 
       {/* Private Label Products - Staggered Layout */}
-      <section className="pt-2 pb-12 md:pb-16 bg-white">
-        <div className="container mx-auto px-4">
+      <section className="pt-2 pb-12 md:pb-16 bg-white w-full">
+        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <div className="text-center mb-4 mt-8 md:mt-12">
             <div className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-2 inline-flex items-baseline gap-2">
               <span className="text-blue-600 inline-block opacity-0 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>You Design.</span>
@@ -229,8 +229,8 @@ export default function Home() {
       </section>
 
       {/* Customers / Logos Slider */}
-      <section className="py-16 md:py-20 bg-white border-t">
-        <div className="container mx-auto px-4">
+      <section className="py-16 md:py-20 bg-white border-t w-full">
+        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <div className="w-full mb-10 text-center">
             <span className="text-[10px] md:text-xs font-semibold tracking-[0.3em] text-slate-500 uppercase">
               brands we&apos;ve worked with
@@ -247,9 +247,9 @@ export default function Home() {
       </section>
 
       {/* Why Choose Us - Factory/Company Info */}
-      <section className="py-16 md:py-20 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
+      <section className="py-16 md:py-20 bg-gray-50 w-full">
+        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
+          <div className="w-full">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">Top-class Service</h2>
               <p className="text-lg text-gray-600">
@@ -345,8 +345,8 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-blue-600 text-white">
-        <div className="container mx-auto px-4 text-center">
+      <section className="py-16 bg-blue-600 text-white w-full">
+        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Start Your Project?</h2>
           <p className="text-lg mb-8 max-w-2xl mx-auto opacity-90">
             Get a free quote today and see how we can help bring your private label vision to life.
@@ -368,8 +368,8 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t bg-gray-50">
-        <div className="container mx-auto px-4 py-12">
+      <footer className="border-t bg-gray-50 w-full">
+        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 py-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <h3 className="font-bold text-lg mb-4">ProductBrands</h3>
