@@ -18,27 +18,27 @@ export default function Home() {
       {/* Hero Section - Banner Image */}
       <section className="relative w-full overflow-hidden">
         <div className="w-full">
-          <div className="relative w-full h-[50vh] md:h-[60vh] lg:h-[70vh] min-h-[400px] md:min-h-[500px] lg:min-h-[600px]">
+          <div className="relative w-full h-[60vh] md:h-[65vh] lg:h-[70vh] min-h-[500px] md:min-h-[550px] lg:min-h-[600px]">
             <Image
               src="/images/hero/pivate-label-hero.png"
               alt="Custom Private Label Products Manufacturer & Supplier"
               fill
               className="object-contain object-center"
               priority
-              quality={90}
-              unoptimized
+              quality={75}
+              sizes="100vw"
             />
             {/* Buttons Overlay */}
-            <div className="absolute inset-0 flex items-end justify-start pb-8 md:pb-12 lg:pb-16 px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/quote">
-                  <Button size="lg" className="text-base px-8 py-6 bg-blue-600 hover:bg-blue-700 text-white">
+            <div className="absolute inset-0 flex items-end justify-center lg:justify-start pb-6 md:pb-8 lg:pb-12 px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
+              <div className="flex flex-col gap-3 md:gap-4 w-full max-w-md lg:max-w-none lg:flex-row">
+                <Link href="/quote" className="w-full lg:w-auto">
+                  <Button size="lg" className="w-full lg:w-auto text-base px-6 md:px-8 py-5 md:py-6 bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
                     Request a Quote
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
-                <Link href="/contact">
-                  <Button size="lg" variant="outline" className="text-base px-8 py-6 bg-white/90 hover:bg-white border-2 border-gray-300">
+                <Link href="/contact" className="w-full lg:w-auto">
+                  <Button size="lg" variant="outline" className="w-full lg:w-auto text-base px-6 md:px-8 py-5 md:py-6 bg-white/95 hover:bg-white border-2 border-gray-300 shadow-lg">
                     Contact Us
                   </Button>
                 </Link>
