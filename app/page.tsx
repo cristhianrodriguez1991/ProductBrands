@@ -18,7 +18,7 @@ export default function Home() {
       {/* Hero Section - Blended Image and Text */}
       <section className="relative pt-12 pb-4 md:pt-16 md:pb-6 overflow-hidden">
         <div className="container mx-auto px-4">
-          <div className="relative max-w-7xl mx-auto">
+          <div className="relative w-full">
             {/* Background Image - Full Width with Natural Bleed */}
             <div className="absolute inset-0 lg:right-0 lg:left-auto lg:w-[95%] h-full rounded-lg overflow-hidden">
               <Image
@@ -67,7 +67,7 @@ export default function Home() {
       </section>
 
       {/* Transition Element */}
-      <div className="relative h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent mx-auto max-w-4xl my-2"></div>
+      <div className="relative h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent w-full my-2"></div>
 
       {/* Private Label Products - Staggered Layout */}
       <section className="pt-2 pb-12 md:pb-16 bg-white">
@@ -118,7 +118,7 @@ export default function Home() {
                 transition={{ duration: 0.6, delay: 0.2 }}
               >
                 <Image
-                  src="/images/products/product1.png"
+                  src="/images/products/Product1.png"
                   alt="Custom Pillow Bags - Private Label Packaging"
                   fill
                   className="object-contain"
@@ -231,7 +231,7 @@ export default function Home() {
       {/* Customers / Logos Slider */}
       <section className="py-16 md:py-20 bg-white border-t">
         <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto mb-10 text-center">
+          <div className="w-full mb-10 text-center">
             <span className="text-[10px] md:text-xs font-semibold tracking-[0.3em] text-slate-500 uppercase">
               brands we&apos;ve worked with
             </span>
@@ -303,7 +303,7 @@ export default function Home() {
       {/* Custom Made Easy Section */}
       <section className="py-16 md:py-20 bg-white">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
+          <div className="w-full text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900">Custom Made Easy</h2>
             <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
               As an experienced private label manufacturer, we offer one-stop custom solutions for brand owners, manufacturers, suppliers and wholesalers. We walk the journey with you to ensure that we help you better define what you want and realize your brand's perfect packaging solutions.
