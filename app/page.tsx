@@ -19,8 +19,8 @@ export default function Home() {
       <section className="relative pt-12 pb-4 md:pt-16 md:pb-6 overflow-hidden w-full">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <div className="relative w-full">
-            {/* Background Image - Full Width with Natural Bleed */}
-            <div className="absolute inset-0 lg:right-0 lg:left-auto lg:w-[95%] h-full rounded-lg overflow-hidden">
+            {/* Background Image - Full Width with Natural Bleed - Hidden on mobile */}
+            <div className="hidden lg:block absolute inset-0 lg:right-0 lg:left-auto lg:w-[95%] h-full rounded-lg overflow-hidden">
               <Image
                 src="/images/hero/pivate-label-hero.jpg"
                 alt="Private Label Products Manufacturing"
@@ -35,8 +35,7 @@ export default function Home() {
             {/* Content Overlay - Text and Buttons */}
             <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center min-h-[400px] md:min-h-[500px]">
               {/* Left Column - Text Content with subtle background for readability */}
-              <div className="text-center lg:text-left px-4 lg:px-8 relative">
-                {/* Remove white background to allow image to show through */}
+              <div className="text-center lg:text-left px-4 lg:px-8 relative z-20 bg-white/80 lg:bg-transparent rounded-lg lg:rounded-none p-4 lg:p-0">
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-gray-900">
                   Custom Private Label Products
                   <span className="block text-blue-600 mt-2">Manufacturer & Supplier</span>

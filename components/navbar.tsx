@@ -11,8 +11,8 @@ export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   return (
-    <nav className="border-b bg-white sticky top-0 z-50 shadow-sm">
-      <div className="container mx-auto px-4 py-3 md:py-4 flex items-center justify-between">
+    <nav className="border-b bg-white sticky top-0 z-50 shadow-sm w-full">
+      <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 py-3 md:py-4 flex items-center justify-between">
         <div className="flex-shrink-0">
           <Logo />
         </div>
@@ -75,8 +75,8 @@ export function Navbar() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t bg-white">
-          <div className="container mx-auto px-4 py-4 space-y-3">
+        <div className="md:hidden border-t bg-white w-full">
+          <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 py-4 space-y-3">
             <Link
               href="/"
               onClick={() => setIsMobileMenuOpen(false)}
