@@ -19,14 +19,26 @@ export default function Home() {
       <section className="relative pt-12 pb-4 md:pt-16 md:pb-6 overflow-hidden w-full">
         <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <div className="relative w-full">
-            {/* Background Image - Full Width with Natural Bleed - Hidden on mobile */}
-            <div className="hidden lg:block absolute inset-0 lg:right-0 lg:left-auto lg:w-[95%] h-full rounded-lg overflow-hidden">
+            {/* Background Image - Full Width with Natural Bleed */}
+            <div className="absolute inset-0 lg:right-0 lg:left-auto w-full lg:w-[100%] h-full rounded-lg overflow-hidden">
               <Image
                 src="/images/hero/pivate-label-hero.jpg"
                 alt="Private Label Products Manufacturing"
                 fill
-                className="object-contain object-right"
+                className="object-contain object-center lg:object-right"
                 priority
+                quality={90}
+                unoptimized
+              />
+            </div>
+
+            {/* Mobile Image - Shows below text on mobile */}
+            <div className="lg:hidden relative w-full h-[300px] md:h-[400px] mt-8 rounded-lg overflow-hidden">
+              <Image
+                src="/images/hero/pivate-label-hero.jpg"
+                alt="Private Label Products Manufacturing"
+                fill
+                className="object-contain object-center"
                 quality={90}
                 unoptimized
               />
