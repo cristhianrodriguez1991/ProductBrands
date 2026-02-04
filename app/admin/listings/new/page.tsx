@@ -213,15 +213,15 @@ export default function NewListingPage() {
                 <div>
                   <Label htmlFor="categoryId">Category</Label>
                   <Select
-                    value={formData.categoryId}
-                    onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
+                    value={formData.categoryId || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, categoryId: value === "none" ? "" : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
                       {/* Categories will be loaded from API */}
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

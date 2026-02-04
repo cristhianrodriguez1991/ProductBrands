@@ -17,7 +17,7 @@ export default async function AdminQuotesPage({
   await requireAdminSession()
 
   const where: any = {}
-  if (searchParams.status) {
+  if (searchParams.status && searchParams.status !== "all") {
     where.status = searchParams.status as QuoteStatus
   }
   if (searchParams.search) {
@@ -87,12 +87,12 @@ export default async function AdminQuotesPage({
             </div>
             <div className="w-48">
               <label className="text-sm font-medium mb-2 block">Status</label>
-              <Select name="status" defaultValue={searchParams.status || ""}>
+              <Select name="status" defaultValue={searchParams.status || "all"}>
                 <SelectTrigger>
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="NEW">New</SelectItem>
                   <SelectItem value="NEEDS_INFO">Needs Info</SelectItem>
                   <SelectItem value="PRICING">Pricing</SelectItem>
