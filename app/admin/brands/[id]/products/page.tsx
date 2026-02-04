@@ -35,16 +35,7 @@ type Brand = {
   slug: string
 }
 
-const CATEGORIES = [
-  "Coffee",
-  "Coffee Creamers",
-  "Sweeteners",
-  "Hard Candies",
-  "Snacks & Groceries",
-  "Grain & Seeds",
-  "Wildlife Food",
-  "Other",
-]
+// Categories will be loaded dynamically from existing products
 
 export default function BrandProductsPage() {
   const params = useParams()
@@ -66,6 +57,11 @@ export default function BrandProductsPage() {
     priceAmount: "",
     sortOrder: "0",
   })
+  const [showNewCategory, setShowNewCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState("")
+
+  // Get unique categories from existing products
+  const existingCategories = [...new Set(products.map(p => p.category).filter(Boolean))] as string[]
 
   useEffect(() => {
     if (params.id) {
@@ -116,6 +112,8 @@ export default function BrandProductsPage() {
       sortOrder: "0",
     })
     setEditingProduct(null)
+    setShowNewCategory(false)
+    setNewCategoryName("")
   }
 
   const openAddDialog = () => {
@@ -280,20 +278,73 @@ export default function BrandProductsPage() {
                 </div>
                 <div>
                   <Label htmlFor="category">Category</Label>
-                  <Select
-                    value={formData.category || "none"}
-                    onValueChange={(value) => setFormData({ ...formData, category: value === "none" ? "" : value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Uncategorized</SelectItem>
-                      {CATEGORIES.map((cat) => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {showNewCategory ? (
+                    <div className="flex gap-2">
+                      <Input
+                        id="newCategory"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        placeholder="Enter new category name"
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (newCategoryName.trim()) {
+                            setFormData({ ...formData, category: newCategoryName.trim() })
+                          }
+                          setShowNewCategory(false)
+                          setNewCategoryName("")
+                        }}
+                      >
+                        Add
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowNewCategory(false)
+                          setNewCategoryName("")
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Select
+                        value={formData.category || "none"}
+                        onValueChange={(value) => {
+                          if (value === "new") {
+                            setShowNewCategory(true)
+                          } else {
+                            setFormData({ ...formData, category: value === "none" ? "" : value })
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Uncategorized</SelectItem>
+                          {existingCategories.map((cat) => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                          ))}
+                          <SelectItem value="new" className="text-blue-600 font-medium">
+                            + Create New Category
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {formData.category && formData.category !== "none" && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Selected: {formData.category}
+                    </p>
+                  )}
                 </div>
                 <div className="col-span-2">
                   <Label htmlFor="amazonUrl">Amazon URL *</Label>
