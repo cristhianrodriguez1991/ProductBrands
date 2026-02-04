@@ -8,12 +8,28 @@ export default withAuth(
     const isAuth = !!token
     const pathname = req.nextUrl.pathname
 
-    // Skip middleware for login pages
-    if (pathname === "/admin-login" || pathname === "/login" || pathname === "/register") {
+    // Skip middleware for login pages and public routes
+    if (
+      pathname === "/admin-login" || 
+      pathname === "/login" || 
+      pathname === "/register" ||
+      pathname === "/" ||
+      pathname.startsWith("/api") ||
+      pathname.startsWith("/services") ||
+      pathname.startsWith("/brands") ||
+      pathname.startsWith("/industries") ||
+      pathname.startsWith("/process") ||
+      pathname.startsWith("/pricing") ||
+      pathname.startsWith("/faq") ||
+      pathname.startsWith("/contact") ||
+      pathname.startsWith("/terms") ||
+      pathname.startsWith("/privacy") ||
+      pathname.startsWith("/quote")
+    ) {
       return NextResponse.next()
     }
 
-    // Admin routes (but NOT /admin-login)
+    // Admin routes - redirect to admin login if not admin
     if (pathname.startsWith("/admin")) {
       if (!isAuth || !isAdmin) {
         return NextResponse.redirect(new URL("/admin-login", req.url))
@@ -30,38 +46,13 @@ export default withAuth(
         return NextResponse.redirect(new URL("/admin", req.url))
       }
     }
+
+    return NextResponse.next()
   },
   {
     callbacks: {
-      authorized: ({ token, req }) => {
-        // Allow public routes
-        if (
-          req.nextUrl.pathname === "/" ||
-          req.nextUrl.pathname.startsWith("/api") ||
-          req.nextUrl.pathname.startsWith("/services") ||
-          req.nextUrl.pathname.startsWith("/brands") ||
-          req.nextUrl.pathname.startsWith("/industries") ||
-          req.nextUrl.pathname.startsWith("/process") ||
-          req.nextUrl.pathname.startsWith("/pricing") ||
-          req.nextUrl.pathname.startsWith("/faq") ||
-          req.nextUrl.pathname.startsWith("/contact") ||
-          req.nextUrl.pathname.startsWith("/terms") ||
-          req.nextUrl.pathname.startsWith("/privacy") ||
-          req.nextUrl.pathname.startsWith("/quote") ||
-          req.nextUrl.pathname.startsWith("/login") ||
-          req.nextUrl.pathname.startsWith("/register") ||
-          req.nextUrl.pathname.startsWith("/admin-login")
-        ) {
-          return true
-        }
-
-        // Protected routes require auth
-        if (req.nextUrl.pathname.startsWith("/portal") || req.nextUrl.pathname.startsWith("/admin")) {
-          return !!token
-        }
-
-        return true
-      },
+      // Always return true - we handle all redirects manually in the middleware function above
+      authorized: () => true,
     },
   }
 )
