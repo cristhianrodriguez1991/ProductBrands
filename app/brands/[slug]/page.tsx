@@ -22,8 +22,10 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
 
 export default async function DynamicBrandPage({
   params,
+  searchParams,
 }: {
   params: { slug: string }
+  searchParams: { category?: string }
 }) {
   const brand = await getBrandFromDb(params.slug)
 
@@ -79,6 +81,7 @@ export default async function DynamicBrandPage({
                 brandSlug={brand.slug}
                 products={allProducts}
                 categories={categories}
+                initialCategory={searchParams.category}
               />
             </Suspense>
           </div>
