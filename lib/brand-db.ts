@@ -87,6 +87,11 @@ export async function getAllBrandsFromDb(): Promise<DbBrand[]> {
       products: {
         where: { isActive: true },
         orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
+        include: {
+          storeLinks: {
+            orderBy: [{ isDefault: "desc" }, { sortOrder: "asc" }],
+          },
+        },
       },
       children: {
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -94,6 +99,11 @@ export async function getAllBrandsFromDb(): Promise<DbBrand[]> {
           products: {
             where: { isActive: true },
             orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
+            include: {
+              storeLinks: {
+                orderBy: [{ isDefault: "desc" }, { sortOrder: "asc" }],
+              },
+            },
           },
         },
       },
