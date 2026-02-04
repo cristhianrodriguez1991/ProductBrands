@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { uploadFile } from "@/lib/storage"
 import { sendEmail, getQuoteSubmittedEmail } from "@/lib/email"
+import { generateQuoteNumber } from "@/lib/admin-utils"
 import { z } from "zod"
 
 const quoteSchema = z.object({
@@ -53,12 +54,16 @@ export async function POST(req: Request) {
       }
     }
 
+    // Generate quote number
+    const quoteNumber = await generateQuoteNumber()
+
     // Create quote
     const quote = await prisma.quote.create({
       data: {
+        quoteNumber,
         companyId,
         createdById: userId,
-        status: "SUBMITTED",
+        status: "NEW",
         productCategory: validated.productCategory || validated.customCategory || null,
         productDescription: validated.productDescription,
         targetCustomer: validated.targetCustomer || null,
