@@ -55,9 +55,10 @@ async function main() {
   // Create sample quote
   const quote = await prisma.quote.create({
     data: {
+      quoteNumber: `QUOTE-${new Date().getFullYear()}-0001`,
       companyId: company.id,
       createdById: customer.id,
-      status: "SUBMITTED",
+      status: "NEW",
       productCategory: "food",
       productDescription: "Premium coffee beans for private label",
       targetCustomer: "B2C, E-commerce",
@@ -68,11 +69,12 @@ async function main() {
       shippingDestination: "San Francisco, CA, USA",
     },
   })
-  console.log("Created sample quote:", quote.id)
+  console.log("Created sample quote:", quote.quoteNumber)
 
   // Create sample order
   const order = await prisma.order.create({
     data: {
+      orderNumber: `ORD-${new Date().getFullYear()}-0001`,
       companyId: company.id,
       createdById: customer.id,
       status: "IN_PRODUCTION",
