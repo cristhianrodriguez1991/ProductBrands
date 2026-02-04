@@ -119,7 +119,7 @@ async function createProducts(brandId: string, products: SeedProduct[]) {
 
   for (const product of products) {
     // Check if product already exists by ASIN
-    const existing = await prisma.product.findUnique({ where: { asin: product.asin } })
+    const existing = await prisma.product.findFirst({ where: { asin: product.asin } })
     if (existing) {
       console.log(`    Product ${product.asin} already exists, skipping`)
       continue

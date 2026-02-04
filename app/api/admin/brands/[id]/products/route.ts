@@ -44,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     // Check if ASIN is unique (only if provided)
     if (asin) {
-      const existing = await prisma.product.findUnique({ where: { asin } })
+      const existing = await prisma.product.findFirst({ where: { asin } })
       if (existing) {
         return NextResponse.json({ error: "A product with this ASIN already exists" }, { status: 400 })
       }
