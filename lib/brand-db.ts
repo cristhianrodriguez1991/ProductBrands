@@ -1,6 +1,16 @@
 import { unstable_noStore as noStore } from "next/cache"
 import { prisma } from "./prisma"
 
+export type DbStoreLink = {
+  id: string
+  storeName: string
+  storeUrl: string
+  storeId: string | null
+  price: number | null
+  isDefault: boolean
+  sortOrder: number
+}
+
 export type DbProduct = {
   id: string
   name: string
@@ -8,14 +18,15 @@ export type DbProduct = {
   bullets: string[]
   category: string | null
   imageUrl: string | null
-  amazonUrl: string
-  asin: string
+  amazonUrl: string | null
+  asin: string | null
   priceAmount: number | null
   priceCurrency: string | null
   rating: number | null
   reviewCount: number | null
   isActive: boolean
   sortOrder: number
+  storeLinks: DbStoreLink[]
 }
 
 export type DbBrand = {
@@ -40,11 +51,21 @@ export async function getBrandFromDb(slug: string): Promise<DbBrand | null> {
     include: {
       products: {
         orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+        include: {
+          storeLinks: {
+            orderBy: [{ isDefault: "desc" }, { sortOrder: "asc" }],
+          },
+        },
       },
       children: {
         include: {
           products: {
             orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+            include: {
+              storeLinks: {
+                orderBy: [{ isDefault: "desc" }, { sortOrder: "asc" }],
+              },
+            },
           },
         },
       },

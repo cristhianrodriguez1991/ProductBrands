@@ -377,8 +377,9 @@ model Product {
   bullets       String[] @default([])
   category      String?  // e.g., "Coffee", "Hard Candies", "Sweeteners"
   imageUrl      String?
-  amazonUrl     String
-  asin          String   @unique
+  amazonUrl     String?  // Legacy field, kept for backward compatibility
+  asin          String?  // Made optional - not all products have ASINs
+  sku           String?  // Generic SKU for non-Amazon products
   priceAmount   Float?
   priceCurrency String?  @default("USD")
   rating        Float?
@@ -389,10 +390,31 @@ model Product {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  storeLinks    ProductStoreLink[]
+
   @@index([brandId])
   @@index([asin])
+  @@index([sku])
   @@index([category])
   @@index([isActive])
+}
+
+// Store links for products (Amazon, Walmart, eBay, etc.)
+model ProductStoreLink {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  storeName   String   // "Amazon", "Walmart", "eBay", "Target", etc.
+  storeUrl    String   // The full URL to the product on that store
+  storeId     String?  // Optional store-specific ID (ASIN, Walmart ID, etc.)
+  price       Float?   // Optional price on this store
+  isDefault   Boolean  @default(false) // Primary/default store link
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([productId])
+  @@index([storeName])
 }
 
 // Admin-managed product listings (separate from Brand products)

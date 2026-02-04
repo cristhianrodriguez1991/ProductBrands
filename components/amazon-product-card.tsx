@@ -4,13 +4,21 @@ import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Star, ExternalLink, Sparkles } from "lucide-react"
+import { Star, ExternalLink, Sparkles, ShoppingCart } from "lucide-react"
+
+type StoreLink = {
+  storeName: string
+  storeUrl: string
+  storeId?: string | null
+  price?: number | null
+  isDefault?: boolean
+}
 
 type ProductData = {
-  asin: string
-  amazonUrl: string
+  asin?: string | null
+  amazonUrl?: string | null
   title?: string
-  imageUrl?: string
+  imageUrl?: string | null
   description?: string
   bullets?: string[]
   priceAmount?: number | null
@@ -18,6 +26,7 @@ type ProductData = {
   rating?: number | null
   reviewCount?: number | null
   source?: "paapi" | "seed"
+  storeLinks?: StoreLink[]
 }
 
 type AmazonProductCardProps = {
@@ -25,11 +34,25 @@ type AmazonProductCardProps = {
   showFullDetails?: boolean
 }
 
+// Store-specific styling
+const STORE_STYLES: Record<string, { bg: string, hover: string, icon?: string }> = {
+  "Amazon": { bg: "from-[#FF9900] to-[#FF8800]", hover: "hover:from-[#FF8800] hover:to-[#FF7700]" },
+  "Walmart": { bg: "from-[#0071CE] to-[#004C91]", hover: "hover:from-[#004C91] hover:to-[#003B73]" },
+  "eBay": { bg: "from-[#E53238] to-[#C72C32]", hover: "hover:from-[#C72C32] hover:to-[#B02228]" },
+  "Target": { bg: "from-[#CC0000] to-[#990000]", hover: "hover:from-[#990000] hover:to-[#770000]" },
+  "Costco": { bg: "from-[#005DAA] to-[#004A8C]", hover: "hover:from-[#004A8C] hover:to-[#003870]" },
+  "Sam's Club": { bg: "from-[#0067A0] to-[#005080]", hover: "hover:from-[#005080] hover:to-[#004060]" },
+  "Alibaba": { bg: "from-[#FF6A00] to-[#E55A00]", hover: "hover:from-[#E55A00] hover:to-[#CC5000]" },
+  "AliExpress": { bg: "from-[#E62E04] to-[#CC2800]", hover: "hover:from-[#CC2800] hover:to-[#B02200]" },
+  "Etsy": { bg: "from-[#F56400] to-[#D95700]", hover: "hover:from-[#D95700] hover:to-[#BD4C00]" },
+  "Other": { bg: "from-gray-600 to-gray-700", hover: "hover:from-gray-700 hover:to-gray-800" },
+}
+
 export function AmazonProductCard({ product, showFullDetails = false }: AmazonProductCardProps) {
   const [productData] = useState<ProductData>(product)
   const [isHovered, setIsHovered] = useState(false)
 
-  const formatPrice = (amount: number | null, currency: string = "USD") => {
+  const formatPrice = (amount: number | null | undefined, currency: string = "USD") => {
     if (!amount) return null
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -45,6 +68,24 @@ export function AmazonProductCard({ product, showFullDetails = false }: AmazonPr
   const displayPrice = productData.priceAmount ? formatPrice(productData.priceAmount, productData.priceCurrency) : null
   const displayRating = productData.rating
   const displayReviewCount = productData.reviewCount
+
+  // Get store links - prefer storeLinks array, fall back to amazonUrl
+  const storeLinks: StoreLink[] = productData.storeLinks && productData.storeLinks.length > 0
+    ? productData.storeLinks
+    : productData.amazonUrl
+      ? [{ storeName: "Amazon", storeUrl: productData.amazonUrl, storeId: productData.asin, isDefault: true }]
+      : []
+
+  // Sort: default first, then by name
+  const sortedLinks = [...storeLinks].sort((a, b) => {
+    if (a.isDefault && !b.isDefault) return -1
+    if (!a.isDefault && b.isDefault) return 1
+    return a.storeName.localeCompare(b.storeName)
+  })
+
+  const getStoreStyle = (storeName: string) => {
+    return STORE_STYLES[storeName] || STORE_STYLES["Other"]
+  }
 
   return (
     <div
@@ -80,6 +121,13 @@ export function AmazonProductCard({ product, showFullDetails = false }: AmazonPr
           <div className="absolute top-3 right-3 bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg z-10">
             <Star className="h-3.5 w-3.5 fill-white" />
             <span className="text-xs font-bold">{displayRating.toFixed(1)}</span>
+          </div>
+        )}
+        {/* Multiple stores badge */}
+        {sortedLinks.length > 1 && (
+          <div className="absolute top-3 left-3 bg-blue-600 text-white px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg z-10">
+            <ShoppingCart className="h-3.5 w-3.5" />
+            <span className="text-xs font-bold">{sortedLinks.length} Stores</span>
           </div>
         )}
       </div>
@@ -160,32 +208,69 @@ export function AmazonProductCard({ product, showFullDetails = false }: AmazonPr
           </ul>
         )}
 
-        {/* Amazon Link - Enhanced button */}
-        <Link
-          href={productData.amazonUrl}
-          target="_blank"
-          rel="nofollow sponsored noopener"
-          className="block mt-4"
-        >
-          <Button
-            className={`w-full bg-gradient-to-r from-[#FF9900] to-[#FF8800] hover:from-[#FF8800] hover:to-[#FF7700] text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] relative overflow-hidden group/btn`}
-          >
-            <span className="relative z-10 flex items-center justify-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              <span>Buy on Amazon</span>
-              <ExternalLink className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
-            </span>
-            {/* Button shine effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700" />
-          </Button>
-        </Link>
+        {/* Store Links - Show all if multiple, or single button */}
+        {sortedLinks.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {sortedLinks.length === 1 ? (
+              // Single store - full width button
+              <Link
+                href={sortedLinks[0].storeUrl}
+                target="_blank"
+                rel="nofollow sponsored noopener"
+                className="block"
+              >
+                <Button
+                  className={`w-full bg-gradient-to-r ${getStoreStyle(sortedLinks[0].storeName).bg} ${getStoreStyle(sortedLinks[0].storeName).hover} text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] relative overflow-hidden group/btn`}
+                >
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    <span>Buy on {sortedLinks[0].storeName}</span>
+                    <ExternalLink className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700" />
+                </Button>
+              </Link>
+            ) : (
+              // Multiple stores - grid of buttons
+              <div className="grid grid-cols-2 gap-2">
+                {sortedLinks.map((link, index) => (
+                  <Link
+                    key={index}
+                    href={link.storeUrl}
+                    target="_blank"
+                    rel="nofollow sponsored noopener"
+                    className="block"
+                  >
+                    <Button
+                      size="sm"
+                      className={`w-full bg-gradient-to-r ${getStoreStyle(link.storeName).bg} ${getStoreStyle(link.storeName).hover} text-white font-medium shadow-md hover:shadow-lg transition-all duration-300 relative overflow-hidden group/btn text-xs`}
+                    >
+                      <span className="relative z-10 flex items-center justify-center gap-1">
+                        <span>{link.storeName}</span>
+                        {link.price && (
+                          <span className="opacity-80">
+                            ${link.price.toFixed(2)}
+                          </span>
+                        )}
+                        <ExternalLink className="h-3 w-3 opacity-70" />
+                      </span>
+                    </Button>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* ASIN - Hidden on hover */}
-        <div className={`pt-2 border-t border-gray-100 transition-opacity ${isHovered ? "opacity-0" : "opacity-100"}`}>
-          <p className="text-xs text-gray-400">ASIN: {productData.asin}</p>
-        </div>
+        {/* Product ID - Hidden on hover */}
+        {(productData.asin || sortedLinks[0]?.storeId) && (
+          <div className={`pt-2 border-t border-gray-100 transition-opacity ${isHovered ? "opacity-0" : "opacity-100"}`}>
+            <p className="text-xs text-gray-400">
+              {productData.asin ? `ASIN: ${productData.asin}` : sortedLinks[0]?.storeId ? `ID: ${sortedLinks[0].storeId}` : ''}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
 }
-

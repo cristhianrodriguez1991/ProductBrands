@@ -4,6 +4,16 @@ import { useState, useEffect, useMemo } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { AmazonProductCard } from "@/components/amazon-product-card"
 
+type StoreLink = {
+  id: string
+  storeName: string
+  storeUrl: string
+  storeId: string | null
+  price: number | null
+  isDefault: boolean
+  sortOrder: number
+}
+
 type Product = {
   id: string
   name: string
@@ -11,9 +21,10 @@ type Product = {
   bullets: string[]
   category: string | null
   imageUrl: string | null
-  amazonUrl: string
-  asin: string
+  amazonUrl: string | null
+  asin: string | null
   priceAmount: number | null
+  storeLinks?: StoreLink[]
 }
 
 type Category = {
@@ -129,7 +140,7 @@ export function BrandProductsTabs({ brandSlug, products, categories, initialCate
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {productsInActiveCategory.map((product) => (
               <AmazonProductCard
-                key={product.asin}
+                key={product.id}
                 product={{
                   asin: product.asin,
                   amazonUrl: product.amazonUrl,
@@ -137,6 +148,14 @@ export function BrandProductsTabs({ brandSlug, products, categories, initialCate
                   imageUrl: product.imageUrl || undefined,
                   description: product.description || undefined,
                   bullets: product.bullets,
+                  priceAmount: product.priceAmount,
+                  storeLinks: product.storeLinks?.map(link => ({
+                    storeName: link.storeName,
+                    storeUrl: link.storeUrl,
+                    storeId: link.storeId,
+                    price: link.price,
+                    isDefault: link.isDefault,
+                  })),
                 }}
                 showFullDetails={false}
               />

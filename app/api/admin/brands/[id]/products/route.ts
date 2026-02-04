@@ -11,6 +11,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const products = await prisma.product.findMany({
       where: { brandId: params.id },
       orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+      include: {
+        storeLinks: {
+          orderBy: [{ isDefault: "desc" }, { sortOrder: "asc" }],
+        },
+      },
     })
 
     return NextResponse.json(products)
@@ -26,16 +31,23 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     await requireAdminApi(req)
 
     const body = await req.json()
-    const { name, description, bullets, category, imageUrl, amazonUrl, asin, priceAmount, sortOrder } = body
+    const { name, description, bullets, category, imageUrl, amazonUrl, asin, priceAmount, sortOrder, storeLinks } = body
 
-    if (!name || !amazonUrl || !asin) {
-      return NextResponse.json({ error: "Name, Amazon URL, and ASIN are required" }, { status: 400 })
+    if (!name) {
+      return NextResponse.json({ error: "Name is required" }, { status: 400 })
     }
 
-    // Check if ASIN is unique
-    const existing = await prisma.product.findUnique({ where: { asin } })
-    if (existing) {
-      return NextResponse.json({ error: "A product with this ASIN already exists" }, { status: 400 })
+    // Either storeLinks or amazonUrl is required
+    if ((!storeLinks || storeLinks.length === 0) && !amazonUrl) {
+      return NextResponse.json({ error: "At least one store link is required" }, { status: 400 })
+    }
+
+    // Check if ASIN is unique (only if provided)
+    if (asin) {
+      const existing = await prisma.product.findUnique({ where: { asin } })
+      if (existing) {
+        return NextResponse.json({ error: "A product with this ASIN already exists" }, { status: 400 })
+      }
     }
 
     // Verify brand exists
@@ -44,6 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: "Brand not found" }, { status: 404 })
     }
 
+    // Create product with store links
     const product = await prisma.product.create({
       data: {
         brandId: params.id,
@@ -52,11 +65,24 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         bullets: bullets || [],
         category,
         imageUrl,
-        amazonUrl,
-        asin,
+        amazonUrl: amazonUrl || null,
+        asin: asin || null,
         priceAmount,
         sortOrder: sortOrder || 0,
-        isActive: true, // Explicitly set to ensure product is visible
+        isActive: true,
+        storeLinks: storeLinks && storeLinks.length > 0 ? {
+          create: storeLinks.map((link: any) => ({
+            storeName: link.storeName,
+            storeUrl: link.storeUrl,
+            storeId: link.storeId || null,
+            price: link.price || null,
+            isDefault: link.isDefault || false,
+            sortOrder: link.sortOrder || 0,
+          })),
+        } : undefined,
+      },
+      include: {
+        storeLinks: true,
       },
     })
 
