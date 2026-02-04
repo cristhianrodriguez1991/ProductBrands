@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { requireAdminSession } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
-import { redirect } from "next/navigation"
+import { notFound } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,26 +14,60 @@ export default async function AdminQuoteDetailPage({
 }: {
   params: { id: string }
 }) {
-  const session = await getServerSession(authOptions)
-  if (!session || (session.user as any)?.role !== "ADMIN") {
-    redirect("/login")
-  }
+  await requireAdminSession()
 
   const quote = await prisma.quote.findUnique({
     where: { id: params.id },
     include: {
       company: true,
+      contact: true,
+      createdBy: {
+        select: { id: true, name: true, email: true },
+      },
       attachments: true,
-      lineItems: true,
+      lineItems: {
+        include: {
+          listing: {
+            select: { id: true, title: true, slug: true },
+          },
+          variant: {
+            select: { id: true, sku: true },
+          },
+        },
+      },
       messages: {
         include: { user: true },
         orderBy: { createdAt: "desc" },
+      },
+      quoteMessages: {
+        include: {
+          senderUser: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+      orders: {
+        select: { id: true, orderNumber: true, status: true },
       },
     },
   })
 
   if (!quote) {
-    return <div>Quote not found</div>
+    notFound()
+  }
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      NEW: "bg-blue-500",
+      NEEDS_INFO: "bg-orange-500",
+      PRICING: "bg-yellow-500",
+      SENT: "bg-purple-500",
+      APPROVED: "bg-green-500",
+      REJECTED: "bg-red-500",
+      ORDERED: "bg-gray-500",
+    }
+    return colors[status] || "bg-gray-500"
   }
 
   return (
@@ -48,12 +81,20 @@ export default async function AdminQuoteDetailPage({
 
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-bold">Quote #{quote.id.slice(-8)}</h1>
-          <Badge>{quote.status.replace("_", " ")}</Badge>
+          <div>
+            <h1 className="text-3xl font-bold">
+              {quote.quoteNumber || `Quote #${quote.id.slice(-8)}`}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {quote.company.name}
+              {quote.contact && ` • ${quote.contact.name} (${quote.contact.email})`}
+              {quote.createdBy && ` • Created by ${quote.createdBy.name || quote.createdBy.email}`}
+            </p>
+          </div>
+          <Badge className={getStatusColor(quote.status)}>
+            {quote.status.replace("_", " ")}
+          </Badge>
         </div>
-        <p className="text-muted-foreground">
-          {quote.company.name} • Created {formatDate(quote.createdAt)}
-        </p>
       </div>
 
       <QuoteManageForm quote={quote} />

@@ -1,75 +1,130 @@
-import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextRequest, NextResponse } from "next/server"
+import { requireWriteAccess } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
-import { z } from "zod"
-import { QuoteStatus } from "@prisma/client"
+import { quoteUpdateSchema } from "@/lib/validations/admin"
+import { logAudit, createAuditDiff } from "@/lib/audit"
 
-const updateQuoteSchema = z.object({
-  status: z.enum(["DRAFT", "SUBMITTED", "IN_REVIEW", "NEED_INFO", "SENT", "ACCEPTED", "REJECTED"]).optional(),
-  adminNotes: z.string().optional(),
-  totalEstimate: z.number().nullable().optional(),
-  lineItems: z.array(z.any()).optional(),
-})
-
-export async function PATCH(
-  req: Request,
+// GET /api/admin/quotes/[id] - Get single quote
+export async function GET(
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session || (session.user as any)?.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const auth = await requireWriteAccess(req)
+    if (auth instanceof NextResponse) return auth
 
-    const body = await req.json()
-    const data = updateQuoteSchema.parse(body)
-
-    // Update quote
-    const quote = await prisma.quote.update({
+    const quote = await prisma.quote.findUnique({
       where: { id: params.id },
-      data: {
-        ...(data.status && { status: data.status as QuoteStatus }),
-        adminNotes: data.adminNotes,
-        totalEstimate: data.totalEstimate,
+      include: {
+        company: true,
+        contact: true,
+        createdBy: {
+          select: { id: true, name: true, email: true },
+        },
+        attachments: true,
+        lineItems: {
+          include: {
+            listing: {
+              select: { id: true, title: true, slug: true },
+            },
+            variant: {
+              select: { id: true, sku: true },
+            },
+          },
+        },
+        messages: {
+          include: { user: true },
+          orderBy: { createdAt: "desc" },
+        },
+        quoteMessages: {
+          include: {
+            senderUser: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+        orders: {
+          select: { id: true, orderNumber: true, status: true },
+        },
       },
     })
 
-    // Update line items
-    if (data.lineItems) {
-      // Delete existing line items
-      await prisma.quoteLineItem.deleteMany({
-        where: { quoteId: params.id },
-      })
-
-      // Create new line items
-      for (const item of data.lineItems) {
-        if (!item.id?.startsWith("temp-")) {
-          await prisma.quoteLineItem.create({
-            data: {
-              quoteId: params.id,
-              description: item.description,
-              quantity: item.quantity || null,
-              unitPrice: item.unitPrice || null,
-              totalPrice: item.totalPrice || null,
-              notes: item.notes || null,
-            },
-          })
-        }
-      }
+    if (!quote) {
+      return NextResponse.json(
+        { error: "Quote not found" },
+        { status: 404 }
+      )
     }
 
-    return NextResponse.json({ success: true, quote })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+    return NextResponse.json(quote)
+  } catch (error: any) {
+    console.error("Error fetching quote:", error)
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch quote" },
+      { status: 500 }
+    )
+  }
+}
+
+// PATCH /api/admin/quotes/[id] - Update quote (general update)
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const auth = await requireWriteAccess(req)
+    if (auth instanceof NextResponse) return auth
+
+    const existing = await prisma.quote.findUnique({
+      where: { id: params.id },
+    })
+
+    if (!existing) {
       return NextResponse.json(
-        { error: "Invalid input", details: error.errors },
+        { error: "Quote not found" },
+        { status: 404 }
+      )
+    }
+
+    const body = await req.json()
+    const data = quoteUpdateSchema.parse(body)
+
+    const updated = await prisma.quote.update({
+      where: { id: params.id },
+      data: {
+        ...(data.status && { status: data.status }),
+        ...(data.contactId && { contactId: data.contactId }),
+        ...(data.internalNotes !== undefined && { internalNotes: data.internalNotes }),
+        ...(data.adminNotes !== undefined && { adminNotes: data.adminNotes }),
+        ...(data.totalEstimate !== undefined && { totalEstimate: data.totalEstimate }),
+        ...(data.targetDueDate && { targetDueDate: new Date(data.targetDueDate) }),
+        updatedAt: new Date(),
+      },
+    })
+
+    // Audit log
+    const diff = createAuditDiff(existing, updated)
+    await logAudit({
+      actorUserId: auth.userId,
+      action: "updated",
+      entityType: "Quote",
+      entityId: params.id,
+      ...diff,
+      req,
+    })
+
+    return NextResponse.json(updated)
+  } catch (error: any) {
+    console.error("Error updating quote:", error)
+    if (error.name === "ZodError") {
+      return NextResponse.json(
+        { error: "Validation error", details: error.errors },
         { status: 400 }
       )
     }
-    console.error("Quote update error:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error.message || "Failed to update quote" },
       { status: 500 }
     )
   }

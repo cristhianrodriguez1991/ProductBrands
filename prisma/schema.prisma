@@ -12,17 +12,28 @@ datasource db {
 
 enum UserRole {
   CUSTOMER
+  OWNER
   ADMIN
+  SALES
+  OPS
+  SUPPORT
+  READONLY
 }
 
 enum QuoteStatus {
   DRAFT
+  NEW
+  NEEDS_INFO
+  PRICING
+  SENT
+  APPROVED
+  REJECTED
+  EXPIRED
+  ORDERED
+  // Legacy statuses for backward compatibility
   SUBMITTED
   IN_REVIEW
-  NEED_INFO
-  SENT
   ACCEPTED
-  REJECTED
 }
 
 enum OrderStatus {
@@ -51,6 +62,7 @@ model User {
   emailVerified DateTime?
   image         String?
   role          UserRole  @default(CUSTOMER)
+  isActive      Boolean   @default(true)
   companyId     String?
   company       Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
   createdAt     DateTime  @default(now())
@@ -59,6 +71,7 @@ model User {
   quotesCreated    Quote[]       @relation("QuoteCreator")
   ordersCreated    Order[]        @relation("OrderCreator")
   messages         Message[]
+  quoteMessages    QuoteMessage[] @relation("QuoteMessageSender")
   invoices         Invoice[]
   auditLogs        AuditLog[]
   accounts         Account[]
@@ -66,37 +79,65 @@ model User {
 
   @@index([companyId])
   @@index([email])
+  @@index([role])
+  @@index([isActive])
 }
 
 model Company {
-  id          String   @id @default(cuid())
-  name        String
-  address     String?
-  city        String?
-  state       String?
-  country     String?
-  postalCode  String?
-  phone       String?
-  website     String?
-  taxId       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  address         String?
+  city            String?
+  state           String?
+  country         String?
+  postalCode      String?
+  phone           String?
+  website         String?
+  taxId           String?
+  billingAddress  String?  @db.Text
+  shippingAddress String?  @db.Text
+  notes           String?  @db.Text
+  tags            String[] // For categorization
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  users       User[]
-  quotes      Quote[]
-  orders      Order[]
-  invoices    Invoice[]
+  users           User[]
+  quotes          Quote[]
+  orders          Order[]
+  invoices        Invoice[]
+  contacts        ClientContact[]
 
   @@index([name])
 }
 
+model ClientContact {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name        String
+  email       String
+  phone       String?
+  roleTitle   String?
+  isPrimary   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  quotes      Quote[]  @relation("QuoteContact")
+
+  @@index([companyId])
+  @@index([email])
+}
+
 model Quote {
   id                String        @id @default(cuid())
+  quoteNumber       String        @unique // Human-readable: QUOTE-2024-001
   companyId         String
   company           Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contactId         String?       // Primary contact
+  contact           ClientContact? @relation("QuoteContact", fields: [contactId], references: [id], onDelete: SetNull)
   createdById       String
   createdBy         User           @relation("QuoteCreator", fields: [createdById], references: [id])
-  status            QuoteStatus   @default(DRAFT)
+  status            QuoteStatus   @default(NEW)
   
   // Form fields
   productCategory   String?
@@ -108,13 +149,16 @@ model Quote {
   targetUnitCost    Float?
   timeline          String?
   deadline          DateTime?
+  targetDueDate     DateTime?     // Admin-set target
   shippingDestination String?
   
   // Flexible JSON data
   formData          Json? // For additional fields
+  notesFromClient   String?        @db.Text
+  internalNotes     String?       @db.Text // Admin-only
   
   // Admin response
-  adminNotes        String?
+  adminNotes        String?        @db.Text
   totalEstimate     Float?
   
   createdAt         DateTime      @default(now())
@@ -123,11 +167,29 @@ model Quote {
   attachments       QuoteAttachment[]
   lineItems         QuoteLineItem[]
   messages          Message[]
+  quoteMessages     QuoteMessage[]
   orders            Order[]
 
   @@index([companyId])
   @@index([createdById])
   @@index([status])
+  @@index([quoteNumber])
+  @@index([contactId])
+}
+
+model QuoteMessage {
+  id            String   @id @default(cuid())
+  quoteId       String
+  quote         Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  senderType    String   // "ADMIN" | "CLIENT"
+  senderUserId  String?  // If admin sent it
+  senderUser    User?    @relation("QuoteMessageSender", fields: [senderUserId], references: [id], onDelete: SetNull)
+  senderContactId String? // If client contact sent it
+  message       String   @db.Text
+  createdAt     DateTime @default(now())
+
+  @@index([quoteId])
+  @@index([senderUserId])
 }
 
 model QuoteAttachment {
@@ -159,7 +221,8 @@ model QuoteLineItem {
 
 model Order {
   id                String      @id @default(cuid())
-  quoteId           String?
+  orderNumber       String      @unique // Human-readable: ORD-2024-001
+  quoteId           String?     @unique // One-to-one: quote can only convert to one order
   quote             Quote?      @relation(fields: [quoteId], references: [id], onDelete: SetNull)
   companyId         String
   company           Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -313,6 +376,91 @@ model Product {
 
   @@index([brandId])
   @@index([asin])
+}
+
+// Admin-managed product listings (separate from Brand products)
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  parentId    String?
+  parent      Category? @relation("CategoryParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryParent")
+  description String?  @db.Text
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  listings    Listing[]
+
+  @@index([slug])
+  @@index([parentId])
+}
+
+model Listing {
+  id            String        @id @default(cuid())
+  title         String
+  slug          String        @unique
+  description   String?       @db.Text
+  status        ListingStatus @default(DRAFT)
+  categoryId    String?
+  category      Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand         String?       // Brand name if applicable
+  moq           Int?          // Minimum order quantity
+  leadTimeDays  Int?          // Lead time in days
+  basePrice     Float?        // Base price
+  pricingModel  String?       // "unit", "tiered", "custom"
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  variants      ListingVariant[]
+  media         ListingMedia[]
+  quoteLineItems QuoteLineItem[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([categoryId])
+}
+
+model ListingVariant {
+  id            String   @id @default(cuid())
+  listingId     String
+  listing       Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  sku           String
+  option1Name   String?  // e.g., "Size"
+  option1Value  String?  // e.g., "Large"
+  option2Name   String?  // e.g., "Color"
+  option2Value  String?  // e.g., "Blue"
+  cost          Float?   // Internal cost
+  price         Float?   // Customer-facing price
+  moq           Int?     // Variant-specific MOQ
+  leadTimeDays  Int?     // Variant-specific lead time
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  quoteLineItems QuoteLineItem[]
+
+  @@index([listingId])
+  @@index([sku])
+}
+
+model ListingMedia {
+  id          String   @id @default(cuid())
+  listingId   String
+  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  url         String
+  alt         String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([listingId])
 }
 
 model AuditLog {

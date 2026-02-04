@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
-import { formatDate, formatCurrency } from "@/lib/utils"
+import { formatDate, formatCurrency, formatDateTime } from "@/lib/utils"
+import { Send } from "lucide-react"
 
 export default function QuoteManageForm({ quote }: { quote: any }) {
   const router = useRouter()
@@ -24,7 +25,10 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
     unitPrice: "",
     notes: "",
   })
+  const [messageText, setMessageText] = useState("")
+  const [messages, setMessages] = useState(quote.quoteMessages || [])
   const [loading, setLoading] = useState(false)
+  const [sendingMessage, setSendingMessage] = useState(false)
 
   const handleAddLineItem = () => {
     if (!newLineItem.description) return
@@ -94,13 +98,19 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="NEW">New</SelectItem>
+                <SelectItem value="NEEDS_INFO">Needs Info</SelectItem>
+                <SelectItem value="PRICING">Pricing</SelectItem>
+                <SelectItem value="SENT">Sent</SelectItem>
+                <SelectItem value="APPROVED">Approved</SelectItem>
+                <SelectItem value="REJECTED">Rejected</SelectItem>
+                <SelectItem value="EXPIRED">Expired</SelectItem>
+                <SelectItem value="ORDERED">Ordered</SelectItem>
+                {/* Legacy */}
                 <SelectItem value="DRAFT">Draft</SelectItem>
                 <SelectItem value="SUBMITTED">Submitted</SelectItem>
                 <SelectItem value="IN_REVIEW">In Review</SelectItem>
-                <SelectItem value="NEED_INFO">Need Info</SelectItem>
-                <SelectItem value="SENT">Sent</SelectItem>
                 <SelectItem value="ACCEPTED">Accepted</SelectItem>
-                <SelectItem value="REJECTED">Rejected</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -186,9 +196,69 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
         </CardContent>
       </Card>
 
-      <Button onClick={handleSave} disabled={loading} className="w-full">
-        {loading ? "Saving..." : "Save Changes"}
-      </Button>
+      <Card>
+        <CardHeader>
+          <CardTitle>Message Thread</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {messages.map((msg: any) => (
+              <div
+                key={msg.id}
+                className={`p-3 rounded-lg ${
+                  msg.senderType === "ADMIN"
+                    ? "bg-blue-50 border border-blue-200"
+                    : "bg-gray-50 border border-gray-200"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium">
+                    {msg.senderUser?.name || msg.senderUser?.email || "Client"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDateTime(msg.createdAt)}
+                  </span>
+                </div>
+                <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+              </div>
+            ))}
+            {messages.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No messages yet
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2 pt-2 border-t">
+            <Textarea
+              placeholder="Type a message to the client..."
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              rows={3}
+              className="flex-1"
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={sendingMessage || !messageText.trim()}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex gap-2">
+        <Button onClick={handleStatusUpdate} disabled={loading} className="flex-1">
+          {loading ? "Saving..." : "Update Status"}
+        </Button>
+        <Button onClick={handleSaveLineItems} disabled={loading} variant="outline" className="flex-1">
+          Save Line Items
+        </Button>
+        {status === "APPROVED" && !quote.orders?.length && (
+          <Button onClick={handleConvertToOrder} disabled={loading} variant="default">
+            Convert to Order
+          </Button>
+        )}
+      </div>
     </div>
   )
 }
