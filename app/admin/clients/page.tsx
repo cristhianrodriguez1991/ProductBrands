@@ -56,18 +56,12 @@ export default async function AdminClientsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {(company.phone || company.email || company.website) && (
+                {(company.phone || company.website) && (
                   <div className="space-y-1 text-sm">
                     {company.phone && (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Phone className="h-3 w-3" />
                         {company.phone}
-                      </div>
-                    )}
-                    {company.email && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Mail className="h-3 w-3" />
-                        {company.email}
                       </div>
                     )}
                     {company.website && (
