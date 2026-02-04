@@ -12,6 +12,10 @@ export default function AccountPage() {
   const { data: session } = useSession()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [passwordLoading, setPasswordLoading] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
 
   const handleUpdateProfile = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -22,6 +26,67 @@ export default function AccountPage() {
       description: "Profile updated successfully",
     })
     setLoading(false)
+  }
+
+  const handleChangePassword = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "New passwords do not match",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setPasswordLoading(true)
+
+    try {
+      const res = await fetch("/api/user/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to change password",
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: "Password changed successfully",
+      })
+      
+      // Clear form
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong",
+        variant: "destructive",
+      })
+    } finally {
+      setPasswordLoading(false)
+    }
   }
 
   return (
@@ -67,20 +132,43 @@ export default function AccountPage() {
             <CardTitle>Change Password</CardTitle>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4">
+            <form onSubmit={handleChangePassword} className="space-y-4">
               <div>
                 <Label htmlFor="currentPassword">Current Password</Label>
-                <Input id="currentPassword" type="password" />
+                <Input 
+                  id="currentPassword" 
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                  disabled={passwordLoading}
+                />
               </div>
               <div>
                 <Label htmlFor="newPassword">New Password</Label>
-                <Input id="newPassword" type="password" />
+                <Input 
+                  id="newPassword" 
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  disabled={passwordLoading}
+                />
               </div>
               <div>
                 <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <Input id="confirmPassword" type="password" />
+                <Input 
+                  id="confirmPassword" 
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  disabled={passwordLoading}
+                />
               </div>
-              <Button type="submit">Change Password</Button>
+              <Button type="submit" disabled={passwordLoading}>
+                {passwordLoading ? "Changing..." : "Change Password"}
+              </Button>
             </form>
           </CardContent>
         </Card>
