@@ -125,8 +125,12 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     console.error("create-admin error:", e)
     const message = e?.message || String(e)
+    let hint = ""
+    if (message.includes("prisma://")) {
+      hint = " In Vercel Environment Variables, set DATABASE_URL to your Neon Postgres URL (it must start with postgresql:// or postgres://, not prisma://)."
+    }
     return NextResponse.json(
-      { error: "Server error", details: message },
+      { error: "Server error", details: message + hint },
       { status: 500 }
     )
   }
