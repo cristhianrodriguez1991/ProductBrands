@@ -15,6 +15,7 @@ import {
   LogOut,
   MessageSquare,
   Building2,
+  Tag,
 } from "lucide-react"
 
 export default function AdminLayout({
@@ -71,6 +72,12 @@ export default function AdminLayout({
             <Button variant="ghost" className="w-full justify-start">
               <Users className="mr-2 h-4 w-4" />
               Users
+            </Button>
+          </Link>
+          <Link href="/admin/brands">
+            <Button variant="ghost" className="w-full justify-start">
+              <Tag className="mr-2 h-4 w-4" />
+              Brands
             </Button>
           </Link>
           <Link href="/admin/listings">

@@ -373,7 +373,9 @@ model Product {
   brandId       String
   brand         Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
   name          String
+  description   String?  @db.Text
   bullets       String[] @default([])
+  category      String?  // e.g., "Coffee", "Hard Candies", "Sweeteners"
   imageUrl      String?
   amazonUrl     String
   asin          String   @unique
@@ -381,12 +383,16 @@ model Product {
   priceCurrency String?  @default("USD")
   rating        Float?
   reviewCount   Int?
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
   lastSyncedAt  DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@index([brandId])
   @@index([asin])
+  @@index([category])
+  @@index([isActive])
 }
 
 // Admin-managed product listings (separate from Brand products)
