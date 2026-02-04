@@ -37,21 +37,22 @@ export async function GET() {
     <p><label>Admin password (min 8 characters):<br><input type="password" name="password" required minlength="8" style="width:100%;padding:8px;"></label></p>
     <p><button type="submit">Create admin</button></p>
   </form>
-  <p id="msg" style="color:green;"></p>
+  <p id="msg"></p>
   <script>
     document.getElementById('f').onsubmit = function(e) {
       e.preventDefault();
+      var msg = document.getElementById('msg');
+      msg.style.color = '';
+      msg.textContent = 'Sending...';
       var fd = new FormData(this);
-      var secret = fd.get('secret');
-      var email = fd.get('email');
-      var password = fd.get('password');
       fetch('/api/setup/create-admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret: secret, email: email, password: password })
+        body: JSON.stringify({ secret: fd.get('secret'), email: fd.get('email'), password: fd.get('password') })
       }).then(function(r) { return r.json(); }).then(function(d) {
-        document.getElementById('msg').textContent = d.message || d.error || JSON.stringify(d);
-      }).catch(function(err) { document.getElementById('msg').textContent = 'Error: ' + err; });
+        if (d.message) { msg.style.color = 'green'; msg.textContent = d.message; }
+        else { msg.style.color = 'red'; msg.textContent = (d.error || 'Error') + (d.details ? ': ' + d.details : ''); }
+      }).catch(function(err) { msg.style.color = 'red'; msg.textContent = 'Error: ' + err; });
     };
   </script>
 </body>
@@ -121,8 +122,12 @@ export async function POST(req: NextRequest) {
       message: "Admin user created. You can log in at /login.",
       email,
     })
-  } catch (e) {
+  } catch (e: any) {
     console.error("create-admin error:", e)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    const message = e?.message || String(e)
+    return NextResponse.json(
+      { error: "Server error", details: message },
+      { status: 500 }
+    )
   }
 }
