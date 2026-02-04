@@ -28,7 +28,7 @@ export default function AdminLayout({
 
   useEffect(() => {
     if (status === "unauthenticated" || (status === "authenticated" && (!session || (session.user as any)?.role !== "ADMIN"))) {
-      router.push("/login")
+      router.push("/admin-login")
     }
   }, [status, session, router])
 

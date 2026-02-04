@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { signIn } from "next-auth/react"
+import { signIn, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,14 +45,12 @@ export default function AdminLoginPage() {
 
       if (userRole !== "ADMIN") {
         // Sign out non-admin users
-        await signIn("credentials", { redirect: false }) // This will fail and clear session
+        await signOut({ redirect: false })
         toast({
           title: "Access Denied",
           description: "This login is for administrators only.",
           variant: "destructive",
         })
-        // Sign them out
-        await fetch("/api/auth/signout", { method: "POST" })
         setLoading(false)
         return
       }
@@ -73,7 +71,7 @@ export default function AdminLoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-12 h-12 bg-slate-900 rounded-full flex items-center justify-center">
+          <div className="mx-auto mb-4 w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center">
             <Shield className="h-6 w-6 text-white" />
           </div>
           <CardTitle>Admin Login</CardTitle>

@@ -7,13 +7,13 @@ export default withAuth(
     const isAdmin = token?.role === "ADMIN"
     const isAuth = !!token
 
-    // Admin routes (except admin login page)
-    if (req.nextUrl.pathname.startsWith("/admin") && !req.nextUrl.pathname.startsWith("/admin/login")) {
+    // Admin routes
+    if (req.nextUrl.pathname.startsWith("/admin")) {
       if (!isAuth) {
-        return NextResponse.redirect(new URL("/admin/login", req.url))
+        return NextResponse.redirect(new URL("/admin-login", req.url))
       }
       if (!isAdmin) {
-        return NextResponse.redirect(new URL("/admin/login", req.url))
+        return NextResponse.redirect(new URL("/admin-login", req.url))
       }
     }
 
@@ -47,7 +47,7 @@ export default withAuth(
           req.nextUrl.pathname.startsWith("/quote") ||
           req.nextUrl.pathname.startsWith("/login") ||
           req.nextUrl.pathname.startsWith("/register") ||
-          req.nextUrl.pathname.startsWith("/admin/login")
+          req.nextUrl.pathname.startsWith("/admin-login")
         ) {
           return true
         }
