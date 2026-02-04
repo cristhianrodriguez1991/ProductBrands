@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,6 +9,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { Navbar } from "@/components/navbar"
+import { Mail, Phone, MapPin, Calendar } from "lucide-react"
+
+type SiteSettings = {
+  contact_email?: string
+  contact_phone?: string
+  contact_address?: string
+  calendar_url?: string
+}
 
 export default function ContactPage() {
   const { toast } = useToast()
@@ -19,6 +27,14 @@ export default function ContactPage() {
     message: "",
   })
   const [loading, setLoading] = useState(false)
+  const [settings, setSettings] = useState<SiteSettings>({})
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => setSettings(data))
+      .catch(console.error)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -133,24 +149,64 @@ export default function ContactPage() {
                 <CardTitle className="text-2xl">Other Ways to Reach Us</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div>
-                  <h3 className="font-semibold mb-2 text-gray-900">Email</h3>
-                  <p className="text-gray-600">info@productbrands.com</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-2 text-gray-900">Phone</h3>
-                  <p className="text-gray-600">1-800-PRODUCT</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-2 text-gray-900">Schedule a Call</h3>
-                  <p className="text-gray-600 mb-4">
-                    Book a time to discuss your project
-                  </p>
-                  <Button variant="outline" asChild>
-                    <a href="#" target="_blank" rel="noopener noreferrer">
-                      View Calendar
-                    </a>
-                  </Button>
+                {settings.contact_email && (
+                  <div className="flex items-start gap-3">
+                    <Mail className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold mb-1 text-gray-900">Email</h3>
+                      <a 
+                        href={`mailto:${settings.contact_email}`}
+                        className="text-gray-600 hover:text-blue-600 transition-colors"
+                      >
+                        {settings.contact_email}
+                      </a>
+                    </div>
+                  </div>
+                )}
+                {settings.contact_phone && (
+                  <div className="flex items-start gap-3">
+                    <Phone className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold mb-1 text-gray-900">Phone</h3>
+                      <a 
+                        href={`tel:${settings.contact_phone.replace(/[^0-9+]/g, '')}`}
+                        className="text-gray-600 hover:text-blue-600 transition-colors"
+                      >
+                        {settings.contact_phone}
+                      </a>
+                    </div>
+                  </div>
+                )}
+                {settings.contact_address && (
+                  <div className="flex items-start gap-3">
+                    <MapPin className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold mb-1 text-gray-900">Address</h3>
+                      <p className="text-gray-600 whitespace-pre-line">{settings.contact_address}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-start gap-3">
+                  <Calendar className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold mb-1 text-gray-900">Schedule a Call</h3>
+                    <p className="text-gray-600 mb-3">
+                      Book a time to discuss your project
+                    </p>
+                    {settings.calendar_url ? (
+                      <Button variant="outline" asChild>
+                        <a href={settings.calendar_url} target="_blank" rel="noopener noreferrer">
+                          View Calendar
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button variant="outline" asChild>
+                        <a href={`mailto:${settings.contact_email || 'info@productbrands.com'}?subject=Schedule a Call`}>
+                          Request a Call
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

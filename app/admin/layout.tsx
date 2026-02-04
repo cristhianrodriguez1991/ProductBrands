@@ -116,9 +116,15 @@ export default function AdminLayout({
               Live Chat
             </Button>
           </Link>
-          <Link href="/portal">
+          <Link href="/admin/settings">
             <Button variant="ghost" className="w-full justify-start">
               <Settings className="mr-2 h-4 w-4" />
+              Site Settings
+            </Button>
+          </Link>
+          <Link href="/portal">
+            <Button variant="ghost" className="w-full justify-start">
+              <Building2 className="mr-2 h-4 w-4" />
               Client Portal
             </Button>
           </Link>
