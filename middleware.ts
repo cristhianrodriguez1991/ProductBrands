@@ -6,19 +6,22 @@ export default withAuth(
     const token = req.nextauth.token
     const isAdmin = token?.role === "ADMIN"
     const isAuth = !!token
+    const pathname = req.nextUrl.pathname
 
-    // Admin routes
-    if (req.nextUrl.pathname.startsWith("/admin")) {
-      if (!isAuth) {
-        return NextResponse.redirect(new URL("/admin-login", req.url))
-      }
-      if (!isAdmin) {
+    // Skip middleware for login pages
+    if (pathname === "/admin-login" || pathname === "/login" || pathname === "/register") {
+      return NextResponse.next()
+    }
+
+    // Admin routes (but NOT /admin-login)
+    if (pathname.startsWith("/admin")) {
+      if (!isAuth || !isAdmin) {
         return NextResponse.redirect(new URL("/admin-login", req.url))
       }
     }
 
     // Portal routes - clients only
-    if (req.nextUrl.pathname.startsWith("/portal")) {
+    if (pathname.startsWith("/portal")) {
       if (!isAuth) {
         return NextResponse.redirect(new URL("/login", req.url))
       }
