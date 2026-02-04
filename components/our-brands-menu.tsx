@@ -13,54 +13,26 @@ type DbBrand = {
   children: { id: string; name: string; slug: string }[]
 }
 
-// Legacy brands that exist in the JSON file (keep these until fully migrated to DB)
-const LEGACY_BRANDS = [
-  {
-    id: "legacy-way",
-    name: "WAY",
-    slug: "way",
-    description: "Multi-category private label platform",
-    categories: [],
-    children: [],
-    isLegacy: true,
-  },
-  {
-    id: "legacy-office-roast",
-    name: "Office Roast",
-    slug: "office-roast",
-    description: "Workplace & hospitality coffee brand",
-    categories: ["Coffee", "Coffee Creamers", "Sweeteners", "Hard Candies", "Snacks & Groceries", "Grain & Seeds", "Wildlife Food"],
-    children: [],
-    isLegacy: true,
-  },
-]
-
 export function OurBrandsMenu() {
   const [open, setOpen] = useState(false)
   const [expandedParent, setExpandedParent] = useState<string | null>(null)
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
-  const [dbBrands, setDbBrands] = useState<DbBrand[]>([])
+  const [brands, setBrands] = useState<DbBrand[]>([])
   const [loading, setLoading] = useState(true)
   const ref = useRef<HTMLDivElement | null>(null)
 
-  // Fetch brands from API
+  // Fetch brands from database API
   useEffect(() => {
     fetch("/api/brands")
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
-          setDbBrands(data)
+          setBrands(data)
         }
       })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
-
-  // Combine legacy brands with database brands, avoiding duplicates
-  const brands = [
-    ...LEGACY_BRANDS.filter(lb => !dbBrands.some(db => db.slug === lb.slug)),
-    ...dbBrands,
-  ]
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
