@@ -43,6 +43,42 @@ const nextConfig = {
           },
         ],
       },
+      // Disable caching for brand pages - always serve fresh data
+      {
+        source: "/brands/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+          },
+          {
+            key: "CDN-Cache-Control",
+            value: "no-store",
+          },
+          {
+            key: "Vercel-CDN-Cache-Control",
+            value: "no-store",
+          },
+        ],
+      },
+      // Disable caching for API routes
+      {
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+          },
+          {
+            key: "CDN-Cache-Control",
+            value: "no-store",
+          },
+          {
+            key: "Vercel-CDN-Cache-Control",
+            value: "no-store",
+          },
+        ],
+      },
     ];
   },
   // Redirect www to non-www (or vice versa)
