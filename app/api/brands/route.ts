@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
+// Disable caching - always fetch fresh data
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 // GET /api/brands - Public API to list brands for navigation
 export async function GET() {
   try {
@@ -34,7 +38,13 @@ export async function GET() {
         })),
       }))
 
-    return NextResponse.json(result)
+    return NextResponse.json(result, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+      },
+    })
   } catch (error: any) {
     console.error("Error fetching brands:", error)
     return NextResponse.json({ error: error.message || "Failed to fetch brands" }, { status: 500 })

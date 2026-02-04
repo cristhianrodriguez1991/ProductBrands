@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
 import { requireAdminApi } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 
@@ -51,6 +52,11 @@ export async function POST(req: NextRequest) {
         sortOrder: sortOrder || 0,
       },
     })
+
+    // Revalidate cached pages
+    revalidatePath("/")
+    revalidatePath("/brands")
+    revalidatePath(`/brands/${slug}`)
 
     return NextResponse.json(brand)
   } catch (error: any) {

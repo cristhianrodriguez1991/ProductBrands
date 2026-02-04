@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
 import { requireAdminApi } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 
@@ -59,6 +60,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       },
     })
 
+    // Revalidate cached pages
+    revalidatePath("/")
+    revalidatePath("/brands")
+    revalidatePath(`/brands/${brand.slug}`)
+
     return NextResponse.json(brand)
   } catch (error: any) {
     console.error("Error updating brand:", error)
@@ -71,9 +77,22 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   try {
     await requireAdminApi(req)
 
+    // Get the brand slug before deleting for revalidation
+    const brand = await prisma.brand.findUnique({
+      where: { id: params.id },
+      select: { slug: true },
+    })
+
     await prisma.brand.delete({
       where: { id: params.id },
     })
+
+    // Revalidate cached pages
+    revalidatePath("/")
+    revalidatePath("/brands")
+    if (brand?.slug) {
+      revalidatePath(`/brands/${brand.slug}`)
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

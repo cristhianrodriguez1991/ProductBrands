@@ -4,6 +4,10 @@ import { Navbar } from "@/components/navbar"
 import { BrandProductsTabs } from "@/components/brand-products-tabs"
 import { getBrandFromDb } from "@/lib/brand-db"
 
+// Force dynamic rendering - no caching
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 // Category definitions with descriptions
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   "Coffee": "Pods, capsules, and coffee formats ideal for offices and hospitality programs.",

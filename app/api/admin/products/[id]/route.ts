@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
 import { requireAdminApi } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 
@@ -58,7 +59,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(sortOrder !== undefined && { sortOrder }),
         ...(brandId !== undefined && { brandId }),
       },
+      include: {
+        brand: { select: { slug: true } },
+      },
     })
+
+    // Revalidate cached pages
+    revalidatePath("/")
+    if (product.brand?.slug) {
+      revalidatePath(`/brands/${product.brand.slug}`)
+    }
 
     return NextResponse.json(product)
   } catch (error: any) {
@@ -72,9 +82,21 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   try {
     await requireAdminApi(req)
 
+    // Get product with brand slug before deleting for revalidation
+    const product = await prisma.product.findUnique({
+      where: { id: params.id },
+      include: { brand: { select: { slug: true } } },
+    })
+
     await prisma.product.delete({
       where: { id: params.id },
     })
+
+    // Revalidate cached pages
+    revalidatePath("/")
+    if (product?.brand?.slug) {
+      revalidatePath(`/brands/${product.brand.slug}`)
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
