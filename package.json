@@ -15,6 +15,8 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.4.0",
     "@aws-sdk/client-s3": "^3.490.0",
+    "@neondatabase/serverless": "^1.0.2",
+    "@prisma/adapter-neon": "^7.3.0",
     "@prisma/client": "^5.7.1",
     "@radix-ui/react-accordion": "^1.1.2",
     "@radix-ui/react-alert-dialog": "^1.0.5",
@@ -47,6 +49,7 @@
     "next-auth": "^4.24.5",
     "next-themes": "^0.2.1",
     "postcss": "^8.4.32",
+    "prisma": "^5.7.1",
     "react": "^18.2.0",
     "react-day-picker": "^8.10.0",
     "react-dom": "^18.2.0",
@@ -56,15 +59,16 @@
     "tailwind-merge": "^2.2.0",
     "tailwindcss": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
+    "ws": "^8.19.0",
     "zod": "^3.22.4",
-    "zustand": "^4.4.7",
-    "prisma": "^5.7.1"
+    "zustand": "^4.4.7"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.10.6",
     "@types/react": "^18.2.46",
     "@types/react-dom": "^18.2.18",
+    "@types/ws": "^8.18.1",
     "eslint": "^8.56.0",
     "eslint-config-next": "14.0.4",
     "tsx": "^4.7.0",
