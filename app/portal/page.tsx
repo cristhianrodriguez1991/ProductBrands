@@ -13,28 +13,34 @@ export default async function PortalDashboard() {
   if (!session) redirect("/login")
 
   const userId = (session.user as any).id
-  const isAdmin = (session.user as any).role === "ADMIN"
+  const userRole = (session.user as any).role
 
+  // Redirect admins to admin portal
+  if (userRole === "ADMIN") {
+    redirect("/admin")
+  }
+
+  // Client portal - only show data for this specific user
   const [quotes, orders, messages, invoices] = await Promise.all([
     prisma.quote.findMany({
-      where: isAdmin ? {} : { createdById: userId },
+      where: { createdById: userId },
       take: 5,
       orderBy: { createdAt: "desc" },
       include: { company: true },
     }),
     prisma.order.findMany({
-      where: isAdmin ? {} : { createdById: userId },
+      where: { createdById: userId },
       take: 5,
       orderBy: { createdAt: "desc" },
       include: { company: true },
     }),
     prisma.message.findMany({
-      where: isAdmin ? {} : { userId },
+      where: { userId },
       take: 5,
       orderBy: { createdAt: "desc" },
     }),
     prisma.invoice.findMany({
-      where: isAdmin ? {} : { createdById: userId },
+      where: { createdById: userId },
       take: 5,
       orderBy: { createdAt: "desc" },
       include: { company: true },

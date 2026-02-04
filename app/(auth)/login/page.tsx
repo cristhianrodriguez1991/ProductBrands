@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { signIn } from "next-auth/react"
+import { signIn, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/use-toast"
 export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { data: session, update } = useSession()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -34,8 +35,19 @@ export default function LoginPage() {
           description: "Invalid email or password",
           variant: "destructive",
         })
+        setLoading(false)
       } else {
-        router.push("/portal")
+        // Fetch the session to get user role
+        const sessionRes = await fetch("/api/auth/session")
+        const sessionData = await sessionRes.json()
+        const userRole = sessionData?.user?.role
+        
+        // Redirect based on role
+        if (userRole === "ADMIN") {
+          router.push("/admin")
+        } else {
+          router.push("/portal")
+        }
         router.refresh()
       }
     } catch (error) {
@@ -44,7 +56,6 @@ export default function LoginPage() {
         description: "Something went wrong",
         variant: "destructive",
       })
-    } finally {
       setLoading(false)
     }
   }

@@ -122,12 +122,6 @@ export default function AdminLayout({
               Site Settings
             </Button>
           </Link>
-          <Link href="/portal">
-            <Button variant="ghost" className="w-full justify-start">
-              <Building2 className="mr-2 h-4 w-4" />
-              Client Portal
-            </Button>
-          </Link>
           <Button
             variant="ghost"
             className="w-full justify-start"
