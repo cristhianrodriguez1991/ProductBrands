@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache"
 import { prisma } from "./prisma"
 
 export type DbProduct = {
@@ -31,6 +32,9 @@ export type DbBrand = {
 
 // Get a brand by slug with all its products
 export async function getBrandFromDb(slug: string): Promise<DbBrand | null> {
+  // Opt out of caching - always fetch fresh data
+  noStore()
+  
   const brand = await prisma.brand.findUnique({
     where: { slug },
     include: {
@@ -52,6 +56,9 @@ export async function getBrandFromDb(slug: string): Promise<DbBrand | null> {
 
 // Get all top-level brands for navigation
 export async function getAllBrandsFromDb(): Promise<DbBrand[]> {
+  // Opt out of caching - always fetch fresh data
+  noStore()
+  
   const brands = await prisma.brand.findMany({
     where: { parentId: null },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],

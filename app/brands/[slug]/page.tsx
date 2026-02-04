@@ -1,5 +1,6 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
+import { unstable_noStore as noStore } from "next/cache"
 import { Navbar } from "@/components/navbar"
 import { BrandProductsTabs } from "@/components/brand-products-tabs"
 import { getBrandFromDb } from "@/lib/brand-db"
@@ -7,6 +8,7 @@ import { getBrandFromDb } from "@/lib/brand-db"
 // Force dynamic rendering - no caching
 export const dynamic = "force-dynamic"
 export const revalidate = 0
+export const fetchCache = "force-no-store"
 
 // Category definitions with descriptions
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
@@ -27,6 +29,9 @@ export default async function DynamicBrandPage({
   params: { slug: string }
   searchParams: { category?: string }
 }) {
+  // Ensure fresh data on every request
+  noStore()
+  
   const brand = await getBrandFromDb(params.slug)
 
   if (!brand) {
