@@ -1,4 +1,3 @@
-import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { unstable_noStore as noStore } from "next/cache"
 import { Navbar } from "@/components/navbar"
@@ -81,14 +80,12 @@ export default async function DynamicBrandPage({
               )}
             </div>
 
-            <Suspense fallback={<div className="text-center py-8">Loading categories...</div>}>
-              <BrandProductsTabs
-                brandSlug={brand.slug}
-                products={allProducts}
-                categories={categories}
-                initialCategory={searchParams.category}
-              />
-            </Suspense>
+            <BrandProductsTabs
+              brandSlug={brand.slug}
+              products={allProducts}
+              categories={categories}
+              initialCategory={searchParams.category}
+            />
           </div>
 
           <p className="mt-6 text-[11px] text-gray-500">

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { AmazonProductCard } from "@/components/amazon-product-card"
 
 type Product = {
@@ -26,11 +26,10 @@ type BrandProductsTabsProps = {
   brandSlug: string
   products: Product[]
   categories: Category[]
-  initialCategory?: string // Allow passing initial category from server
+  initialCategory?: string // Category from URL passed by server
 }
 
 export function BrandProductsTabs({ brandSlug, products, categories, initialCategory }: BrandProductsTabsProps) {
-  const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
   
@@ -44,51 +43,38 @@ export function BrandProductsTabs({ brandSlug, products, categories, initialCate
     })
   }, [categories, products])
 
-  // Get category from URL params or default to first category
-  const getInitialTab = () => {
-    // First check URL params
-    const categoryFromUrl = searchParams?.get("category")
-    if (categoryFromUrl) {
-      // Case-insensitive match
-      const matched = categoriesWithProducts.find(
-        cat => cat.id.toLowerCase() === categoryFromUrl.toLowerCase()
-      )
-      if (matched) return matched.id
-    }
-    
-    // Then check server-provided initial category
+  // Determine initial tab from server-provided category or default to first
+  const getInitialTab = (): string => {
     if (initialCategory) {
+      // Case-insensitive match
       const matched = categoriesWithProducts.find(
         cat => cat.id.toLowerCase() === initialCategory.toLowerCase()
       )
       if (matched) return matched.id
     }
-    
-    // Default to first category
     return categoriesWithProducts.length > 0 ? categoriesWithProducts[0].id : ""
   }
 
-  const [activeTab, setActiveTab] = useState(getInitialTab)
+  const [activeTab, setActiveTab] = useState<string>(getInitialTab)
 
-  // Update active tab when URL param changes
+  // Update tab when initialCategory changes (e.g., navigation)
   useEffect(() => {
-    const urlCategory = searchParams?.get("category")
-    if (urlCategory) {
-      // Case-insensitive match
+    if (initialCategory) {
       const matched = categoriesWithProducts.find(
-        cat => cat.id.toLowerCase() === urlCategory.toLowerCase()
+        cat => cat.id.toLowerCase() === initialCategory.toLowerCase()
       )
-      if (matched) {
+      if (matched && matched.id !== activeTab) {
         setActiveTab(matched.id)
-        return
       }
     }
-    
-    // If no URL category or not found, default to first
-    if (categoriesWithProducts.length > 0 && !activeTab) {
-      setActiveTab(categoriesWithProducts[0].id)
-    }
-  }, [searchParams, categoriesWithProducts, activeTab])
+  }, [initialCategory, categoriesWithProducts, activeTab])
+
+  // Handle tab click
+  const handleTabClick = (categoryId: string) => {
+    setActiveTab(categoryId)
+    // Update URL without full page reload
+    router.push(`${pathname}?category=${encodeURIComponent(categoryId)}`, { scroll: false })
+  }
 
   // Get active category and its products
   const activeCategory = categoriesWithProducts.find((cat) => cat.id === activeTab)
@@ -112,12 +98,7 @@ export function BrandProductsTabs({ brandSlug, products, categories, initialCate
           {categoriesWithProducts.map((category) => (
             <button
               key={category.id}
-              onClick={() => {
-                setActiveTab(category.id)
-                const params = new URLSearchParams(searchParams.toString())
-                params.set("category", category.id)
-                router.push(`${pathname}?${params.toString()}`, { scroll: false })
-              }}
+              onClick={() => handleTabClick(category.id)}
               className={`
                 px-4 py-2 text-xs font-semibold rounded-full transition-all duration-300 whitespace-nowrap flex-shrink-0
                 ${
