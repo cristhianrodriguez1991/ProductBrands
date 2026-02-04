@@ -79,9 +79,13 @@ export default function BrandProductsPage() {
   const [storeLinks, setStoreLinks] = useState<StoreLink[]>([])
   const [showNewCategory, setShowNewCategory] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState("")
+  const [customCategory, setCustomCategory] = useState<string | null>(null)
 
-  // Get unique categories from existing products
-  const existingCategories = [...new Set(products.map(p => p.category).filter(Boolean))] as string[]
+  // Get unique categories from existing products + any custom category being created
+  const existingCategories = [...new Set([
+    ...products.map(p => p.category).filter(Boolean),
+    ...(customCategory ? [customCategory] : []),
+  ])] as string[]
 
   useEffect(() => {
     if (params.id) {
@@ -133,6 +137,7 @@ export default function BrandProductsPage() {
     setEditingProduct(null)
     setShowNewCategory(false)
     setNewCategoryName("")
+    setCustomCategory(null)
   }
 
   const openAddDialog = () => {
@@ -366,7 +371,9 @@ export default function BrandProductsPage() {
                         size="sm"
                         onClick={() => {
                           if (newCategoryName.trim()) {
-                            setFormData({ ...formData, category: newCategoryName.trim() })
+                            const newCat = newCategoryName.trim()
+                            setCustomCategory(newCat)
+                            setFormData({ ...formData, category: newCat })
                           }
                           setShowNewCategory(false)
                           setNewCategoryName("")
