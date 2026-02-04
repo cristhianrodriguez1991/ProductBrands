@@ -55,6 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         asin,
         priceAmount,
         sortOrder: sortOrder || 0,
+        isActive: true, // Explicitly set to ensure product is visible
       },
     })
 

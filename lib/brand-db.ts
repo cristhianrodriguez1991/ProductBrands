@@ -35,13 +35,11 @@ export async function getBrandFromDb(slug: string): Promise<DbBrand | null> {
     where: { slug },
     include: {
       products: {
-        where: { isActive: true },
         orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
       },
       children: {
         include: {
           products: {
-            where: { isActive: true },
             orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
           },
         },
