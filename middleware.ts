@@ -5,20 +5,26 @@ export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token
     const isAdmin = token?.role === "ADMIN"
-    const isCustomer = token?.role === "CUSTOMER"
     const isAuth = !!token
 
-    // Admin routes
-    if (req.nextUrl.pathname.startsWith("/admin")) {
+    // Admin routes (except admin login page)
+    if (req.nextUrl.pathname.startsWith("/admin") && !req.nextUrl.pathname.startsWith("/admin/login")) {
+      if (!isAuth) {
+        return NextResponse.redirect(new URL("/admin/login", req.url))
+      }
       if (!isAdmin) {
-        return NextResponse.redirect(new URL("/login", req.url))
+        return NextResponse.redirect(new URL("/admin/login", req.url))
       }
     }
 
-    // Portal routes
+    // Portal routes - clients only
     if (req.nextUrl.pathname.startsWith("/portal")) {
       if (!isAuth) {
         return NextResponse.redirect(new URL("/login", req.url))
+      }
+      // Block admins from client portal
+      if (isAdmin) {
+        return NextResponse.redirect(new URL("/admin", req.url))
       }
     }
   },
@@ -40,7 +46,8 @@ export default withAuth(
           req.nextUrl.pathname.startsWith("/privacy") ||
           req.nextUrl.pathname.startsWith("/quote") ||
           req.nextUrl.pathname.startsWith("/login") ||
-          req.nextUrl.pathname.startsWith("/register")
+          req.nextUrl.pathname.startsWith("/register") ||
+          req.nextUrl.pathname.startsWith("/admin/login")
         ) {
           return true
         }

@@ -1,17 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { signIn, signOut } from "next-auth/react"
+import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
-import { User } from "lucide-react"
+import { Shield } from "lucide-react"
 
-export default function LoginPage() {
+export default function AdminLoginPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [email, setEmail] = useState("")
@@ -39,25 +38,26 @@ export default function LoginPage() {
         return
       }
 
-      // Fetch the session to verify role
+      // Fetch the session to verify admin role
       const sessionRes = await fetch("/api/auth/session")
       const sessionData = await sessionRes.json()
       const userRole = sessionData?.user?.role
 
-      // Block admin accounts from client portal
-      if (userRole === "ADMIN") {
-        await signOut({ redirect: false })
+      if (userRole !== "ADMIN") {
+        // Sign out non-admin users
+        await signIn("credentials", { redirect: false }) // This will fail and clear session
         toast({
           title: "Access Denied",
-          description: "Admin accounts cannot access the client portal. Please use the admin login.",
+          description: "This login is for administrators only.",
           variant: "destructive",
         })
+        // Sign them out
+        await fetch("/api/auth/signout", { method: "POST" })
         setLoading(false)
         return
       }
 
-      // Client login successful
-      router.push("/portal")
+      router.push("/admin")
       router.refresh()
     } catch (error) {
       toast({
@@ -70,14 +70,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted p-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-            <User className="h-6 w-6 text-white" />
+          <div className="mx-auto mb-4 w-12 h-12 bg-slate-900 rounded-full flex items-center justify-center">
+            <Shield className="h-6 w-6 text-white" />
           </div>
-          <CardTitle>Client Login</CardTitle>
-          <CardDescription>Access your client portal to view quotes, orders, and invoices</CardDescription>
+          <CardTitle>Admin Login</CardTitle>
+          <CardDescription>Access the administration portal</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -102,27 +102,11 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Logging in..." : "Login"}
+              {loading ? "Logging in..." : "Login to Admin"}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
-            <Link href="/register" className="text-primary hover:underline">
-              Don't have an account? Register
-            </Link>
-          </div>
-          <div className="mt-4">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => signIn("google", { callbackUrl: "/portal" })}
-            >
-              Sign in with Google
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
   )
 }
-
