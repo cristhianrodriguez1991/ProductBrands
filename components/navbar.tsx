@@ -47,7 +47,7 @@ export function Navbar() {
           >
             Contact
           </Link>
-          <Link href="/login">
+          <Link href="/portal">
             <Button variant="outline" size="sm" className="text-xs">
               Client Portal
             </Button>
@@ -115,7 +115,7 @@ export function Navbar() {
               Contact
             </Link>
             <div className="pt-2 space-y-2 border-t">
-              <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+              <Link href="/portal" onClick={() => setIsMobileMenuOpen(false)}>
                 <Button variant="outline" size="sm" className="w-full text-xs">
                   Client Portal
                 </Button>
