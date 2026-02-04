@@ -62,14 +62,6 @@ export default async function DynamicBrandPage({
     ...(brand.children?.flatMap((child) => child.products) || []),
   ]
 
-  // Debug: log what we're sending to client
-  const debugInfo = {
-    timestamp: new Date().toISOString(),
-    totalProducts: allProducts.length,
-    categories: categories.map(c => c.id),
-    requestedCategory: searchParams.category,
-  }
-
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
@@ -100,11 +92,6 @@ export default async function DynamicBrandPage({
             Amazon product information, pricing, and availability may change at any time. Always
             refer to the live Amazon listing for the most up-to-date details.
           </p>
-          
-          {/* Debug info - remove after testing */}
-          <pre className="mt-4 p-2 bg-gray-100 text-xs overflow-auto">
-            {JSON.stringify(debugInfo, null, 2)}
-          </pre>
         </div>
       </section>
     </div>
