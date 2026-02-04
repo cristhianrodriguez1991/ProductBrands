@@ -52,35 +52,140 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
     setNewLineItem({ description: "", quantity: "", unitPrice: "", notes: "" })
   }
 
-  const handleSave = async () => {
+  const handleStatusUpdate = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/quotes/${quote.id}`, {
+      const res = await fetch(`/api/admin/quotes/${quote.id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status,
-          adminNotes,
-          totalEstimate: totalEstimate ? parseFloat(totalEstimate) : null,
-          lineItems,
+          internalNotes: adminNotes,
         }),
       })
 
-      if (!res.ok) throw new Error("Failed to update quote")
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to update quote status")
+      }
 
       toast({
         title: "Success",
-        description: "Quote updated successfully",
+        description: "Quote status updated successfully",
       })
       router.refresh()
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to update quote",
+        description: error.message || "Failed to update quote status",
         variant: "destructive",
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSaveLineItems = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/quotes/${quote.id}/line-items`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lineItems: lineItems.map((item: any) => ({
+            description: item.description,
+            quantity: item.quantity || 1,
+            unitPrice: item.unitPrice,
+            lineTotal: item.totalPrice,
+            notes: item.notes,
+          })),
+        }),
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to update line items")
+      }
+
+      toast({
+        title: "Success",
+        description: "Line items updated successfully",
+      })
+      router.refresh()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update line items",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleConvertToOrder = async () => {
+    if (!confirm("Convert this quote to an order? This action cannot be undone.")) {
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/quotes/${quote.id}/convert-to-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to convert quote to order")
+      }
+
+      const order = await res.json()
+      toast({
+        title: "Success",
+        description: `Quote converted to order ${order.orderNumber}`,
+      })
+      router.push(`/admin/orders/${order.id}`)
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to convert quote to order",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim()) return
+    setSendingMessage(true)
+    try {
+      const res = await fetch(`/api/admin/quotes/${quote.id}/message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: messageText }),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to send message")
+      }
+      const newMessage = await res.json()
+      setMessages([...messages, newMessage])
+      setMessageText("")
+      toast({
+        title: "Success",
+        description: "Message sent",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send message",
+        variant: "destructive",
+      })
+    } finally {
+      setSendingMessage(false)
     }
   }
 
