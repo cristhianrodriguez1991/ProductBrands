@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { requireAdminApi } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 
 // GET /api/admin/brands/[id] - Get single brand
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireAdminApi(req)
 
@@ -30,7 +30,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 // PATCH /api/admin/brands/[id] - Update brand
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireAdminApi(req)
 
@@ -67,7 +67,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 // DELETE /api/admin/brands/[id] - Delete brand
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireAdminApi(req)
 

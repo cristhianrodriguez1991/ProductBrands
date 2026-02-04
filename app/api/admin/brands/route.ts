@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { requireAdminApi } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 
 // GET /api/admin/brands - List all brands
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     await requireAdminApi(req)
 
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 }
 
 // POST /api/admin/brands - Create a brand
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     await requireAdminApi(req)
 
