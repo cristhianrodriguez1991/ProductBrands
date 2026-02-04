@@ -95,32 +95,44 @@ export async function POST() {
     const rating = item.CustomerReviews?.StarRating ?? null
     const reviewCount = item.CustomerReviews?.Count ?? null
 
-    await prisma.product.upsert({
+    // Find existing product by ASIN
+    const existingProduct = await prisma.product.findFirst({
       where: { asin },
-      update: {
-        name: title,
-        imageUrl: imageUrl ?? undefined,
-        bullets,
-        priceAmount: priceAmount ?? undefined,
-        priceCurrency: priceCurrency ?? undefined,
-        rating: rating ?? undefined,
-        reviewCount: reviewCount ?? undefined,
-        lastSyncedAt: new Date(),
-      },
-      create: {
-        asin,
-        brandId,
-        name: title,
-        imageUrl: imageUrl ?? undefined,
-        bullets,
-        amazonUrl: `https://www.amazon.com/dp/${asin}`,
-        priceAmount: priceAmount ?? undefined,
-        priceCurrency: priceCurrency ?? undefined,
-        rating: rating ?? undefined,
-        reviewCount: reviewCount ?? undefined,
-        lastSyncedAt: new Date(),
-      },
     })
+
+    if (existingProduct) {
+      // Update existing product
+      await prisma.product.update({
+        where: { id: existingProduct.id },
+        data: {
+          name: title,
+          imageUrl: imageUrl ?? undefined,
+          bullets,
+          priceAmount: priceAmount ?? undefined,
+          priceCurrency: priceCurrency ?? undefined,
+          rating: rating ?? undefined,
+          reviewCount: reviewCount ?? undefined,
+          lastSyncedAt: new Date(),
+        },
+      })
+    } else {
+      // Create new product
+      await prisma.product.create({
+        data: {
+          asin,
+          brandId,
+          name: title,
+          imageUrl: imageUrl ?? undefined,
+          bullets,
+          amazonUrl: `https://www.amazon.com/dp/${asin}`,
+          priceAmount: priceAmount ?? undefined,
+          priceCurrency: priceCurrency ?? undefined,
+          rating: rating ?? undefined,
+          reviewCount: reviewCount ?? undefined,
+          lastSyncedAt: new Date(),
+        },
+      })
+    }
 
     syncedCount++
   }
