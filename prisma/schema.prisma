@@ -476,19 +476,22 @@ model ListingMedia {
 
 model AuditLog {
   id          String   @id @default(cuid())
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  entityType  String   // "Quote", "Order", "Invoice"
+  actorUserId String?
+  actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  action      String   // "status_change", "created", "updated", "deleted", "pricing_edited", "role_changed"
+  entityType  String   // "Quote", "Order", "Invoice", "Listing", "User", etc.
   entityId    String
-  action      String   // "status_change", "created", "updated"
-  oldValue    String?
-  newValue    String?
-  metadata    Json?
+  before      Json?    // Before state (JSONB)
+  after       Json?    // After state (JSONB)
+  ip          String?
+  userAgent   String?
+  metadata    Json?    // Additional context
   createdAt   DateTime @default(now())
 
   @@index([entityType, entityId])
-  @@index([userId])
+  @@index([actorUserId])
   @@index([createdAt])
+  @@index([action])
 }
 
 // NextAuth models
