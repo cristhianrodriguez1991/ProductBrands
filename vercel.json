@@ -1,7 +1,7 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "npx prisma generate && next build",
   "devCommand": "npm run dev",
-  "installCommand": "npm install",
+  "installCommand": "rm -rf node_modules/.prisma && npm install",
   "framework": "nextjs",
   "regions": ["iad1"]
 }
