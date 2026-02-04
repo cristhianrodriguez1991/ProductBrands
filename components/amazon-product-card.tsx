@@ -4,7 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Star, ExternalLink, Sparkles, ShoppingCart } from "lucide-react"
+import { Star, ExternalLink, Sparkles, ShoppingCart, ChevronDown, ChevronUp } from "lucide-react"
 
 type StoreLink = {
   storeName: string
@@ -51,6 +51,7 @@ const STORE_STYLES: Record<string, { bg: string, hover: string, icon?: string }>
 export function AmazonProductCard({ product, showFullDetails = false }: AmazonProductCardProps) {
   const [productData] = useState<ProductData>(product)
   const [isHovered, setIsHovered] = useState(false)
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 
   const formatPrice = (amount: number | null | undefined, currency: string = "USD") => {
     if (!amount) return null
@@ -177,11 +178,31 @@ export function AmazonProductCard({ product, showFullDetails = false }: AmazonPr
           )}
         </div>
 
-        {/* Description - always show if available */}
+        {/* Description - expandable */}
         {productData.description && (
-          <p className="text-sm text-gray-600 line-clamp-3">
-            {productData.description}
-          </p>
+          <div className="space-y-1">
+            <p className={`text-sm text-gray-600 ${isDescriptionExpanded ? "" : "line-clamp-2"}`}>
+              {productData.description}
+            </p>
+            {productData.description.length > 100 && (
+              <button
+                onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
+              >
+                {isDescriptionExpanded ? (
+                  <>
+                    Show less
+                    <ChevronUp className="h-3 w-3" />
+                  </>
+                ) : (
+                  <>
+                    Read more
+                    <ChevronDown className="h-3 w-3" />
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         )}
 
         {/* Store Links - Show all if multiple, or single button */}
