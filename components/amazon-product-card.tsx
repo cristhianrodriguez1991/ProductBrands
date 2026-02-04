@@ -61,10 +61,6 @@ export function AmazonProductCard({ product, showFullDetails = false }: AmazonPr
   }
 
   const displayTitle = productData.title || "Product details coming soon"
-  const displayDescription = productData.description || "Details coming soon. We will add full product information as your catalog grows."
-  const displayBullets = productData.bullets && productData.bullets.length > 0 
-    ? productData.bullets 
-    : []
   const displayPrice = productData.priceAmount ? formatPrice(productData.priceAmount, productData.priceCurrency) : null
   const displayRating = productData.rating
   const displayReviewCount = productData.reviewCount
@@ -181,31 +177,11 @@ export function AmazonProductCard({ product, showFullDetails = false }: AmazonPr
           )}
         </div>
 
-        {/* Description */}
-        {showFullDetails && (
+        {/* Description - always show if available */}
+        {productData.description && (
           <p className="text-sm text-gray-600 line-clamp-3">
-            {displayDescription}
+            {productData.description}
           </p>
-        )}
-
-        {/* Bullets with animation */}
-        {displayBullets.length > 0 && (
-          <ul className="space-y-2">
-            {displayBullets.slice(0, showFullDetails ? 10 : 3).map((bullet, i) => (
-              <li
-                key={i}
-                className="flex items-start gap-2 text-sm text-gray-700 group-hover:text-gray-900 transition-colors"
-                style={{
-                  animationDelay: `${i * 50}ms`,
-                }}
-              >
-                <div className="mt-1.5 flex-shrink-0">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 group-hover:bg-blue-500 transition-colors" />
-                </div>
-                <span className="leading-relaxed">{bullet}</span>
-              </li>
-            ))}
-          </ul>
         )}
 
         {/* Store Links - Show all if multiple, or single button */}

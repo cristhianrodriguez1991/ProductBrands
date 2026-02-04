@@ -70,7 +70,6 @@ export default function BrandProductsPage() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    bullets: "",
     category: "",
     imageUrl: "",
     priceAmount: "",
@@ -127,7 +126,6 @@ export default function BrandProductsPage() {
     setFormData({
       name: "",
       description: "",
-      bullets: "",
       category: "",
       imageUrl: "",
       priceAmount: "",
@@ -150,7 +148,6 @@ export default function BrandProductsPage() {
     setFormData({
       name: product.name,
       description: product.description || "",
-      bullets: product.bullets.join("\n"),
       category: product.category || "",
       imageUrl: product.imageUrl || "",
       priceAmount: product.priceAmount?.toString() || "",
@@ -223,7 +220,7 @@ export default function BrandProductsPage() {
       const payload = {
         name: formData.name,
         description: formData.description || null,
-        bullets: formData.bullets.split("\n").filter(b => b.trim()),
+        bullets: [],
         category: formData.category || null,
         imageUrl: formData.imageUrl || null,
         // Legacy fields for backward compatibility
@@ -540,18 +537,8 @@ export default function BrandProductsPage() {
                     id="description"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={2}
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <Label htmlFor="bullets">Bullet Points (one per line)</Label>
-                  <Textarea
-                    id="bullets"
-                    value={formData.bullets}
-                    onChange={(e) => setFormData({ ...formData, bullets: e.target.value })}
-                    placeholder="Feature 1&#10;Feature 2&#10;Feature 3"
-                    rows={3}
+                    placeholder="Enter product description..."
+                    rows={4}
                   />
                 </div>
 
