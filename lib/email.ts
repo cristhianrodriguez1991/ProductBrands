@@ -15,8 +15,10 @@ export type SendEmailOptions = {
   bcc?: string | string[]
 }
 
+// Use Resend's sandbox sender if no EMAIL_FROM set (works without domain verification).
+// Set EMAIL_FROM to e.g. noreply@yourdomain.com after verifying your domain in Resend.
 const defaultFrom = () =>
-  process.env.EMAIL_FROM || "noreply@productbrands.com"
+  process.env.EMAIL_FROM || "ProductBrands <onboarding@resend.dev>"
 
 // Lazy initialization - only create Resend instance when needed
 function getResend(): Resend | null {
@@ -24,6 +26,11 @@ function getResend(): Resend | null {
     return null
   }
   return new Resend(process.env.RESEND_API_KEY)
+}
+
+/** Use for debugging: true if RESEND_API_KEY is set in this environment (e.g. Vercel). */
+export function isResendConfigured(): boolean {
+  return !!process.env.RESEND_API_KEY
 }
 
 /**
@@ -65,10 +72,13 @@ export async function sendEmail({
     const { data, error } = await resend.emails.send(payload)
 
     if (error) {
-      console.error("[Resend] Send error:", error)
+      console.error("[Resend] Send failed:", JSON.stringify(error, null, 2))
       return { success: false, error }
     }
 
+    if (process.env.NODE_ENV !== "test") {
+      console.log("[Resend] Sent:", { id: data?.id, to: payload.to, from: payload.from })
+    }
     return { success: true, id: data?.id }
   } catch (error) {
     console.error("[Resend] Send exception:", error)

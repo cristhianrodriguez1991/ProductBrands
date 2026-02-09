@@ -19,8 +19,8 @@ EMAIL_FROM=noreply@yourdomain.com
 
 **Vercel:** Project → Settings → Environment Variables. Add:
 
-- `RESEND_API_KEY` – your Resend API key  
-- `EMAIL_FROM` – sender address (must use a verified domain; see below)
+- `RESEND_API_KEY` – your Resend API key (required for any email to send)
+- `EMAIL_FROM` – optional. If unset, the app uses `onboarding@resend.dev` (Resend’s sandbox), which works without verifying a domain. Set this to e.g. `noreply@productbrands.com` after you verify your domain in Resend.
 
 Redeploy after changing env vars.
 
@@ -66,8 +66,16 @@ await sendEmail({
 })
 ```
 
+## Not getting any emails?
+
+1. **Check Vercel env:** Project → Settings → Environment Variables. You must have `RESEND_API_KEY` set (starts with `re_`). If it’s missing, the app does not call Resend and no email is sent. Redeploy after adding or changing it.
+2. **Check recipient:** Contact form sends to `CONTACT_EMAIL` (or `info@productbrands.com` if unset). Quote confirmations go to the submitter’s email. Make sure you’re checking the right inbox.
+3. **Resend dashboard:** Go to [resend.com/emails](https://resend.com/emails) and see if the email appears as “Sent” or “Failed”. If it failed, the reason is shown there.
+4. **Spam folder:** Check spam/junk for the recipient address.
+5. **Sender address:** If you haven’t verified a domain, leave `EMAIL_FROM` unset so the app uses `onboarding@resend.dev`. If you set `EMAIL_FROM` to e.g. `noreply@productbrands.com` before verifying that domain in Resend, sends can fail.
+
 ## Troubleshooting
 
-- **Emails not sending:** Ensure `RESEND_API_KEY` is set and the domain for `EMAIL_FROM` is verified in Resend.
+- **Emails not sending:** Ensure `RESEND_API_KEY` is set in the environment where the app runs (e.g. Vercel). Optionally set `EMAIL_FROM` only after your domain is verified in Resend.
 - **Spam / delivery:** Keep SPF/DKIM records correct and avoid spammy content.
 - **Rate limits:** See [Resend limits](https://resend.com/docs/dashboard/emails/rate-limit).
