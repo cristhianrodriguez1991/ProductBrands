@@ -6,82 +6,147 @@ import { uploadFile } from "@/lib/storage"
 import { sendEmail, getQuoteSubmittedEmail } from "@/lib/email"
 import { generateQuoteNumber } from "@/lib/admin-utils"
 import { z } from "zod"
+import bcrypt from "bcryptjs"
+import { randomBytes } from "crypto"
 
-const quoteSchema = z.object({
-  productCategory: z.string().optional(),
-  customCategory: z.string().optional(),
-  productDescription: z.string().min(1),
-  targetCustomer: z.string().optional(),
-  packagingType: z.string().optional(),
-  labelingNeeds: z.string().optional(),
-  estimatedQuantity: z.string().optional(),
-  targetUnitCost: z.string().optional(),
-  timeline: z.string().optional(),
-  deadline: z.string().optional(),
-  shippingDestination: z.string().optional(),
+const simpleQuoteSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email"),
+  phone: z.string().optional(),
+  description: z.string().min(1, "Brief description is required"),
 })
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const formData = await req.formData()
-    const data: Record<string, string> = {}
-    formData.forEach((value, key) => {
-      if (key !== "files") {
-        data[key] = value as string
+    const name = (formData.get("name") as string)?.trim()
+    const email = (formData.get("email") as string)?.trim()?.toLowerCase()
+    const phone = (formData.get("phone") as string)?.trim() ?? ""
+    const description = (formData.get("description") as string)?.trim()
+
+    const validated = simpleQuoteSchema.parse({ name, email, phone, description })
+
+    const session = await getServerSession(authOptions)
+    const fileInput = formData.get("file") as File | null
+    const files = fileInput && fileInput.size > 0 ? [fileInput] : []
+
+    let companyId: string
+    let userId: string
+    let contactId: string | null = null
+
+    if (session?.user && (session.user as any).id && (session.user as any).companyId) {
+      // Logged-in user with company: use their account, ensure contact exists
+      companyId = (session.user as any).companyId
+      userId = (session.user as any).id
+
+      const existingContact = await prisma.clientContact.findFirst({
+        where: {
+          companyId,
+          email: validated.email,
+        },
+      })
+
+      if (existingContact) {
+        contactId = existingContact.id
+        await prisma.clientContact.update({
+          where: { id: existingContact.id },
+          data: {
+            name: validated.name,
+            phone: validated.phone || existingContact.phone,
+          },
+        })
+      } else {
+        const contact = await prisma.clientContact.create({
+          data: {
+            companyId,
+            name: validated.name,
+            email: validated.email,
+            phone: validated.phone || null,
+            isPrimary: true,
+          },
+        })
+        contactId = contact.id
       }
-    })
+    } else {
+      // Guest: find or create contact by email, then company and user
+      let contact = await prisma.clientContact.findFirst({
+        where: { email: validated.email },
+        include: { company: true },
+      })
 
-    const validated = quoteSchema.parse(data)
-    const userId = (session.user as any).id
-    const companyId = (session.user as any).companyId
+      if (contact) {
+        companyId = contact.companyId
+        await prisma.clientContact.update({
+          where: { id: contact.id },
+          data: {
+            name: validated.name,
+            phone: validated.phone || contact.phone,
+          },
+        })
+        contactId = contact.id
+      } else {
+        const companyName = validated.name || `Quote from ${validated.email}`
+        const company = await prisma.company.create({
+          data: { name: companyName },
+        })
+        companyId = company.id
+        contact = await prisma.clientContact.create({
+          data: {
+            companyId,
+            name: validated.name,
+            email: validated.email,
+            phone: validated.phone || null,
+            isPrimary: true,
+          },
+        })
+        contactId = contact.id
+      }
 
-    if (!companyId) {
-      return NextResponse.json({ error: "No company associated" }, { status: 400 })
+      let user = await prisma.user.findUnique({
+        where: { email: validated.email },
+      })
+
+      if (!user) {
+        const hashedPassword = await bcrypt.hash(
+          randomBytes(32).toString("hex"),
+          10
+        )
+        user = await prisma.user.create({
+          data: {
+            email: validated.email,
+            name: validated.name,
+            password: hashedPassword,
+            companyId,
+            role: "CUSTOMER",
+          },
+        })
+      } else if (!user.companyId) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { companyId },
+        })
+      }
+
+      userId = user.id
     }
 
-    // Parse labeling needs
-    let labelingNeeds: string[] = []
-    if (data.labelingNeeds) {
-      try {
-        labelingNeeds = JSON.parse(data.labelingNeeds)
-      } catch {
-        labelingNeeds = []
-      }
-    }
-
-    // Generate quote number
     const quoteNumber = await generateQuoteNumber()
 
-    // Create quote
     const quote = await prisma.quote.create({
       data: {
         quoteNumber,
         companyId,
         createdById: userId,
+        contactId,
         status: "NEW",
-        productCategory: validated.productCategory || validated.customCategory || null,
-        productDescription: validated.productDescription,
-        targetCustomer: validated.targetCustomer || null,
-        packagingType: validated.packagingType || null,
-        labelingNeeds,
-        estimatedQuantity: validated.estimatedQuantity || null,
-        targetUnitCost: validated.targetUnitCost ? parseFloat(validated.targetUnitCost) : null,
-        timeline: validated.timeline || null,
-        deadline: validated.deadline ? new Date(validated.deadline) : null,
-        shippingDestination: validated.shippingDestination || null,
+        productDescription: validated.description,
+        notesFromClient: validated.description,
       },
     })
 
-    // Upload files
-    const files = formData.getAll("files") as File[]
     for (const file of files) {
       if (file.size > 0) {
-        const { url, key } = await uploadFile(file, "quotes")
+        const { url } = await uploadFile(file, "quotes")
         await prisma.quoteAttachment.create({
           data: {
             quoteId: quote.id,
@@ -94,12 +159,14 @@ export async function POST(req: Request) {
       }
     }
 
-    // Send email notification
-    const company = await prisma.company.findUnique({ where: { id: companyId } })
-    if (company) {
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+    })
+    const emailTo = session?.user?.email || validated.email
+    if (company && emailTo) {
       const emailData = getQuoteSubmittedEmail(quote.id, company.name)
       await sendEmail({
-        to: session.user?.email || "",
+        to: emailTo,
         ...emailData,
       })
     }
@@ -108,7 +175,7 @@ export async function POST(req: Request) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Invalid input", details: error.errors },
+        { error: error.errors[0]?.message || "Invalid input", details: error.errors },
         { status: 400 }
       )
     }
@@ -119,4 +186,3 @@ export async function POST(req: Request) {
     )
   }
 }
-

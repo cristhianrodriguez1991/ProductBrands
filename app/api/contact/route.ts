@@ -14,9 +14,10 @@ export async function POST(req: Request) {
     const body = await req.json()
     const data = contactSchema.parse(body)
 
-    // Send email notification
+    // Send email to admin; reply-to is submitter so "Reply" goes to them
     await sendEmail({
       to: process.env.CONTACT_EMAIL || "info@productbrands.com",
+      replyTo: data.email,
       subject: `Contact Form: ${data.name}`,
       html: `
         <h2>New Contact Form Submission</h2>

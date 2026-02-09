@@ -27,8 +27,8 @@
 **Value:** `info@productbrands.com`
 **Environment:** ✅ Production
 
-### 6. RESEND_API_KEY (Optional)
-**Value:** [Leave empty for now]
+### 6. RESEND_API_KEY
+**Value:** Your Resend API key (starts with `re_` — use the same key as in `.env.local` if you have one)
 **Environment:** ✅ Production
 
 ---
