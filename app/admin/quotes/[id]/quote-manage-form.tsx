@@ -28,7 +28,7 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
 
   const insertAdminNotesTimestamp = () => {
     const stamp = `\n\n--- ${formatDateTime(new Date())} ---\n`
-    setAdminNotes((prev) => prev + stamp)
+    setAdminNotes((prev: string) => prev + stamp)
   }
 
   const handleStatusUpdate = async () => {
