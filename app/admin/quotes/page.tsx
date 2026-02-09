@@ -1,13 +1,13 @@
 import { requireAdminSession } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { formatDate } from "@/lib/utils"
 import { QuoteStatus } from "@prisma/client"
+import { Mail, Phone, User } from "lucide-react"
 
 export default async function AdminQuotesPage({
   searchParams,
@@ -21,9 +21,13 @@ export default async function AdminQuotesPage({
     where.status = searchParams.status as QuoteStatus
   }
   if (searchParams.search) {
+    const q = searchParams.search.trim()
     where.OR = [
-      { quoteNumber: { contains: searchParams.search, mode: "insensitive" } },
-      { company: { name: { contains: searchParams.search, mode: "insensitive" } } },
+      { quoteNumber: { contains: q, mode: "insensitive" } },
+      { company: { name: { contains: q, mode: "insensitive" } } },
+      { contact: { email: { contains: q, mode: "insensitive" } } },
+      { contact: { name: { contains: q, mode: "insensitive" } } },
+      { productDescription: { contains: q, mode: "insensitive" } },
     ]
   }
 
@@ -33,15 +37,7 @@ export default async function AdminQuotesPage({
     include: {
       company: true,
       contact: true,
-      createdBy: {
-        select: { id: true, name: true, email: true },
-      },
-      _count: {
-        select: {
-          lineItems: true,
-          quoteMessages: true,
-        },
-      },
+      _count: { select: { lineItems: true, quoteMessages: true } },
     },
     take: 100,
   })
@@ -57,7 +53,6 @@ export default async function AdminQuotesPage({
       ORDERED: "bg-gray-500",
       EXPIRED: "bg-red-500",
       DRAFT: "bg-gray-500",
-      // Legacy
       SUBMITTED: "bg-blue-500",
       IN_REVIEW: "bg-yellow-500",
       NEED_INFO: "bg-orange-500",
@@ -68,103 +63,119 @@ export default async function AdminQuotesPage({
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Quotes</h1>
-        <p className="text-muted-foreground">Manage all quote requests</p>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Quotes</h1>
+        <p className="text-sm text-muted-foreground">Quote requests and customer contact info</p>
       </div>
 
-      {/* Filters */}
       <Card className="mb-6">
         <CardContent className="pt-6">
-          <form method="get" className="flex gap-4 items-end">
-            <div className="flex-1">
-              <label className="text-sm font-medium mb-2 block">Search</label>
+          <form method="get" className="flex flex-wrap gap-3 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm font-medium mb-1 block">Search</label>
               <Input
                 name="search"
-                placeholder="Quote number, company name..."
+                placeholder="Quote #, company, name, email..."
                 defaultValue={searchParams.search}
               />
             </div>
-            <div className="w-48">
-              <label className="text-sm font-medium mb-2 block">Status</label>
-              <Select name="status" defaultValue={searchParams.status || "all"}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="NEW">New</SelectItem>
-                  <SelectItem value="NEEDS_INFO">Needs Info</SelectItem>
-                  <SelectItem value="PRICING">Pricing</SelectItem>
-                  <SelectItem value="SENT">Sent</SelectItem>
-                  <SelectItem value="APPROVED">Approved</SelectItem>
-                  <SelectItem value="REJECTED">Rejected</SelectItem>
-                  <SelectItem value="ORDERED">Ordered</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="w-40">
+              <label className="text-sm font-medium mb-1 block">Status</label>
+              <select
+                name="status"
+                defaultValue={searchParams.status || "all"}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="all">All</option>
+                <option value="NEW">New</option>
+                <option value="NEEDS_INFO">Needs Info</option>
+                <option value="PRICING">Pricing</option>
+                <option value="SENT">Sent</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+                <option value="ORDERED">Ordered</option>
+              </select>
             </div>
             <Button type="submit">Filter</Button>
-            {searchParams.status || searchParams.search ? (
+            {(searchParams.status || searchParams.search) && (
               <Link href="/admin/quotes">
-                <Button type="button" variant="outline">
-                  Clear
-                </Button>
+                <Button type="button" variant="outline">Clear</Button>
               </Link>
-            ) : null}
+            )}
           </form>
         </CardContent>
       </Card>
 
-      {/* Quotes List */}
-      <div className="space-y-4">
-        {quotes.map((quote) => (
-          <Card key={quote.id}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg">
-                    <Link
-                      href={`/admin/quotes/${quote.id}`}
-                      className="hover:text-blue-600"
-                    >
-                      {quote.quoteNumber || `Quote #${quote.id.slice(-8)}`}
-                    </Link>
-                  </CardTitle>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                    <span>{quote.company.name}</span>
-                    {quote.contact && <span>• {quote.contact.name}</span>}
-                    {quote.productCategory && <span>• {quote.productCategory}</span>}
-                    <span>• {formatDate(quote.createdAt)}</span>
+      <div className="space-y-3">
+        {quotes.map((quote) => {
+          const contact = quote.contact
+          const description = quote.productDescription || quote.notesFromClient || "—"
+          return (
+            <Card key={quote.id}>
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Link
+                        href={`/admin/quotes/${quote.id}`}
+                        className="font-semibold text-foreground hover:underline"
+                      >
+                        {quote.quoteNumber || `#${quote.id.slice(-8)}`}
+                      </Link>
+                      <Badge className={getStatusColor(quote.status)}>
+                        {quote.status.replace("_", " ")}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {formatDate(quote.createdAt)}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                      {contact ? (
+                        <>
+                          <span className="flex items-center gap-1">
+                            <User className="h-3.5 w-3" />
+                            {contact.name}
+                          </span>
+                          {contact.email && (
+                            <a
+                              href={`mailto:${contact.email}`}
+                              className="flex items-center gap-1 text-primary hover:underline"
+                            >
+                              <Mail className="h-3.5 w-3" />
+                              {contact.email}
+                            </a>
+                          )}
+                          {contact.phone && (
+                            <a
+                              href={`tel:${contact.phone}`}
+                              className="flex items-center gap-1 text-primary hover:underline"
+                            >
+                              <Phone className="h-3.5 w-3" />
+                              {contact.phone}
+                            </a>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">{quote.company.name}</span>
+                      )}
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                      {description}
+                    </p>
                   </div>
-                  {quote.productDescription && (
-                    <p className="text-sm mt-2 line-clamp-2">{quote.productDescription}</p>
-                  )}
+                  <Link href={`/admin/quotes/${quote.id}`}>
+                    <Button size="sm">View & manage</Button>
+                  </Link>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right text-sm text-muted-foreground">
-                    <div>{quote._count.lineItems} items</div>
-                    <div>{quote._count.quoteMessages} messages</div>
-                  </div>
-                  <Badge className={getStatusColor(quote.status)}>
-                    {quote.status.replace("_", " ")}
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Link href={`/admin/quotes/${quote.id}`}>
-                <Button variant="outline" size="sm">
-                  View & Manage
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          )
+        })}
 
         {quotes.length === 0 && (
           <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">No quotes found</p>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              No quotes found
             </CardContent>
           </Card>
         )}
@@ -172,4 +183,3 @@ export default async function AdminQuotesPage({
     </div>
   )
 }
-

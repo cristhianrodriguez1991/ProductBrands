@@ -162,16 +162,13 @@ function emailButton(href: string, label: string): string {
 export function getQuoteSubmittedEmail(quoteId: string, companyName: string) {
   const safeName = escapeHtml(companyName)
   const quoteRef = quoteId.slice(-8)
-  const viewUrl = `${BASE_URL}/portal/quotes/${quoteId}`
 
   const content = `
     <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b; letter-spacing: -0.02em;">Quote request received</h1>
     <p style="margin: 0; font-size: 14px; color: #71717a; line-height: 1.5;">Reference #${quoteRef}</p>
     <p style="margin: 24px 0 0 0; font-size: 15px; color: #3f3f46; line-height: 1.6;">Hi ${safeName},</p>
     <p style="margin: 16px 0 0 0; font-size: 15px; color: #3f3f46; line-height: 1.6;">Thank you for your quote request. We've received your details and our team will review them shortly.</p>
-    <p style="margin: 16px 0 0 0; font-size: 15px; color: #3f3f46; line-height: 1.6;">You can expect to hear from us within 1–2 business days. In the meantime, you can track this request using the link below.</p>
-    ${emailButton(viewUrl, "View quote request")}
-    <p style="margin: 24px 0 0 0; font-size: 13px; color: #71717a; line-height: 1.5;">If the button doesn't work, copy and paste this link into your browser:<br/><a href="${viewUrl}" style="color: #3b82f6; word-break: break-all;">${viewUrl}</a></p>
+    <p style="margin: 16px 0 0 0; font-size: 15px; color: #3f3f46; line-height: 1.6;">You can expect to hear from us within 1–2 business days.</p>
   `.trim()
 
   return {

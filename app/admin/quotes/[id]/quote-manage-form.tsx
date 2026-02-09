@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 import { formatDate, formatCurrency, formatDateTime } from "@/lib/utils"
-import { Send } from "lucide-react"
+import { Send, Mail } from "lucide-react"
 
 export default function QuoteManageForm({ quote }: { quote: any }) {
   const router = useRouter()
@@ -29,6 +29,9 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
   const [messages, setMessages] = useState(quote.quoteMessages || [])
   const [loading, setLoading] = useState(false)
   const [sendingMessage, setSendingMessage] = useState(false)
+  const [emailSubject, setEmailSubject] = useState("Re: Your quote request – Product Brands")
+  const [emailBody, setEmailBody] = useState("")
+  const [sendingEmail, setSendingEmail] = useState(false)
 
   const handleAddLineItem = () => {
     if (!newLineItem.description) return
@@ -189,8 +192,94 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
     }
   }
 
+  const handleSendEmail = async () => {
+    if (!emailSubject.trim() || !emailBody.trim()) {
+      toast({
+        title: "Missing fields",
+        description: "Enter both subject and message.",
+        variant: "destructive",
+      })
+      return
+    }
+    setSendingEmail(true)
+    try {
+      const res = await fetch(`/api/admin/quotes/${quote.id}/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: emailSubject.trim(), body: emailBody.trim() }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to send email")
+      }
+      setEmailBody("")
+      toast({
+        title: "Email sent",
+        description: "The customer will receive your message.",
+      })
+      router.refresh()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Could not send email",
+        variant: "destructive",
+      })
+    } finally {
+      setSendingEmail(false)
+    }
+  }
+
+  const canSendEmail = quote.contact?.email || quote.createdBy?.email
+
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            Send email to customer
+          </CardTitle>
+          <p className="text-sm text-muted-foreground font-normal">
+            Custom message to {quote.contact?.email || quote.createdBy?.email || "customer"}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {canSendEmail ? (
+            <>
+              <div>
+                <Label htmlFor="email-subject">Subject</Label>
+                <Input
+                  id="email-subject"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  placeholder="Re: Your quote request"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="email-body">Message</Label>
+                <Textarea
+                  id="email-body"
+                  value={emailBody}
+                  onChange={(e) => setEmailBody(e.target.value)}
+                  placeholder="Type your message to the customer..."
+                  rows={5}
+                  className="mt-1 resize-none"
+                />
+              </div>
+              <Button
+                onClick={handleSendEmail}
+                disabled={sendingEmail || !emailBody.trim()}
+              >
+                {sendingEmail ? "Sending…" : "Send email"}
+              </Button>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">No email address on file for this quote.</p>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Quote Details</CardTitle>
