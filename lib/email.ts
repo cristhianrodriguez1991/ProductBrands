@@ -105,22 +105,24 @@ function getEmailFooter(): string {
   const siteHost = BASE_URL.replace(/^https?:\/\//, "")
 
   const lines: string[] = []
-  lines.push(`${name} | ${tagline}`)
-  lines.push(`<a href="${BASE_URL}" style="color:#71717a; text-decoration:none;">${siteHost}</a>`)
+  lines.push(name + " | " + tagline)
+  lines.push('<a href="' + BASE_URL + '" style="color:#71717a; text-decoration:none;">' + siteHost + "</a>")
   if (address) {
+    const safeAddr = address.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     if (mapsUrl) {
-      lines.push(`<a href="${mapsUrl}" target="_blank" rel="noopener" style="color:#71717a;">${address.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</a>`)
+      lines.push('<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="color:#71717a;">' + safeAddr + "</a>")
     } else {
-      const mapsSearch = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
-      lines.push(`<a href="${mapsSearch}" target="_blank" rel="noopener" style="color:#71717a;">${address.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</a>`)
+      const mapsSearch = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(address)
+      lines.push('<a href="' + mapsSearch + '" target="_blank" rel="noopener" style="color:#71717a;">' + safeAddr + "</a>")
     }
   }
   if (phone) {
     const telDigits = phone.replace(/[^\d+]/g, "")
-    const telHref = telDigits ? `tel:${telDigits}` : "#"
-    lines.push(`<a href="${telHref}" style="color:#71717a;">${phone.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</a>`)
+    const telHref = telDigits ? "tel:" + telDigits : "#"
+    const safePhone = phone.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    lines.push('<a href="' + telHref + '" style="color:#71717a;">' + safePhone + "</a>")
   }
-  lines.push(`© ${year} ${name}. All rights reserved.`)
+  lines.push("\u00A9 " + year + " " + name + ". All rights reserved.")
   lines.push("If you have questions, reply to this message or contact us through our website.")
 
   return lines.join("<br/>")
