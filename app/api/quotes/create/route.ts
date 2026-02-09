@@ -90,7 +90,7 @@ export async function POST(req: Request) {
           data: { name: companyName },
         })
         companyId = company.id
-        contact = await prisma.clientContact.create({
+        const newContact = await prisma.clientContact.create({
           data: {
             companyId,
             name: validated.name,
@@ -99,7 +99,7 @@ export async function POST(req: Request) {
             isPrimary: true,
           },
         })
-        contactId = contact.id
+        contactId = newContact.id
       }
 
       let user = await prisma.user.findUnique({
