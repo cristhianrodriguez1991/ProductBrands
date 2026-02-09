@@ -9,8 +9,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
-import { formatDate, formatCurrency, formatDateTime } from "@/lib/utils"
-import { Send, Mail } from "lucide-react"
+import { formatDateTime } from "@/lib/utils"
+import { Send, Mail, Clock } from "lucide-react"
 
 export default function QuoteManageForm({ quote }: { quote: any }) {
   const router = useRouter()
@@ -18,13 +18,6 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
   const [status, setStatus] = useState(quote.status)
   const [adminNotes, setAdminNotes] = useState(quote.adminNotes || "")
   const [totalEstimate, setTotalEstimate] = useState(quote.totalEstimate?.toString() || "")
-  const [lineItems, setLineItems] = useState(quote.lineItems || [])
-  const [newLineItem, setNewLineItem] = useState({
-    description: "",
-    quantity: "",
-    unitPrice: "",
-    notes: "",
-  })
   const [messageText, setMessageText] = useState("")
   const [messages, setMessages] = useState(quote.quoteMessages || [])
   const [loading, setLoading] = useState(false)
@@ -33,26 +26,9 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
   const [emailBody, setEmailBody] = useState("")
   const [sendingEmail, setSendingEmail] = useState(false)
 
-  const handleAddLineItem = () => {
-    if (!newLineItem.description) return
-
-    const quantity = parseInt(newLineItem.quantity) || 0
-    const unitPrice = parseFloat(newLineItem.unitPrice) || 0
-    const totalPrice = quantity * unitPrice
-
-    setLineItems([
-      ...lineItems,
-      {
-        id: `temp-${Date.now()}`,
-        description: newLineItem.description,
-        quantity,
-        unitPrice,
-        totalPrice,
-        notes: newLineItem.notes,
-      },
-    ])
-
-    setNewLineItem({ description: "", quantity: "", unitPrice: "", notes: "" })
+  const insertAdminNotesTimestamp = () => {
+    const stamp = `\n\n--- ${formatDateTime(new Date())} ---\n`
+    setAdminNotes((prev) => prev + stamp)
   }
 
   const handleStatusUpdate = async () => {
@@ -81,44 +57,6 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
       toast({
         title: "Error",
         description: error.message || "Failed to update quote status",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSaveLineItems = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/admin/quotes/${quote.id}/line-items`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lineItems: lineItems.map((item: any) => ({
-            description: item.description,
-            quantity: item.quantity || 1,
-            unitPrice: item.unitPrice,
-            lineTotal: item.totalPrice,
-            notes: item.notes,
-          })),
-        }),
-      })
-
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || "Failed to update line items")
-      }
-
-      toast({
-        title: "Success",
-        description: "Line items updated successfully",
-      })
-      router.refresh()
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update line items",
         variant: "destructive",
       })
     } finally {
@@ -309,11 +247,24 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
             </Select>
           </div>
           <div>
-            <Label>Admin Notes</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Admin Notes</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={insertAdminNotesTimestamp}
+                className="shrink-0"
+              >
+                <Clock className="h-4 w-4 mr-1" />
+                Timestamp
+              </Button>
+            </div>
             <Textarea
               value={adminNotes}
               onChange={(e) => setAdminNotes(e.target.value)}
               rows={4}
+              className="mt-1"
             />
           </div>
           <div>
@@ -325,67 +276,6 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
               onChange={(e) => setTotalEstimate(e.target.value)}
               placeholder="0.00"
             />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Line Items</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {lineItems.map((item: any) => (
-            <div key={item.id} className="border-b pb-4">
-              <p className="font-medium">{item.description}</p>
-              {item.quantity && (
-                <p className="text-sm text-muted-foreground">
-                  Qty: {item.quantity} × {formatCurrency(item.unitPrice)} ={" "}
-                  {formatCurrency(item.totalPrice)}
-                </p>
-              )}
-              {item.notes && <p className="text-sm text-muted-foreground mt-2">{item.notes}</p>}
-            </div>
-          ))}
-
-          <div className="space-y-2 pt-4 border-t">
-            <Label>Add Line Item</Label>
-            <Input
-              placeholder="Description"
-              value={newLineItem.description}
-              onChange={(e) =>
-                setNewLineItem({ ...newLineItem, description: e.target.value })
-              }
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                type="number"
-                placeholder="Quantity"
-                value={newLineItem.quantity}
-                onChange={(e) =>
-                  setNewLineItem({ ...newLineItem, quantity: e.target.value })
-                }
-              />
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="Unit Price"
-                value={newLineItem.unitPrice}
-                onChange={(e) =>
-                  setNewLineItem({ ...newLineItem, unitPrice: e.target.value })
-                }
-              />
-            </div>
-            <Textarea
-              placeholder="Notes (optional)"
-              value={newLineItem.notes}
-              onChange={(e) =>
-                setNewLineItem({ ...newLineItem, notes: e.target.value })
-              }
-              rows={2}
-            />
-            <Button type="button" onClick={handleAddLineItem} variant="outline">
-              Add Line Item
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -443,9 +333,6 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
       <div className="flex gap-2">
         <Button onClick={handleStatusUpdate} disabled={loading} className="flex-1">
           {loading ? "Saving..." : "Update Status"}
-        </Button>
-        <Button onClick={handleSaveLineItems} disabled={loading} variant="outline" className="flex-1">
-          Save Line Items
         </Button>
         {status === "APPROVED" && !quote.orders?.length && (
           <Button onClick={handleConvertToOrder} disabled={loading} variant="default">

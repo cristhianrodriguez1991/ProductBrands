@@ -123,7 +123,7 @@ function getEmailFooter(): string {
     lines.push('<a href="' + telHref + '" style="color:#71717a;">' + safePhone + "</a>")
   }
   lines.push("\u00A9 " + year + " " + name + ". All rights reserved.")
-  lines.push("If you have questions, reply to this message or contact us through our website.")
+  lines.push("If you have questions, contact us through our website.")
 
   return lines.join("<br/>")
 }
