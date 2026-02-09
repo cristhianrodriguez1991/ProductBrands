@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { formatDate } from "@/lib/utils"
 import { QuoteStatus } from "@prisma/client"
 import { Mail, Phone, User } from "lucide-react"
+import { DeleteQuoteButton } from "./delete-quote-button"
 
 export default async function AdminQuotesPage({
   searchParams,
@@ -163,9 +164,15 @@ export default async function AdminQuotesPage({
                       {description}
                     </p>
                   </div>
-                  <Link href={`/admin/quotes/${quote.id}`}>
-                    <Button size="sm">View & manage</Button>
-                  </Link>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <DeleteQuoteButton
+                      quoteId={quote.id}
+                      quoteNumber={quote.quoteNumber}
+                    />
+                    <Link href={`/admin/quotes/${quote.id}`}>
+                      <Button size="sm">View & manage</Button>
+                    </Link>
+                  </div>
                 </div>
               </CardContent>
             </Card>

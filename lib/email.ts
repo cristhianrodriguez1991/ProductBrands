@@ -54,9 +54,9 @@ export async function sendEmail({
 
   if (!resend) {
     if (process.env.NODE_ENV !== "test") {
-      console.log("[Resend] No API key; email not sent:", { to, subject })
+      console.warn("[Resend] RESEND_API_KEY not set; email not sent. Set RESEND_API_KEY in your environment (e.g. Vercel).", { to, subject })
     }
-    return { success: true, id: "mock" }
+    return { success: false, error: "RESEND_API_KEY is not configured" }
   }
 
   try {

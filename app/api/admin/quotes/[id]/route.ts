@@ -130,3 +130,47 @@ export async function PATCH(
   }
 }
 
+// DELETE /api/admin/quotes/[id] - Delete quote
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const auth = await requireWriteAccess(req)
+    if (auth instanceof NextResponse) return auth
+
+    const existing = await prisma.quote.findUnique({
+      where: { id: params.id },
+      select: { id: true, quoteNumber: true },
+    })
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Quote not found" },
+        { status: 404 }
+      )
+    }
+
+    await prisma.quote.delete({
+      where: { id: params.id },
+    })
+
+    await logAudit({
+      actorUserId: auth.userId,
+      action: "deleted",
+      entityType: "Quote",
+      entityId: params.id,
+      metadata: { quoteNumber: existing.quoteNumber },
+      req,
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error("Error deleting quote:", error)
+    return NextResponse.json(
+      { error: error.message || "Failed to delete quote" },
+      { status: 500 }
+    )
+  }
+}
+

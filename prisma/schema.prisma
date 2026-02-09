@@ -230,6 +230,19 @@ model QuoteLineItem {
   @@index([variantId])
 }
 
+model ContactSubmission {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  company   String?
+  message   String   @db.Text
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([createdAt])
+}
+
 model Order {
   id                String      @id @default(cuid())
   orderNumber       String      @unique // Human-readable: ORD-2024-001

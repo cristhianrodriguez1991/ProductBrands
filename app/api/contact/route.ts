@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { sendEmail, getCustomEmailHtml, escapeHtml } from "@/lib/email"
+import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 
 const contactSchema = z.object({
@@ -14,6 +15,15 @@ export async function POST(req: Request) {
     const body = await req.json()
     const data = contactSchema.parse(body)
 
+    await prisma.contactSubmission.create({
+      data: {
+        name: data.name,
+        email: data.email,
+        company: data.company ?? null,
+        message: data.message,
+      },
+    })
+
     const content = `
       <h2 style="margin:0 0 16px 0; font-size:18px; font-weight:600; color:#18181b;">New contact form submission</h2>
       <p style="margin:0 0 8px 0; font-size:15px; color:#3f3f46; line-height:1.5;"><strong>Name:</strong> ${escapeHtml(data.name)}</p>
@@ -23,12 +33,21 @@ export async function POST(req: Request) {
       <p style="margin:0; font-size:15px; color:#3f3f46; line-height:1.6; white-space:pre-wrap;">${escapeHtml(data.message)}</p>
     `.trim()
 
-    await sendEmail({
-      to: process.env.CONTACT_EMAIL || "info@productbrands.com",
+    const to = process.env.CONTACT_EMAIL || "info@productbrands.com"
+    const result = await sendEmail({
+      to,
       replyTo: data.email,
       subject: `Contact Form: ${data.name}`,
       html: getCustomEmailHtml(content),
     })
+
+    if (!result.success) {
+      console.error("[Contact] Email send failed:", result.error)
+      return NextResponse.json(
+        { error: "Failed to send notification email. Please try again or contact us directly." },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

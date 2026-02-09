@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Building2,
   Tag,
+  Inbox,
 } from "lucide-react"
 
 export default function AdminLayout({
@@ -90,6 +91,12 @@ export default function AdminLayout({
             <Button variant="ghost" className="w-full justify-start">
               <FileText className="mr-2 h-4 w-4" />
               Quotes
+            </Button>
+          </Link>
+          <Link href="/admin/contact">
+            <Button variant="ghost" className="w-full justify-start">
+              <Inbox className="mr-2 h-4 w-4" />
+              Contact
             </Button>
           </Link>
           <Link href="/admin/clients">
