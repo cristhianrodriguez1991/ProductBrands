@@ -105,7 +105,7 @@ function getEmailFooter(): string {
   const siteHost = BASE_URL.replace(/^https?:\/\//, "")
 
   const lines: string[] = []
-  lines.push(`${name} · ${tagline}`)
+  lines.push(`${name} | ${tagline}`)
   lines.push(`<a href="${BASE_URL}" style="color:#71717a; text-decoration:none;">${siteHost}</a>`)
   if (address) {
     if (mapsUrl) {
