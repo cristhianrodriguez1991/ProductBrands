@@ -86,40 +86,134 @@ export async function sendEmail({
   }
 }
 
+const BASE_URL = process.env.NEXTAUTH_URL || "https://productbrands.com"
+const LOGO_URL = `${BASE_URL}/images/logo.png`
+const FAVICON_URL = `${BASE_URL}/images/favicon.png`
+
+/** Escape for HTML to avoid injection when using user-provided names. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
+/** Shared email layout: header with logo, content area, footer. Inline styles for email client compatibility. */
+function emailLayout(content: string): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Brands</title>
+  <link rel="icon" href="${FAVICON_URL}" type="image/png">
+</head>
+<body style="margin:0; padding:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5; color: #18181b;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px;">
+          <tr>
+            <td style="padding-bottom: 24px;">
+              <a href="${BASE_URL}" target="_blank" rel="noopener" style="text-decoration: none;">
+                <img src="${LOGO_URL}" alt="Product Brands" width="180" height="48" style="display: block; max-width: 180px; height: auto; border: 0;" />
+              </a>
+              <div style="font-size: 12px; color: #71717a; margin-top: 6px;">Private Label &amp; Manufacturing</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #ffffff; border-radius: 8px; padding: 32px 28px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+              ${content}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-top: 24px; font-size: 11px; color: #a1a1aa; text-align: center;">
+              This email was sent by Product Brands. If you have questions, reply to this message or contact us through our website.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`.trim()
+}
+
+/** Primary CTA button for emails (table-based for Outlook). */
+function emailButton(href: string, label: string): string {
+  return `
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top: 24px;">
+  <tr>
+    <td style="border-radius: 6px; background-color: #18181b;">
+      <a href="${href}" target="_blank" rel="noopener" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">${label}</a>
+    </td>
+  </tr>
+</table>
+`.trim()
+}
+
 export function getQuoteSubmittedEmail(quoteId: string, companyName: string) {
+  const safeName = escapeHtml(companyName)
+  const quoteRef = quoteId.slice(-8)
+  const viewUrl = `${BASE_URL}/portal/quotes/${quoteId}`
+
+  const content = `
+    <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b; letter-spacing: -0.02em;">Quote request received</h1>
+    <p style="margin: 0; font-size: 14px; color: #71717a; line-height: 1.5;">Reference #${quoteRef}</p>
+    <p style="margin: 24px 0 0 0; font-size: 15px; color: #3f3f46; line-height: 1.6;">Hi ${safeName},</p>
+    <p style="margin: 16px 0 0 0; font-size: 15px; color: #3f3f46; line-height: 1.6;">Thank you for your quote request. We've received your details and our team will review them shortly.</p>
+    <p style="margin: 16px 0 0 0; font-size: 15px; color: #3f3f46; line-height: 1.6;">You can expect to hear from us within 1–2 business days. In the meantime, you can track this request using the link below.</p>
+    ${emailButton(viewUrl, "View quote request")}
+    <p style="margin: 24px 0 0 0; font-size: 13px; color: #71717a; line-height: 1.5;">If the button doesn't work, copy and paste this link into your browser:<br/><a href="${viewUrl}" style="color: #3b82f6; word-break: break-all;">${viewUrl}</a></p>
+  `.trim()
+
   return {
-    subject: "Quote Request Submitted",
-    html: `
-      <h1>Quote Request Submitted</h1>
-      <p>Thank you for your quote request, ${companyName}!</p>
-      <p>Your quote request (#${quoteId.slice(-8)}) has been received and is being reviewed by our team.</p>
-      <p>We'll get back to you within 1-2 business days.</p>
-      <p><a href="${process.env.NEXTAUTH_URL}/portal/quotes/${quoteId}">View Quote</a></p>
-    `,
+    subject: "Quote request received – Product Brands",
+    html: emailLayout(content),
   }
 }
 
 export function getQuoteResponseEmail(quoteId: string, companyName: string) {
+  const safeName = escapeHtml(companyName)
+  const quoteRef = quoteId.slice(-8)
+  const viewUrl = `${BASE_URL}/portal/quotes/${quoteId}`
+
+  const content = `
+    <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b; letter-spacing: -0.02em;">Your quote is ready</h1>
+    <p style="margin: 0; font-size: 14px; color: #71717a; line-height: 1.5;">Reference #${quoteRef}</p>
+    <p style="margin: 24px 0 0 0; font-size: 15px; color: #3f3f46; line-height: 1.6;">Hi ${safeName},</p>
+    <p style="margin: 16px 0 0 0; font-size: 15px; color: #3f3f46; line-height: 1.6;">We've prepared a quote for your request. Review the details and let us know if you have any questions.</p>
+    ${emailButton(viewUrl, "View quote")}
+    <p style="margin: 24px 0 0 0; font-size: 13px; color: #71717a; line-height: 1.5;">If the button doesn't work, copy and paste this link into your browser:<br/><a href="${viewUrl}" style="color: #3b82f6; word-break: break-all;">${viewUrl}</a></p>
+  `.trim()
+
   return {
-    subject: "Quote Response Ready",
-    html: `
-      <h1>Quote Response Ready</h1>
-      <p>Hello ${companyName},</p>
-      <p>We've prepared a quote response for your request (#${quoteId.slice(-8)}).</p>
-      <p><a href="${process.env.NEXTAUTH_URL}/portal/quotes/${quoteId}">View Quote Response</a></p>
-    `,
+    subject: "Your quote is ready – Product Brands",
+    html: emailLayout(content),
   }
 }
 
 export function getOrderUpdateEmail(orderId: string, companyName: string, status: string) {
+  const safeName = escapeHtml(companyName)
+  const safeStatus = escapeHtml(status)
+  const orderRef = orderId.slice(-8)
+  const viewUrl = `${BASE_URL}/portal/orders/${orderId}`
+
+  const content = `
+    <h1 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #18181b; letter-spacing: -0.02em;">Order update</h1>
+    <p style="margin: 0; font-size: 14px; color: #71717a; line-height: 1.5;">Order #${orderRef}</p>
+    <p style="margin: 24px 0 0 0; font-size: 15px; color: #3f3f46; line-height: 1.6;">Hi ${safeName},</p>
+    <p style="margin: 16px 0 0 0; font-size: 15px; color: #3f3f46; line-height: 1.6;">Your order status has been updated to <strong style="color: #18181b;">${safeStatus}</strong>.</p>
+    ${emailButton(viewUrl, "View order")}
+    <p style="margin: 24px 0 0 0; font-size: 13px; color: #71717a; line-height: 1.5;">If the button doesn't work, copy and paste this link into your browser:<br/><a href="${viewUrl}" style="color: #3b82f6; word-break: break-all;">${viewUrl}</a></p>
+  `.trim()
+
   return {
-    subject: `Order Update: ${status}`,
-    html: `
-      <h1>Order Update</h1>
-      <p>Hello ${companyName},</p>
-      <p>Your order (#${orderId.slice(-8)}) status has been updated to: <strong>${status}</strong></p>
-      <p><a href="${process.env.NEXTAUTH_URL}/portal/orders/${orderId}">View Order</a></p>
-    `,
+    subject: `Order update: ${status} – Product Brands`,
+    html: emailLayout(content),
   }
 }
 
