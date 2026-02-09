@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { sendEmail } from "@/lib/email"
+import { sendEmail, getCustomEmailHtml, escapeHtml } from "@/lib/email"
 import { z } from "zod"
 
 const contactSchema = z.object({
@@ -14,19 +14,20 @@ export async function POST(req: Request) {
     const body = await req.json()
     const data = contactSchema.parse(body)
 
-    // Send email to admin; reply-to is submitter so "Reply" goes to them
+    const content = `
+      <h2 style="margin:0 0 16px 0; font-size:18px; font-weight:600; color:#18181b;">New contact form submission</h2>
+      <p style="margin:0 0 8px 0; font-size:15px; color:#3f3f46; line-height:1.5;"><strong>Name:</strong> ${escapeHtml(data.name)}</p>
+      <p style="margin:0 0 8px 0; font-size:15px; color:#3f3f46; line-height:1.5;"><strong>Email:</strong> ${escapeHtml(data.email)}</p>
+      <p style="margin:0 0 8px 0; font-size:15px; color:#3f3f46; line-height:1.5;"><strong>Company:</strong> ${escapeHtml(data.company || "N/A")}</p>
+      <p style="margin:0 0 4px 0; font-size:15px; color:#3f3f46; line-height:1.5;"><strong>Message:</strong></p>
+      <p style="margin:0; font-size:15px; color:#3f3f46; line-height:1.6; white-space:pre-wrap;">${escapeHtml(data.message)}</p>
+    `.trim()
+
     await sendEmail({
       to: process.env.CONTACT_EMAIL || "info@productbrands.com",
       replyTo: data.email,
       subject: `Contact Form: ${data.name}`,
-      html: `
-        <h2>New Contact Form Submission</h2>
-        <p><strong>Name:</strong> ${data.name}</p>
-        <p><strong>Email:</strong> ${data.email}</p>
-        <p><strong>Company:</strong> ${data.company || "N/A"}</p>
-        <p><strong>Message:</strong></p>
-        <p>${data.message}</p>
-      `,
+      html: getCustomEmailHtml(content),
     })
 
     return NextResponse.json({ success: true })

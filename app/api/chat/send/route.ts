@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { sendEmail } from "@/lib/email"
+import { sendEmail, getCustomEmailHtml, escapeHtml } from "@/lib/email"
 import { z } from "zod"
 
 const sendMessageSchema = z.object({
@@ -46,15 +46,20 @@ export async function POST(req: Request) {
         where: { role: "ADMIN" },
       })
 
+      const baseUrl = process.env.NEXTAUTH_URL || ""
+      const sender = escapeHtml(session.user?.name || session.user?.email || "A customer")
+      const safeContent = escapeHtml(content)
+      const viewUrl = baseUrl ? `${baseUrl}/admin/chat` : "#"
+      const innerHtml = `
+        <p style="margin:0 0 12px 0; font-size:15px; color:#3f3f46; line-height:1.5;">You have a new chat message from <strong>${sender}</strong>.</p>
+        <p style="margin:0 0 16px 0; font-size:15px; color:#3f3f46; line-height:1.6;">${safeContent}</p>
+        <p style="margin:0;"><a href="${viewUrl}" style="color:#3b82f6;">View in Admin Chat</a></p>
+      `.trim()
       for (const admin of admins) {
         await sendEmail({
           to: admin.email,
           subject: "New Chat Message from Customer",
-          html: `
-            <p>You have a new chat message from ${session.user?.name || session.user?.email}:</p>
-            <p><strong>${content}</strong></p>
-            <p><a href="${process.env.NEXTAUTH_URL}/admin/chat">View Chat</a></p>
-          `,
+          html: getCustomEmailHtml(innerHtml),
         })
       }
     }

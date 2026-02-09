@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { sendEmail } from "@/lib/email"
+import { sendEmail, getCustomEmailHtml, escapeHtml } from "@/lib/email"
 import { z } from "zod"
 
 const sendMessageSchema = z.object({
@@ -45,14 +45,17 @@ export async function POST(req: Request) {
     })
 
     if (customer) {
+      const baseUrl = process.env.NEXTAUTH_URL || ""
+      const viewUrl = baseUrl ? `${baseUrl}/portal` : "#"
+      const innerHtml = `
+        <p style="margin:0 0 12px 0; font-size:15px; color:#3f3f46; line-height:1.5;">You have a new message from our support team.</p>
+        <p style="margin:0 0 16px 0; font-size:15px; color:#3f3f46; line-height:1.6;">${escapeHtml(content)}</p>
+        <p style="margin:0;"><a href="${viewUrl}" style="color:#3b82f6;">View in Portal</a></p>
+      `.trim()
       await sendEmail({
         to: customer.email,
-        subject: "New Message from ProductBrands Support",
-        html: `
-          <p>You have a new message from our support team:</p>
-          <p><strong>${content}</strong></p>
-          <p><a href="${process.env.NEXTAUTH_URL}/portal">View in Portal</a></p>
-        `,
+        subject: "New message from Product Brands",
+        html: getCustomEmailHtml(innerHtml),
       })
     }
 
