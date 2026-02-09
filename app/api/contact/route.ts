@@ -15,25 +15,24 @@ export async function POST(req: Request) {
     const body = await req.json()
     const data = contactSchema.parse(body)
 
-    const content = `
-      <h2 style="margin:0 0 16px 0; font-size:18px; font-weight:600; color:#18181b;">New contact form submission</h2>
-      <p style="margin:0 0 8px 0; font-size:15px; color:#3f3f46; line-height:1.5;"><strong>Name:</strong> ${escapeHtml(data.name)}</p>
-      <p style="margin:0 0 8px 0; font-size:15px; color:#3f3f46; line-height:1.5;"><strong>Email:</strong> ${escapeHtml(data.email)}</p>
-      <p style="margin:0 0 8px 0; font-size:15px; color:#3f3f46; line-height:1.5;"><strong>Company:</strong> ${escapeHtml(data.company || "N/A")}</p>
-      <p style="margin:0 0 4px 0; font-size:15px; color:#3f3f46; line-height:1.5;"><strong>Message:</strong></p>
-      <p style="margin:0; font-size:15px; color:#3f3f46; line-height:1.6; white-space:pre-wrap;">${escapeHtml(data.message)}</p>
+    // Send confirmation email to the customer
+    const customerContent = `
+      <h1 style="margin:0 0 8px 0; font-size:22px; font-weight:600; color:#18181b; letter-spacing:-0.02em;">We received your message</h1>
+      <p style="margin:24px 0 0 0; font-size:15px; color:#3f3f46; line-height:1.6;">Hi ${escapeHtml(data.name)},</p>
+      <p style="margin:16px 0 0 0; font-size:15px; color:#3f3f46; line-height:1.6;">Thank you for reaching out to Product Brands. We've received your inquiry and our team will review it shortly.</p>
+      <p style="margin:16px 0 0 0; font-size:15px; color:#3f3f46; line-height:1.6;">You can expect to hear back from us within 1–2 business days.</p>
+      <p style="margin:24px 0 0 0; font-size:13px; color:#71717a; line-height:1.5;">For reference, here's what you sent us:</p>
+      <div style="margin:12px 0 0 0; padding:16px; background:#f4f4f5; border-radius:6px; font-size:14px; color:#3f3f46; line-height:1.6; white-space:pre-wrap;">${escapeHtml(data.message)}</div>
     `.trim()
 
-    const to = process.env.CONTACT_EMAIL || "info@productbrands.com"
-    const result = await sendEmail({
-      to,
-      replyTo: data.email,
-      subject: `Contact Form: ${data.name}`,
-      html: getCustomEmailHtml(content),
+    const customerResult = await sendEmail({
+      to: data.email,
+      subject: "We received your message – Product Brands",
+      html: getCustomEmailHtml(customerContent),
     })
 
-    if (!result.success) {
-      console.error("[Contact] Email send failed:", result.error)
+    if (!customerResult.success) {
+      console.error("[Contact] Customer confirmation email failed:", customerResult.error)
     }
 
     try {
