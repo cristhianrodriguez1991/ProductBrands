@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireWriteAccess } from "@/lib/rbac"
 import { prisma } from "@/lib/prisma"
-import { sendEmail } from "@/lib/email"
+import { sendEmail, getCustomEmailHtml } from "@/lib/email"
 import { z } from "zod"
 
 const sendEmailSchema = z.object({
@@ -9,7 +9,15 @@ const sendEmailSchema = z.object({
   body: z.string().min(1, "Message body is required"),
 })
 
-// POST /api/admin/quotes/[id]/send-email - Send custom email to quote customer
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
+// POST /api/admin/quotes/[id]/send-email - Send custom email to quote customer (professional layout)
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -42,15 +50,29 @@ export async function POST(
     const body = await req.json()
     const data = sendEmailSchema.parse(body)
 
-    const html = data.body
+    const paragraphStyle = "margin:0 0 0.75em 0; font-size:15px; line-height:1.6; color:#3f3f46;"
+    const bodyParagraphs = data.body
       .split(/\n/g)
-      .map((p) => `<p style="margin:0 0 0.75em 0; font-size:15px; line-height:1.5;">${p.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`)
+      .map((line) => `<p style="${paragraphStyle}">${escapeHtml(line) || " "}</p>`)
       .join("")
+
+    const contentHtml = `
+      <p style="margin:0 0 1em 0; font-size:15px; line-height:1.6; color:#3f3f46;">
+        Hello${quote.contact?.name ? ` ${escapeHtml(quote.contact.name)}` : ""},
+      </p>
+      ${bodyParagraphs}
+      <p style="margin:1.25em 0 0 0; font-size:15px; line-height:1.6; color:#3f3f46;">
+        Best regards,<br/>
+        <strong>Product Brands</strong> Team
+      </p>
+    `.trim()
+
+    const html = getCustomEmailHtml(contentHtml)
 
     const { success, error } = await sendEmail({
       to: toEmail,
       subject: data.subject,
-      html: html || `<p>${data.body.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`,
+      html,
     })
 
     if (!success) {

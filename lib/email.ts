@@ -133,8 +133,10 @@ function emailLayout(content: string): string {
             </td>
           </tr>
           <tr>
-            <td style="padding-top: 24px; font-size: 11px; color: #a1a1aa; text-align: center;">
-              This email was sent by Product Brands. If you have questions, reply to this message or contact us through our website.
+            <td style="padding-top: 24px; font-size: 11px; color: #a1a1aa; text-align: center; line-height: 1.5;">
+              Product Brands · Private Label &amp; Manufacturing<br/>
+              <a href="${BASE_URL}" style="color: #71717a;">${BASE_URL.replace(/^https?:\/\//, "")}</a><br/>
+              If you have questions, reply to this message or contact us through our website.
             </td>
           </tr>
         </table>
@@ -144,6 +146,11 @@ function emailLayout(content: string): string {
 </body>
 </html>
 `.trim()
+}
+
+/** Wrap custom/admin-written email body in the full professional layout (header, logo, footer). */
+export function getCustomEmailHtml(bodyContentHtml: string): string {
+  return emailLayout(bodyContentHtml)
 }
 
 /** Primary CTA button for emails (table-based for Outlook). */
