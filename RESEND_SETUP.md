@@ -24,6 +24,10 @@ EMAIL_FROM=noreply@yourdomain.com
 
 Redeploy after changing env vars.
 
+**Sender name in inbox:** Emails are sent with the display name **"Product Brands"** so the inbox shows "Product Brands" instead of the raw address. You can set `EMAIL_FROM` to just the address (e.g. `noreply@productbrands.com`); the app adds the display name automatically.
+
+**Logo/avatar in inbox:** Some clients (e.g. Gmail) can show your logo next to the sender if you set up [BIMI](https://resend.com/docs/dashboard/domains/bimi) (Brand Indicators for Message Identification) for your domain in Resend. Without BIMI, the client may show the first letter of the sender name or a generic icon.
+
 ## 3. Verify your domain (required for production)
 
 To send from your own domain (e.g. `noreply@productbrands.com`):

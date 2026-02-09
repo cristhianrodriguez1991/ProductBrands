@@ -15,10 +15,14 @@ export type SendEmailOptions = {
   bcc?: string | string[]
 }
 
-// Use Resend's sandbox sender if no EMAIL_FROM set (works without domain verification).
-// Set EMAIL_FROM to e.g. noreply@yourdomain.com after verifying your domain in Resend.
-const defaultFrom = () =>
-  process.env.EMAIL_FROM || "ProductBrands <onboarding@resend.dev>"
+const SENDER_DISPLAY_NAME = "Product Brands"
+
+// From shown in inbox as "Product Brands <address>". If EMAIL_FROM is just an email (no "<">), we add the display name.
+function defaultFrom(): string {
+  const raw = process.env.EMAIL_FROM || "onboarding@resend.dev"
+  if (raw.includes("<") && raw.includes(">")) return raw
+  return `${SENDER_DISPLAY_NAME} <${raw.trim()}>`
+}
 
 // Lazy initialization - only create Resend instance when needed
 function getResend(): Resend | null {
