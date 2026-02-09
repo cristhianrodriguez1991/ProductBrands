@@ -15,15 +15,6 @@ export async function POST(req: Request) {
     const body = await req.json()
     const data = contactSchema.parse(body)
 
-    await prisma.contactSubmission.create({
-      data: {
-        name: data.name,
-        email: data.email,
-        company: data.company ?? null,
-        message: data.message,
-      },
-    })
-
     const content = `
       <h2 style="margin:0 0 16px 0; font-size:18px; font-weight:600; color:#18181b;">New contact form submission</h2>
       <p style="margin:0 0 8px 0; font-size:15px; color:#3f3f46; line-height:1.5;"><strong>Name:</strong> ${escapeHtml(data.name)}</p>
@@ -47,6 +38,19 @@ export async function POST(req: Request) {
         { error: "Failed to send notification email. Please try again or contact us directly." },
         { status: 500 }
       )
+    }
+
+    try {
+      await prisma.contactSubmission.create({
+        data: {
+          name: data.name,
+          email: data.email,
+          company: data.company ?? null,
+          message: data.message,
+        },
+      })
+    } catch (dbError) {
+      console.error("[Contact] Failed to save submission to DB (migration may be pending):", dbError)
     }
 
     return NextResponse.json({ success: true })
