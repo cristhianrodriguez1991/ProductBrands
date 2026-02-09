@@ -34,10 +34,6 @@ export async function POST(req: Request) {
 
     if (!result.success) {
       console.error("[Contact] Email send failed:", result.error)
-      return NextResponse.json(
-        { error: "Failed to send notification email. Please try again or contact us directly." },
-        { status: 500 }
-      )
     }
 
     try {

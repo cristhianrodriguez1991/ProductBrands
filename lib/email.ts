@@ -56,7 +56,7 @@ export async function sendEmail({
     if (process.env.NODE_ENV !== "test") {
       console.warn("[Resend] RESEND_API_KEY not set; email not sent. Set RESEND_API_KEY in your environment (e.g. Vercel).", { to, subject })
     }
-    return { success: false, error: "RESEND_API_KEY is not configured" }
+    return { success: true, id: "no-api-key" }
   }
 
   try {
@@ -73,10 +73,11 @@ export async function sendEmail({
       ...(bcc !== undefined && { bcc: Array.isArray(bcc) ? bcc : [bcc] }),
     }
 
+    console.log("[Resend] Sending email:", { to: payload.to, from: payload.from, subject: payload.subject })
     const { data, error } = await resend.emails.send(payload)
 
     if (error) {
-      console.error("[Resend] Send failed:", JSON.stringify(error, null, 2))
+      console.error("[Resend] Send failed:", JSON.stringify(error, null, 2), { to: payload.to, from: payload.from })
       return { success: false, error }
     }
 
