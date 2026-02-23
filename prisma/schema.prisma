@@ -586,4 +586,3 @@ model SiteSetting {
   @@index([group])
   @@index([key])
 }
-

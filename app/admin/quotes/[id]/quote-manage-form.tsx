@@ -31,32 +31,39 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
     setAdminNotes((prev: string) => prev + stamp)
   }
 
-  const handleStatusUpdate = async () => {
+  const handleSaveQuoteDetails = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/quotes/${quote.id}/status`, {
+      const payload: {
+        status: string
+        adminNotes?: string
+        totalEstimate?: number
+      } = { status }
+      if (adminNotes !== undefined) payload.adminNotes = adminNotes
+      const parsedTotal = totalEstimate ? parseFloat(totalEstimate) : undefined
+      if (parsedTotal !== undefined && !Number.isNaN(parsedTotal))
+        payload.totalEstimate = parsedTotal
+
+      const res = await fetch(`/api/admin/quotes/${quote.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status,
-          internalNotes: adminNotes,
-        }),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
         const error = await res.json()
-        throw new Error(error.error || "Failed to update quote status")
+        throw new Error(error.error || "Failed to save quote details")
       }
 
       toast({
         title: "Success",
-        description: "Quote status updated successfully",
+        description: "Quote details saved (status, admin notes, total estimate)",
       })
       router.refresh()
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to update quote status",
+        description: error.message || "Failed to save quote details",
         variant: "destructive",
       })
     } finally {
@@ -331,8 +338,8 @@ export default function QuoteManageForm({ quote }: { quote: any }) {
       </Card>
 
       <div className="flex gap-2">
-        <Button onClick={handleStatusUpdate} disabled={loading} className="flex-1">
-          {loading ? "Saving..." : "Update Status"}
+        <Button onClick={handleSaveQuoteDetails} disabled={loading} className="flex-1">
+          {loading ? "Saving..." : "Save quote details"}
         </Button>
         {status === "APPROVED" && !quote.orders?.length && (
           <Button onClick={handleConvertToOrder} disabled={loading} variant="default">
