@@ -204,11 +204,18 @@ function formatDateTime(d: string | null) {
 }
 
 /** Format currency without forced 2dp — preserves 0.017, 0.5, 1.25 etc. */
-function formatCost(n: number): string {
-  // Show up to 6 decimal places, trim trailing zeros
-  const s = n.toPrecision(6).replace(/\.?0+$/, "")
-  // Fall back to full string if toPrecision expanded it oddly
-  return parseFloat(s).toString()
+function formatCost(n: number | null | undefined): string {
+  if (n === null || n === undefined) return "0"
+  if (n === 0) return "0"
+  try {
+    // Show up to 6 decimal places for precision sensitive values (like unit cost)
+    // but avoid extreme cases or NaN.
+    const s = n.toPrecision(6).replace(/\.?0+$/, "")
+    const parsed = parseFloat(s)
+    return isNaN(parsed) ? n.toString() : parsed.toString()
+  } catch {
+    return n.toString()
+  }
 }
 
 const ATTACHMENT_LABELS = ["Pallet Photo", "Invoice", "COA", "Product Label", "Packaging", "Other"]
@@ -265,9 +272,14 @@ function BatchLotCard({
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-sm font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+              <button
+                type="button"
+                onClick={() => onEdit(lot)}
+                className="font-mono text-sm font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 hover:bg-blue-100 transition-colors cursor-pointer"
+                title="Click to edit lot"
+              >
                 {lot.lotNumber}
-              </span>
+              </button>
               <StatusBadge status={lot.status} />
               {isExpired && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
@@ -747,10 +759,17 @@ export default function SupplierDetailPage() {
 
   // Group by month
   const grouped = filtered.reduce<Record<string, BatchLot[]>>((acc, lot) => {
-    const monthKey = new Date(lot.receivedAt).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-    })
+    let monthKey = "Unknown Date"
+    try {
+      const date = new Date(lot.receivedAt)
+      if (!isNaN(date.getTime())) {
+        monthKey = date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+        })
+      }
+    } catch {}
+    
     if (!acc[monthKey]) acc[monthKey] = []
     acc[monthKey].push(lot)
     return acc
@@ -959,7 +978,10 @@ export default function SupplierDetailPage() {
 
       {/* ── Delete Confirmation Modal ── */}
       <Dialog open={!!deletingLot} onOpenChange={(o) => { if (!o) setDeletingLot(null) }}>
-        <DialogContent className="max-w-md">
+        <DialogContent 
+          className="max-w-md"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <Trash2 className="h-5 w-5" />
@@ -993,6 +1015,7 @@ export default function SupplierDetailPage() {
         <DialogContent 
           className="max-w-3xl max-h-[92vh] overflow-y-auto"
           onInteractOutside={(e) => e.preventDefault()}
+          onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1230,6 +1253,7 @@ export default function SupplierDetailPage() {
         <DialogContent 
           className="max-w-3xl max-h-[92vh] overflow-y-auto"
           onInteractOutside={(e) => e.preventDefault()}
+          onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">

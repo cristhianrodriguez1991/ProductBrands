@@ -100,7 +100,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         "p-4 border-b flex-shrink-0 flex items-center",
         !mobile && desktopCollapsed ? "justify-center" : "justify-between"
       )}>
-        {(!desktopCollapsed || mobile) && (
+        {(!desktopCollapsed || mobile) ? (
           <div className="overflow-hidden">
             <div className="mb-0.5">
               <Image
@@ -112,6 +112,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 priority
               />
             </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center">
+            <Image
+              src="/images/favicon.png"
+              alt="Logo"
+              width={32}
+              height={32}
+              className="object-contain"
+              priority
+            />
           </div>
         )}
         
