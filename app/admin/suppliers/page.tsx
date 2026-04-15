@@ -15,6 +15,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Plus,
@@ -585,35 +591,78 @@ export default function AdminSuppliersPage() {
 
       {/* ── Pick Supplier for Batch ── */}
       <Dialog open={showPickSupplier} onOpenChange={(o) => { if (!o) setShowPickSupplier(false) }}>
-        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-green-600" />Select Supplier</DialogTitle>
-            <DialogDescription>Choose which supplier to add a batch lot to.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 mt-2">
-            {suppliers.filter(s => s.isActive).map((s) => (
-              <button
-                key={s.id}
-                onClick={() => {
-                  setShowPickSupplier(false)
-                  router.push(`/admin/suppliers/${s.id}?addBatch=true`)
-                }}
-                className="w-full flex items-center gap-3 p-3 rounded-lg border hover:border-blue-300 hover:bg-blue-50/50 transition-all text-left"
-              >
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${s.category === 'PRIVATE_LABEL' ? 'bg-purple-50' : 'bg-blue-50'}`}>
-                  {s.category === 'PRIVATE_LABEL' ? <Star className="h-4 w-4 text-purple-600" /> : <Truck className="h-4 w-4 text-blue-600" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">{s.name}</p>
-                  <p className="text-xs text-muted-foreground">{s._count.batchLots} batch lots</p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              </button>
-            ))}
-            {suppliers.filter(s => s.isActive).length === 0 && (
-              <p className="text-center text-sm text-muted-foreground py-6">No active suppliers. Create one first.</p>
-            )}
+        <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col p-0">
+          <div className="p-6 pb-2">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-green-600" />Select Supplier / Client</DialogTitle>
+              <DialogDescription>Choose where to add a batch lot to.</DialogDescription>
+            </DialogHeader>
           </div>
+          
+          <Tabs defaultValue="SUPPLIER" className="flex-1 flex flex-col min-h-0">
+            <div className="px-6 pb-2">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="SUPPLIER" className="gap-2">
+                  <Truck className="h-4 w-4" /> Suppliers
+                </TabsTrigger>
+                <TabsTrigger value="PRIVATE_LABEL" className="gap-2">
+                  <Star className="h-4 w-4" /> Private Labels
+                </TabsTrigger>
+              </TabsList>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto px-6 pb-6">
+              <TabsContent value="SUPPLIER" className="m-0 mt-2 space-y-2">
+                {suppliers.filter(s => s.isActive && s.category === 'SUPPLIER').map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setShowPickSupplier(false)
+                      router.push(`/admin/suppliers/${s.id}?addBatch=true`)
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg border hover:border-blue-300 hover:bg-blue-50/50 transition-all text-left"
+                  >
+                    <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-50">
+                      <Truck className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{s.name}</p>
+                      <p className="text-xs text-muted-foreground">{s._count.batchLots} batch lots</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  </button>
+                ))}
+                {suppliers.filter(s => s.isActive && s.category === 'SUPPLIER').length === 0 && (
+                  <p className="text-center text-sm text-muted-foreground py-6">No active suppliers.</p>
+                )}
+              </TabsContent>
+
+              <TabsContent value="PRIVATE_LABEL" className="m-0 mt-2 space-y-2">
+                {suppliers.filter(s => s.isActive && s.category === 'PRIVATE_LABEL').map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setShowPickSupplier(false)
+                      router.push(`/admin/suppliers/${s.id}?addBatch=true`)
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg border hover:border-purple-300 hover:bg-purple-50/50 transition-all text-left"
+                  >
+                    <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-purple-50">
+                      <Star className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{s.name}</p>
+                      <p className="text-xs text-muted-foreground">{s._count.batchLots} batch lots</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  </button>
+                ))}
+                {suppliers.filter(s => s.isActive && s.category === 'PRIVATE_LABEL').length === 0 && (
+                  <p className="text-center text-sm text-muted-foreground py-6">No active private label clients.</p>
+                )}
+              </TabsContent>
+            </div>
+          </Tabs>
         </DialogContent>
       </Dialog>
 

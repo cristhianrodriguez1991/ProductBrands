@@ -287,6 +287,8 @@ function BatchLotCard({
   onPreview,
   onClearNote,
   onDeleteAttachment,
+  onDeleteSharedAttachment,
+  onAddSharedAttachment,
 }: {
   lot: BatchLot
   onStatusChange: (id: string, status: BatchLotStatus) => Promise<void>
@@ -295,10 +297,13 @@ function BatchLotCard({
   onPreview: (url: string, name: string) => void
   onClearNote?: (lotId: string) => void
   onDeleteAttachment?: (lotId: string, attachmentId: string) => Promise<void>
+  onDeleteSharedAttachment?: (masterBatchId: string, attachmentId: string) => Promise<void>
+  onAddSharedAttachment?: (masterBatchId: string, files: File[]) => Promise<void>
 }) {
   const [expanded, setExpanded] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [deletingAttId, setDeletingAttId] = useState<string | null>(null)
+  const [addingShared, setAddingShared] = useState(false)
   const isExpired =
     lot.expiresAt && new Date(lot.expiresAt) < new Date()
   const isExpiringSoon =
@@ -606,58 +611,128 @@ function BatchLotCard({
             )}
 
             {/* Shared Shipment Attachments */}
-            {lot.masterBatch && lot.masterBatch.attachments.length > 0 && (
+            {lot.masterBatch && (
               <div className="mt-4 pt-4 border-t border-blue-50">
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <FileCheck className="h-3.5 w-3.5" /> Shared Shipment Documents
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {lot.masterBatch.attachments.map((att) => {
-                    const isImage = att.mimeType?.startsWith("image/")
-                    return (
-                      <div
-                        key={att.id}
-                        onClick={(e) => {
-                          if (isImage) {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            onPreview(att.fileUrl, att.label || att.fileName)
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
+                    <FileCheck className="h-3.5 w-3.5" /> Shared Shipment Documents
+                  </p>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      className="h-7 px-2.5 rounded-md text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 flex items-center gap-1 transition-colors"
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.setAttribute('capture', 'environment');
+                        input.onchange = async (e) => {
+                          const files = Array.from((e.target as HTMLInputElement).files || []);
+                          if (files.length > 0 && lot.masterBatch) {
+                            setAddingShared(true);
+                            await onAddSharedAttachment?.(lot.masterBatch.id, files);
+                            setAddingShared(false);
                           }
-                        }}
-                        className={cn(
-                          "group block rounded-lg border border-blue-100 overflow-hidden hover:border-blue-400 bg-blue-50/10 transition-colors",
-                          isImage && "cursor-pointer"
-                        )}
-                      >
-                        {isImage ? (
-                          <div className="aspect-square bg-white overflow-hidden">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={att.fileUrl}
-                              alt={att.label || att.fileName}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                            />
-                          </div>
-                        ) : (
-                          <a
-                            href={att.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="aspect-square bg-white flex flex-col items-center justify-center gap-2"
-                          >
-                            <FileText className="h-8 w-8 text-blue-300" />
-                          </a>
-                        )}
-                        <div className="px-2 py-1.5 bg-blue-50/30">
-                          <p className="text-[10px] font-bold text-blue-700 uppercase tracking-tighter truncate">{att.label || "Shared Document"}</p>
-                          <p className="text-[10px] text-blue-500/70">
-                            {formatDate(att.uploadedAt)}
-                          </p>
-                        </div>
-                      </div>
-                    )
-                  })}
+                        };
+                        input.click();
+                      }}
+                    >
+                      <Camera className="h-3 w-3" /> Photo
+                    </button>
+                    <button
+                      type="button"
+                      className="h-7 px-2.5 rounded-md text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 flex items-center gap-1 transition-colors"
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx';
+                        input.multiple = true;
+                        input.onchange = async (e) => {
+                          const files = Array.from((e.target as HTMLInputElement).files || []);
+                          if (files.length > 0 && lot.masterBatch) {
+                            setAddingShared(true);
+                            await onAddSharedAttachment?.(lot.masterBatch.id, files);
+                            setAddingShared(false);
+                          }
+                        };
+                        input.click();
+                      }}
+                    >
+                      {addingShared ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} Add
+                    </button>
+                  </div>
                 </div>
+                {lot.masterBatch.attachments.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {lot.masterBatch.attachments.map((att) => {
+                      const isImage = att.mimeType?.startsWith("image/")
+                      return (
+                        <div
+                          key={att.id}
+                          className={cn(
+                            "group relative block rounded-lg border border-blue-100 overflow-hidden hover:border-blue-400 bg-blue-50/10 transition-colors",
+                            isImage && "cursor-pointer"
+                          )}
+                        >
+                          {/* Delete button */}
+                          <button
+                            type="button"
+                            className="absolute top-1.5 right-1.5 z-10 h-6 w-6 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all shadow-sm"
+                            onClick={async (e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              if (lot.masterBatch) {
+                                setDeletingAttId(att.id)
+                                await onDeleteSharedAttachment?.(lot.masterBatch.id, att.id)
+                                setDeletingAttId(null)
+                              }
+                            }}
+                            title="Delete shared document"
+                          >
+                            {deletingAttId === att.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                          </button>
+                          <div
+                            onClick={(e) => {
+                              if (isImage) {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                onPreview(att.fileUrl, att.label || att.fileName)
+                              }
+                            }}
+                          >
+                            {isImage ? (
+                              <div className="aspect-square bg-white overflow-hidden">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={att.fileUrl}
+                                  alt={att.label || att.fileName}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                />
+                              </div>
+                            ) : (
+                              <a
+                                href={att.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="aspect-square bg-white flex flex-col items-center justify-center gap-2"
+                              >
+                                <FileText className="h-8 w-8 text-blue-300" />
+                              </a>
+                            )}
+                          </div>
+                          <div className="px-2 py-1.5 bg-blue-50/30">
+                            <p className="text-[10px] font-bold text-blue-700 uppercase tracking-tighter truncate">{att.label || "Shared Document"}</p>
+                            <p className="text-[10px] text-blue-500/70">
+                              {formatDate(att.uploadedAt)}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic py-2">No shared documents yet. Use the buttons above to add.</p>
+                )}
               </div>
             )}
           </div>
@@ -997,6 +1072,31 @@ export default function SupplierDetailPage() {
     try {
       const res = await fetch(`/api/suppliers/${id}/lots/${lotId}/attachments/${attachmentId}`, {
         method: "DELETE",
+      })
+      if (res.ok) await fetchSupplier()
+    } catch {}
+  }
+
+  const handleDeleteSharedAttachment = async (masterBatchId: string, attachmentId: string) => {
+    try {
+      const res = await fetch(`/api/suppliers/${id}/master-batches/${masterBatchId}/attachments/${attachmentId}`, {
+        method: "DELETE",
+      })
+      if (res.ok) await fetchSupplier()
+    } catch {}
+  }
+
+  const handleAddSharedAttachment = async (masterBatchId: string, files: File[]) => {
+    try {
+      const fd = new FormData()
+      for (const f of files) {
+        const converted = await convertHeicToJpeg(f)
+        fd.append("files", converted)
+        fd.append("labels", "Shared Document")
+      }
+      const res = await fetch(`/api/suppliers/${id}/master-batches/${masterBatchId}/attachments`, {
+        method: "POST",
+        body: fd,
       })
       if (res.ok) await fetchSupplier()
     } catch {}
@@ -1597,6 +1697,8 @@ export default function SupplierDetailPage() {
                     onPreview={(url, name) => setPreviewImage({ url, name })}
                     onClearNote={handleClearBatchNote}
                     onDeleteAttachment={handleDeleteAttachment}
+                    onDeleteSharedAttachment={handleDeleteSharedAttachment}
+                    onAddSharedAttachment={handleAddSharedAttachment}
                   />
                 ))}
               </div>
