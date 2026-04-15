@@ -68,6 +68,7 @@ import {
   PackageSearch,
   UploadCloud,
   FileCheck,
+  Camera,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -527,11 +528,11 @@ function BatchLotCard({
               </div>
             )}
 
-            {/* Attachments gallery */}
+            {/* Individual Attachments gallery */}
             {lot.attachments.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                  Attachments
+                  Individual Attachments
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {lot.attachments.map((att) => {
@@ -573,6 +574,62 @@ function BatchLotCard({
                         <div className="px-2 py-1.5">
                           <p className="text-xs font-medium truncate">{att.label || att.fileName}</p>
                           <p className="text-xs text-muted-foreground">
+                            {formatDate(att.uploadedAt)}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Shared Shipment Attachments */}
+            {lot.masterBatch && lot.masterBatch.attachments.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-blue-50">
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <FileCheck className="h-3.5 w-3.5" /> Shared Shipment Documents
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {lot.masterBatch.attachments.map((att) => {
+                    const isImage = att.mimeType?.startsWith("image/")
+                    return (
+                      <div
+                        key={att.id}
+                        onClick={(e) => {
+                          if (isImage) {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            onPreview(att.fileUrl, att.label || att.fileName)
+                          }
+                        }}
+                        className={cn(
+                          "group block rounded-lg border border-blue-100 overflow-hidden hover:border-blue-400 bg-blue-50/10 transition-colors",
+                          isImage && "cursor-pointer"
+                        )}
+                      >
+                        {isImage ? (
+                          <div className="aspect-square bg-white overflow-hidden">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={att.fileUrl}
+                              alt={att.label || att.fileName}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                          </div>
+                        ) : (
+                          <a
+                            href={att.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="aspect-square bg-white flex flex-col items-center justify-center gap-2"
+                          >
+                            <FileText className="h-8 w-8 text-blue-300" />
+                          </a>
+                        )}
+                        <div className="px-2 py-1.5 bg-blue-50/30">
+                          <p className="text-[10px] font-bold text-blue-700 uppercase tracking-tighter truncate">{att.label || "Shared Document"}</p>
+                          <p className="text-[10px] text-blue-500/70">
                             {formatDate(att.uploadedAt)}
                           </p>
                         </div>
@@ -2019,12 +2076,36 @@ export default function SupplierDetailPage() {
                             />
                           </div>
                           <div className="md:col-span-1 border-l pl-4 flex flex-col justify-center gap-2">
-                            <Label className="text-[10px] font-bold text-muted-foreground">PRODUCT PHOTO</Label>
-                            <div className="flex items-center gap-2">
+                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Product Photo</Label>
+                            <div className="flex items-center gap-1.5">
                               <Button
                                 type="button"
                                 variant="outline"
-                                className="h-9 w-9 p-0 rounded-lg flex-shrink-0"
+                                className="h-8 w-8 p-0 rounded-lg flex-shrink-0 bg-blue-50/50 hover:bg-blue-100 border-blue-100 text-blue-600"
+                                title="Open Camera"
+                                onClick={() => {
+                                  const input = document.createElement('input');
+                                  input.type = 'file';
+                                  input.accept = 'image/*';
+                                  input.setAttribute('capture', 'environment');
+                                  input.onchange = (e) => {
+                                    const files = Array.from((e.target as HTMLInputElement).files || []);
+                                    if (files.length > 0) {
+                                      const newItems = [...mixedItems];
+                                      newItems[idx].files = [...newItems[idx].files, ...files];
+                                      setMixedItems(newItems);
+                                    }
+                                  };
+                                  input.click();
+                                }}
+                              >
+                                <Camera className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-8 w-8 p-0 rounded-lg flex-shrink-0 bg-muted/20"
+                                title="Upload File"
                                 onClick={() => {
                                   const input = document.createElement('input');
                                   input.type = 'file';
@@ -2041,12 +2122,12 @@ export default function SupplierDetailPage() {
                                   input.click();
                                 }}
                               >
-                                <Upload className="h-4 w-4" />
+                                <Upload className="h-3.5 w-3.5" />
                               </Button>
-                              <div className="flex -space-x-2 overflow-hidden">
+                              <div className="flex -space-x-2 overflow-hidden ml-1">
                                 {item.files.map((file, fIdx) => (
-                                  <div key={fIdx} className="h-7 w-7 rounded-sm border bg-muted flex items-center justify-center relative group">
-                                    <ImageIcon className="h-3.5 w-3.5" />
+                                  <div key={fIdx} className="h-7 w-7 rounded-sm border bg-white flex items-center justify-center relative group shadow-sm">
+                                    <ImageIcon className="h-3 w-3 text-blue-400" />
                                     <button 
                                       type="button"
                                       className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
@@ -2145,14 +2226,38 @@ export default function SupplierDetailPage() {
                     <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
                       <Paperclip className="h-3.5 w-3.5" /> Shared Delivery Files
                     </Label>
-                    <Button 
-                      type="button" 
-                      onClick={() => fileInputRef.current?.click()} 
-                      variant="ghost" 
-                      className="h-8 text-xs text-blue-600 font-bold hover:bg-blue-50"
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1" /> Add Files
-                    </Button>
+                    <div className="flex gap-1.5">
+                      <Button 
+                        type="button" 
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'image/*';
+                          input.setAttribute('capture', 'environment');
+                          input.onchange = (e) => {
+                            const newFiles = Array.from((e.target as HTMLInputElement).files ?? []);
+                            setFiles((prev) => [
+                              ...prev,
+                              ...newFiles.map((f) => ({ file: f, label: "Other" })),
+                            ]);
+                          };
+                          input.click();
+                        }}
+                        variant="ghost" 
+                        className="h-8 w-8 p-0 text-blue-600 font-bold hover:bg-blue-50"
+                        title="Take Photo"
+                      >
+                        <Camera className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        type="button" 
+                        onClick={() => fileInputRef.current?.click()} 
+                        variant="ghost" 
+                        className="h-8 text-xs text-blue-600 font-bold hover:bg-blue-50"
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" /> Add Files
+                      </Button>
+                    </div>
                   </div>
                   <Input type="file" ref={fileInputRef} multiple className="hidden" onChange={handleAddFile} />
 
