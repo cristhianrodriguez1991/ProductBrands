@@ -53,6 +53,7 @@ export async function POST(
           quantityUnit: item.quantityUnit || "units",
           status: "RECEIVED",
           receivedAt,
+          expiresAt: item.expiresAt ? new Date(item.expiresAt) : null,
           invoiceNumber,
           poNumber,
         }

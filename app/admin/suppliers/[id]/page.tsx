@@ -627,8 +627,8 @@ export default function SupplierDetailPage() {
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
   const docFileRef = useRef<HTMLInputElement>(null)
   const [isMixedPallet, setIsMixedPallet] = useState(false)
-  const [mixedItems, setMixedItems] = useState<{ id: string; productName: string; lotNumber: string; productSku: string; category: string; quantityReceived: string; quantityUnit: string }[]>([
-    { id: '1', productName: '', lotNumber: '', productSku: '', category: '', quantityReceived: '', quantityUnit: 'units' }
+  const [mixedItems, setMixedItems] = useState<{ id: string; productName: string; lotNumber: string; expiresAt: string; category: string; quantityReceived: string; quantityUnit: string }[]>([
+    { id: '1', productName: '', lotNumber: '', expiresAt: '', category: '', quantityReceived: '', quantityUnit: 'units' }
   ])
 
   const fetchDocuments = async () => {
@@ -945,7 +945,7 @@ export default function SupplierDetailPage() {
       
       setShowAddLot(false)
       setLotForm(EMPTY_LOT_FORM)
-      setMixedItems([{ id: '1', productName: '', lotNumber: '', productSku: '', category: '', quantityReceived: '', quantityUnit: 'units' }])
+      setMixedItems([{ id: '1', productName: '', lotNumber: '', expiresAt: '', category: '', quantityReceived: '', quantityUnit: 'units' }])
       setIsMixedPallet(false)
       setFiles([])
       await fetchSupplier()
@@ -1940,7 +1940,7 @@ export default function SupplierDetailPage() {
                       variant="outline"
                       size="sm"
                       className="h-8 text-[11px] font-bold uppercase gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50"
-                      onClick={() => setMixedItems([...mixedItems, { id: Math.random().toString(), productName: '', lotNumber: '', productSku: '', category: '', quantityReceived: '', quantityUnit: 'units' }])}
+                      onClick={() => setMixedItems([...mixedItems, { id: Math.random().toString(), productName: '', lotNumber: '', expiresAt: '', category: '', quantityReceived: '', quantityUnit: 'units' }])}
                     >
                       <Plus className="h-3.5 w-3.5" /> Add Another Product
                     </Button>
@@ -1965,7 +1965,7 @@ export default function SupplierDetailPage() {
                               required
                             />
                           </div>
-                          <div className="space-y-1">
+                          <div>
                             <Label className="text-[10px] font-bold text-muted-foreground">LOT NUMBER</Label>
                             <Input
                               value={item.lotNumber}
@@ -1978,16 +1978,16 @@ export default function SupplierDetailPage() {
                               className="h-9 text-sm font-mono border-muted-foreground/20"
                             />
                           </div>
-                          <div className="space-y-1">
-                            <Label className="text-[10px] font-bold text-muted-foreground">SKU / PART #</Label>
+                          <div>
+                            <Label className="text-[10px] font-bold text-muted-foreground">EXPIRATION DATE</Label>
                             <Input
-                              value={item.productSku}
+                              type="date"
+                              value={item.expiresAt}
                               onChange={(e) => {
                                 const newItems = [...mixedItems]
-                                newItems[idx].productSku = e.target.value
+                                newItems[idx].expiresAt = e.target.value
                                 setMixedItems(newItems)
                               }}
-                              placeholder="SKU"
                               className="h-9 text-sm border-muted-foreground/20"
                             />
                           </div>
@@ -2041,7 +2041,7 @@ export default function SupplierDetailPage() {
                     <Button
                       type="button"
                       variant="ghost"
-                      onClick={() => setMixedItems([...mixedItems, { id: Math.random().toString(), productName: '', lotNumber: '', productSku: '', category: '', quantityReceived: '', quantityUnit: 'units' }])}
+                      onClick={() => setMixedItems([...mixedItems, { id: Math.random().toString(), productName: '', lotNumber: '', expiresAt: '', category: '', quantityReceived: '', quantityUnit: 'units' }])}
                       className="w-full py-8 border-2 border-dashed border-muted hover:border-blue-400 hover:bg-blue-50/30 text-muted-foreground rounded-2xl transition-all h-auto gap-2"
                     >
                       <Plus className="h-5 w-5" />
