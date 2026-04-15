@@ -251,6 +251,10 @@ export default function AdminSuppliersPage() {
   const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null)
   const [deleteConfirming, setDeleteConfirming] = useState(false)
 
+  // Add Batch (pick supplier first)
+  const [showAddChoice, setShowAddChoice] = useState(false)
+  const [showPickSupplier, setShowPickSupplier] = useState(false)
+
   const fetchSuppliers = async () => {
     try {
       const res = await fetch("/api/suppliers")
@@ -400,7 +404,7 @@ export default function AdminSuppliersPage() {
           <h1 className="text-2xl font-bold mb-0.5">Suppliers & Private Labels</h1>
           <p className="text-sm text-muted-foreground">Track your supply chain and private label clients</p>
         </div>
-        <Button onClick={() => openAddModal()} className="gap-2 shrink-0">
+        <Button onClick={() => setShowAddChoice(true)} className="gap-2 shrink-0">
           <Plus className="h-4 w-4" />Add
         </Button>
       </div>
@@ -543,7 +547,77 @@ export default function AdminSuppliersPage() {
         </>
       )}
 
-      {/* ── Add Modal — Step 1: choose category ── */}
+      {/* ── Add Choice Modal ── */}
+      <Dialog open={showAddChoice} onOpenChange={(o) => { if (!o) setShowAddChoice(false) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>What would you like to add?</DialogTitle>
+            <DialogDescription>Choose an option below.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-3 mt-2">
+            <button
+              onClick={() => { setShowAddChoice(false); openAddModal() }}
+              className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent hover:border-blue-300 hover:bg-blue-50 transition-all text-left"
+            >
+              <div className="h-11 w-11 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <Truck className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">New Supplier / Client</p>
+                <p className="text-xs text-muted-foreground">Create a new supplier or private label</p>
+              </div>
+            </button>
+            <button
+              onClick={() => { setShowAddChoice(false); setShowPickSupplier(true) }}
+              className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent hover:border-green-300 hover:bg-green-50 transition-all text-left"
+            >
+              <div className="h-11 w-11 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                <Package className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">New Batch / Delivery</p>
+                <p className="text-xs text-muted-foreground">Add a batch lot to an existing supplier</p>
+              </div>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Pick Supplier for Batch ── */}
+      <Dialog open={showPickSupplier} onOpenChange={(o) => { if (!o) setShowPickSupplier(false) }}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-green-600" />Select Supplier</DialogTitle>
+            <DialogDescription>Choose which supplier to add a batch lot to.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 mt-2">
+            {suppliers.filter(s => s.isActive).map((s) => (
+              <button
+                key={s.id}
+                onClick={() => {
+                  setShowPickSupplier(false)
+                  router.push(`/admin/suppliers/${s.id}?addBatch=true`)
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg border hover:border-blue-300 hover:bg-blue-50/50 transition-all text-left"
+              >
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${s.category === 'PRIVATE_LABEL' ? 'bg-purple-50' : 'bg-blue-50'}`}>
+                  {s.category === 'PRIVATE_LABEL' ? <Star className="h-4 w-4 text-purple-600" /> : <Truck className="h-4 w-4 text-blue-600" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">{s.name}</p>
+                  <p className="text-xs text-muted-foreground">{s._count.batchLots} batch lots</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              </button>
+            ))}
+            {suppliers.filter(s => s.isActive).length === 0 && (
+              <p className="text-center text-sm text-muted-foreground py-6">No active suppliers. Create one first.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Add Supplier Modal — Step 1: choose category ── */}
       <Dialog open={showAddModal && !addCategoryChosen} onOpenChange={(o) => { if (!o) setShowAddModal(false) }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>

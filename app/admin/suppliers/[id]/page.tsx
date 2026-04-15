@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { convertHeicToJpeg } from "@/lib/convert-heic"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -671,6 +671,7 @@ function BatchLotCard({
 export default function SupplierDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [supplier, setSupplier] = useState<Supplier | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAddLot, setShowAddLot] = useState(false)
@@ -884,6 +885,15 @@ export default function SupplierDetailPage() {
     fetchSupplier()
     fetchDocuments()
   }, [id])
+
+  // Auto-open batch modal if navigated with ?addBatch=true
+  useEffect(() => {
+    if (searchParams.get('addBatch') === 'true' && !loading) {
+      setShowAddLot(true)
+      // Clean up the URL param
+      router.replace(`/admin/suppliers/${id}`, { scroll: false })
+    }
+  }, [searchParams, loading])
 
   const handleStatusChange = async (lotId: string, status: BatchLotStatus) => {
     const res = await fetch(`/api/suppliers/${id}/lots/${lotId}`, {
