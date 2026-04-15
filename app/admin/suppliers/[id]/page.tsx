@@ -119,16 +119,6 @@ type BatchLot = {
     attachments: Attachment[]
   } | null
 }
-  totalCost: number | null
-  createdAt: string
-  updatedAt: string
-  attachments: Attachment[]
-  masterBatch?: {
-    id: string
-    name: string | null
-    attachments: Attachment[]
-  } | null
-}
 
 type Supplier = {
   id: string
