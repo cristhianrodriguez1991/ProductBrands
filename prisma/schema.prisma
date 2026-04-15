@@ -603,6 +603,7 @@ model Supplier {
   updatedAt     DateTime @updatedAt
 
   batchLots     BatchLot[]
+  masterBatches MasterBatch[]
   documents     ClientDocument[]
 
   @@index([name])
