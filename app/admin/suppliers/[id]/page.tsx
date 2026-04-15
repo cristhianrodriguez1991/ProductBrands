@@ -533,6 +533,7 @@ export default function SupplierDetailPage() {
 
   // ── Client Documents (Private Label) ──
   const [documents, setDocuments] = useState<ClientDocument[]>([])
+  const [showDocs, setShowDocs] = useState(false)
   const [docUploading, setDocUploading] = useState(false)
   const [docName, setDocName] = useState("")
   const [docFile, setDocFile] = useState<File | null>(null)
@@ -889,6 +890,118 @@ export default function SupplierDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Client Documents Section (Private Label only) ── */}
+      {supplier.category === "PRIVATE_LABEL" && (
+        <Card className="mb-8 border-purple-100 shadow-sm overflow-hidden">
+          <CardHeader className="py-4 bg-purple-50/50 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setShowDocs(!showDocs)}>
+              <FolderOpen className="h-5 w-5 text-purple-600" />
+              <CardTitle className="text-base font-semibold">Client Documents</CardTitle>
+              <Badge variant="secondary" className="bg-purple-100 text-purple-700 hover:bg-purple-100">
+                {documents.length}
+              </Badge>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowDocs(!showDocs)}
+              className="text-purple-700 hover:bg-purple-100/50"
+            >
+              {showDocs ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CardHeader>
+
+          {showDocs && (
+            <CardContent className="pt-5 pb-6">
+              {/* Upload form */}
+              <form onSubmit={handleDocUpload} className="flex flex-col sm:flex-row gap-3 mb-6">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Document name (e.g. Contract 2024, Invoice #001)"
+                    value={docName}
+                    onChange={(e) => setDocName(e.target.value)}
+                    className="border-purple-100 focus-visible:ring-purple-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <input
+                    ref={docFileRef}
+                    type="file"
+                    accept="*/*"
+                    onChange={(e) => setDocFile(e.target.files?.[0] || null)}
+                    className="block w-full text-sm text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer border border-purple-100 rounded-md h-10 px-3 pt-1.5"
+                  />
+                </div>
+                <Button type="submit" disabled={docUploading || !docFile} className="gap-2 shrink-0 bg-purple-600 hover:bg-purple-700">
+                  {docUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  Upload Document
+                </Button>
+              </form>
+              {docError && <p className="text-red-600 text-xs mt-2 mb-4">{docError}</p>}
+
+              {/* Document list (List Manner) */}
+              {documents.length === 0 ? (
+                <div className="py-10 text-center border-2 border-dashed border-purple-50 rounded-xl">
+                  <FolderOpen className="h-12 w-12 mx-auto mb-3 text-purple-200" />
+                  <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {documents.map((doc) => {
+                    const isImage = doc.mimeType?.startsWith("image/")
+                    const isPdf = doc.mimeType === "application/pdf"
+                    return (
+                      <div key={doc.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white hover:border-purple-200 hover:shadow-sm transition-all group">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div className="h-10 w-10 rounded-lg border bg-purple-50 flex items-center justify-center shrink-0 overflow-hidden">
+                            {isImage ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={doc.fileUrl} alt={doc.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <FileText className={`h-5 w-5 ${isPdf ? "text-red-400" : "text-blue-400"}`} />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm truncate text-gray-900">{doc.name}</p>
+                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                              {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(0)} KB · ` : ""}
+                              {new Date(doc.uploadedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 pr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <a
+                            href={doc.fileUrl}
+                            download={doc.fileName}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border bg-white hover:bg-gray-50 transition-colors"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            Open
+                          </a>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDocDelete(doc.id)}
+                            disabled={deletingDocId === doc.id}
+                            className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                          >
+                            {deletingDocId === doc.id
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <Trash2 className="h-3.5 w-3.5" />}
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {/* Lot & Batch Tracker header */}
       <div className="mb-5">
@@ -1595,106 +1708,6 @@ export default function SupplierDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Client Documents Section (Private Label only) ── */}
-      {supplier.category === "PRIVATE_LABEL" && (
-        <div className="mt-10">
-          <div className="flex items-center gap-2 mb-4">
-            <FolderOpen className="h-5 w-5 text-purple-600" />
-            <h2 className="text-lg font-semibold">Documents</h2>
-            <span className="text-xs text-muted-foreground ml-1">{documents.length} file{documents.length !== 1 ? "s" : ""}</span>
-          </div>
-
-          {/* Upload form */}
-          <Card className="mb-5">
-            <CardContent className="pt-4 pb-4">
-              <form onSubmit={handleDocUpload} className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Document name (e.g. Contract 2024, Invoice #001)"
-                    value={docName}
-                    onChange={(e) => setDocName(e.target.value)}
-                  />
-                </div>
-                <div className="flex-1">
-                  <input
-                    ref={docFileRef}
-                    type="file"
-                    accept="*/*"
-                    onChange={(e) => setDocFile(e.target.files?.[0] || null)}
-                    className="block w-full text-sm text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer border rounded-md h-10 px-3 pt-1.5"
-                  />
-                </div>
-                <Button type="submit" disabled={docUploading || !docFile} className="gap-2 shrink-0">
-                  {docUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  Upload
-                </Button>
-              </form>
-              {docError && <p className="text-red-600 text-xs mt-2">{docError}</p>}
-            </CardContent>
-          </Card>
-
-          {/* Document list */}
-          {documents.length === 0 ? (
-            <Card>
-              <CardContent className="py-10 text-center">
-                <FolderOpen className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-30" />
-                <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {documents.map((doc) => {
-                const isImage = doc.mimeType?.startsWith("image/")
-                const isPdf = doc.mimeType === "application/pdf"
-                return (
-                  <Card key={doc.id} className="group relative overflow-hidden">
-                    {/* Preview */}
-                    <div className="h-36 bg-muted/30 flex items-center justify-center overflow-hidden border-b">
-                      {isImage ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={doc.fileUrl} alt={doc.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                          <FileText className={`h-10 w-10 ${isPdf ? "text-red-400" : "text-blue-400"}`} />
-                          <span className="text-xs font-medium">{doc.fileName.split(".").pop()?.toUpperCase()}</span>
-                        </div>
-                      )}
-                    </div>
-                    <CardContent className="p-3">
-                      <p className="font-medium text-sm truncate">{doc.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(0)} KB · ` : ""}
-                        {new Date(doc.uploadedAt).toLocaleDateString()}
-                      </p>
-                      <div className="flex gap-2 mt-2">
-                        <a
-                          href={doc.fileUrl}
-                          download={doc.fileName}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-md border hover:bg-muted transition-colors"
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                          Open
-                        </a>
-                        <button
-                          onClick={() => handleDocDelete(doc.id)}
-                          disabled={deletingDocId === doc.id}
-                          className="h-8 w-8 flex items-center justify-center rounded-md border text-muted-foreground hover:text-red-600 hover:border-red-200 transition-colors"
-                        >
-                          {deletingDocId === doc.id
-                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            : <Trash2 className="h-3.5 w-3.5" />}
-                        </button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
 
     </div>
   )
