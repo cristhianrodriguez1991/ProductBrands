@@ -52,8 +52,7 @@ export async function uploadFile(
   if (isHeic) {
     try {
       const sharp = (await import("sharp")).default
-      // Cast via Uint8Array to satisfy sharp's Buffer<ArrayBuffer> type constraint
-      buffer = await sharp(new Uint8Array(buffer)).jpeg({ quality: 90 }).toBuffer()
+      buffer = await sharp(buffer as Buffer).jpeg({ quality: 90 }).toBuffer() as Buffer<ArrayBuffer>
       finalMimeType = "image/jpeg"
       finalExt = "jpg"
     } catch (e) {
