@@ -85,10 +85,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const Sidebar = ({ mobile = false }) => (
     <aside
       className={cn(
-        "flex flex-col bg-muted/40 border-r",
+        "flex flex-col border-r",
         mobile
-          ? "fixed inset-y-0 left-0 z-50 w-72 shadow-xl"
-          : "hidden md:flex w-64 h-screen sticky top-0 flex-shrink-0"
+          ? "fixed inset-y-0 left-0 z-50 w-72 shadow-xl bg-white dark:bg-gray-950"
+          : "hidden md:flex w-64 h-screen sticky top-0 flex-shrink-0 bg-muted/40"
       )}
     >
       {/* Logo */}
