@@ -194,15 +194,26 @@ function formatDate(d: string | null) {
   })
 }
 
-function formatDateTime(d: string | null) {
-  if (!d) return "—"
-  return new Date(d).toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+}
+
+function TimestampButton({ onInsert }: { onInsert: (ts: string) => void }) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="h-7 text-[10px] uppercase font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 gap-1 px-2"
+      onClick={(e) => {
+        e.preventDefault()
+        const now = new Date()
+        const ts = `[${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}] - `
+        onInsert(ts)
+      }}
+    >
+      <Clock className="h-3 w-3" />
+      Timestamp
+    </Button>
+  )
 }
 
 /** Format currency without forced 2dp — preserves 0.017, 0.5, 1.25 etc. */
@@ -550,6 +561,9 @@ export default function SupplierDetailPage() {
   // ── Client Documents (Private Label) ──
   const [documents, setDocuments] = useState<ClientDocument[]>([])
   const [showDocs, setShowDocs] = useState(false)
+  const [isEditingNotes, setIsEditingNotes] = useState(false)
+  const [tempNotes, setTempNotes] = useState("")
+  const [savingNotes, setSavingNotes] = useState(false)
   const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null)
   const [docUploading, setDocUploading] = useState(false)
   const [docName, setDocName] = useState("")
@@ -564,6 +578,24 @@ export default function SupplierDetailPage() {
       const res = await fetch(`/api/suppliers/${id}/documents`)
       if (res.ok) setDocuments(await res.json())
     } catch {}
+  }
+
+  const handleSaveNotes = async () => {
+    if (!supplier) return
+    setSavingNotes(true)
+    try {
+      const resp = await fetch(`/api/suppliers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: tempNotes }),
+      })
+      if (resp.ok) {
+        setIsEditingNotes(false)
+        fetchSupplier()
+      }
+    } finally {
+      setSavingNotes(false)
+    }
   }
 
   const handleDocUpload = async (e: React.FormEvent) => {
@@ -834,7 +866,7 @@ export default function SupplierDetailPage() {
       </div>
 
       {/* Supplier info strip */}
-      <Card className="mb-8">
+      <Card className="mb-8 overflow-hidden">
         <CardContent className="pt-5 pb-5">
           <div className="flex flex-wrap gap-x-8 gap-y-3">
             {supplier.email && (
@@ -868,10 +900,48 @@ export default function SupplierDetailPage() {
               </div>
             )}
           </div>
-          {supplier.notes && (
-            <p className="mt-3 text-sm text-muted-foreground border-t pt-3">{supplier.notes}</p>
-          )}
         </CardContent>
+        <div className="border-t bg-muted/10 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5" /> General Notes
+            </h3>
+            {isEditingNotes ? (
+              <div className="flex items-center gap-2">
+                <TimestampButton onInsert={(ts) => setTempNotes(tempNotes + ts)} />
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setIsEditingNotes(false)}>Cancel</Button>
+                <Button size="sm" className="h-7 text-xs px-4" onClick={handleSaveNotes} disabled={savingNotes}>
+                  {savingNotes ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                </Button>
+              </div>
+            ) : (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-7 text-xs text-blue-600 hover:text-blue-700 font-bold"
+                onClick={() => {
+                  setTempNotes(supplier.notes || "")
+                  setIsEditingNotes(true)
+                }}
+              >
+                <Pencil className="h-3 w-3 mr-1" /> Edit
+              </Button>
+            )}
+          </div>
+          {isEditingNotes ? (
+            <Textarea 
+              value={tempNotes}
+              onChange={(e) => setTempNotes(e.target.value)}
+              placeholder="Add key details about this supplier or client (e.g. delivery preferences, known delays, etc.)"
+              className="resize-none text-sm min-h-[80px]"
+              autoFocus
+            />
+          ) : (
+            <div className="text-sm text-gray-700 whitespace-pre-wrap">
+              {supplier.notes || <span className="text-muted-foreground italic">No notes added yet. Click edit to add reminders or important details.</span>}
+            </div>
+          )}
+        </div>
       </Card>
 
       {/* Stats */}
@@ -1293,13 +1363,19 @@ export default function SupplierDetailPage() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Notes</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="edit-notes">Internal Notes</Label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <Label htmlFor="edit-notes">Internal Notes</Label>
+                      <TimestampButton onInsert={(ts) => setEditForm(prev => ({ ...prev, internalNotes: (prev.internalNotes || "") + ts }))} />
+                    </div>
                     <Textarea id="edit-notes" value={editForm.internalNotes}
                       onChange={(e) => setEditForm({ ...editForm, internalNotes: e.target.value })}
                       rows={3} className="mt-1 resize-none" />
                   </div>
                   <div>
-                    <Label htmlFor="edit-qc">QC Notes</Label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <Label htmlFor="edit-qc">QC Notes</Label>
+                      <TimestampButton onInsert={(ts) => setEditForm(prev => ({ ...prev, qcNotes: (prev.qcNotes || "") + ts }))} />
+                    </div>
                     <Textarea id="edit-qc" value={editForm.qcNotes}
                       onChange={(e) => setEditForm({ ...editForm, qcNotes: e.target.value })}
                       rows={3} className="mt-1 resize-none" />
@@ -1610,7 +1686,10 @@ export default function SupplierDetailPage() {
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="lot-notes">Internal Notes</Label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <Label htmlFor="lot-notes">Internal Notes</Label>
+                    <TimestampButton onInsert={(ts) => setLotForm(prev => ({ ...prev, internalNotes: (prev.internalNotes || "") + ts }))} />
+                  </div>
                   <Textarea
                     id="lot-notes"
                     value={lotForm.internalNotes}
@@ -1621,7 +1700,10 @@ export default function SupplierDetailPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lot-qc">QC Notes</Label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <Label htmlFor="lot-qc">QC Notes</Label>
+                    <TimestampButton onInsert={(ts) => setLotForm(prev => ({ ...prev, qcNotes: (prev.qcNotes || "") + ts }))} />
+                  </div>
                   <Textarea
                     id="lot-qc"
                     value={lotForm.qcNotes}
