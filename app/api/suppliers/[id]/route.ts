@@ -15,7 +15,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       where: { id: params.id },
       include: {
         batchLots: {
-          orderBy: { receivedAt: "desc" },
+          orderBy: { createdAt: "desc" },
           include: {
             attachments: true,
             masterBatch: {

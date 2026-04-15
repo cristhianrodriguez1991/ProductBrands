@@ -286,6 +286,7 @@ function BatchLotCard({
   onDelete,
   onPreview,
   onClearNote,
+  onDeleteAttachment,
 }: {
   lot: BatchLot
   onStatusChange: (id: string, status: BatchLotStatus) => Promise<void>
@@ -293,9 +294,11 @@ function BatchLotCard({
   onDelete: (lot: BatchLot) => void
   onPreview: (url: string, name: string) => void
   onClearNote?: (lotId: string) => void
+  onDeleteAttachment?: (lotId: string, attachmentId: string) => Promise<void>
 }) {
   const [expanded, setExpanded] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [deletingAttId, setDeletingAttId] = useState<string | null>(null)
   const isExpired =
     lot.expiresAt && new Date(lot.expiresAt) < new Date()
   const isExpiringSoon =
@@ -540,37 +543,55 @@ function BatchLotCard({
                     return (
                       <div
                         key={att.id}
-                        onClick={(e) => {
-                          if (isImage) {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            onPreview(att.fileUrl, att.label || att.fileName)
-                          }
-                        }}
                         className={cn(
-                          "group block rounded-lg border overflow-hidden hover:border-blue-400 transition-colors",
+                          "group relative block rounded-lg border overflow-hidden hover:border-blue-400 transition-colors",
                           isImage && "cursor-pointer"
                         )}
                       >
-                        {isImage ? (
-                          <div className="aspect-square bg-gray-50 overflow-hidden">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={att.fileUrl}
-                              alt={att.label || att.fileName}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                            />
-                          </div>
-                        ) : (
-                          <a
-                            href={att.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="aspect-square bg-gray-50 flex flex-col items-center justify-center gap-2"
-                          >
-                            <FileText className="h-8 w-8 text-blue-400" />
-                          </a>
-                        )}
+                        {/* Delete button */}
+                        <button
+                          type="button"
+                          className="absolute top-1.5 right-1.5 z-10 h-6 w-6 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all shadow-sm"
+                          onClick={async (e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setDeletingAttId(att.id)
+                            await onDeleteAttachment?.(lot.id, att.id)
+                            setDeletingAttId(null)
+                          }}
+                          title="Delete attachment"
+                        >
+                          {deletingAttId === att.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                        </button>
+                        <div
+                          onClick={(e) => {
+                            if (isImage) {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              onPreview(att.fileUrl, att.label || att.fileName)
+                            }
+                          }}
+                        >
+                          {isImage ? (
+                            <div className="aspect-square bg-gray-50 overflow-hidden">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={att.fileUrl}
+                                alt={att.label || att.fileName}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                            </div>
+                          ) : (
+                            <a
+                              href={att.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="aspect-square bg-gray-50 flex flex-col items-center justify-center gap-2"
+                            >
+                              <FileText className="h-8 w-8 text-blue-400" />
+                            </a>
+                          )}
+                        </div>
                         <div className="px-2 py-1.5">
                           <p className="text-xs font-medium truncate">{att.label || att.fileName}</p>
                           <p className="text-xs text-muted-foreground">
@@ -909,8 +930,9 @@ export default function SupplierDetailPage() {
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!editingLot) return
+    if (!editingLot || editSaving) return
     setEditError("")
+    setEditSaving(true)
     try {
       const fd = new FormData()
       Object.entries(editForm).forEach(([k, v]) => {
@@ -961,6 +983,15 @@ export default function SupplierDetailPage() {
     }
   }
 
+  const handleDeleteAttachment = async (lotId: string, attachmentId: string) => {
+    try {
+      const res = await fetch(`/api/suppliers/${id}/lots/${lotId}/attachments/${attachmentId}`, {
+        method: "DELETE",
+      })
+      if (res.ok) await fetchSupplier()
+    } catch {}
+  }
+
   const handleAddFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newFiles = Array.from(e.target.files ?? [])
     setFiles((prev) => [
@@ -972,6 +1003,7 @@ export default function SupplierDetailPage() {
 
   const handleSubmitMasterBatch = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (saving) return
     setLotError("")
     setSaving(true)
     try {
@@ -1032,6 +1064,7 @@ export default function SupplierDetailPage() {
 
   const handleSubmitLot = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (saving) return
     setLotError("")
     setSaving(true)
     try {
@@ -1081,7 +1114,7 @@ export default function SupplierDetailPage() {
       const matchStatus = filterStatus === "ALL" || lot.status === filterStatus
       return matchSearch && matchStatus
     })
-    .sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime())
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
   // Group by month
   const grouped = filtered.reduce<Record<string, BatchLot[]>>((acc, lot) => {
@@ -1553,6 +1586,7 @@ export default function SupplierDetailPage() {
                     onDelete={setDeletingLot}
                     onPreview={(url, name) => setPreviewImage({ url, name })}
                     onClearNote={handleClearBatchNote}
+                    onDeleteAttachment={handleDeleteAttachment}
                   />
                 ))}
               </div>
@@ -1764,7 +1798,47 @@ export default function SupplierDetailPage() {
               {/* Attachments */}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Attachments</p>
-                <p className="text-xs text-muted-foreground mb-3">
+              {/* Existing Attachments */}
+              {editingLot.attachments.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Current Attachments</p>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {editingLot.attachments.map((att) => {
+                      const isImage = att.mimeType?.startsWith("image/")
+                      return (
+                        <div key={att.id} className="group relative rounded-lg border overflow-hidden hover:border-blue-400 transition-colors">
+                          <button
+                            type="button"
+                            className="absolute top-1.5 right-1.5 z-10 h-6 w-6 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all shadow-sm"
+                            onClick={async () => {
+                              await handleDeleteAttachment(editingLot.id, att.id)
+                              setEditingLot({ ...editingLot, attachments: editingLot.attachments.filter(a => a.id !== att.id) })
+                            }}
+                            title="Delete attachment"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                          {isImage ? (
+                            <div className="aspect-square bg-gray-50 overflow-hidden cursor-pointer" onClick={() => setPreviewImage({ url: att.fileUrl, name: att.label || att.fileName })}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={att.fileUrl} alt={att.label || att.fileName} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                            </div>
+                          ) : (
+                            <a href={att.fileUrl} target="_blank" rel="noopener noreferrer" className="aspect-square bg-gray-50 flex items-center justify-center">
+                              <FileText className="h-8 w-8 text-blue-400" />
+                            </a>
+                          )}
+                          <div className="px-2 py-1">
+                            <p className="text-[10px] font-medium truncate">{att.label || att.fileName}</p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs text-muted-foreground mb-3">
                   Upload additional photos of the pallet, invoices, COAs, etc.
                 </p>
 
@@ -1776,15 +1850,41 @@ export default function SupplierDetailPage() {
                   onChange={handleEditAddFile}
                   className="hidden"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => editFileInputRef.current?.click()}
-                  className="gap-2 mb-4"
-                >
-                  <Upload className="h-4 w-4" />
-                  Select Files
-                </Button>
+                <div className="flex gap-2 mb-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.setAttribute('capture', 'environment');
+                      input.onchange = (e) => {
+                        const newFiles = Array.from((e.target as HTMLInputElement).files || []);
+                        if (newFiles.length > 0) {
+                          setEditFiles((prev) => [
+                            ...prev,
+                            ...newFiles.map((f) => ({ file: f, label: "Other" })),
+                          ]);
+                        }
+                      };
+                      input.click();
+                    }}
+                    className="gap-2"
+                  >
+                    <Camera className="h-4 w-4" />
+                    Take Photo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => editFileInputRef.current?.click()}
+                    className="gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Select Files
+                  </Button>
+                </div>
 
                 {editFiles.length > 0 && (
                   <div className="space-y-2">
