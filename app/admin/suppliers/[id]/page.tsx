@@ -323,6 +323,12 @@ function BatchLotCard({
                 {lot.lotNumber}
               </button>
               <StatusBadge status={lot.status} />
+              {lot.masterBatch && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 shadow-sm animate-in fade-in zoom-in-95">
+                  <Layers className="h-3 w-3" /> 
+                  Shipment: <span className="text-blue-900">{lot.masterBatch.name || "Mixed Delivery"}</span>
+                </span>
+              )}
               {isExpired && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
                   <AlertTriangle className="h-3 w-3" /> Expired
