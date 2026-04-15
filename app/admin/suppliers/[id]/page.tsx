@@ -49,6 +49,8 @@ import {
   Paperclip,
   Upload,
   Search,
+  Pencil,
+  Trash2,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -211,9 +213,13 @@ const EMPTY_LOT_FORM = {
 function BatchLotCard({
   lot,
   onStatusChange,
+  onEdit,
+  onDelete,
 }: {
   lot: BatchLot
   onStatusChange: (id: string, status: BatchLotStatus) => Promise<void>
+  onEdit: (lot: BatchLot) => void
+  onDelete: (lot: BatchLot) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
@@ -283,6 +289,22 @@ function BatchLotCard({
                 ))}
               </SelectContent>
             </Select>
+            <button
+              type="button"
+              onClick={() => onEdit(lot)}
+              title="Edit lot"
+              className="h-8 w-8 flex items-center justify-center rounded-md border border-transparent hover:border-gray-200 hover:bg-gray-50 text-muted-foreground hover:text-blue-600 transition-colors"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(lot)}
+              title="Delete lot"
+              className="h-8 w-8 flex items-center justify-center rounded-md border border-transparent hover:border-red-100 hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       </CardHeader>
@@ -462,6 +484,16 @@ export default function SupplierDetailPage() {
   const [filterStatus, setFilterStatus] = useState<BatchLotStatus | "ALL">("ALL")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Edit state
+  const [editingLot, setEditingLot] = useState<BatchLot | null>(null)
+  const [editForm, setEditForm] = useState(EMPTY_LOT_FORM)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState("")
+
+  // Delete state
+  const [deletingLot, setDeletingLot] = useState<BatchLot | null>(null)
+  const [deleteConfirming, setDeleteConfirming] = useState(false)
+
   const fetchSupplier = async () => {
     try {
       const res = await fetch(`/api/suppliers/${id}`)
@@ -483,6 +515,77 @@ export default function SupplierDetailPage() {
       body: JSON.stringify({ status }),
     })
     if (res.ok) await fetchSupplier()
+  }
+
+  // Open edit modal pre-filled
+  const handleOpenEdit = (lot: BatchLot) => {
+    setEditForm({
+      lotNumber: lot.lotNumber,
+      productName: lot.productName,
+      productSku: lot.productSku ?? "",
+      category: lot.category ?? "",
+      quantityReceived: lot.quantityReceived?.toString() ?? "",
+      quantityUnit: lot.quantityUnit ?? "units",
+      manufacturedAt: lot.manufacturedAt ? new Date(lot.manufacturedAt).toISOString().slice(0, 10) : "",
+      expiresAt: lot.expiresAt ? new Date(lot.expiresAt).toISOString().slice(0, 10) : "",
+      receivedAt: new Date(lot.receivedAt).toISOString().slice(0, 16),
+      status: lot.status,
+      internalNotes: lot.internalNotes ?? "",
+      qcNotes: lot.qcNotes ?? "",
+      invoiceNumber: lot.invoiceNumber ?? "",
+      poNumber: lot.poNumber ?? "",
+      unitCost: lot.unitCost?.toString() ?? "",
+      totalCost: lot.totalCost?.toString() ?? "",
+    })
+    setEditError("")
+    setEditingLot(lot)
+  }
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingLot) return
+    setEditError("")
+    setEditSaving(true)
+    try {
+      const payload: Record<string, any> = {}
+      Object.entries(editForm).forEach(([k, v]) => {
+        if (v === "") { payload[k] = null; return }
+        if (k === "quantityReceived") { payload[k] = v ? Number(v) : null; return }
+        if (k === "unitCost" || k === "totalCost") { payload[k] = v ? Number(v) : null; return }
+        if (k === "manufacturedAt" || k === "expiresAt") { payload[k] = v ? new Date(v).toISOString() : null; return }
+        if (k === "receivedAt") { payload[k] = v ? new Date(v).toISOString() : new Date().toISOString(); return }
+        payload[k] = v
+      })
+      const res = await fetch(`/api/suppliers/${id}/lots/${editingLot.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to update")
+      setEditingLot(null)
+      await fetchSupplier()
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingLot) return
+    setDeleteConfirming(true)
+    try {
+      const res = await fetch(`/api/suppliers/${id}/lots/${deletingLot.id}`, {
+        method: "DELETE",
+      })
+      if (res.ok) {
+        setDeletingLot(null)
+        await fetchSupplier()
+      }
+    } finally {
+      setDeleteConfirming(false)
+    }
   }
 
   const handleAddFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -742,6 +845,8 @@ export default function SupplierDetailPage() {
                     key={lot.id}
                     lot={lot}
                     onStatusChange={handleStatusChange}
+                    onEdit={handleOpenEdit}
+                    onDelete={setDeletingLot}
                   />
                 ))}
               </div>
@@ -749,6 +854,204 @@ export default function SupplierDetailPage() {
           ))}
         </div>
       )}
+
+      {/* ── Delete Confirmation Modal ── */}
+      <Dialog open={!!deletingLot} onOpenChange={(o) => { if (!o) setDeletingLot(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              Delete Batch Lot
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete lot{" "}
+              <span className="font-mono font-bold text-foreground">{deletingLot?.lotNumber}</span>{" "}
+              ({deletingLot?.productName}). This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setDeletingLot(null)} disabled={deleteConfirming}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={deleteConfirming}
+            >
+              {deleteConfirming ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</>
+              ) : "Delete Permanently"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit Batch Lot Modal ── */}
+      <Dialog open={!!editingLot} onOpenChange={(o) => { if (!o) setEditingLot(null) }}>
+        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-blue-600" />
+              Edit Batch Lot
+              <span className="font-mono text-sm font-normal text-muted-foreground">{editingLot?.lotNumber}</span>
+            </DialogTitle>
+            <DialogDescription>
+              Update the details for this batch lot.
+            </DialogDescription>
+          </DialogHeader>
+          {editingLot && (
+            <form onSubmit={handleSaveEdit} className="space-y-6 mt-2">
+              {editError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-4 py-3">
+                  {editError}
+                </div>
+              )}
+              {/* Identification */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Identification</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 sm:col-span-1">
+                    <Label htmlFor="edit-lot-number">Lot Number <span className="text-red-500">*</span></Label>
+                    <Input id="edit-lot-number" required value={editForm.lotNumber}
+                      onChange={(e) => setEditForm({ ...editForm, lotNumber: e.target.value })}
+                      className="mt-1 font-mono" />
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <Label htmlFor="edit-lot-status">Status</Label>
+                    <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v as BatchLotStatus })}>
+                      <SelectTrigger id="edit-lot-status" className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                          <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="edit-product">Product Name <span className="text-red-500">*</span></Label>
+                    <Input id="edit-product" required value={editForm.productName}
+                      onChange={(e) => setEditForm({ ...editForm, productName: e.target.value })}
+                      className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-sku">SKU / Part #</Label>
+                    <Input id="edit-sku" value={editForm.productSku}
+                      onChange={(e) => setEditForm({ ...editForm, productSku: e.target.value })}
+                      className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-category">Category</Label>
+                    <Input id="edit-category" value={editForm.category}
+                      onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                      className="mt-1" />
+                  </div>
+                </div>
+              </div>
+              {/* Quantity */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Quantity</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-qty">Quantity Received</Label>
+                    <Input id="edit-qty" type="number" min="1" value={editForm.quantityReceived}
+                      onChange={(e) => setEditForm({ ...editForm, quantityReceived: e.target.value })}
+                      className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-unit">Unit</Label>
+                    <Select value={editForm.quantityUnit} onValueChange={(v) => setEditForm({ ...editForm, quantityUnit: v })}>
+                      <SelectTrigger id="edit-unit" className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["units","boxes","pallets","lbs","kg","oz","liters","cases"].map((u) => (
+                          <SelectItem key={u} value={u}>{u}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+              {/* Dates */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Dates &amp; Timestamps</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="edit-received">Received At</Label>
+                    <Input id="edit-received" type="datetime-local" value={editForm.receivedAt}
+                      onChange={(e) => setEditForm({ ...editForm, receivedAt: e.target.value })}
+                      className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-manufactured">Manufactured Date</Label>
+                    <Input id="edit-manufactured" type="date" value={editForm.manufacturedAt}
+                      onChange={(e) => setEditForm({ ...editForm, manufacturedAt: e.target.value })}
+                      className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-expires">Expiration Date</Label>
+                    <Input id="edit-expires" type="date" value={editForm.expiresAt}
+                      onChange={(e) => setEditForm({ ...editForm, expiresAt: e.target.value })}
+                      className="mt-1" />
+                  </div>
+                </div>
+              </div>
+              {/* Financials */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Invoice &amp; Financials</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-invoice">Invoice #</Label>
+                    <Input id="edit-invoice" value={editForm.invoiceNumber}
+                      onChange={(e) => setEditForm({ ...editForm, invoiceNumber: e.target.value })}
+                      className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-po">PO Number</Label>
+                    <Input id="edit-po" value={editForm.poNumber}
+                      onChange={(e) => setEditForm({ ...editForm, poNumber: e.target.value })}
+                      className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-unit-cost">Unit Cost ($)</Label>
+                    <Input id="edit-unit-cost" type="number" step="0.01" value={editForm.unitCost}
+                      onChange={(e) => setEditForm({ ...editForm, unitCost: e.target.value })}
+                      className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-total-cost">Total Cost ($)</Label>
+                    <Input id="edit-total-cost" type="number" step="0.01" value={editForm.totalCost}
+                      onChange={(e) => setEditForm({ ...editForm, totalCost: e.target.value })}
+                      className="mt-1" />
+                  </div>
+                </div>
+              </div>
+              {/* Notes */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Notes</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-notes">Internal Notes</Label>
+                    <Textarea id="edit-notes" value={editForm.internalNotes}
+                      onChange={(e) => setEditForm({ ...editForm, internalNotes: e.target.value })}
+                      rows={3} className="mt-1 resize-none" />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-qc">QC Notes</Label>
+                    <Textarea id="edit-qc" value={editForm.qcNotes}
+                      onChange={(e) => setEditForm({ ...editForm, qcNotes: e.target.value })}
+                      rows={3} className="mt-1 resize-none" />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditingLot(null)}>Cancel</Button>
+                <Button type="submit" disabled={editSaving}>
+                  {editSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* ── Add Batch Lot Modal ── */}
       <Dialog open={showAddLot} onOpenChange={setShowAddLot}>
