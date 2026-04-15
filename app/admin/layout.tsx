@@ -19,7 +19,7 @@ import {
   Truck,
   Menu,
   X,
-  Star,
+
 } from "lucide-react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
@@ -28,8 +28,8 @@ const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/brands", label: "Brands", icon: Tag },
-  { href: "/admin/suppliers?tab=suppliers", label: "Suppliers", icon: Truck },
-  { href: "/admin/suppliers?tab=private-labels", label: "Private Labels", icon: Star },
+  { href: "/admin/suppliers", label: "Suppliers", icon: Truck },
+
   { href: "/admin/listings", label: "Listings", icon: Package },
   { href: "/admin/quotes", label: "Quotes", icon: FileText },
   { href: "/admin/contact", label: "Contact", icon: Inbox },
