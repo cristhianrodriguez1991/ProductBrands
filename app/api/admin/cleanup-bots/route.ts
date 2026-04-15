@@ -5,11 +5,9 @@ import { prisma } from "@/lib/prisma"
 
 /**
  * POST /api/admin/cleanup-bots
- * Deletes all spam/bot entries from quotes, contacts, clients, and orders.
- * Identifies bots by: gibberish names, suspicious emails, repeated patterns,
- * entries created in rapid succession, and known spam indicators.
+ * Deletes all spam/bot entries from contacts, companies, quotes, and chat messages.
  */
-export async function POST(req: Request) {
+export async function POST() {
   try {
     const session = await getServerSession(authOptions)
     if (!session || (session.user as any)?.role !== "ADMIN") {
@@ -18,59 +16,67 @@ export async function POST(req: Request) {
 
     const results: Record<string, number> = {}
 
-    // -- Quotes: delete all non-legitimate looking ones --
-    // Bot indicators: fake emails, gibberish names, repeated submissions
-    const allQuotes = await prisma.quote.findMany({
-      select: { id: true, name: true, email: true, company: true, message: true, createdAt: true },
-    })
-    const botQuoteIds = allQuotes
-      .filter((q) => isBotEntry(q.name, q.email, q.company, q.message))
-      .map((q) => q.id)
-    if (botQuoteIds.length > 0) {
-      const del = await prisma.quote.deleteMany({ where: { id: { in: botQuoteIds } } })
-      results.quotes = del.count
-    }
-
-    // -- Contact submissions --
+    // ── Contact Submissions (has name, email, company, message) ──
     const allContacts = await prisma.contactSubmission.findMany({
-      select: { id: true, name: true, email: true, company: true, message: true, createdAt: true },
+      select: { id: true, name: true, email: true, company: true, message: true },
     })
     const botContactIds = allContacts
       .filter((c) => isBotEntry(c.name, c.email, c.company, c.message))
       .map((c) => c.id)
     if (botContactIds.length > 0) {
       const del = await prisma.contactSubmission.deleteMany({ where: { id: { in: botContactIds } } })
-      results.contacts = del.count
+      results.contactSubmissions = del.count
     }
 
-    // -- Clients (users with CLIENT role that look fake) --
+    // ── Companies (name-based detection) ──
+    const allCompanies = await prisma.company.findMany({
+      select: { id: true, name: true, phone: true, website: true, notes: true },
+    })
+    const botCompanyIds = allCompanies
+      .filter((c) => isBotEntry(c.name, null, null, c.notes))
+      .map((c) => c.id)
+    if (botCompanyIds.length > 0) {
+      // Cascade deletes quotes, orders, invoices, contacts via Prisma
+      const del = await prisma.company.deleteMany({ where: { id: { in: botCompanyIds } } })
+      results.companies = del.count
+    }
+
+    // ── Client Contacts (name + email based) ──
+    const allClientContacts = await prisma.clientContact.findMany({
+      select: { id: true, name: true, email: true, roleTitle: true },
+    })
+    const botClientContactIds = allClientContacts
+      .filter((c) => isBotEntry(c.name, c.email, c.roleTitle, null))
+      .map((c) => c.id)
+    if (botClientContactIds.length > 0) {
+      const del = await prisma.clientContact.deleteMany({ where: { id: { in: botClientContactIds } } })
+      results.clientContacts = del.count
+    }
+
+    // ── Users with CLIENT role that look fake ──
     const allClients = await prisma.user.findMany({
       where: { role: "CLIENT" },
-      select: { id: true, name: true, email: true, company: true, createdAt: true },
+      select: { id: true, name: true, email: true, company: true },
     })
     const botClientIds = allClients
       .filter((c) => isBotEntry(c.name, c.email, c.company, null))
       .map((c) => c.id)
     if (botClientIds.length > 0) {
-      // Delete associated orders first
-      await prisma.order.deleteMany({ where: { userId: { in: botClientIds } } })
       const del = await prisma.user.deleteMany({ where: { id: { in: botClientIds } } })
-      results.clients = del.count
+      results.users = del.count
     }
 
-    // -- Orders from deleted/bot clients --
-    const allOrders = await prisma.order.findMany({
-      select: { id: true, userId: true },
+    // ── Chat messages from bots ──
+    const allMessages = await prisma.message.findMany({
+      where: { senderType: "USER" },
+      select: { id: true, senderName: true, content: true },
     })
-    const validUserIds = new Set(
-      (await prisma.user.findMany({ select: { id: true } })).map((u) => u.id)
-    )
-    const orphanOrderIds = allOrders
-      .filter((o) => !validUserIds.has(o.userId))
-      .map((o) => o.id)
-    if (orphanOrderIds.length > 0) {
-      const del = await prisma.order.deleteMany({ where: { id: { in: orphanOrderIds } } })
-      results.orphanOrders = del.count
+    const botMsgIds = allMessages
+      .filter((m) => isBotEntry(m.senderName, null, null, m.content))
+      .map((m) => m.id)
+    if (botMsgIds.length > 0) {
+      const del = await prisma.message.deleteMany({ where: { id: { in: botMsgIds } } })
+      results.chatMessages = del.count
     }
 
     return NextResponse.json({
@@ -80,7 +86,7 @@ export async function POST(req: Request) {
     })
   } catch (error) {
     console.error("[Cleanup Bots]", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: String(error) }, { status: 500 })
   }
 }
 
@@ -100,18 +106,18 @@ function isBotEntry(
 
   // Known spam TLDs
   const spamTlds = [".ru", ".cn", ".xyz", ".top", ".buzz", ".icu", ".tk", ".gq", ".ml", ".ga", ".cf"]
-  if (spamTlds.some((tld) => e.endsWith(tld))) return true
+  if (e && spamTlds.some((tld) => e.endsWith(tld))) return true
 
   // Disposable email providers
   const disposable = ["tempmail", "mailinator", "guerrillamail", "yopmail", "10minutemail", "throwaway", "trashmail"]
-  if (disposable.some((d) => e.includes(d))) return true
+  if (e && disposable.some((d) => e.includes(d))) return true
 
   // URL/HTML in name or message (classic bot indicator)
   if (/<\/?[a-z][\s\S]*>/i.test(n) || /http[s]?:\/\//i.test(n)) return true
   if (/<\/?[a-z][\s\S]*>/i.test(m) || /\[url=/i.test(m)) return true
 
   // Gibberish names (excessive consonant clusters)
-  if (/[bcdfghjklmnpqrstvwxyz]{5,}/i.test(n)) return true
+  if (n && /[bcdfghjklmnpqrstvwxyz]{5,}/i.test(n)) return true
 
   // Name is a single character or just numbers
   if (n.length === 1 || /^\d+$/.test(n)) return true
@@ -119,7 +125,7 @@ function isBotEntry(
   // Extremely long names
   if (n.length > 80) return true
 
-  // Viagra/casino/SEO spam keywords
+  // Spam keywords
   const spamKeywords = [
     "viagra", "cialis", "casino", "poker", "seo", "backlink",
     "cryptocurrency", "bitcoin", "forex", "buy cheap", "free money",
