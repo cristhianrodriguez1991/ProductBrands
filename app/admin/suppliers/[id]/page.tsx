@@ -17,6 +17,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -57,6 +63,11 @@ import {
   FolderOpen,
   Download,
   X,
+  PlusCircle,
+  AlertCircle,
+  PackageSearch,
+  UploadCloud,
+  FileCheck,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -102,6 +113,21 @@ type BatchLot = {
   createdAt: string
   updatedAt: string
   attachments: Attachment[]
+  masterBatch?: {
+    id: string
+    name: string | null
+    attachments: Attachment[]
+  } | null
+}
+  totalCost: number | null
+  createdAt: string
+  updatedAt: string
+  attachments: Attachment[]
+  masterBatch?: {
+    id: string
+    name: string | null
+    attachments: Attachment[]
+  } | null
 }
 
 type Supplier = {
@@ -459,11 +485,21 @@ function BatchLotCard({
           </div>
         )}
 
-        {/* Attachments count */}
-        {lot.attachments.length > 0 && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
-            <Paperclip className="h-3 w-3" />
-            {lot.attachments.length} attachment{lot.attachments.length !== 1 ? "s" : ""}
+        {/* Attachments - show both individual and shared (master) */}
+        {(lot.attachments.length > 0 || (lot.masterBatch?.attachments?.length || 0) > 0) && (
+          <div className="flex flex-wrap items-center gap-3 mb-2">
+            {lot.attachments.length > 0 && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Paperclip className="h-3 w-3" />
+                {lot.attachments.length} individual attachment{lot.attachments.length !== 1 ? "s" : ""}
+              </div>
+            )}
+            {lot.masterBatch && lot.masterBatch.attachments.length > 0 && (
+              <div className="flex items-center gap-1 text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-bold uppercase tracking-wider">
+                <FileCheck className="h-3.5 w-3.5" />
+                {lot.masterBatch.attachments.length} Shared Document{lot.masterBatch.attachments.length !== 1 ? "s" : ""} (from mixed pallet)
+              </div>
+            )}
           </div>
         )}
 
@@ -600,6 +636,10 @@ export default function SupplierDetailPage() {
   const [docError, setDocError] = useState("")
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
   const docFileRef = useRef<HTMLInputElement>(null)
+  const [isMixedPallet, setIsMixedPallet] = useState(false)
+  const [mixedItems, setMixedItems] = useState<{ id: string; productName: string; lotNumber: string; productSku: string; category: string; quantityReceived: string; quantityUnit: string }[]>([
+    { id: '1', productName: '', lotNumber: '', productSku: '', category: '', quantityReceived: '', quantityUnit: 'units' }
+  ])
 
   const fetchDocuments = async () => {
     if (!id) return
@@ -875,6 +915,55 @@ export default function SupplierDetailPage() {
       ...newFiles.map((f) => ({ file: f, label: "Other" })),
     ])
     if (fileInputRef.current) fileInputRef.current.value = ""
+  }
+
+  const handleSubmitMasterBatch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLotError("")
+    setSaving(true)
+    try {
+      if (mixedItems.length === 0 || mixedItems.some(i => !i.productName)) {
+        throw new Error("Please add at least one product with a name.")
+      }
+
+      const fd = new FormData()
+      fd.append("name", lotForm.lotNumber || "Mixed Pallet")
+      fd.append("invoiceNumber", lotForm.invoiceNumber)
+      fd.append("poNumber", lotForm.poNumber)
+      fd.append("receivedAt", lotForm.receivedAt)
+      fd.append("notes", lotForm.internalNotes)
+      fd.append("items", JSON.stringify(mixedItems))
+      
+      // Convert any HEIC files to JPEG before uploading
+      const convertedFiles = await Promise.all(
+        files.map(async ({ file, label }) => ({
+          file: await convertHeicToJpeg(file),
+          label,
+        }))
+      )
+      convertedFiles.forEach(({ file, label }) => {
+        fd.append("files", file)
+        fd.append("labels", label)
+      })
+
+      const res = await fetch(`/api/suppliers/${id}/master-batches`, {
+        method: "POST",
+        body: fd,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to create mixed pallet")
+      
+      setShowAddLot(false)
+      setLotForm(EMPTY_LOT_FORM)
+      setMixedItems([{ id: '1', productName: '', lotNumber: '', productSku: '', category: '', quantityReceived: '', quantityUnit: 'units' }])
+      setIsMixedPallet(false)
+      setFiles([])
+      await fetchSupplier()
+    } catch (err) {
+      setLotError(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleSubmitLot = async (e: React.FormEvent) => {
@@ -1674,368 +1763,393 @@ export default function SupplierDetailPage() {
                     ))}
                   </div>
                 )}
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditingLot(null)}>Cancel</Button>
-                <Button type="submit" disabled={editSaving}>
-                  {editSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save Changes"}
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Add Batch Lot Modal ── */}
-      <Dialog open={showAddLot} onOpenChange={setShowAddLot}>
+              </div      {/* ── Add Batch Lot Modal ── */}
+      <Dialog open={showAddLot} onOpenChange={(open) => {
+        setShowAddLot(open)
+        if (!open) {
+          setIsMixedPallet(false)
+          setLotError("")
+          setFiles([])
+        }
+      }}>
         <DialogContent 
-          className="max-w-3xl max-h-[92vh] overflow-y-auto"
+          className="max-w-4xl max-h-[95vh] flex flex-col p-0 overflow-hidden"
           onInteractOutside={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Hash className="h-5 w-5 text-blue-600" />
-              Add Batch / Lot
-              <span className="font-normal text-muted-foreground">— {supplier.name}</span>
-            </DialogTitle>
-            <DialogDescription>
-              Enter the lot number, product details, dates, and optionally upload photos or documents.
-            </DialogDescription>
-          </DialogHeader>
+          <div className="p-6 pb-0 bg-white border-b">
+            <DialogHeader className="mb-4">
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <PlusCircle className="h-6 w-6 text-blue-600" />
+                Add New Delivery / Batch
+                <span className="font-normal text-muted-foreground ml-2">— {supplier.name}</span>
+              </DialogTitle>
+              <DialogDescription>
+                Select if this is a single product batch or a mixed delivery with multiple products.
+              </DialogDescription>
+            </DialogHeader>
 
-          <form onSubmit={handleSubmitLot} className="space-y-6 mt-2">
-            {lotError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-4 py-3">
-                {lotError}
-              </div>
-            )}
+            <Tabs defaultValue="single" className="w-full" onValueChange={(v) => setIsMixedPallet(v === "mixed")}>
+              <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted/50 p-1 h-11">
+                <TabsTrigger value="single" className="gap-2 text-sm font-semibold h-9 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <Package className="h-4 w-4" /> Single Product
+                </TabsTrigger>
+                <TabsTrigger value="mixed" className="gap-2 text-sm font-semibold h-9 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <Layers className="h-4 w-4" /> Mixed Pallet / Delivery
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
 
-            {/* Section: Identification */}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                Identification
-              </p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2 sm:col-span-1">
-                  <Label htmlFor="lot-number">
-                    Lot Number <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="lot-number"
-                    required
-                    value={lotForm.lotNumber}
-                    onChange={(e) => setLotForm({ ...lotForm, lotNumber: e.target.value })}
-                    placeholder="e.g. LOT-2024-001A"
-                    className="mt-1 font-mono"
-                  />
-                </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <Label htmlFor="lot-status">Initial Status</Label>
-                  <Select
-                    value={lotForm.status}
-                    onValueChange={(v) => setLotForm({ ...lotForm, status: v as BatchLotStatus })}
-                  >
-                    <SelectTrigger id="lot-status" className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                        <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="col-span-2">
-                  <Label htmlFor="lot-product">
-                    Product Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="lot-product"
-                    required
-                    value={lotForm.productName}
-                    onChange={(e) => setLotForm({ ...lotForm, productName: e.target.value })}
-                    placeholder="e.g. Organic Granola Mix"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lot-sku">SKU / Part #</Label>
-                  <Input
-                    id="lot-sku"
-                    value={lotForm.productSku}
-                    onChange={(e) => setLotForm({ ...lotForm, productSku: e.target.value })}
-                    placeholder="SKU-12345"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lot-category">Category</Label>
-                  <Input
-                    id="lot-category"
-                    value={lotForm.category}
-                    onChange={(e) => setLotForm({ ...lotForm, category: e.target.value })}
-                    placeholder="e.g. Food, Supplement, Cosmetic"
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Section: Quantity */}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                Quantity
-              </p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="lot-qty">Quantity Received</Label>
-                  <Input
-                    id="lot-qty"
-                    value={lotForm.quantityReceived}
-                    onChange={(e) => setLotForm({ ...lotForm, quantityReceived: e.target.value })}
-                    placeholder="e.g. 5000"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lot-unit">Unit</Label>
-                  <Select
-                    value={lotForm.quantityUnit}
-                    onValueChange={(v) => setLotForm({ ...lotForm, quantityUnit: v })}
-                  >
-                    <SelectTrigger id="lot-unit" className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["units", "boxes", "pallets", "lbs", "kg", "oz", "liters", "cases"].map((u) => (
-                        <SelectItem key={u} value={u}>{u}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            {/* Section: Dates */}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                Dates &amp; Timestamps
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="lot-received">Received At</Label>
-                  <Input
-                    id="lot-received"
-                    type="datetime-local"
-                    value={lotForm.receivedAt}
-                    onChange={(e) => setLotForm({ ...lotForm, receivedAt: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lot-manufactured">Manufactured Date</Label>
-                  <Input
-                    id="lot-manufactured"
-                    type="date"
-                    value={lotForm.manufacturedAt}
-                    onChange={(e) => setLotForm({ ...lotForm, manufacturedAt: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lot-expires">Expiration Date</Label>
-                  <Input
-                    id="lot-expires"
-                    type="date"
-                    value={lotForm.expiresAt}
-                    onChange={(e) => setLotForm({ ...lotForm, expiresAt: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Section: Financial */}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                Invoice &amp; Financials
-              </p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="lot-invoice">Invoice #</Label>
-                  <Input
-                    id="lot-invoice"
-                    value={lotForm.invoiceNumber}
-                    onChange={(e) => setLotForm({ ...lotForm, invoiceNumber: e.target.value })}
-                    placeholder="INV-2024-001"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lot-po">PO Number</Label>
-                  <Input
-                    id="lot-po"
-                    value={lotForm.poNumber}
-                    onChange={(e) => setLotForm({ ...lotForm, poNumber: e.target.value })}
-                    placeholder="PO-2024-001"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lot-unit-cost">Unit Cost ($)</Label>
-                  <Input
-                    id="lot-unit-cost"
-                    value={lotForm.unitCost}
-                    onChange={(e) => setLotForm({ ...lotForm, unitCost: e.target.value })}
-                    placeholder="0.00"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lot-total-cost">Total Cost ($)</Label>
-                  <Input
-                    id="lot-total-cost"
-                    value={lotForm.totalCost}
-                    onChange={(e) => setLotForm({ ...lotForm, totalCost: e.target.value })}
-                    placeholder="0.00"
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Section: Notes */}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                Notes
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <Label htmlFor="lot-notes">Internal Notes</Label>
-                    <TimestampButton onInsert={(ts) => setLotForm(prev => ({ ...prev, internalNotes: (prev.internalNotes || "") + ts }))} />
-                  </div>
-                  <Textarea
-                    id="lot-notes"
-                    value={lotForm.internalNotes}
-                    onChange={(e) => setLotForm({ ...lotForm, internalNotes: e.target.value })}
-                    placeholder="Any internal information about this batch..."
-                    rows={3}
-                    className="mt-1 resize-none"
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <Label htmlFor="lot-qc">QC Notes</Label>
-                    <TimestampButton onInsert={(ts) => setLotForm(prev => ({ ...prev, qcNotes: (prev.qcNotes || "") + ts }))} />
-                  </div>
-                  <Textarea
-                    id="lot-qc"
-                    value={lotForm.qcNotes}
-                    onChange={(e) => setLotForm({ ...lotForm, qcNotes: e.target.value })}
-                    placeholder="Quality control observations..."
-                    rows={3}
-                    className="mt-1 resize-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Section: Attachments */}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                Attachments
-              </p>
-              <p className="text-xs text-muted-foreground mb-3">
-                Upload photos of the pallet, invoices, Certificates of Analysis (COA), labels, etc.
-              </p>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-                onChange={handleAddFile}
-                className="hidden"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                className="gap-2 mb-4"
-              >
-                <Upload className="h-4 w-4" />
-                Select Files
-              </Button>
-
-              {files.length > 0 && (
-                <div className="space-y-2">
-                  {files.map((f, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30"
-                    >
-                      {f.file.type.startsWith("image/") ? (
-                        <ImageIcon className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                      ) : (
-                        <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                      )}
-                      <span className="text-sm truncate flex-1">{f.file.name}</span>
-                      <Select
-                        value={f.label}
-                        onValueChange={(v) =>
-                          setFiles((prev) =>
-                            prev.map((x, xi) => (xi === i ? { ...x, label: v } : x))
-                          )
-                        }
-                      >
-                        <SelectTrigger className="w-36 h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ATTACHMENT_LABELS.map((l) => (
-                            <SelectItem key={l} value={l} className="text-xs">{l}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <button
-                        type="button"
-                        className="text-muted-foreground hover:text-red-500 text-xs transition-colors"
-                        onClick={() => setFiles((prev) => prev.filter((_, xi) => xi !== i))}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
+          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+            <form id="add-batch-form" onSubmit={isMixedPallet ? handleSubmitMasterBatch : handleSubmitLot} className="space-y-8">
+              {lotError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" /> {lotError}
                 </div>
               )}
-            </div>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowAddLot(false)
-                  setFiles([])
-                  setLotError("")
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Batch Lot"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
+              {/* Shared Header Section */}
+              <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100/50 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 flex items-center gap-2">
+                    <Truck className="h-4 w-4" /> Delivery Information {isMixedPallet && "(Shared for all products)"}
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="master-received" className="text-xs font-semibold">Received Date</Label>
+                    <Input
+                      id="master-received"
+                      type="datetime-local"
+                      value={lotForm.receivedAt}
+                      onChange={(e) => setLotForm({ ...lotForm, receivedAt: e.target.value })}
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="master-invoice" className="text-xs font-semibold">Invoice / Delivery #</Label>
+                    <Input
+                      id="master-invoice"
+                      value={lotForm.invoiceNumber}
+                      onChange={(e) => setLotForm({ ...lotForm, invoiceNumber: e.target.value })}
+                      placeholder="INV-..."
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="master-po" className="text-xs font-semibold">PO Number</Label>
+                    <Input
+                      id="master-po"
+                      value={lotForm.poNumber}
+                      onChange={(e) => setLotForm({ ...lotForm, poNumber: e.target.value })}
+                      placeholder="PO-..."
+                      className="bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {!isMixedPallet ? (
+                /* SINGLE PRODUCT MODE */
+                <div className="space-y-6 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="grid grid-cols-2 gap-5">
+                    <div className="col-span-2 sm:col-span-1 space-y-1.5">
+                      <Label className="text-xs font-semibold">Lot Number <span className="text-red-500">*</span></Label>
+                      <Input
+                        required
+                        value={lotForm.lotNumber}
+                        onChange={(e) => setLotForm({ ...lotForm, lotNumber: e.target.value })}
+                        placeholder="e.g. LOT-2024-001"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="col-span-2 sm:col-span-1 space-y-1.5">
+                      <Label className="text-xs font-semibold">Product Name <span className="text-red-500">*</span></Label>
+                      <Input
+                        required
+                        value={lotForm.productName}
+                        onChange={(e) => setLotForm({ ...lotForm, productName: e.target.value })}
+                        placeholder="e.g. Organic Granola Mix"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">SKU / Part #</Label>
+                      <Input
+                        value={lotForm.productSku}
+                        onChange={(e) => setLotForm({ ...lotForm, productSku: e.target.value })}
+                        placeholder="SKU-..."
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Category</Label>
+                      <Input
+                        value={lotForm.category}
+                        onChange={(e) => setLotForm({ ...lotForm, category: e.target.value })}
+                        placeholder="Food, cosmetic, etc."
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Quantity</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          value={lotForm.quantityReceived}
+                          onChange={(e) => setLotForm({ ...lotForm, quantityReceived: e.target.value })}
+                          className="w-28 text-sm"
+                        />
+                        <Select value={lotForm.quantityUnit} onValueChange={(v) => setLotForm({ ...lotForm, quantityUnit: v })}>
+                          <SelectTrigger className="flex-1 text-sm bg-muted/20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="units">units</SelectItem>
+                            <SelectItem value="lbs">lbs</SelectItem>
+                            <SelectItem value="kg">kg</SelectItem>
+                            <SelectItem value="boxes">boxes</SelectItem>
+                            <SelectItem value="pallets">pallets</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Expiration Date</Label>
+                      <Input
+                        type="date"
+                        value={lotForm.expiresAt}
+                        onChange={(e) => setLotForm({ ...lotForm, expiresAt: e.target.value })}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* MIXED PALLET MODE */
+                <div className="space-y-5 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex items-center justify-between pb-1">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                      <PackageSearch className="h-3.5 w-3.5" /> Products in this Mixed Delivery
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-[11px] font-bold uppercase gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50"
+                      onClick={() => setMixedItems([...mixedItems, { id: Math.random().toString(), productName: '', lotNumber: '', productSku: '', category: '', quantityReceived: '', quantityUnit: 'units' }])}
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add Another Product
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {mixedItems.map((item, idx) => (
+                      <div key={item.id} className="relative p-5 border rounded-2xl bg-white shadow-sm ring-1 ring-black/[0.03] group/item">
+                        <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1.5 h-10 bg-blue-500 rounded-full" />
+                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                          <div className="md:col-span-2 space-y-1">
+                            <Label className="text-[10px] font-bold text-muted-foreground">PRODUCT NAME <span className="text-red-500">*</span></Label>
+                            <Input
+                              value={item.productName}
+                              onChange={(e) => {
+                                const newItems = [...mixedItems]
+                                newItems[idx].productName = e.target.value
+                                setMixedItems(newItems)
+                              }}
+                              placeholder="Name"
+                              className="h-9 text-sm border-muted-foreground/20"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold text-muted-foreground">LOT NUMBER</Label>
+                            <Input
+                              value={item.lotNumber}
+                              onChange={(e) => {
+                                const newItems = [...mixedItems]
+                                newItems[idx].lotNumber = e.target.value
+                                setMixedItems(newItems)
+                              }}
+                              placeholder="Lot #"
+                              className="h-9 text-sm font-mono border-muted-foreground/20"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold text-muted-foreground">SKU / PART #</Label>
+                            <Input
+                              value={item.productSku}
+                              onChange={(e) => {
+                                const newItems = [...mixedItems]
+                                newItems[idx].productSku = e.target.value
+                                setMixedItems(newItems)
+                              }}
+                              placeholder="SKU"
+                              className="h-9 text-sm border-muted-foreground/20"
+                            />
+                          </div>
+                          <div className="md:col-span-2 space-y-1">
+                            <Label className="text-[10px] font-bold text-muted-foreground">QUANTITY</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                type="number"
+                                value={item.quantityReceived}
+                                onChange={(e) => {
+                                  const newItems = [...mixedItems]
+                                  newItems[idx].quantityReceived = e.target.value
+                                  setMixedItems(newItems)
+                                }}
+                                className="h-9 text-sm w-20 border-muted-foreground/20"
+                              />
+                              <Select 
+                                value={item.quantityUnit} 
+                                onValueChange={(v) => {
+                                  const newItems = [...mixedItems]
+                                  newItems[idx].quantityUnit = v
+                                  setMixedItems(newItems)
+                                }}
+                              >
+                                <SelectTrigger className="h-9 text-xs flex-1 bg-muted/10">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="units">units</SelectItem>
+                                  <SelectItem value="lbs">lbs</SelectItem>
+                                  <SelectItem value="kg">kg</SelectItem>
+                                  <SelectItem value="boxes">boxes</SelectItem>
+                                  <SelectItem value="pallets">pallets</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                        {mixedItems.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setMixedItems(mixedItems.filter((_, i) => i !== idx))}
+                            className="absolute -top-3 -right-3 h-7 w-7 rounded-full bg-white text-red-500 flex items-center justify-center border border-red-100 opacity-0 group-hover/item:opacity-100 transition-all hover:bg-red-50 shadow-md"
+                            title="Remove product"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setMixedItems([...mixedItems, { id: Math.random().toString(), productName: '', lotNumber: '', productSku: '', category: '', quantityReceived: '', quantityUnit: 'units' }])}
+                      className="w-full py-8 border-2 border-dashed border-muted hover:border-blue-400 hover:bg-blue-50/30 text-muted-foreground rounded-2xl transition-all h-auto gap-2"
+                    >
+                      <Plus className="h-5 w-5" />
+                      Add another product to this delivery
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Shared Notes & Documents Area */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-6 border-t border-muted">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5" /> Internal Notes / QC Findings
+                    </Label>
+                    <TimestampButton onInsert={(ts) => setLotForm({ ...lotForm, internalNotes: (lotForm.internalNotes || '') + ts })} />
+                  </div>
+                  <Textarea
+                    value={lotForm.internalNotes}
+                    onChange={(e) => setLotForm({ ...lotForm, internalNotes: e.target.value })}
+                    placeholder="Enter any specific findings, damages, or notes relevant to this delivery..."
+                    className="min-h-[120px] text-sm resize-none rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                      <Paperclip className="h-3.5 w-3.5" /> Shared Delivery Files
+                    </Label>
+                    <Button 
+                      type="button" 
+                      onClick={() => fileInputRef.current?.click()} 
+                      variant="ghost" 
+                      className="h-8 text-xs text-blue-600 font-bold hover:bg-blue-50"
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" /> Add Files
+                    </Button>
+                  </div>
+                  <Input type="file" ref={fileInputRef} multiple className="hidden" onChange={handleAddFile} />
+
+                  <div className="bg-muted/30 rounded-2xl p-4 border border-dashed min-h-[120px] flex flex-col justify-center">
+                    {files.length > 0 ? (
+                      <div className="space-y-2">
+                        {files.map((f, i) => (
+                          <div key={i} className="flex items-center gap-3 p-2 bg-white rounded-lg border shadow-sm group/file">
+                            <div className="h-8 w-8 bg-blue-50 text-blue-600 rounded flex items-center justify-center">
+                              {f.file.type.startsWith("image/") ? <ImageIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] font-medium truncate">{f.file.name}</p>
+                              <Select
+                                value={f.label}
+                                onValueChange={(v) =>
+                                  setFiles((prev) =>
+                                    prev.map((x, xi) => (xi === i ? { ...x, label: v } : x))
+                                  )
+                                }
+                              >
+                                <SelectTrigger className="h-6 py-0 px-2 text-[9px] w-32 border-none font-bold bg-muted/20">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {ATTACHMENT_LABELS.map((l) => (
+                                    <SelectItem key={l} value={l} className="text-[10px]">{l}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-red-400 opacity-0 group-hover/file:opacity-100"
+                              onClick={() => setFiles(files.filter((_, xi) => xi !== i))}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <UploadCloud className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-30" />
+                        <p className="text-[10px] text-muted-foreground italic">No shared documents for this delivery.<br/>Upload invoices or pallet photos here.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <DialogFooter className="p-6 bg-white border-t flex items-center justify-between shadow-[0_-5px_20px_-10px_rgba(0,0,0,0.1)]">
+            <Button type="button" variant="ghost" onClick={() => setShowAddLot(false)} className="text-muted-foreground font-semibold">
+              Discard Changes
+            </Button>
+            <Button 
+              type="submit" 
+              form="add-batch-form"
+              disabled={saving}
+              className="px-8 shadow-lg shadow-blue-500/20 bg-blue-600 hover:bg-blue-700 h-10 font-bold"
+            >
+              {saving ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
+              ) : (
+                isMixedPallet ? "Create Mixed Delivery" : "Save Single Batch"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

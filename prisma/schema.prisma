@@ -637,6 +637,9 @@ model BatchLot {
   qcNotes         String?         @db.Text
   recallReason    String?         @db.Text
 
+  masterBatchId   String?
+  masterBatch     MasterBatch?    @relation(fields: [masterBatchId], references: [id], onDelete: SetNull)
+
   // Financial
   unitCost        Float?
   totalCost       Float?
@@ -653,6 +656,45 @@ model BatchLot {
   @@index([status])
   @@index([receivedAt])
   @@index([productName])
+  @@index([masterBatchId])
+}
+
+model MasterBatch {
+  id              String          @id @default(cuid())
+  supplierId      String
+  supplier        Supplier        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  
+  // Shared identification
+  name            String?         // e.g. "Mixed Pallet #1", "Weekly Delivery"
+  invoiceNumber   String?
+  poNumber        String?
+  receivedAt      DateTime        @default(now())
+  notes           String?         @db.Text
+  
+  // Relations
+  batchLots       BatchLot[]
+  attachments     MasterBatchAttachment[]
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([supplierId])
+  @@index([invoiceNumber])
+  @@index([poNumber])
+}
+
+model MasterBatchAttachment {
+  id              String    @id @default(cuid())
+  masterBatchId   String
+  masterBatch     MasterBatch @relation(fields: [masterBatchId], references: [id], onDelete: Cascade)
+  fileName        String
+  fileUrl         String
+  fileSize        Int?
+  mimeType        String?
+  label           String?
+  uploadedAt      DateTime  @default(now())
+
+  @@index([masterBatchId])
 }
 
 model BatchLotAttachment {

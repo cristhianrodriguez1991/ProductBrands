@@ -18,8 +18,19 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
           orderBy: { receivedAt: "desc" },
           include: {
             attachments: true,
+            masterBatch: {
+              include: {
+                attachments: true,
+              }
+            }
           },
         },
+        masterBatches: {
+          include: {
+            attachments: true,
+            batchLots: true,
+          }
+        }
       },
     })
 
