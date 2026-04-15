@@ -95,10 +95,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )
       )}
     >
-      {/* Sidebar Header with Toggle */}
+      {/* Sidebar Header */}
       <div className={cn(
-        "p-4 border-b flex-shrink-0 flex items-center",
-        !mobile && desktopCollapsed ? "justify-center" : "justify-between"
+        "p-4 border-b flex-shrink-0 flex items-center justify-center",
       )}>
         {(!desktopCollapsed || mobile) ? (
           <div className="overflow-hidden">
@@ -118,28 +117,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Image
               src="/images/favicon.png"
               alt="Logo"
-              width={32}
-              height={32}
+              width={40}
+              height={40}
               className="object-contain"
               priority
             />
           </div>
         )}
         
-        {!mobile && (
-          <button
-            onClick={() => setDesktopCollapsed(!desktopCollapsed)}
-            className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground"
-            title={desktopCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        )}
-        
         {mobile && (
           <button
             onClick={() => setMobileSidebarOpen(false)}
-            className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground"
+            className="absolute right-4 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground"
           >
             <X className="h-5 w-5" />
           </button>
@@ -186,8 +175,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         })}
       </nav>
 
-      {/* Logout */}
-      <div className="p-3 border-t flex-shrink-0">
+      {/* Bottom Actions */}
+      <div className="p-3 border-t flex-shrink-0 space-y-1">
+        {!mobile && (
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full text-sm h-10 transition-all text-muted-foreground",
+              desktopCollapsed ? "justify-center px-0" : "justify-start"
+            )}
+            onClick={() => setDesktopCollapsed(!desktopCollapsed)}
+            title={desktopCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <Menu className={cn("h-4 w-4 flex-shrink-0", desktopCollapsed ? "" : "mr-3")} />
+            {!desktopCollapsed && <span>Collapse Sidebar</span>}
+          </Button>
+        )}
+
         <Button
           variant="ghost"
           className={cn(
