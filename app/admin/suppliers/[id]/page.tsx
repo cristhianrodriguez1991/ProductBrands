@@ -268,12 +268,14 @@ function BatchLotCard({
   onEdit,
   onDelete,
   onPreview,
+  onClearNote,
 }: {
   lot: BatchLot
   onStatusChange: (id: string, status: BatchLotStatus) => Promise<void>
   onEdit: (lot: BatchLot) => void
   onDelete: (lot: BatchLot) => void
   onPreview: (url: string, name: string) => void
+  onClearNote?: (lotId: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
@@ -435,10 +437,24 @@ function BatchLotCard({
 
         {/* Internal Notes - Always visible and orange if present */}
         {lot.internalNotes && (
-          <div className="mb-3 p-3 rounded-lg border border-orange-200 bg-orange-50/50">
-            <p className="text-[10px] font-bold text-orange-600 uppercase tracking-widest mb-1 flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" /> Internal Notes
-            </p>
+          <div className="group/note mb-3 p-3 rounded-lg border border-orange-200 bg-orange-50/50 relative">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[10px] font-bold text-orange-600 uppercase tracking-widest flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> Internal Notes
+              </p>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 text-orange-400 hover:text-red-600 opacity-0 group-hover/note:opacity-100 transition-opacity"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClearNote?.(lot.id)
+                }}
+                title="Clear internal notes"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
             <p className="text-sm text-orange-900 whitespace-pre-wrap">{lot.internalNotes}</p>
           </div>
         )}
@@ -645,6 +661,9 @@ export default function SupplierDetailPage() {
     lines.splice(index, 1)
     const updatedNotes = lines.join("\n")
     
+    // Optimistic update
+    setSupplier({ ...supplier, notes: updatedNotes })
+    
     setSavingNotes(true)
     try {
       const resp = await fetch(`/api/suppliers/${id}`, {
@@ -652,10 +671,26 @@ export default function SupplierDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes: updatedNotes }),
       })
-      if (resp.ok) fetchSupplier()
+      if (!resp.ok) fetchSupplier() // Revert on failure
     } finally {
       setSavingNotes(false)
     }
+  }
+
+  const handleClearBatchNote = async (lotId: string) => {
+    if (!supplier) return
+    try {
+      // Create FormData to clear the note
+      const fd = new FormData()
+      fd.append("internalNotes", "")
+      
+      const resp = await fetch(`/api/suppliers/${id}/lots/${lotId}`, {
+        method: "PATCH",
+        body: fd,
+      })
+      
+      if (resp.ok) fetchSupplier()
+    } catch {}
   }
 
   const handleSaveEditEntry = async (index: number) => {
@@ -1364,6 +1399,7 @@ export default function SupplierDetailPage() {
                     onEdit={handleOpenEdit}
                     onDelete={setDeletingLot}
                     onPreview={(url, name) => setPreviewImage({ url, name })}
+                    onClearNote={handleClearBatchNote}
                   />
                 ))}
               </div>
