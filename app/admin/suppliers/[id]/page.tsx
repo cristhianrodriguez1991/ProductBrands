@@ -194,6 +194,15 @@ function formatDate(d: string | null) {
   })
 }
 
+function formatDateTime(d: string | null) {
+  if (!d) return "—"
+  return new Date(d).toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 }
 
 function TimestampButton({ onInsert }: { onInsert: (ts: string) => void }) {
