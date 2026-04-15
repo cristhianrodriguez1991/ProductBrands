@@ -572,6 +572,7 @@ export default function SupplierDetailPage() {
   const [showDocs, setShowDocs] = useState(false)
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [tempNotes, setTempNotes] = useState("")
+  const [newNote, setNewNote] = useState("")
   const [savingNotes, setSavingNotes] = useState(false)
   const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null)
   const [docUploading, setDocUploading] = useState(false)
@@ -600,6 +601,34 @@ export default function SupplierDetailPage() {
       })
       if (resp.ok) {
         setIsEditingNotes(false)
+        fetchSupplier()
+      }
+    } finally {
+      setSavingNotes(false)
+    }
+  }
+
+  const handleAddLogEntry = async () => {
+    if (!newNote.trim() || !supplier) return
+    setSavingNotes(true)
+    const now = new Date()
+    const ts = `[${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}] - `
+    const entry = ts + newNote.trim()
+    
+    // Check if we need a newline separator
+    const currentNotes = supplier.notes || ""
+    const updatedNotes = currentNotes 
+      ? (currentNotes.endsWith("\n") ? currentNotes + entry : currentNotes + "\n" + entry)
+      : entry
+      
+    try {
+      const resp = await fetch(`/api/suppliers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: updatedNotes }),
+      })
+      if (resp.ok) {
+        setNewNote("")
         fetchSupplier()
       }
     } finally {
@@ -911,43 +940,101 @@ export default function SupplierDetailPage() {
           </div>
         </CardContent>
         <div className="border-t bg-muted/10 p-4">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-4">
             <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-              <FileText className="h-3.5 w-3.5" /> General Notes
+              <FileText className="h-3.5 w-3.5" /> Supplier Logs & Reminders
             </h3>
-            {isEditingNotes ? (
-              <div className="flex items-center gap-2">
-                <TimestampButton onInsert={(ts) => setTempNotes(tempNotes + ts)} />
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setIsEditingNotes(false)}>Cancel</Button>
-                <Button size="sm" className="h-7 text-xs px-4" onClick={handleSaveNotes} disabled={savingNotes}>
-                  {savingNotes ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
-                </Button>
-              </div>
-            ) : (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-7 text-xs text-blue-600 hover:text-blue-700 font-bold"
-                onClick={() => {
-                  setTempNotes(supplier.notes || "")
-                  setIsEditingNotes(true)
-                }}
-              >
-                <Pencil className="h-3 w-3 mr-1" /> Edit
-              </Button>
-            )}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-7 text-[10px] uppercase font-bold text-muted-foreground hover:text-blue-600"
+              onClick={() => {
+                setTempNotes(supplier.notes || "")
+                setIsEditingNotes(!isEditingNotes)
+              }}
+            >
+              {isEditingNotes ? "Exit manual edit" : "Edit Full Log"}
+            </Button>
           </div>
+
           {isEditingNotes ? (
-            <Textarea 
-              value={tempNotes}
-              onChange={(e) => setTempNotes(e.target.value)}
-              placeholder="Add key details about this supplier or client (e.g. delivery preferences, known delays, etc.)"
-              className="resize-none text-sm min-h-[80px]"
-              autoFocus
-            />
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] text-muted-foreground italic">Manual edit allows you to fix typos or reorganize the logs.</p>
+                <div className="flex items-center gap-2">
+                  <TimestampButton onInsert={(ts) => setTempNotes(tempNotes + ts)} />
+                  <Button size="sm" className="h-7 text-xs px-4" onClick={handleSaveNotes} disabled={savingNotes}>
+                    {savingNotes ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save All"}
+                  </Button>
+                </div>
+              </div>
+              <Textarea 
+                value={tempNotes}
+                onChange={(e) => setTempNotes(e.target.value)}
+                placeholder="Full log content..."
+                className="resize-none text-sm min-h-[150px] font-mono"
+                autoFocus
+              />
+            </div>
           ) : (
-            <div className="text-sm text-gray-700 whitespace-pre-wrap">
-              {supplier.notes || <span className="text-muted-foreground italic">No notes added yet. Click edit to add reminders or important details.</span>}
+            <div className="space-y-4">
+              {/* Log List */}
+              <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                {supplier.notes ? (
+                  supplier.notes.split("\n").filter(line => line.trim()).map((line, idx) => {
+                    const tsMatch = line.match(/^\[(.*? \d\d:\d\d [AP]M)\] - (.*)/)
+                    if (tsMatch) {
+                      return (
+                        <div key={idx} className="bg-white border rounded-lg p-2.5 shadow-sm">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                              {tsMatch[1]}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-800 leading-relaxed">{tsMatch[2]}</p>
+                        </div>
+                      )
+                    }
+                    return (
+                      <div key={idx} className="bg-white border rounded-lg p-2.5 shadow-sm text-sm text-gray-700">
+                        {line}
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className="py-6 text-center border-2 border-dashed border-gray-100 rounded-xl">
+                    <p className="text-sm text-muted-foreground italic">No logs added yet. Use the field below to add a reminder or update.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Add New Entry */}
+              <div className="flex gap-2 pt-2 border-t border-dashed">
+                <div className="flex-1 relative">
+                  <Textarea
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    placeholder="Add a new log entry (delivery update, reminder...)"
+                    className="resize-none text-sm min-h-[60px] pr-20"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault()
+                        handleAddLogEntry()
+                      }
+                    }}
+                  />
+                  <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
+                    <Button 
+                      size="sm" 
+                      className="h-7 text-xs px-3 bg-blue-600 hover:bg-blue-700"
+                      onClick={handleAddLogEntry}
+                      disabled={savingNotes || !newNote.trim()}
+                    >
+                      {savingNotes ? <Loader2 className="h-3 w-3 animate-spin" /> : "Add Note"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
