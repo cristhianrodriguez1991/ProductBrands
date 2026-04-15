@@ -908,124 +908,122 @@ export default function SupplierDetailPage() {
         </Card>
       </div>
 
-      {/* ── Client Documents Section (Private Label only) ── */}
-      {supplier.category === "PRIVATE_LABEL" && (
-        <Card className="mb-8 border-purple-100 shadow-sm overflow-hidden">
-          <CardHeader className="py-4 bg-purple-50/50 flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setShowDocs(!showDocs)}>
-              <FolderOpen className="h-5 w-5 text-purple-600" />
-              <CardTitle className="text-base font-semibold">Client Documents</CardTitle>
-              <Badge variant="secondary" className="bg-purple-100 text-purple-700 hover:bg-purple-100">
-                {documents.length}
-              </Badge>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setShowDocs(!showDocs)}
-              className="text-purple-700 hover:bg-purple-100/50"
-            >
-              {showDocs ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
-          </CardHeader>
+      {/* ── Client Documents Section ── */}
+      <Card className="mb-8 border-purple-100 shadow-sm overflow-hidden">
+        <CardHeader className="py-4 bg-purple-50/50 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setShowDocs(!showDocs)}>
+            <FolderOpen className="h-5 w-5 text-purple-600" />
+            <CardTitle className="text-base font-semibold">Client Documents</CardTitle>
+            <Badge variant="secondary" className="bg-purple-100 text-purple-700 hover:bg-purple-100">
+              {documents.length}
+            </Badge>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setShowDocs(!showDocs)}
+            className="text-purple-700 hover:bg-purple-100/50"
+          >
+            {showDocs ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </CardHeader>
 
-          {showDocs && (
-            <CardContent className="pt-5 pb-6">
-              {/* Upload form */}
-              <form onSubmit={handleDocUpload} className="flex flex-col sm:flex-row gap-3 mb-6">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Document name (e.g. Contract 2024, Invoice #001)"
-                    value={docName}
-                    onChange={(e) => setDocName(e.target.value)}
-                    className="border-purple-100 focus-visible:ring-purple-500"
-                  />
-                </div>
-                <div className="flex-1">
-                  <input
-                    ref={docFileRef}
-                    type="file"
-                    accept="*/*"
-                    onChange={(e) => setDocFile(e.target.files?.[0] || null)}
-                    className="block w-full text-sm text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer border border-purple-100 rounded-md h-10 px-3 pt-1.5"
-                  />
-                </div>
-                <Button type="submit" disabled={docUploading || !docFile} className="gap-2 shrink-0 bg-purple-600 hover:bg-purple-700">
-                  {docUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  Upload Document
-                </Button>
-              </form>
-              {docError && <p className="text-red-600 text-xs mt-2 mb-4">{docError}</p>}
+        {showDocs && (
+          <CardContent className="pt-5 pb-6">
+            {/* Upload form */}
+            <form onSubmit={handleDocUpload} className="flex flex-col sm:flex-row gap-3 mb-6">
+              <div className="flex-1">
+                <Input
+                  placeholder="Document name (e.g. Contract 2024, Invoice #001)"
+                  value={docName}
+                  onChange={(e) => setDocName(e.target.value)}
+                  className="border-purple-100 focus-visible:ring-purple-500"
+                />
+              </div>
+              <div className="flex-1">
+                <input
+                  ref={docFileRef}
+                  type="file"
+                  accept="*/*"
+                  onChange={(e) => setDocFile(e.target.files?.[0] || null)}
+                  className="block w-full text-sm text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer border border-purple-100 rounded-md h-10 px-3 pt-1.5"
+                />
+              </div>
+              <Button type="submit" disabled={docUploading || !docFile} className="gap-2 shrink-0 bg-purple-600 hover:bg-purple-700">
+                {docUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                Upload Document
+              </Button>
+            </form>
+            {docError && <p className="text-red-600 text-xs mt-2 mb-4">{docError}</p>}
 
-              {/* Document list (List Manner) */}
-              {documents.length === 0 ? (
-                <div className="py-10 text-center border-2 border-dashed border-purple-50 rounded-xl">
-                  <FolderOpen className="h-12 w-12 mx-auto mb-3 text-purple-200" />
-                  <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {documents.map((doc) => {
-                    const isImage = doc.mimeType?.startsWith("image/")
-                    const isPdf = doc.mimeType === "application/pdf"
-                    return (
-                      <div key={doc.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white hover:border-purple-200 hover:shadow-sm transition-all group">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="h-10 w-10 rounded-lg border bg-purple-50 flex items-center justify-center shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-purple-400 transition-all"
-                               onClick={(e) => {
-                                 if (isImage) {
-                                   e.preventDefault()
-                                   e.stopPropagation()
-                                   setPreviewImage({ url: doc.fileUrl, name: doc.name })
-                                 }
-                               }}>
-                            {isImage ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={doc.fileUrl} alt={doc.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <FileText className={`h-5 w-5 ${isPdf ? "text-red-400" : "text-blue-400"}`} />
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-semibold text-sm truncate text-gray-900">{doc.name}</p>
-                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
-                              {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(0)} KB · ` : ""}
-                              {new Date(doc.uploadedAt).toLocaleDateString()}
-                            </p>
-                          </div>
+            {/* Document list (List Manner) */}
+            {documents.length === 0 ? (
+              <div className="py-10 text-center border-2 border-dashed border-purple-50 rounded-xl">
+                <FolderOpen className="h-12 w-12 mx-auto mb-3 text-purple-200" />
+                <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {documents.map((doc) => {
+                  const isImage = doc.mimeType?.startsWith("image/")
+                  const isPdf = doc.mimeType === "application/pdf"
+                  return (
+                    <div key={doc.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white hover:border-purple-200 hover:shadow-sm transition-all group">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="h-10 w-10 rounded-lg border bg-purple-50 flex items-center justify-center shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-purple-400 transition-all"
+                             onClick={(e) => {
+                               if (isImage) {
+                                 e.preventDefault()
+                                 e.stopPropagation()
+                                 setPreviewImage({ url: doc.fileUrl, name: doc.name })
+                               }
+                             }}>
+                          {isImage ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={doc.fileUrl} alt={doc.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <FileText className={`h-5 w-5 ${isPdf ? "text-red-400" : "text-blue-400"}`} />
+                          )}
                         </div>
-                        <div className="flex items-center gap-2 pr-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <a
-                            href={doc.fileUrl}
-                            download={doc.fileName}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border bg-white hover:bg-gray-50 transition-colors"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                            Open
-                          </a>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDocDelete(doc.id)}
-                            disabled={deletingDocId === doc.id}
-                            className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                          >
-                            {deletingDocId === doc.id
-                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              : <Trash2 className="h-3.5 w-3.5" />}
-                          </Button>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm truncate text-gray-900">{doc.name}</p>
+                          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                            {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(0)} KB · ` : ""}
+                            {new Date(doc.uploadedAt).toLocaleDateString()}
+                          </p>
                         </div>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </CardContent>
-          )}
-        </Card>
-      )}
+                      <div className="flex items-center gap-2 pr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <a
+                          href={doc.fileUrl}
+                          download={doc.fileName}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border bg-white hover:bg-gray-50 transition-colors"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Open
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDocDelete(doc.id)}
+                          disabled={deletingDocId === doc.id}
+                          className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                        >
+                          {deletingDocId === doc.id
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <Trash2 className="h-3.5 w-3.5" />}
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
 
       {/* Lot & Batch Tracker header */}
       <div className="mb-5">
