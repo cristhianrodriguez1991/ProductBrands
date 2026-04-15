@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,61 +21,42 @@ import {
   Building2,
   Phone,
   Mail,
-  Globe,
   MapPin,
   Package,
   ChevronRight,
   Search,
   Loader2,
-  Hash,
   X,
   Pencil,
   Trash2,
+  Star,
+  Truck,
+  Hash,
 } from "lucide-react"
 import Link from "next/link"
 
-// ─── Types ─────────────────────────────────────────────────────
-type BatchLotStatus = "INCOMING"|"RECEIVED"|"IN_QC"|"APPROVED"|"ON_HOLD"|"RECALLED"|"DISPOSED"
+type BatchLotStatus =
+  | "INCOMING" | "RECEIVED" | "IN_QC" | "APPROVED"
+  | "ON_HOLD" | "RECALLED" | "DISPOSED"
 
 type LotPreview = {
-  id: string
-  lotNumber: string
-  productName: string
-  productSku: string | null
-  category: string | null
-  invoiceNumber: string | null
-  poNumber: string | null
-  status: BatchLotStatus
-  receivedAt: string
+  id: string; lotNumber: string; productName: string; productSku: string | null
+  category: string | null; invoiceNumber: string | null; poNumber: string | null
+  status: BatchLotStatus; receivedAt: string
 }
 
 type Supplier = {
-  id: string
-  name: string
-  contactName: string | null
-  email: string | null
-  phone: string | null
-  address: string | null
-  city: string | null
-  state: string | null
-  country: string | null
-  website: string | null
-  notes: string | null
-  isActive: boolean
-  createdAt: string
-  _count: { batchLots: number }
-  batchLots: LotPreview[]
+  id: string; name: string; contactName: string | null; email: string | null
+  phone: string | null; address: string | null; city: string | null
+  state: string | null; country: string | null; website: string | null
+  notes: string | null; isActive: boolean; category: string
+  createdAt: string; _count: { batchLots: number }; batchLots: LotPreview[]
 }
 
-type LotSearchResult = { lot: LotPreview; supplier: Supplier }
-
 const STATUS_COLORS: Record<BatchLotStatus, string> = {
-  INCOMING: "bg-blue-100 text-blue-700",
-  RECEIVED: "bg-teal-100 text-teal-700",
-  IN_QC: "bg-yellow-100 text-yellow-700",
-  APPROVED: "bg-green-100 text-green-700",
-  ON_HOLD: "bg-orange-100 text-orange-700",
-  RECALLED: "bg-red-100 text-red-700",
+  INCOMING: "bg-blue-100 text-blue-700", RECEIVED: "bg-teal-100 text-teal-700",
+  IN_QC: "bg-yellow-100 text-yellow-700", APPROVED: "bg-green-100 text-green-700",
+  ON_HOLD: "bg-orange-100 text-orange-700", RECALLED: "bg-red-100 text-red-700",
   DISPOSED: "bg-gray-100 text-gray-600",
 }
 
@@ -87,28 +69,19 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
 }
 
-// ─── Empty form ────────────────────────────────────────────────
 const EMPTY_FORM = {
   name: "", contactName: "", email: "", phone: "",
   address: "", city: "", state: "", country: "", website: "", notes: "",
 }
-
 type SupplierForm = typeof EMPTY_FORM
 
-// ─── Supplier form fields (shared by Add + Edit modals) ────────
-function SupplierFormFields({
-  form,
-  onChange,
-  prefix,
-}: {
-  form: SupplierForm
-  onChange: (f: SupplierForm) => void
-  prefix: string
+function SupplierFormFields({ form, onChange, prefix }: {
+  form: SupplierForm; onChange: (f: SupplierForm) => void; prefix: string
 }) {
   return (
     <div className="grid grid-cols-2 gap-4">
       <div className="col-span-2">
-        <Label htmlFor={`${prefix}-name`}>Supplier / Company Name <span className="text-red-500">*</span></Label>
+        <Label htmlFor={`${prefix}-name`}>Company / Client Name <span className="text-red-500">*</span></Label>
         <Input id={`${prefix}-name`} required value={form.name}
           onChange={(e) => onChange({ ...form, name: e.target.value })}
           placeholder="e.g. Acme Packaging Co." className="mt-1" />
@@ -123,7 +96,7 @@ function SupplierFormFields({
         <Label htmlFor={`${prefix}-email`}>Email</Label>
         <Input id={`${prefix}-email`} type="email" value={form.email}
           onChange={(e) => onChange({ ...form, email: e.target.value })}
-          placeholder="contact@supplier.com" className="mt-1" />
+          placeholder="contact@company.com" className="mt-1" />
       </div>
       <div>
         <Label htmlFor={`${prefix}-phone`}>Phone</Label>
@@ -135,7 +108,7 @@ function SupplierFormFields({
         <Label htmlFor={`${prefix}-website`}>Website</Label>
         <Input id={`${prefix}-website`} value={form.website}
           onChange={(e) => onChange({ ...form, website: e.target.value })}
-          placeholder="https://supplier.com" className="mt-1" />
+          placeholder="https://company.com" className="mt-1" />
       </div>
       <div>
         <Label htmlFor={`${prefix}-address`}>Street Address</Label>
@@ -165,21 +138,105 @@ function SupplierFormFields({
         <Label htmlFor={`${prefix}-notes`}>Notes</Label>
         <Textarea id={`${prefix}-notes`} value={form.notes}
           onChange={(e) => onChange({ ...form, notes: e.target.value })}
-          placeholder="Any additional information about this supplier..."
-          rows={3} className="mt-1 resize-none" />
+          placeholder="Any additional information..."
+          rows={2} className="mt-1 resize-none" />
       </div>
     </div>
   )
 }
 
-// ─── Page ──────────────────────────────────────────────────────
+function SupplierCard({
+  supplier,
+  onEdit,
+  onDelete,
+}: {
+  supplier: Supplier
+  onEdit: (s: Supplier, e: React.MouseEvent) => void
+  onDelete: (s: Supplier, e: React.MouseEvent) => void
+}) {
+  const isPrivateLabel = supplier.category === "PRIVATE_LABEL"
+  return (
+    <div className="relative group">
+      <Link href={`/admin/suppliers/${supplier.id}`}>
+        <Card className="hover:shadow-md hover:border-blue-200 transition-all cursor-pointer">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 ${isPrivateLabel ? "bg-purple-50" : "bg-blue-50"}`}>
+                  {isPrivateLabel
+                    ? <Star className="h-4 w-4 text-purple-600" />
+                    : <Truck className="h-4 w-4 text-blue-600" />}
+                </div>
+                <div>
+                  <CardTitle className="text-sm">{supplier.name}</CardTitle>
+                  {supplier.contactName && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{supplier.contactName}</p>
+                  )}
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-blue-600 transition-colors mt-0.5 flex-shrink-0" />
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4 space-y-1.5">
+            {supplier.email && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Mail className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{supplier.email}</span>
+              </div>
+            )}
+            {supplier.phone && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Phone className="h-3 w-3 flex-shrink-0" />
+                {supplier.phone}
+              </div>
+            )}
+            {(supplier.city || supplier.country) && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3 flex-shrink-0" />
+                {[supplier.city, supplier.state, supplier.country].filter(Boolean).join(", ")}
+              </div>
+            )}
+            <div className="pt-2 border-t flex items-center justify-between">
+              <div className="flex items-center gap-1 text-xs font-medium">
+                <Package className="h-3.5 w-3.5 text-purple-600" />
+                <span className="text-purple-600">{supplier._count.batchLots}</span>
+                <span className="text-muted-foreground">batch lots</span>
+              </div>
+              <Badge variant={supplier.isActive ? "default" : "secondary"} className="text-xs h-5">
+                {supplier.isActive ? "Active" : "Inactive"}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+      {/* Hover action buttons */}
+      <div className="absolute top-2.5 right-7 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <button onClick={(e) => onEdit(supplier, e)} title="Edit"
+          className="h-6 w-6 flex items-center justify-center rounded-md bg-white border shadow-sm text-muted-foreground hover:text-blue-600 hover:border-blue-300 transition-colors">
+          <Pencil className="h-3 w-3" />
+        </button>
+        <button onClick={(e) => onDelete(supplier, e)} title="Delete"
+          className="h-6 w-6 flex items-center justify-center rounded-md bg-white border shadow-sm text-muted-foreground hover:text-red-600 hover:border-red-200 transition-colors">
+          <Trash2 className="h-3 w-3" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminSuppliersPage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const activeTab = (searchParams.get("tab") || "suppliers") as "suppliers" | "private-labels"
+
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
 
   // Add
   const [showAddModal, setShowAddModal] = useState(false)
+  const [addCategory, setAddCategory] = useState<"SUPPLIER" | "PRIVATE_LABEL">("SUPPLIER")
+  const [addCategoryChosen, setAddCategoryChosen] = useState(false)
   const [addForm, setAddForm] = useState<SupplierForm>(EMPTY_FORM)
   const [addSaving, setAddSaving] = useState(false)
   const [addError, setAddError] = useState("")
@@ -194,7 +251,6 @@ export default function AdminSuppliersPage() {
   const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null)
   const [deleteConfirming, setDeleteConfirming] = useState(false)
 
-  // ── Fetch ──
   const fetchSuppliers = async () => {
     try {
       const res = await fetch("/api/suppliers")
@@ -205,32 +261,18 @@ export default function AdminSuppliersPage() {
   }
   useEffect(() => { fetchSuppliers() }, [])
 
-  // ── Global search ──
   const q = search.trim().toLowerCase()
 
-  const lotResults = useMemo<LotSearchResult[]>(() => {
-    if (!q) return []
-    const results: LotSearchResult[] = []
-    for (const supplier of suppliers) {
-      for (const lot of supplier.batchLots) {
-        const hit =
-          lot.lotNumber.toLowerCase().includes(q) ||
-          lot.productName.toLowerCase().includes(q) ||
-          (lot.productSku ?? "").toLowerCase().includes(q) ||
-          (lot.category ?? "").toLowerCase().includes(q) ||
-          (lot.invoiceNumber ?? "").toLowerCase().includes(q) ||
-          (lot.poNumber ?? "").toLowerCase().includes(q) ||
-          supplier.name.toLowerCase().includes(q) ||
-          (supplier.contactName ?? "").toLowerCase().includes(q)
-        if (hit) results.push({ lot, supplier })
-      }
-    }
-    return results
-  }, [q, suppliers])
+  const suppliersList = useMemo(() =>
+    suppliers.filter((s) => s.category === "SUPPLIER"), [suppliers])
+  const privateLabelsList = useMemo(() =>
+    suppliers.filter((s) => s.category === "PRIVATE_LABEL"), [suppliers])
 
-  const filteredSuppliers = useMemo(() => {
-    if (!q) return suppliers
-    return suppliers.filter(
+  const activeList = activeTab === "suppliers" ? suppliersList : privateLabelsList
+
+  const filteredList = useMemo(() => {
+    if (!q) return activeList
+    return activeList.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
         (s.contactName ?? "").toLowerCase().includes(q) ||
@@ -239,17 +281,40 @@ export default function AdminSuppliersPage() {
           (l) =>
             l.lotNumber.toLowerCase().includes(q) ||
             l.productName.toLowerCase().includes(q) ||
-            (l.productSku ?? "").toLowerCase().includes(q) ||
-            (l.invoiceNumber ?? "").toLowerCase().includes(q) ||
-            (l.poNumber ?? "").toLowerCase().includes(q)
+            (l.productSku ?? "").toLowerCase().includes(q)
         )
     )
-  }, [q, suppliers])
+  }, [q, activeList])
 
-  const totalLots = suppliers.reduce((sum, s) => sum + s._count.batchLots, 0)
-  const isGlobalSearch = q.length > 0
+  const lotResults = useMemo(() => {
+    if (!q) return []
+    const results: { lot: LotPreview; supplier: Supplier }[] = []
+    for (const s of activeList) {
+      for (const lot of s.batchLots) {
+        if (
+          lot.lotNumber.toLowerCase().includes(q) ||
+          lot.productName.toLowerCase().includes(q) ||
+          (lot.productSku ?? "").toLowerCase().includes(q) ||
+          (lot.invoiceNumber ?? "").toLowerCase().includes(q) ||
+          s.name.toLowerCase().includes(q)
+        ) results.push({ lot, supplier: s })
+      }
+    }
+    return results
+  }, [q, activeList])
+
+  const totalLots = (activeTab === "suppliers" ? suppliersList : privateLabelsList)
+    .reduce((sum, s) => sum + s._count.batchLots, 0)
 
   // ── Add ──
+  const openAddModal = () => {
+    setAddCategoryChosen(false)
+    setAddCategory(activeTab === "private-labels" ? "PRIVATE_LABEL" : "SUPPLIER")
+    setAddForm(EMPTY_FORM)
+    setAddError("")
+    setShowAddModal(true)
+  }
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
     setAddError("")
@@ -258,12 +323,11 @@ export default function AdminSuppliersPage() {
       const res = await fetch("/api/suppliers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(addForm),
+        body: JSON.stringify({ ...addForm, category: addCategory }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to create supplier")
+      if (!res.ok) throw new Error(data.error || "Failed to create")
       setShowAddModal(false)
-      setAddForm(EMPTY_FORM)
       await fetchSuppliers()
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Something went wrong")
@@ -274,19 +338,11 @@ export default function AdminSuppliersPage() {
 
   // ── Edit ──
   const handleOpenEdit = (s: Supplier, e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault(); e.stopPropagation()
     setEditForm({
-      name: s.name,
-      contactName: s.contactName ?? "",
-      email: s.email ?? "",
-      phone: s.phone ?? "",
-      address: s.address ?? "",
-      city: s.city ?? "",
-      state: s.state ?? "",
-      country: s.country ?? "",
-      website: s.website ?? "",
-      notes: s.notes ?? "",
+      name: s.name, contactName: s.contactName ?? "", email: s.email ?? "",
+      phone: s.phone ?? "", address: s.address ?? "", city: s.city ?? "",
+      state: s.state ?? "", country: s.country ?? "", website: s.website ?? "", notes: s.notes ?? "",
     })
     setEditError("")
     setEditingSupplier(s)
@@ -295,8 +351,7 @@ export default function AdminSuppliersPage() {
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingSupplier) return
-    setEditError("")
-    setEditSaving(true)
+    setEditError(""); setEditSaving(true)
     try {
       const res = await fetch(`/api/suppliers/${editingSupplier.id}`, {
         method: "PATCH",
@@ -304,7 +359,7 @@ export default function AdminSuppliersPage() {
         body: JSON.stringify(editForm),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to update supplier")
+      if (!res.ok) throw new Error(data.error || "Failed to update")
       setEditingSupplier(null)
       await fetchSuppliers()
     } catch (err) {
@@ -316,8 +371,7 @@ export default function AdminSuppliersPage() {
 
   // ── Delete ──
   const handleOpenDelete = (s: Supplier, e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault(); e.stopPropagation()
     setDeletingSupplier(s)
   }
 
@@ -326,117 +380,123 @@ export default function AdminSuppliersPage() {
     setDeleteConfirming(true)
     try {
       const res = await fetch(`/api/suppliers/${deletingSupplier.id}`, { method: "DELETE" })
-      if (res.ok) {
-        setDeletingSupplier(null)
-        await fetchSuppliers()
-      }
-    } finally {
-      setDeleteConfirming(false)
-    }
+      if (res.ok) { setDeletingSupplier(null); await fetchSuppliers() }
+    } finally { setDeleteConfirming(false) }
   }
+
+  const isPrivateLabel = activeTab === "private-labels"
+  const TAB_CONFIG = {
+    suppliers: { label: "Suppliers", icon: Truck, color: "text-blue-600", desc: "Companies you buy from", emptyMsg: "No suppliers yet" },
+    "private-labels": { label: "Private Labels", icon: Star, color: "text-purple-600", desc: "Clients you manufacture for", emptyMsg: "No private label clients yet" },
+  }
+  const tabCfg = TAB_CONFIG[activeTab]
 
   return (
     <div>
       {/* Header */}
-      <div className="mb-8 flex items-start justify-between">
+      <div className="mb-6 flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold mb-1">Suppliers</h1>
-          <p className="text-muted-foreground">Manage suppliers and track product lots &amp; batches</p>
+          <h1 className="text-2xl font-bold mb-0.5">Suppliers & Private Labels</h1>
+          <p className="text-sm text-muted-foreground">Track your supply chain and private label clients</p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="gap-2">
-          <Plus className="h-4 w-4" />Add Supplier
+        <Button onClick={openAddModal} className="gap-2 shrink-0">
+          <Plus className="h-4 w-4" />Add
         </Button>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 bg-muted/50 p-1 rounded-lg w-fit">
+        {(["suppliers", "private-labels"] as const).map((tab) => {
+          const cfg = TAB_CONFIG[tab]
+          const Icon = cfg.icon
+          const count = tab === "suppliers" ? suppliersList.length : privateLabelsList.length
+          return (
+            <button
+              key={tab}
+              onClick={() => router.push(`/admin/suppliers?tab=${tab}`)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === tab
+                  ? "bg-white shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className={`h-4 w-4 ${activeTab === tab ? cfg.color : ""}`} />
+              {cfg.label}
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${activeTab === tab ? "bg-muted" : "bg-muted/50"}`}>{count}</span>
+            </button>
+          )
+        })}
+      </div>
+
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <Card><CardContent className="pt-6">
-          <div className="text-2xl font-bold text-blue-600">{suppliers.length}</div>
-          <p className="text-sm text-muted-foreground mt-1">Total Suppliers</p>
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <Card><CardContent className="pt-5 pb-4">
+          <div className={`text-xl font-bold ${tabCfg.color}`}>{activeList.length}</div>
+          <p className="text-xs text-muted-foreground mt-0.5">{isPrivateLabel ? "Private Label Clients" : "Total Suppliers"}</p>
         </CardContent></Card>
-        <Card><CardContent className="pt-6">
-          <div className="text-2xl font-bold text-green-600">{suppliers.filter((s) => s.isActive).length}</div>
-          <p className="text-sm text-muted-foreground mt-1">Active</p>
+        <Card><CardContent className="pt-5 pb-4">
+          <div className="text-xl font-bold text-green-600">{activeList.filter((s) => s.isActive).length}</div>
+          <p className="text-xs text-muted-foreground mt-0.5">Active</p>
         </CardContent></Card>
-        <Card><CardContent className="pt-6">
-          <div className="text-2xl font-bold text-purple-600">{totalLots}</div>
-          <p className="text-sm text-muted-foreground mt-1">Total Batch Lots</p>
+        <Card><CardContent className="pt-5 pb-4">
+          <div className="text-xl font-bold text-purple-600">{totalLots}</div>
+          <p className="text-xs text-muted-foreground mt-0.5">Batch Lots</p>
         </CardContent></Card>
       </div>
 
-      {/* Global Search */}
-      <div className="relative mb-2">
+      {/* Search */}
+      <div className="relative mb-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search by lot #, product name, SKU, invoice #, PO #, supplier name..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 pr-10"
+          placeholder={`Search ${tabCfg.label.toLowerCase()}, lot #, product, SKU...`}
+          value={search} onChange={(e) => setSearch(e.target.value)}
+          className="pl-9 pr-9"
         />
         {search && (
           <button onClick={() => setSearch("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
         )}
       </div>
-      <p className="text-xs text-muted-foreground mb-6">
-        Searches across suppliers, lot numbers, products, SKUs, invoice &amp; PO numbers.
-      </p>
+      <p className="text-xs text-muted-foreground mb-5">Search by name, lot #, product, SKU, invoice, or PO.</p>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
         </div>
       ) : (
         <>
-          {/* Lot results */}
-          {isGlobalSearch && lotResults.length > 0 && (
-            <div className="mb-8">
-              <div className="flex items-center gap-2 mb-3">
+          {/* Lot search results */}
+          {q && lotResults.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-2">
                 <Hash className="h-4 w-4 text-purple-600" />
-                <h2 className="font-semibold text-sm">Batch Lots matching &ldquo;{search}&rdquo;</h2>
-                <span className="text-xs text-muted-foreground">— {lotResults.length} result{lotResults.length !== 1 ? "s" : ""}</span>
+                <span className="text-sm font-semibold">Batch Lots — {lotResults.length} match{lotResults.length !== 1 ? "es" : ""}</span>
               </div>
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="border rounded-lg overflow-x-auto">
+                <table className="w-full text-sm min-w-[540px]">
                   <thead className="bg-muted/50">
-                    <tr>
-                      {["Lot #","Product","SKU","Invoice / PO","Supplier","Received","Status",""].map((h) => (
-                        <th key={h} className="text-left px-4 py-2.5 font-medium text-xs uppercase tracking-wider text-muted-foreground">{h}</th>
-                      ))}
-                    </tr>
+                    <tr>{["Lot #", "Product", "Supplier", "Received", "Status", ""].map((h) => (
+                      <th key={h} className="text-left px-3 py-2 text-xs font-medium uppercase text-muted-foreground">{h}</th>
+                    ))}</tr>
                   </thead>
                   <tbody className="divide-y">
                     {lotResults.map(({ lot, supplier }) => (
-                      <tr key={lot.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-3">
+                      <tr key={lot.id} className="hover:bg-muted/30">
+                        <td className="px-3 py-2.5">
                           <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">{lot.lotNumber}</span>
                         </td>
-                        <td className="px-4 py-3">
-                          <p className="font-medium">{lot.productName}</p>
-                          {lot.category && <p className="text-xs text-muted-foreground">{lot.category}</p>}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">{lot.productSku || "—"}</td>
-                        <td className="px-4 py-3 text-xs space-y-0.5">
-                          {lot.invoiceNumber && <div className="text-muted-foreground">INV: <span className="text-foreground">{lot.invoiceNumber}</span></div>}
-                          {lot.poNumber && <div className="text-muted-foreground">PO: <span className="text-foreground">{lot.poNumber}</span></div>}
-                          {!lot.invoiceNumber && !lot.poNumber && <span className="text-muted-foreground">—</span>}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1.5">
-                            <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                            <span className="text-sm">{supplier.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(lot.receivedAt)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[lot.status]}`}>
+                        <td className="px-3 py-2.5 font-medium text-sm">{lot.productName}</td>
+                        <td className="px-3 py-2.5 text-sm text-muted-foreground">{supplier.name}</td>
+                        <td className="px-3 py-2.5 text-xs text-muted-foreground">{formatDate(lot.receivedAt)}</td>
+                        <td className="px-3 py-2.5">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[lot.status]}`}>
                             {STATUS_LABELS[lot.status]}
                           </span>
                         </td>
-                        <td className="px-4 py-3">
-                          <Link href={`/admin/suppliers/${supplier.id}`} className="text-xs text-blue-600 hover:underline whitespace-nowrap">View →</Link>
+                        <td className="px-3 py-2.5">
+                          <Link href={`/admin/suppliers/${supplier.id}`} className="text-xs text-blue-600 hover:underline">View →</Link>
                         </td>
                       </tr>
                     ))}
@@ -446,157 +506,113 @@ export default function AdminSuppliersPage() {
             </div>
           )}
 
-          {/* Supplier cards */}
-          {filteredSuppliers.length === 0 && !isGlobalSearch ? (
+          {/* Cards grid */}
+          {filteredList.length === 0 ? (
             <Card>
-              <CardContent className="py-16 text-center">
-                <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-40" />
-                <p className="font-semibold text-lg mb-1">No suppliers yet</p>
-                <p className="text-muted-foreground text-sm mb-6">Add your first supplier to get started.</p>
-                <Button onClick={() => setShowAddModal(true)} variant="outline" className="gap-2">
-                  <Plus className="h-4 w-4" />Add Supplier
-                </Button>
+              <CardContent className="py-14 text-center">
+                {isPrivateLabel
+                  ? <Star className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-30" />
+                  : <Building2 className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-30" />}
+                <p className="font-semibold mb-1">{q ? `No results for "${search}"` : tabCfg.emptyMsg}</p>
+                {!q && (
+                  <Button onClick={openAddModal} variant="outline" className="mt-4 gap-2">
+                    <Plus className="h-4 w-4" />Add {isPrivateLabel ? "Private Label Client" : "Supplier"}
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
-            <>
-              {filteredSuppliers.length > 0 && (
-                <>
-                  {isGlobalSearch && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <Building2 className="h-4 w-4 text-blue-600" />
-                      <h2 className="font-semibold text-sm">Suppliers matching &ldquo;{search}&rdquo;</h2>
-                      <span className="text-xs text-muted-foreground">— {filteredSuppliers.length} result{filteredSuppliers.length !== 1 ? "s" : ""}</span>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {filteredSuppliers.map((supplier) => (
-                      <div key={supplier.id} className="relative group">
-                        <Link href={`/admin/suppliers/${supplier.id}`}>
-                          <Card className="hover:shadow-md hover:border-blue-200 transition-all cursor-pointer">
-                            <CardHeader className="pb-3">
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                                    <Building2 className="h-5 w-5 text-blue-600" />
-                                  </div>
-                                  <div>
-                                    <CardTitle className="text-base">{supplier.name}</CardTitle>
-                                    {supplier.contactName && (
-                                      <p className="text-xs text-muted-foreground mt-0.5">{supplier.contactName}</p>
-                                    )}
-                                  </div>
-                                </div>
-                                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-blue-600 transition-colors mt-1" />
-                              </div>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                              {supplier.email && (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <Mail className="h-3.5 w-3.5 flex-shrink-0" />
-                                  <span className="truncate">{supplier.email}</span>
-                                </div>
-                              )}
-                              {supplier.phone && (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <Phone className="h-3.5 w-3.5 flex-shrink-0" />
-                                  {supplier.phone}
-                                </div>
-                              )}
-                              {(supplier.city || supplier.country) && (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                                  {[supplier.city, supplier.state, supplier.country].filter(Boolean).join(", ")}
-                                </div>
-                              )}
-                              <div className="pt-3 border-t flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 text-sm font-medium">
-                                  <Package className="h-4 w-4 text-purple-600" />
-                                  <span className="text-purple-600">{supplier._count.batchLots}</span>
-                                  <span className="text-muted-foreground">batch lots</span>
-                                </div>
-                                <Badge variant={supplier.isActive ? "default" : "secondary"} className="text-xs">
-                                  {supplier.isActive ? "Active" : "Inactive"}
-                                </Badge>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
-
-                        {/* Edit / Delete buttons — float top-right on hover */}
-                        <div className="absolute top-3 right-8 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                          <button
-                            onClick={(e) => handleOpenEdit(supplier, e)}
-                            title="Edit supplier"
-                            className="h-7 w-7 flex items-center justify-center rounded-md bg-white border shadow-sm text-muted-foreground hover:text-blue-600 hover:border-blue-300 transition-colors"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={(e) => handleOpenDelete(supplier, e)}
-                            title="Delete supplier"
-                            className="h-7 w-7 flex items-center justify-center rounded-md bg-white border shadow-sm text-muted-foreground hover:text-red-600 hover:border-red-200 transition-colors"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {isGlobalSearch && filteredSuppliers.length === 0 && lotResults.length === 0 && (
-                <Card>
-                  <CardContent className="py-14 text-center">
-                    <Search className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-40" />
-                    <p className="font-semibold mb-1">No results for &ldquo;{search}&rdquo;</p>
-                    <p className="text-muted-foreground text-sm">Try a different search — lot #, product name, SKU, invoice, PO, or supplier name.</p>
-                  </CardContent>
-                </Card>
-              )}
-            </>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filteredList.map((supplier) => (
+                <SupplierCard
+                  key={supplier.id}
+                  supplier={supplier}
+                  onEdit={handleOpenEdit}
+                  onDelete={handleOpenDelete}
+                />
+              ))}
+            </div>
           )}
         </>
       )}
 
-      {/* ── Delete Supplier Modal ── */}
-      <Dialog open={!!deletingSupplier} onOpenChange={(o) => { if (!o) setDeletingSupplier(null) }}>
-        <DialogContent className="max-w-md">
+      {/* ── Add Modal — Step 1: choose category ── */}
+      <Dialog open={showAddModal && !addCategoryChosen} onOpenChange={(o) => { if (!o) setShowAddModal(false) }}>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <Trash2 className="h-5 w-5" />Delete Supplier
-            </DialogTitle>
-            <DialogDescription>
-              Permanently delete{" "}
-              <span className="font-semibold text-foreground">{deletingSupplier?.name}</span>?
-              This will also delete all their batch lots and attachments. This cannot be undone.
-            </DialogDescription>
+            <DialogTitle>What are you adding?</DialogTitle>
+            <DialogDescription>Choose the category for this entry.</DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setDeletingSupplier(null)} disabled={deleteConfirming}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleteConfirming}>
-              {deleteConfirming ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</> : "Delete Permanently"}
-            </Button>
-          </DialogFooter>
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            <button
+              onClick={() => { setAddCategory("SUPPLIER"); setAddCategoryChosen(true) }}
+              className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-transparent hover:border-blue-300 hover:bg-blue-50 transition-all"
+            >
+              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                <Truck className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold text-sm">Supplier</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Company I buy from</p>
+              </div>
+            </button>
+            <button
+              onClick={() => { setAddCategory("PRIVATE_LABEL"); setAddCategoryChosen(true) }}
+              className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-transparent hover:border-purple-300 hover:bg-purple-50 transition-all"
+            >
+              <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
+                <Star className="h-6 w-6 text-purple-600" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold text-sm">Private Label</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Client I manufacture for</p>
+              </div>
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
 
-      {/* ── Edit Supplier Modal ── */}
+      {/* ── Add Modal — Step 2: form ── */}
+      <Dialog open={showAddModal && addCategoryChosen} onOpenChange={(o) => { if (!o) { setShowAddModal(false); setAddCategoryChosen(false) } }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {addCategory === "SUPPLIER"
+                ? <><Truck className="h-5 w-5 text-blue-600" />Add Supplier</>
+                : <><Star className="h-5 w-5 text-purple-600" />Add Private Label Client</>}
+            </DialogTitle>
+            <DialogDescription>
+              {addCategory === "SUPPLIER"
+                ? "Add a supplier to track their products and batch lots."
+                : "Add a private label client to manage their documents and orders."}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAdd} className="space-y-5 mt-2">
+            {addError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-4 py-3">{addError}</div>
+            )}
+            <SupplierFormFields form={addForm} onChange={setAddForm} prefix="add" />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAddCategoryChosen(false)}>← Back</Button>
+              <Button type="submit" disabled={addSaving}>
+                {addSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit Modal ── */}
       <Dialog open={!!editingSupplier} onOpenChange={(o) => { if (!o) setEditingSupplier(null) }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-5 w-5 text-blue-600" />
-              Edit Supplier
+              <Pencil className="h-5 w-5 text-blue-600" />Edit {editingSupplier?.category === "PRIVATE_LABEL" ? "Private Label Client" : "Supplier"}
             </DialogTitle>
-            <DialogDescription>Update the details for {editingSupplier?.name}.</DialogDescription>
           </DialogHeader>
           {editingSupplier && (
             <form onSubmit={handleSaveEdit} className="space-y-5 mt-2">
-              {editError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-4 py-3">{editError}</div>
-              )}
+              {editError && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-4 py-3">{editError}</div>}
               <SupplierFormFields form={editForm} onChange={setEditForm} prefix="edit" />
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditingSupplier(null)}>Cancel</Button>
@@ -609,25 +625,24 @@ export default function AdminSuppliersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Add Supplier Modal ── */}
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      {/* ── Delete Modal ── */}
+      <Dialog open={!!deletingSupplier} onOpenChange={(o) => { if (!o) setDeletingSupplier(null) }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Add New Supplier</DialogTitle>
-            <DialogDescription>Add a supplier to start tracking their products and batch lots.</DialogDescription>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />Delete {deletingSupplier?.category === "PRIVATE_LABEL" ? "Private Label Client" : "Supplier"}
+            </DialogTitle>
+            <DialogDescription>
+              Permanently delete <span className="font-semibold text-foreground">{deletingSupplier?.name}</span>?
+              All batch lots and documents will also be deleted. This cannot be undone.
+            </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleAdd} className="space-y-5 mt-2">
-            {addError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-4 py-3">{addError}</div>
-            )}
-            <SupplierFormFields form={addForm} onChange={setAddForm} prefix="add" />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
-              <Button type="submit" disabled={addSaving}>
-                {addSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save Supplier"}
-              </Button>
-            </DialogFooter>
-          </form>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setDeletingSupplier(null)} disabled={deleteConfirming}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleteConfirming}>
+              {deleteConfirming ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</> : "Delete Permanently"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

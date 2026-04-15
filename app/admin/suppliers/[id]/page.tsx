@@ -51,6 +51,9 @@ import {
   Search,
   Pencil,
   Trash2,
+  Star,
+  FolderOpen,
+  Download,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -111,7 +114,18 @@ type Supplier = {
   website: string | null
   notes: string | null
   isActive: boolean
+  category: string
   batchLots: BatchLot[]
+}
+
+type ClientDocument = {
+  id: string
+  name: string
+  fileUrl: string
+  fileName: string
+  fileSize: number | null
+  mimeType: string | null
+  uploadedAt: string
 }
 
 // ─── Status config ────────────────────────────────────────────
@@ -186,6 +200,14 @@ function formatDateTime(d: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   })
+}
+
+/** Format currency without forced 2dp — preserves 0.017, 0.5, 1.25 etc. */
+function formatCost(n: number): string {
+  // Show up to 6 decimal places, trim trailing zeros
+  const s = n.toPrecision(6).replace(/\.?0+$/, "")
+  // Fall back to full string if toPrecision expanded it oddly
+  return parseFloat(s).toString()
 }
 
 const ATTACHMENT_LABELS = ["Pallet Photo", "Invoice", "COA", "Product Label", "Packaging", "Other"]
@@ -363,12 +385,12 @@ function BatchLotCard({
             )}
             {lot.unitCost != null && (
               <span className="text-muted-foreground">
-                Unit Cost: <span className="font-medium text-foreground">${lot.unitCost.toFixed(2)}</span>
+                Unit Cost: <span className="font-medium text-foreground">${formatCost(lot.unitCost)}</span>
               </span>
             )}
             {lot.totalCost != null && (
               <span className="text-muted-foreground">
-                Total: <span className="font-medium text-foreground">${lot.totalCost.toFixed(2)}</span>
+                Total: <span className="font-medium text-foreground">${formatCost(lot.totalCost)}</span>
               </span>
             )}
           </div>
@@ -494,6 +516,56 @@ export default function SupplierDetailPage() {
   const [deletingLot, setDeletingLot] = useState<BatchLot | null>(null)
   const [deleteConfirming, setDeleteConfirming] = useState(false)
 
+  // ── Client Documents (Private Label) ──
+  const [documents, setDocuments] = useState<ClientDocument[]>([])
+  const [docUploading, setDocUploading] = useState(false)
+  const [docName, setDocName] = useState("")
+  const [docFile, setDocFile] = useState<File | null>(null)
+  const [docError, setDocError] = useState("")
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
+  const docFileRef = useRef<HTMLInputElement>(null)
+
+  const fetchDocuments = async () => {
+    if (!id) return
+    try {
+      const res = await fetch(`/api/suppliers/${id}/documents`)
+      if (res.ok) setDocuments(await res.json())
+    } catch {}
+  }
+
+  const handleDocUpload = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!docFile) { setDocError("Please select a file"); return }
+    setDocError("")
+    setDocUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append("name", docName || docFile.name)
+      fd.append("file", docFile)
+      const res = await fetch(`/api/suppliers/${id}/documents`, { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Upload failed")
+      setDocName("")
+      setDocFile(null)
+      if (docFileRef.current) docFileRef.current.value = ""
+      await fetchDocuments()
+    } catch (err) {
+      setDocError(err instanceof Error ? err.message : "Upload failed")
+    } finally {
+      setDocUploading(false)
+    }
+  }
+
+  const handleDocDelete = async (docId: string) => {
+    setDeletingDocId(docId)
+    try {
+      await fetch(`/api/suppliers/${id}/documents/${docId}`, { method: "DELETE" })
+      await fetchDocuments()
+    } finally {
+      setDeletingDocId(null)
+    }
+  }
+
   const fetchSupplier = async () => {
     try {
       const res = await fetch(`/api/suppliers/${id}`)
@@ -506,6 +578,7 @@ export default function SupplierDetailPage() {
 
   useEffect(() => {
     fetchSupplier()
+    fetchDocuments()
   }, [id])
 
   const handleStatusChange = async (lotId: string, status: BatchLotStatus) => {
@@ -1400,6 +1473,108 @@ export default function SupplierDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* ── Client Documents Section (Private Label only) ── */}
+      {supplier.category === "PRIVATE_LABEL" && (
+        <div className="mt-10">
+          <div className="flex items-center gap-2 mb-4">
+            <FolderOpen className="h-5 w-5 text-purple-600" />
+            <h2 className="text-lg font-semibold">Documents</h2>
+            <span className="text-xs text-muted-foreground ml-1">{documents.length} file{documents.length !== 1 ? "s" : ""}</span>
+          </div>
+
+          {/* Upload form */}
+          <Card className="mb-5">
+            <CardContent className="pt-4 pb-4">
+              <form onSubmit={handleDocUpload} className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Document name (e.g. Contract 2024, Invoice #001)"
+                    value={docName}
+                    onChange={(e) => setDocName(e.target.value)}
+                  />
+                </div>
+                <div className="flex-1">
+                  <input
+                    ref={docFileRef}
+                    type="file"
+                    accept="*/*"
+                    onChange={(e) => setDocFile(e.target.files?.[0] || null)}
+                    className="block w-full text-sm text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer border rounded-md h-10 px-3 pt-1.5"
+                  />
+                </div>
+                <Button type="submit" disabled={docUploading || !docFile} className="gap-2 shrink-0">
+                  {docUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  Upload
+                </Button>
+              </form>
+              {docError && <p className="text-red-600 text-xs mt-2">{docError}</p>}
+            </CardContent>
+          </Card>
+
+          {/* Document list */}
+          {documents.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <FolderOpen className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-30" />
+                <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {documents.map((doc) => {
+                const isImage = doc.mimeType?.startsWith("image/")
+                const isPdf = doc.mimeType === "application/pdf"
+                return (
+                  <Card key={doc.id} className="group relative overflow-hidden">
+                    {/* Preview */}
+                    <div className="h-36 bg-muted/30 flex items-center justify-center overflow-hidden border-b">
+                      {isImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={doc.fileUrl} alt={doc.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                          <FileText className={`h-10 w-10 ${isPdf ? "text-red-400" : "text-blue-400"}`} />
+                          <span className="text-xs font-medium">{doc.fileName.split(".").pop()?.toUpperCase()}</span>
+                        </div>
+                      )}
+                    </div>
+                    <CardContent className="p-3">
+                      <p className="font-medium text-sm truncate">{doc.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(0)} KB · ` : ""}
+                        {new Date(doc.uploadedAt).toLocaleDateString()}
+                      </p>
+                      <div className="flex gap-2 mt-2">
+                        <a
+                          href={doc.fileUrl}
+                          download={doc.fileName}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-md border hover:bg-muted transition-colors"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Open
+                        </a>
+                        <button
+                          onClick={() => handleDocDelete(doc.id)}
+                          disabled={deletingDocId === doc.id}
+                          className="h-8 w-8 flex items-center justify-center rounded-md border text-muted-foreground hover:text-red-600 hover:border-red-200 transition-colors"
+                        >
+                          {deletingDocId === doc.id
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <Trash2 className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
     </div>
   )
 }

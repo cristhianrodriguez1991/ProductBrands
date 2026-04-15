@@ -15,6 +15,7 @@ const supplierSchema = z.object({
   country: z.string().optional(),
   website: z.string().optional(),
   notes: z.string().optional(),
+  category: z.enum(["SUPPLIER", "PRIVATE_LABEL"]).default("SUPPLIER"),
 })
 
 export async function GET() {
@@ -74,6 +75,7 @@ export async function POST(req: Request) {
         country: data.country || null,
         website: data.website || null,
         notes: data.notes || null,
+        category: data.category,
       },
     })
 

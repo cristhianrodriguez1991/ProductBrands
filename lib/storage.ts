@@ -37,11 +37,31 @@ export async function uploadFile(
     throw new Error("Empty file provided to uploadFile")
   }
 
-  const bytes = await file.arrayBuffer()
-  const buffer = Buffer.from(bytes)
+  let bytes = await file.arrayBuffer()
+  let buffer = Buffer.from(bytes)
+  let finalMimeType = file.type || "application/octet-stream"
+  let finalExt = (file.name.split(".").pop() || "bin").toLowerCase()
 
-  const ext = file.name.split(".").pop() || "bin"
-  const fileName = `${randomBytes(16).toString("hex")}.${ext}`
+  // ── HEIC / HEIF → JPEG conversion ──────────────────────────
+  const isHeic =
+    finalExt === "heic" ||
+    finalExt === "heif" ||
+    finalMimeType === "image/heic" ||
+    finalMimeType === "image/heif"
+
+  if (isHeic) {
+    try {
+      const sharp = (await import("sharp")).default
+      buffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer()
+      finalMimeType = "image/jpeg"
+      finalExt = "jpg"
+    } catch (e) {
+      console.warn("[uploadFile] HEIC conversion failed, storing original:", e)
+      // Continue with original buffer — better than failing entirely
+    }
+  }
+
+  const fileName = `${randomBytes(16).toString("hex")}.${finalExt}`
   const key = `${folder}/${fileName}`
 
   // Use S3 if configured (required for persistent storage in production)
@@ -53,7 +73,7 @@ export async function uploadFile(
         Bucket: BUCKET_NAME,
         Key: key,
         Body: buffer,
-        ContentType: file.type,
+        ContentType: finalMimeType,
       })
     )
     const url = process.env.S3_PUBLIC_URL
@@ -69,9 +89,8 @@ export async function uploadFile(
     const filePath = join(uploadDir, fileName)
     await writeFile(filePath, buffer)
     // Return a data URL since /tmp files can't be served statically
-    const mimeType = file.type || "application/octet-stream"
     const base64 = buffer.toString("base64")
-    return { url: `data:${mimeType};base64,${base64}`, key }
+    return { url: `data:${finalMimeType};base64,${base64}`, key }
   }
 
   // Development: write to public/uploads

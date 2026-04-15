@@ -598,13 +598,16 @@ model Supplier {
   website       String?
   notes         String?  @db.Text
   isActive      Boolean  @default(true)
+  category      String   @default("SUPPLIER") // "SUPPLIER" | "PRIVATE_LABEL"
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   batchLots     BatchLot[]
+  documents     ClientDocument[]
 
   @@index([name])
   @@index([isActive])
+  @@index([category])
 }
 
 model BatchLot {
@@ -680,4 +683,19 @@ model SiteSetting {
 
   @@index([group])
   @@index([key])
+}
+
+// Documents uploaded for Private Label clients
+model ClientDocument {
+  id          String   @id @default(cuid())
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  name        String   // Custom name given by user
+  fileUrl     String   @db.Text
+  fileName    String   // Original filename
+  fileSize    Int?
+  mimeType    String?
+  uploadedAt  DateTime @default(now())
+
+  @@index([supplierId])
 }
