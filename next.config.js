@@ -18,9 +18,8 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+    serverComponentsExternalPackages: ["sharp"],
   },
-  // Vercel handles deployment — standalone not needed
-  // output: "standalone",
   // Production optimizations
   compress: true,
   poweredByHeader: false,
