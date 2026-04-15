@@ -468,7 +468,13 @@ function BatchLotCard({
                     return (
                       <div
                         key={att.id}
-                        onClick={() => isImage && onPreview(att.fileUrl, att.label || att.fileName)}
+                        onClick={(e) => {
+                          if (isImage) {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            onPreview(att.fileUrl, att.label || att.fileName)
+                          }
+                        }}
                         className={cn(
                           "group block rounded-lg border overflow-hidden hover:border-blue-400 transition-colors",
                           isImage && "cursor-pointer"
@@ -964,7 +970,13 @@ export default function SupplierDetailPage() {
                       <div key={doc.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white hover:border-purple-200 hover:shadow-sm transition-all group">
                         <div className="flex items-center gap-3 overflow-hidden">
                           <div className="h-10 w-10 rounded-lg border bg-purple-50 flex items-center justify-center shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-purple-400 transition-all"
-                               onClick={() => isImage && setPreviewImage({ url: doc.fileUrl, name: doc.name })}>
+                               onClick={(e) => {
+                                 if (isImage) {
+                                   e.preventDefault()
+                                   e.stopPropagation()
+                                   setPreviewImage({ url: doc.fileUrl, name: doc.name })
+                                 }
+                               }}>
                             {isImage ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={doc.fileUrl} alt={doc.name} className="w-full h-full object-cover" />
