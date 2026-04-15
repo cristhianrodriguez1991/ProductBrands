@@ -307,9 +307,10 @@ export default function AdminSuppliersPage() {
     .reduce((sum, s) => sum + s._count.batchLots, 0)
 
   // ── Add ──
-  const openAddModal = () => {
-    setAddCategoryChosen(false)
-    setAddCategory(activeTab === "private-labels" ? "PRIVATE_LABEL" : "SUPPLIER")
+  const openAddModal = (forceCategory?: "SUPPLIER" | "PRIVATE_LABEL") => {
+    const cat = forceCategory ?? (activeTab === "private-labels" ? "PRIVATE_LABEL" : "SUPPLIER")
+    setAddCategory(cat)
+    setAddCategoryChosen(!!forceCategory) // skip picker if category was explicit
     setAddForm(EMPTY_FORM)
     setAddError("")
     setShowAddModal(true)
@@ -399,7 +400,7 @@ export default function AdminSuppliersPage() {
           <h1 className="text-2xl font-bold mb-0.5">Suppliers & Private Labels</h1>
           <p className="text-sm text-muted-foreground">Track your supply chain and private label clients</p>
         </div>
-        <Button onClick={openAddModal} className="gap-2 shrink-0">
+        <Button onClick={() => openAddModal()} className="gap-2 shrink-0">
           <Plus className="h-4 w-4" />Add
         </Button>
       </div>
@@ -515,7 +516,7 @@ export default function AdminSuppliersPage() {
                   : <Building2 className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-30" />}
                 <p className="font-semibold mb-1">{q ? `No results for "${search}"` : tabCfg.emptyMsg}</p>
                 {!q && (
-                  <Button onClick={openAddModal} variant="outline" className="mt-4 gap-2">
+                  <Button onClick={() => openAddModal(isPrivateLabel ? "PRIVATE_LABEL" : "SUPPLIER")} variant="outline" className="mt-4 gap-2">
                     <Plus className="h-4 w-4" />Add {isPrivateLabel ? "Private Label Client" : "Supplier"}
                   </Button>
                 )}

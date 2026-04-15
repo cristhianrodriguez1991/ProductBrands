@@ -177,7 +177,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         {/* Page content — scrolls independently */}
-        <main className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-8">
+        <main
+          className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-8 pb-24 md:pb-8"
+          style={{ paddingBottom: "max(6rem, calc(2rem + env(safe-area-inset-bottom, 0px)))" }}
+        >
           {children}
         </main>
       </div>
