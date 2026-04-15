@@ -574,6 +574,8 @@ export default function SupplierDetailPage() {
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [tempNotes, setTempNotes] = useState("")
   const [newNote, setNewNote] = useState("")
+  const [editingEntryIndex, setEditingEntryIndex] = useState<number | null>(null)
+  const [editingEntryText, setEditingEntryText] = useState("")
   const [savingNotes, setSavingNotes] = useState(false)
   const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null)
   const [docUploading, setDocUploading] = useState(false)
@@ -630,6 +632,53 @@ export default function SupplierDetailPage() {
       })
       if (resp.ok) {
         setNewNote("")
+        fetchSupplier()
+      }
+    } finally {
+      setSavingNotes(false)
+    }
+  }
+
+  const handleDeleteEntry = async (index: number) => {
+    if (!supplier) return
+    const lines = (supplier.notes || "").split("\n").filter(l => l.trim())
+    lines.splice(index, 1)
+    const updatedNotes = lines.join("\n")
+    
+    setSavingNotes(true)
+    try {
+      const resp = await fetch(`/api/suppliers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: updatedNotes }),
+      })
+      if (resp.ok) fetchSupplier()
+    } finally {
+      setSavingNotes(false)
+    }
+  }
+
+  const handleSaveEditEntry = async (index: number) => {
+    if (!supplier) return
+    const lines = (supplier.notes || "").split("\n").filter(l => l.trim())
+    
+    // Preserve timestamp if possible
+    const oldLine = lines[index]
+    const tsMatch = oldLine.match(/^\[.*?\] - /)
+    const prefix = tsMatch ? tsMatch[0] : ""
+    
+    lines[index] = prefix + editingEntryText.trim()
+    const updatedNotes = lines.join("\n")
+    
+    setSavingNotes(true)
+    try {
+      const resp = await fetch(`/api/suppliers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: updatedNotes }),
+      })
+      if (resp.ok) {
+        setEditingEntryIndex(null)
         fetchSupplier()
       }
     } finally {
@@ -984,21 +1033,65 @@ export default function SupplierDetailPage() {
                 {supplier.notes ? (
                   supplier.notes.split("\n").filter(line => line.trim()).map((line, idx) => {
                     const tsMatch = line.match(/^\[(.*? \d\d:\d\d [AP]M)\] - (.*)/)
-                    if (tsMatch) {
-                      return (
-                        <div key={idx} className="bg-white border rounded-lg p-2.5 shadow-sm">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                              {tsMatch[1]}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-800 leading-relaxed">{tsMatch[2]}</p>
-                        </div>
-                      )
-                    }
+                    const isEditing = editingEntryIndex === idx
+                    const content = tsMatch ? tsMatch[2] : line
+                    const timestamp = tsMatch ? tsMatch[1] : null
+
                     return (
-                      <div key={idx} className="bg-white border rounded-lg p-2.5 shadow-sm text-sm text-gray-700">
-                        {line}
+                      <div key={idx} className="group relative bg-white border rounded-lg p-2.5 shadow-sm hover:border-blue-200 transition-colors">
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            {timestamp && (
+                              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                {timestamp}
+                              </span>
+                            )}
+                            <Textarea
+                              value={editingEntryText}
+                              onChange={(e) => setEditingEntryText(e.target.value)}
+                              className="text-sm min-h-[60px] resize-none"
+                              autoFocus
+                            />
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setEditingEntryIndex(null)}>Cancel</Button>
+                              <Button size="sm" className="h-7 text-xs bg-blue-600" onClick={() => handleSaveEditEntry(idx)} disabled={savingNotes}>
+                                Save
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-between mb-1">
+                              {timestamp && (
+                                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                  {timestamp}
+                                </span>
+                              )}
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-6 w-6 text-muted-foreground hover:text-blue-600"
+                                  onClick={() => {
+                                    setEditingEntryText(content)
+                                    setEditingEntryIndex(idx)
+                                  }}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-6 w-6 text-muted-foreground hover:text-red-600"
+                                  onClick={() => handleDeleteEntry(idx)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-800 leading-relaxed pr-8">{content}</p>
+                          </>
+                        )}
                       </div>
                     )
                   })
