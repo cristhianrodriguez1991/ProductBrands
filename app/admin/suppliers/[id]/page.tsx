@@ -512,6 +512,8 @@ export default function SupplierDetailPage() {
   const [editForm, setEditForm] = useState(EMPTY_LOT_FORM)
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState("")
+  const [editFiles, setEditFiles] = useState<{ file: File; label: string }[]>([])
+  const editFileInputRef = useRef<HTMLInputElement>(null)
 
   // Delete state
   const [deletingLot, setDeletingLot] = useState<BatchLot | null>(null)
@@ -615,36 +617,48 @@ export default function SupplierDetailPage() {
     })
     setEditError("")
     setEditingLot(lot)
+    setEditFiles([])
+  }
+
+  const handleEditAddFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newFiles = Array.from(e.target.files ?? [])
+    setEditFiles((prev) => [
+      ...prev,
+      ...newFiles.map((f) => ({ file: f, label: "Other" })),
+    ])
+    if (editFileInputRef.current) editFileInputRef.current.value = ""
   }
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingLot) return
     setEditError("")
-    setEditSaving(true)
     try {
-      const parseNum = (v: string) => {
-        if (!v.trim()) return null
-        const n = parseFloat(v.replace(/[^0-9.-]/g, ""))
-        return isNaN(n) ? null : n
-      }
-      const payload: Record<string, any> = {}
+      const fd = new FormData()
       Object.entries(editForm).forEach(([k, v]) => {
-        if (v === "") { payload[k] = null; return }
-        if (k === "quantityReceived") { payload[k] = parseNum(v as string); return }
-        if (k === "unitCost" || k === "totalCost") { payload[k] = parseNum(v as string); return }
-        if (k === "manufacturedAt" || k === "expiresAt") { payload[k] = v ? new Date(v).toISOString() : null; return }
-        if (k === "receivedAt") { payload[k] = v ? new Date(v).toISOString() : new Date().toISOString(); return }
-        payload[k] = v
+        if (v !== "" && v !== null && v !== undefined) fd.append(k, String(v))
       })
+
+      // Convert any HEIC files to JPEG before uploading
+      const convertedFiles = await Promise.all(
+        editFiles.map(async ({ file, label }) => ({
+          file: await convertHeicToJpeg(file),
+          label,
+        }))
+      )
+      convertedFiles.forEach(({ file, label }) => {
+        fd.append("files", file)
+        fd.append("labels", label)
+      })
+
       const res = await fetch(`/api/suppliers/${id}/lots/${editingLot.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: fd,
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to update")
       setEditingLot(null)
+      setEditFiles([])
       await fetchSupplier()
     } catch (err) {
       setEditError(err instanceof Error ? err.message : "Something went wrong")
@@ -1129,6 +1143,73 @@ export default function SupplierDetailPage() {
                       rows={3} className="mt-1 resize-none" />
                   </div>
                 </div>
+              </div>
+              {/* Attachments */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Attachments</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Upload additional photos of the pallet, invoices, COAs, etc.
+                </p>
+
+                <input
+                  ref={editFileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                  onChange={handleEditAddFile}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => editFileInputRef.current?.click()}
+                  className="gap-2 mb-4"
+                >
+                  <Upload className="h-4 w-4" />
+                  Select Files
+                </Button>
+
+                {editFiles.length > 0 && (
+                  <div className="space-y-2">
+                    {editFiles.map((f, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30"
+                      >
+                        {f.file.type.startsWith("image/") ? (
+                          <ImageIcon className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        ) : (
+                          <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        )}
+                        <span className="text-sm truncate flex-1">{f.file.name}</span>
+                        <Select
+                          value={f.label}
+                          onValueChange={(v) =>
+                            setEditFiles((prev) =>
+                              prev.map((x, xi) => (xi === i ? { ...x, label: v } : x))
+                            )
+                          }
+                        >
+                          <SelectTrigger className="w-36 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ATTACHMENT_LABELS.map((l) => (
+                              <SelectItem key={l} value={l} className="text-xs">{l}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-red-500 text-xs transition-colors"
+                          onClick={() => setEditFiles((prev) => prev.filter((_, xi) => xi !== i))}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditingLot(null)}>Cancel</Button>
