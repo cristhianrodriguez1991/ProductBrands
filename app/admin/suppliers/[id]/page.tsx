@@ -556,7 +556,7 @@ function BatchLotCard({
                         {/* Delete button */}
                         <button
                           type="button"
-                          className="absolute top-1.5 right-1.5 z-10 h-6 w-6 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all shadow-sm"
+                          className="absolute top-1.5 right-1.5 z-10 h-6 w-6 rounded-full bg-red-500/90 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-all"
                           onClick={async (e) => {
                             e.preventDefault()
                             e.stopPropagation()
@@ -677,7 +677,7 @@ function BatchLotCard({
                           {/* Delete button */}
                           <button
                             type="button"
-                            className="absolute top-1.5 right-1.5 z-10 h-6 w-6 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all shadow-sm"
+                            className="absolute top-1.5 right-1.5 z-10 h-6 w-6 rounded-full bg-red-500/90 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-all"
                             onClick={async (e) => {
                               e.preventDefault()
                               e.stopPropagation()
@@ -1921,7 +1921,7 @@ export default function SupplierDetailPage() {
                         <div key={att.id} className="group relative rounded-lg border overflow-hidden hover:border-blue-400 transition-colors">
                           <button
                             type="button"
-                            className="absolute top-1.5 right-1.5 z-10 h-6 w-6 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all shadow-sm"
+                            className="absolute top-1.5 right-1.5 z-10 h-6 w-6 rounded-full bg-red-500/90 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-all"
                             onClick={async () => {
                               await handleDeleteAttachment(editingLot.id, att.id)
                               setEditingLot({ ...editingLot, attachments: editingLot.attachments.filter(a => a.id !== att.id) })
@@ -2342,7 +2342,7 @@ export default function SupplierDetailPage() {
                                     <ImageIcon className="h-3 w-3 text-blue-400" />
                                     <button 
                                       type="button"
-                                      className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                                      className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center transition-opacity"
                                       onClick={() => {
                                         const newItems = [...mixedItems];
                                         newItems[idx].files = newItems[idx].files.filter((_, i) => i !== fIdx);
