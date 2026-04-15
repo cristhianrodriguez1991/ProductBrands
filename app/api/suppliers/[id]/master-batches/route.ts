@@ -39,9 +39,10 @@ export async function POST(
       }
     })
 
-    // Create the child BatchLots
-    for (const item of items) {
-      await prisma.batchLot.create({
+    // Create the child BatchLots and handle individual files
+    for (let idx = 0; idx < items.length; idx++) {
+      const item = items[idx];
+      const batchLot = await prisma.batchLot.create({
         data: {
           supplierId: params.id,
           masterBatchId: masterBatch.id,
@@ -49,7 +50,7 @@ export async function POST(
           productName: item.productName,
           productSku: item.productSku,
           category: item.category,
-          quantityReceived: item.quantityReceived ? parseInt(item.quantityReceived) : null,
+          quantityReceived: item.quantityReceived ? parseInt(item.quantityReceived || "0") : null,
           quantityUnit: item.quantityUnit || "units",
           status: "RECEIVED",
           receivedAt,
@@ -57,10 +58,31 @@ export async function POST(
           invoiceNumber,
           poNumber,
         }
-      })
+      });
+
+      // Handle individual files for this specific item
+      const individualFiles = formData.getAll(`item_${idx}_file`);
+      for (const entry of individualFiles) {
+        if (!(entry instanceof File) || entry.size === 0) continue;
+        try {
+          const { url } = await uploadFile(entry, "suppliers-batches");
+          await prisma.batchLotAttachment.create({
+            data: {
+              batchLotId: batchLot.id,
+              fileName: entry.name,
+              fileUrl: url,
+              fileSize: entry.size,
+              mimeType: entry.type,
+              label: "Individual Product Note",
+            },
+          });
+        } catch (uploadErr) {
+          console.warn(`[MasterBatch POST] Individual file upload skipped for item ${idx}:`, uploadErr);
+        }
+      }
     }
 
-    // Shared files
+    // Shared files (All items in this master delivery)
     const fileEntries = formData.getAll("files")
     const labelEntries = formData.getAll("labels") as string[]
 
@@ -80,7 +102,7 @@ export async function POST(
           },
         })
       } catch (uploadErr) {
-        console.warn(`[MasterBatch POST] File upload skipped:`, uploadErr)
+        console.warn(`[MasterBatch POST] Shared file upload skipped:`, uploadErr)
       }
     }
 

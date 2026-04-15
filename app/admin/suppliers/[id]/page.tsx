@@ -627,8 +627,8 @@ export default function SupplierDetailPage() {
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
   const docFileRef = useRef<HTMLInputElement>(null)
   const [isMixedPallet, setIsMixedPallet] = useState(false)
-  const [mixedItems, setMixedItems] = useState<{ id: string; productName: string; lotNumber: string; expiresAt: string; category: string; quantityReceived: string; quantityUnit: string }[]>([
-    { id: '1', productName: '', lotNumber: '', expiresAt: '', category: '', quantityReceived: '', quantityUnit: 'units' }
+  const [mixedItems, setMixedItems] = useState<{ id: string; productName: string; lotNumber: string; expiresAt: string; category: string; quantityReceived: string; quantityUnit: string; files: File[] }[]>([
+    { id: '1', productName: '', lotNumber: '', expiresAt: '', category: '', quantityReceived: '', quantityUnit: 'units', files: [] }
   ])
 
   const fetchDocuments = async () => {
@@ -924,7 +924,7 @@ export default function SupplierDetailPage() {
       fd.append("notes", lotForm.internalNotes)
       fd.append("items", JSON.stringify(mixedItems))
       
-      // Convert any HEIC files to JPEG before uploading
+      // Shared files
       const convertedFiles = await Promise.all(
         files.map(async ({ file, label }) => ({
           file: await convertHeicToJpeg(file),
@@ -936,6 +936,17 @@ export default function SupplierDetailPage() {
         fd.append("labels", label)
       })
 
+      // Individual item files
+      for (let idx = 0; idx < mixedItems.length; idx++) {
+        const item = mixedItems[idx];
+        if (item.files && item.files.length > 0) {
+          for (const f of item.files) {
+            const converted = await convertHeicToJpeg(f);
+            fd.append(`item_${idx}_file`, converted);
+          }
+        }
+      }
+
       const res = await fetch(`/api/suppliers/${id}/master-batches`, {
         method: "POST",
         body: fd,
@@ -945,7 +956,7 @@ export default function SupplierDetailPage() {
       
       setShowAddLot(false)
       setLotForm(EMPTY_LOT_FORM)
-      setMixedItems([{ id: '1', productName: '', lotNumber: '', expiresAt: '', category: '', quantityReceived: '', quantityUnit: 'units' }])
+      setMixedItems([{ id: '1', productName: '', lotNumber: '', expiresAt: '', category: '', quantityReceived: '', quantityUnit: 'units', files: [] }])
       setIsMixedPallet(false)
       setFiles([])
       await fetchSupplier()
@@ -1818,7 +1829,7 @@ export default function SupplierDetailPage() {
                     <Truck className="h-4 w-4" /> Delivery Information {isMixedPallet && "(Shared for all products)"}
                   </p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
                   <div className="space-y-1.5">
                     <Label htmlFor="master-received" className="text-xs font-semibold">Received Date</Label>
                     <Input
@@ -1826,6 +1837,16 @@ export default function SupplierDetailPage() {
                       type="datetime-local"
                       value={lotForm.receivedAt}
                       onChange={(e) => setLotForm({ ...lotForm, receivedAt: e.target.value })}
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="master-name" className="text-xs font-semibold">Master Shipment Name</Label>
+                    <Input
+                      id="master-name"
+                      value={lotForm.lotNumber}
+                      onChange={(e) => setLotForm({ ...lotForm, lotNumber: e.target.value })}
+                      placeholder="e.g. Mixed Pallet #1"
                       className="bg-white"
                     />
                   </div>
@@ -1940,7 +1961,7 @@ export default function SupplierDetailPage() {
                       variant="outline"
                       size="sm"
                       className="h-8 text-[11px] font-bold uppercase gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50"
-                      onClick={() => setMixedItems([...mixedItems, { id: Math.random().toString(), productName: '', lotNumber: '', expiresAt: '', category: '', quantityReceived: '', quantityUnit: 'units' }])}
+                      onClick={() => setMixedItems([...mixedItems, { id: Math.random().toString(), productName: '', lotNumber: '', expiresAt: '', category: '', quantityReceived: '', quantityUnit: 'units', files: [] }])}
                     >
                       <Plus className="h-3.5 w-3.5" /> Add Another Product
                     </Button>
@@ -1990,6 +2011,51 @@ export default function SupplierDetailPage() {
                               }}
                               className="h-9 text-sm border-muted-foreground/20"
                             />
+                          </div>
+                          <div className="md:col-span-1 border-l pl-4 flex flex-col justify-center gap-2">
+                            <Label className="text-[10px] font-bold text-muted-foreground">PRODUCT PHOTO</Label>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-9 w-9 p-0 rounded-lg flex-shrink-0"
+                                onClick={() => {
+                                  const input = document.createElement('input');
+                                  input.type = 'file';
+                                  input.accept = 'image/*';
+                                  input.multiple = true;
+                                  input.onchange = (e) => {
+                                    const files = Array.from((e.target as HTMLInputElement).files || []);
+                                    if (files.length > 0) {
+                                      const newItems = [...mixedItems];
+                                      newItems[idx].files = [...newItems[idx].files, ...files];
+                                      setMixedItems(newItems);
+                                    }
+                                  };
+                                  input.click();
+                                }}
+                              >
+                                <Upload className="h-4 w-4" />
+                              </Button>
+                              <div className="flex -space-x-2 overflow-hidden">
+                                {item.files.map((file, fIdx) => (
+                                  <div key={fIdx} className="h-7 w-7 rounded-sm border bg-muted flex items-center justify-center relative group">
+                                    <ImageIcon className="h-3.5 w-3.5" />
+                                    <button 
+                                      type="button"
+                                      className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                                      onClick={() => {
+                                        const newItems = [...mixedItems];
+                                        newItems[idx].files = newItems[idx].files.filter((_, i) => i !== fIdx);
+                                        setMixedItems(newItems);
+                                      }}
+                                    >
+                                      <X className="h-2.5 w-2.5" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                           <div className="md:col-span-2 space-y-1">
                             <Label className="text-[10px] font-bold text-muted-foreground">QUANTITY</Label>
@@ -2041,7 +2107,7 @@ export default function SupplierDetailPage() {
                     <Button
                       type="button"
                       variant="ghost"
-                      onClick={() => setMixedItems([...mixedItems, { id: Math.random().toString(), productName: '', lotNumber: '', expiresAt: '', category: '', quantityReceived: '', quantityUnit: 'units' }])}
+                      onClick={() => setMixedItems([...mixedItems, { id: Math.random().toString(), productName: '', lotNumber: '', expiresAt: '', category: '', quantityReceived: '', quantityUnit: 'units', files: [] }])}
                       className="w-full py-8 border-2 border-dashed border-muted hover:border-blue-400 hover:bg-blue-50/30 text-muted-foreground rounded-2xl transition-all h-auto gap-2"
                     >
                       <Plus className="h-5 w-5" />
