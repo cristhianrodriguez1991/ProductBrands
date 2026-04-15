@@ -990,7 +990,10 @@ export default function SupplierDetailPage() {
 
       {/* ── Edit Batch Lot Modal ── */}
       <Dialog open={!!editingLot} onOpenChange={(o) => { if (!o) setEditingLot(null) }}>
-        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+        <DialogContent 
+          className="max-w-3xl max-h-[92vh] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="h-5 w-5 text-blue-600" />
@@ -1224,7 +1227,10 @@ export default function SupplierDetailPage() {
 
       {/* ── Add Batch Lot Modal ── */}
       <Dialog open={showAddLot} onOpenChange={setShowAddLot}>
-        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+        <DialogContent 
+          className="max-w-3xl max-h-[92vh] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Hash className="h-5 w-5 text-blue-600" />

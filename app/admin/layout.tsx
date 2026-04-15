@@ -44,7 +44,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false)
 
   useEffect(() => {
     if (
@@ -55,9 +56,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [status, session, router])
 
-  // Close sidebar on route change (mobile)
+  // Close mobile sidebar on route change
   useEffect(() => {
-    setSidebarOpen(false)
+    setMobileSidebarOpen(false)
   }, [pathname])
 
   if (status === "loading") {
@@ -85,41 +86,89 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const Sidebar = ({ mobile = false }) => (
     <aside
       className={cn(
-        "flex flex-col border-r",
+        "flex flex-col border-r transition-all duration-300 ease-in-out",
         mobile
           ? "fixed inset-y-0 left-0 z-50 w-72 shadow-xl bg-white dark:bg-gray-950"
-          : "hidden md:flex w-64 h-screen sticky top-0 flex-shrink-0 bg-muted/40"
+          : cn(
+              "hidden md:flex h-screen sticky top-0 flex-shrink-0 bg-muted/40",
+              desktopCollapsed ? "w-20" : "w-64"
+            )
       )}
     >
-      {/* Logo */}
-      <div className="p-4 border-b flex-shrink-0">
-        <div className="mb-1">
-          <Image
-            src="/images/logo.png"
-            alt="Product Brands logo"
-            width={180}
-            height={60}
-            className="object-contain"
-            priority
-          />
-        </div>
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Admin Panel</p>
+      {/* Sidebar Header with Toggle */}
+      <div className={cn(
+        "p-4 border-b flex-shrink-0 flex items-center",
+        !mobile && desktopCollapsed ? "justify-center" : "justify-between"
+      )}>
+        {(!desktopCollapsed || mobile) && (
+          <div className="overflow-hidden">
+            <div className="mb-0.5">
+              <Image
+                src="/images/logo.png"
+                alt="Product Brands logo"
+                width={140}
+                height={50}
+                className="object-contain"
+                priority
+              />
+            </div>
+          </div>
+        )}
+        
+        {!mobile && (
+          <button
+            onClick={() => setDesktopCollapsed(!desktopCollapsed)}
+            className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground"
+            title={desktopCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        )}
+        
+        {mobile && (
+          <button
+            onClick={() => setMobileSidebarOpen(false)}
+            className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
+      {!desktopCollapsed || mobile ? (
+        <div className="px-4 py-2 border-b bg-muted/20">
+          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Admin Panel</p>
+        </div>
+      ) : (
+        <div className="py-2 border-b bg-muted/20 flex justify-center">
+          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Adm</p>
+        </div>
+      )}
+
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
+      <nav className="flex-1 overflow-y-auto p-3 space-y-1">
         {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
           const isActive = exact
             ? pathname === "/admin"
             : pathname.startsWith(href.split("?")[0])
+          
           return (
             <Link key={href} href={href}>
               <Button
                 variant={isActive ? "secondary" : "ghost"}
-                className="w-full justify-start text-sm h-9"
+                className={cn(
+                  "w-full text-sm h-10 transition-all",
+                  !mobile && desktopCollapsed ? "justify-center px-0" : "justify-start"
+                )}
+                title={!mobile && desktopCollapsed ? label : ""}
               >
-                <Icon className="mr-2 h-4 w-4 flex-shrink-0" />
-                {label}
+                <Icon className={cn("h-4 w-4 flex-shrink-0", (!mobile && desktopCollapsed) ? "" : "mr-3")} />
+                {(!mobile && !desktopCollapsed) && (
+                  <span className="truncate">{label}</span>
+                )}
+                {mobile && (
+                  <span className="truncate">{label}</span>
+                )}
               </Button>
             </Link>
           )
@@ -130,11 +179,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="p-3 border-t flex-shrink-0">
         <Button
           variant="ghost"
-          className="w-full justify-start text-sm h-9 text-red-600 hover:text-red-700 hover:bg-red-50"
+          className={cn(
+            "w-full text-sm h-10 text-red-600 hover:text-red-700 hover:bg-red-50 transition-all",
+            !mobile && desktopCollapsed ? "justify-center px-0" : "justify-start"
+          )}
           onClick={() => signOut({ callbackUrl: "/" })}
+          title={!mobile && desktopCollapsed ? "Logout" : ""}
         >
-          <LogOut className="mr-2 h-4 w-4" />
-          Logout
+          <LogOut className={cn("h-4 w-4", (!mobile && desktopCollapsed) ? "" : "mr-3")} />
+          {(!mobile && !desktopCollapsed) && <span>Logout</span>}
+          {mobile && <span>Logout</span>}
         </Button>
       </div>
     </aside>
@@ -146,37 +200,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <Sidebar />
 
       {/* Mobile overlay */}
-      {sidebarOpen && (
+      {mobileSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-black/50 md:hidden animate-in fade-in duration-300"
+          onClick={() => setMobileSidebarOpen(false)}
         />
       )}
 
       {/* Mobile sidebar */}
-      {sidebarOpen && <Sidebar mobile />}
+      {mobileSidebarOpen && <Sidebar mobile />}
 
-      {/* Main content — this is the ONLY scrollable area on mobile */}
+      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile top bar */}
-        <header className="md:hidden flex items-center gap-3 px-4 py-3 border-b bg-background flex-shrink-0 sticky top-0 z-30">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-1.5 rounded-md hover:bg-muted transition-colors"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <Image
-            src="/images/logo.png"
-            alt="Product Brands"
-            width={120}
-            height={40}
-            className="object-contain"
-            priority
-          />
+        <header className="md:hidden flex items-center justify-between px-4 py-3 border-b bg-background flex-shrink-0 sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileSidebarOpen(true)}
+              className="p-1.5 rounded-md hover:bg-muted transition-colors"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <Image
+              src="/images/logo.png"
+              alt="Product Brands"
+              width={110}
+              height={40}
+              className="object-contain"
+              priority
+            />
+          </div>
         </header>
 
-        {/* Page content — scrolls independently */}
+        {/* Page content */}
         <main
           className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-8 pb-24 md:pb-8"
           style={{ paddingBottom: "max(6rem, calc(2rem + env(safe-area-inset-bottom, 0px)))" }}
