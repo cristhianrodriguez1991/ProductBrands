@@ -10,7 +10,7 @@ const batchLotSchema = z.object({
   productName: z.string().min(1, "Product name is required"),
   productSku: z.string().optional(),
   category: z.string().optional(),
-  quantityReceived: z.coerce.number().int().positive().optional(),
+  quantityReceived: z.string().optional(),
   quantityUnit: z.string().optional(),
   manufacturedAt: z.string().optional(),
   expiresAt: z.string().optional(),
@@ -18,8 +18,8 @@ const batchLotSchema = z.object({
   status: z.enum(["INCOMING", "RECEIVED", "IN_QC", "APPROVED", "ON_HOLD", "RECALLED", "DISPOSED"]).optional(),
   internalNotes: z.string().optional(),
   qcNotes: z.string().optional(),
-  unitCost: z.coerce.number().optional(),
-  totalCost: z.coerce.number().optional(),
+  unitCost: z.string().optional(),
+  totalCost: z.string().optional(),
   invoiceNumber: z.string().optional(),
   poNumber: z.string().optional(),
 })
@@ -47,6 +47,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const data = batchLotSchema.parse(rawData)
 
+    // Parse numeric fields leniently — accept any text, store number if parseable
+    const parseNum = (v?: string) => {
+      if (!v || v.trim() === "") return null
+      const n = parseFloat(v.replace(/[^0-9.-]/g, ""))
+      return isNaN(n) ? null : n
+    }
+
     // Create the batch lot
     const batchLot = await prisma.batchLot.create({
       data: {
@@ -55,7 +62,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         productName: data.productName,
         productSku: data.productSku || null,
         category: data.category || null,
-        quantityReceived: data.quantityReceived ?? null,
+        quantityReceived: parseNum(data.quantityReceived) ?? null,
         quantityUnit: data.quantityUnit || null,
         manufacturedAt: data.manufacturedAt ? new Date(data.manufacturedAt) : null,
         expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
@@ -63,8 +70,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         status: (data.status as any) ?? "INCOMING",
         internalNotes: data.internalNotes || null,
         qcNotes: data.qcNotes || null,
-        unitCost: data.unitCost ?? null,
-        totalCost: data.totalCost ?? null,
+        unitCost: parseNum(data.unitCost) ?? null,
+        totalCost: parseNum(data.totalCost) ?? null,
         invoiceNumber: data.invoiceNumber || null,
         poNumber: data.poNumber || null,
       },

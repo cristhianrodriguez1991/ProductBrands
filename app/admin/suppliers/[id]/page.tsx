@@ -547,11 +547,16 @@ export default function SupplierDetailPage() {
     setEditError("")
     setEditSaving(true)
     try {
+      const parseNum = (v: string) => {
+        if (!v.trim()) return null
+        const n = parseFloat(v.replace(/[^0-9.-]/g, ""))
+        return isNaN(n) ? null : n
+      }
       const payload: Record<string, any> = {}
       Object.entries(editForm).forEach(([k, v]) => {
         if (v === "") { payload[k] = null; return }
-        if (k === "quantityReceived") { payload[k] = v ? Number(v) : null; return }
-        if (k === "unitCost" || k === "totalCost") { payload[k] = v ? Number(v) : null; return }
+        if (k === "quantityReceived") { payload[k] = parseNum(v as string); return }
+        if (k === "unitCost" || k === "totalCost") { payload[k] = parseNum(v as string); return }
         if (k === "manufacturedAt" || k === "expiresAt") { payload[k] = v ? new Date(v).toISOString() : null; return }
         if (k === "receivedAt") { payload[k] = v ? new Date(v).toISOString() : new Date().toISOString(); return }
         payload[k] = v
@@ -953,7 +958,7 @@ export default function SupplierDetailPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="edit-qty">Quantity Received</Label>
-                    <Input id="edit-qty" type="number" min="1" value={editForm.quantityReceived}
+                    <Input id="edit-qty" value={editForm.quantityReceived}
                       onChange={(e) => setEditForm({ ...editForm, quantityReceived: e.target.value })}
                       className="mt-1" />
                   </div>
@@ -1012,13 +1017,13 @@ export default function SupplierDetailPage() {
                   </div>
                   <div>
                     <Label htmlFor="edit-unit-cost">Unit Cost ($)</Label>
-                    <Input id="edit-unit-cost" type="number" step="0.01" value={editForm.unitCost}
+                    <Input id="edit-unit-cost" value={editForm.unitCost}
                       onChange={(e) => setEditForm({ ...editForm, unitCost: e.target.value })}
                       className="mt-1" />
                   </div>
                   <div>
                     <Label htmlFor="edit-total-cost">Total Cost ($)</Label>
-                    <Input id="edit-total-cost" type="number" step="0.01" value={editForm.totalCost}
+                    <Input id="edit-total-cost" value={editForm.totalCost}
                       onChange={(e) => setEditForm({ ...editForm, totalCost: e.target.value })}
                       className="mt-1" />
                   </div>
@@ -1155,8 +1160,6 @@ export default function SupplierDetailPage() {
                   <Label htmlFor="lot-qty">Quantity Received</Label>
                   <Input
                     id="lot-qty"
-                    type="number"
-                    min="1"
                     value={lotForm.quantityReceived}
                     onChange={(e) => setLotForm({ ...lotForm, quantityReceived: e.target.value })}
                     placeholder="e.g. 5000"
@@ -1251,8 +1254,6 @@ export default function SupplierDetailPage() {
                   <Label htmlFor="lot-unit-cost">Unit Cost ($)</Label>
                   <Input
                     id="lot-unit-cost"
-                    type="number"
-                    step="0.01"
                     value={lotForm.unitCost}
                     onChange={(e) => setLotForm({ ...lotForm, unitCost: e.target.value })}
                     placeholder="0.00"
@@ -1263,8 +1264,6 @@ export default function SupplierDetailPage() {
                   <Label htmlFor="lot-total-cost">Total Cost ($)</Label>
                   <Input
                     id="lot-total-cost"
-                    type="number"
-                    step="0.01"
                     value={lotForm.totalCost}
                     onChange={(e) => setLotForm({ ...lotForm, totalCost: e.target.value })}
                     placeholder="0.00"
