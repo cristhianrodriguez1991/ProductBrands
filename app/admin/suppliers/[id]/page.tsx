@@ -1753,7 +1753,19 @@ export default function SupplierDetailPage() {
                     ))}
                   </div>
                 )}
-              </div      {/* ── Add Batch Lot Modal ── */}
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditingLot(null)}>Cancel</Button>
+                <Button type="submit" disabled={editSaving}>
+                  {editSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Add Batch Lot Modal ── */}
       <Dialog open={showAddLot} onOpenChange={(open) => {
         setShowAddLot(open)
         if (!open) {
