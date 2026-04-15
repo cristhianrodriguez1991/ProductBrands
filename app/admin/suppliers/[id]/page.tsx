@@ -245,11 +245,13 @@ function BatchLotCard({
   onStatusChange,
   onEdit,
   onDelete,
+  onPreview,
 }: {
   lot: BatchLot
   onStatusChange: (id: string, status: BatchLotStatus) => Promise<void>
   onEdit: (lot: BatchLot) => void
   onDelete: (lot: BatchLot) => void
+  onPreview: (url: string, name: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
@@ -464,12 +466,13 @@ function BatchLotCard({
                   {lot.attachments.map((att) => {
                     const isImage = att.mimeType?.startsWith("image/")
                     return (
-                      <a
+                      <div
                         key={att.id}
-                        href={att.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group block rounded-lg border overflow-hidden hover:border-blue-400 transition-colors"
+                        onClick={() => isImage && onPreview(att.fileUrl, att.label || att.fileName)}
+                        className={cn(
+                          "group block rounded-lg border overflow-hidden hover:border-blue-400 transition-colors",
+                          isImage && "cursor-pointer"
+                        )}
                       >
                         {isImage ? (
                           <div className="aspect-square bg-gray-50 overflow-hidden">
@@ -481,9 +484,14 @@ function BatchLotCard({
                             />
                           </div>
                         ) : (
-                          <div className="aspect-square bg-gray-50 flex flex-col items-center justify-center gap-2">
+                          <a
+                            href={att.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="aspect-square bg-gray-50 flex flex-col items-center justify-center gap-2"
+                          >
                             <FileText className="h-8 w-8 text-blue-400" />
-                          </div>
+                          </a>
                         )}
                         <div className="px-2 py-1.5">
                           <p className="text-xs font-medium truncate">{att.label || att.fileName}</p>
@@ -534,6 +542,7 @@ export default function SupplierDetailPage() {
   // ── Client Documents (Private Label) ──
   const [documents, setDocuments] = useState<ClientDocument[]>([])
   const [showDocs, setShowDocs] = useState(false)
+  const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null)
   const [docUploading, setDocUploading] = useState(false)
   const [docName, setDocName] = useState("")
   const [docFile, setDocFile] = useState<File | null>(null)
@@ -954,7 +963,8 @@ export default function SupplierDetailPage() {
                     return (
                       <div key={doc.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white hover:border-purple-200 hover:shadow-sm transition-all group">
                         <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="h-10 w-10 rounded-lg border bg-purple-50 flex items-center justify-center shrink-0 overflow-hidden">
+                          <div className="h-10 w-10 rounded-lg border bg-purple-50 flex items-center justify-center shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-purple-400 transition-all"
+                               onClick={() => isImage && setPreviewImage({ url: doc.fileUrl, name: doc.name })}>
                             {isImage ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={doc.fileUrl} alt={doc.name} className="w-full h-full object-cover" />
@@ -1081,6 +1091,7 @@ export default function SupplierDetailPage() {
                     onStatusChange={handleStatusChange}
                     onEdit={handleOpenEdit}
                     onDelete={setDeletingLot}
+                    onPreview={(url, name) => setPreviewImage({ url, name })}
                   />
                 ))}
               </div>
@@ -1708,6 +1719,32 @@ export default function SupplierDetailPage() {
         </DialogContent>
       </Dialog>
 
+
+      {/* ── Image Preview Modal ── */}
+      <Dialog open={!!previewImage} onOpenChange={(o) => !o && setPreviewImage(null)}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-transparent border-none shadow-none flex items-center justify-center h-[90vh]">
+          {previewImage && (
+            <div className="relative w-full h-full flex items-center justify-center">
+              <button 
+                onClick={() => setPreviewImage(null)}
+                className="absolute top-4 right-4 z-50 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                title="Close"
+              >
+                <X className="h-6 w-6" />
+              </button>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img 
+                src={previewImage.url} 
+                alt={previewImage.name} 
+                className="max-w-full max-h-full object-contain shadow-2xl rounded-lg"
+              />
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm">
+                {previewImage.name}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
     </div>
   )
