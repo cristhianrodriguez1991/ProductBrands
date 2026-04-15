@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Building2, Mail, Phone, Globe } from "lucide-react"
 
+import { DeleteAllButton } from "../components/delete-all-button"
+
 export default async function AdminClientsPage() {
   await requireAdminSession()
 
@@ -29,9 +31,16 @@ export default async function AdminClientsPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Clients</h1>
-        <p className="text-muted-foreground">Manage client companies and contacts</p>
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Clients</h1>
+          <p className="text-muted-foreground">Manage client companies and contacts</p>
+        </div>
+        <DeleteAllButton 
+          entityName="Clients" 
+          endpoint="/api/admin/clients/delete-all" 
+          confirmationText="DELETE ALL CLIENTS"
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

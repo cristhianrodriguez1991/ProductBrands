@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
 
+import { DeleteAllButton } from "../components/delete-all-button"
+
 export default async function AdminUsersPage() {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any)?.role !== "ADMIN") {
@@ -19,9 +21,16 @@ export default async function AdminUsersPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Users</h1>
-        <p className="text-muted-foreground">Manage all users and companies</p>
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Users</h1>
+          <p className="text-muted-foreground">Manage all users and companies</p>
+        </div>
+        <DeleteAllButton 
+          entityName="Users" 
+          endpoint="/api/admin/users/delete-all" 
+          confirmationText="DELETE ALL USERS"
+        />
       </div>
 
       <div className="space-y-4">

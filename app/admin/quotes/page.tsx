@@ -10,6 +10,8 @@ import { QuoteStatus } from "@prisma/client"
 import { Mail, Phone, User } from "lucide-react"
 import { DeleteQuoteButton } from "./delete-quote-button"
 
+import { DeleteAllButton } from "../components/delete-all-button"
+
 export default async function AdminQuotesPage({
   searchParams,
 }: {
@@ -64,9 +66,16 @@ export default async function AdminQuotesPage({
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Quotes</h1>
-        <p className="text-sm text-muted-foreground">Quote requests and customer contact info</p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Quotes</h1>
+          <p className="text-sm text-muted-foreground">Quote requests and customer contact info</p>
+        </div>
+        <DeleteAllButton 
+          entityName="Quotes" 
+          endpoint="/api/admin/quotes/delete-all" 
+          confirmationText="DELETE ALL QUOTES"
+        />
       </div>
 
       <Card className="mb-6">

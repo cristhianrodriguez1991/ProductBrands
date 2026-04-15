@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { formatDateTime } from "@/lib/utils"
 import { Mail, Building2 } from "lucide-react"
 
+import { DeleteAllButton } from "../components/delete-all-button"
+
 export default async function AdminContactPage({
   searchParams,
 }: {
@@ -37,11 +39,18 @@ export default async function AdminContactPage({
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Contact</h1>
-        <p className="text-sm text-muted-foreground">
-          Inquiries from the website contact form
-        </p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Contact</h1>
+          <p className="text-sm text-muted-foreground">
+            Inquiries from the website contact form
+          </p>
+        </div>
+        <DeleteAllButton 
+          entityName="Contacts" 
+          endpoint="/api/admin/contact/delete-all" 
+          confirmationText="DELETE ALL CONTACTS"
+        />
       </div>
 
       <Card className="mb-6">
