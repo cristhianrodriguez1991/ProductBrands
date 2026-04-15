@@ -20,6 +20,8 @@ import {
   Truck,
 } from "lucide-react"
 
+import Image from "next/image"
+
 export default function AdminLayout({
   children,
 }: {
@@ -60,8 +62,17 @@ export default function AdminLayout({
     <div className="min-h-screen flex">
       <aside className="w-64 border-r bg-muted/40 p-4">
         <div className="mb-8">
-          <h2 className="text-xl font-bold">Product Brands</h2>
-          <p className="text-sm text-muted-foreground">Admin Panel</p>
+          <div className="mb-3">
+            <Image
+              src="/images/logo.png"
+              alt="Product Brands logo"
+              width={140}
+              height={48}
+              className="object-contain"
+              priority
+            />
+          </div>
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Admin Panel</p>
         </div>
         <nav className="space-y-2">
           <Link href="/admin">

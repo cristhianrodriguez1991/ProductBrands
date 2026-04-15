@@ -238,7 +238,7 @@ function BatchLotCard({
 
   return (
     <Card className="border hover:shadow-sm transition-shadow">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2 pt-3 px-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -257,8 +257,8 @@ function BatchLotCard({
                 </span>
               )}
             </div>
-            <h3 className="font-semibold text-base mt-1.5">{lot.productName}</h3>
-            <div className="flex items-center gap-3 mt-1 flex-wrap">
+            <h3 className="font-semibold text-sm mt-1">{lot.productName}</h3>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               {lot.productSku && (
                 <span className="text-xs text-muted-foreground">SKU: {lot.productSku}</span>
               )}
@@ -309,27 +309,27 @@ function BatchLotCard({
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 pb-3 px-4">
         {/* Key dates row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm mb-3">
+        <div className="grid grid-cols-4 gap-2 text-sm mb-2">
           <div>
-            <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
+            <p className="text-xs text-muted-foreground mb-0 flex items-center gap-1">
               <Truck className="h-3 w-3" /> Received
             </p>
-            <p className="font-medium text-sm">{formatDate(lot.receivedAt)}</p>
+            <p className="font-medium text-xs">{formatDate(lot.receivedAt)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
+            <p className="text-xs text-muted-foreground mb-0 flex items-center gap-1">
               <Calendar className="h-3 w-3" /> Manufactured
             </p>
-            <p className="font-medium text-sm">{formatDate(lot.manufacturedAt)}</p>
+            <p className="font-medium text-xs">{formatDate(lot.manufacturedAt)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
+            <p className="text-xs text-muted-foreground mb-0 flex items-center gap-1">
               <Calendar className="h-3 w-3" /> Expires
             </p>
             <p
-              className={`font-medium text-sm ${
+              className={`font-medium text-xs ${
                 isExpired
                   ? "text-red-600"
                   : isExpiringSoon
@@ -341,16 +341,16 @@ function BatchLotCard({
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
+            <p className="text-xs text-muted-foreground mb-0 flex items-center gap-1">
               <Clock className="h-3 w-3" /> Logged At
             </p>
-            <p className="font-medium text-sm">{formatDateTime(lot.createdAt)}</p>
+            <p className="font-medium text-xs">{formatDateTime(lot.createdAt)}</p>
           </div>
         </div>
 
         {/* Invoice / PO */}
-        {(lot.invoiceNumber || lot.poNumber) && (
-          <div className="flex gap-4 text-sm mb-3">
+        {(lot.invoiceNumber || lot.poNumber || lot.unitCost != null || lot.totalCost != null) && (
+          <div className="flex gap-3 text-xs mb-2 flex-wrap">
             {lot.invoiceNumber && (
               <span className="text-muted-foreground">
                 Invoice: <span className="font-medium text-foreground">{lot.invoiceNumber}</span>
@@ -376,8 +376,8 @@ function BatchLotCard({
 
         {/* Attachments count */}
         {lot.attachments.length > 0 && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
-            <Paperclip className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+            <Paperclip className="h-3 w-3" />
             {lot.attachments.length} attachment{lot.attachments.length !== 1 ? "s" : ""}
           </div>
         )}
