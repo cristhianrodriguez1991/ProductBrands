@@ -505,7 +505,7 @@ function BatchLotCard({
                             {formatDate(att.uploadedAt)}
                           </p>
                         </div>
-                      </a>
+                      </div>
                     )
                   })}
                 </div>
