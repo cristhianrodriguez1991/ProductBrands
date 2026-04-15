@@ -18,6 +18,9 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+    outputFileTracingExcludes: {
+      "/**": ["node_modules/sharp/**"],
+    },
   },
   output: "standalone",
   // Production optimizations
