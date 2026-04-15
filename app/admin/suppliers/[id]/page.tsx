@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 import {
   Plus,
   Building2,
@@ -55,6 +56,7 @@ import {
   Star,
   FolderOpen,
   Download,
+  X,
 } from "lucide-react"
 import Link from "next/link"
 
