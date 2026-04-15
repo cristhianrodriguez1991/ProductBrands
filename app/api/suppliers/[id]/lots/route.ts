@@ -101,7 +101,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors[0]?.message }, { status: 400 })
     }
-    console.error("[BatchLot POST]", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error("[BatchLot POST]", msg, error)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
