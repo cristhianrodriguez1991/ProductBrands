@@ -5,18 +5,39 @@ import { prisma } from "@/lib/prisma"
 
 /**
  * POST /api/admin/cleanup-bots
- * Deletes all spam/bot entries from contacts, companies, quotes, and chat messages.
+ * Deletes spam/bot entries from contact submissions.
+ * Also allows wiping ALL non-admin data if ?wipe=all is passed.
  */
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session || (session.user as any)?.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const url = new URL(req.url)
+    const wipeAll = url.searchParams.get("wipe") === "all"
     const results: Record<string, number> = {}
 
-    // ── Contact Submissions (has name, email, company, message) ──
+    if (wipeAll) {
+      // Nuclear option: wipe ALL contact submissions, chat messages, etc.
+      const delContacts = await prisma.contactSubmission.deleteMany()
+      results.contactSubmissions = delContacts.count
+
+      // Delete all non-admin users (CUSTOMER role)
+      const delUsers = await prisma.user.deleteMany({
+        where: { role: "CUSTOMER" },
+      })
+      results.customerUsers = delUsers.count
+
+      return NextResponse.json({
+        success: true,
+        deleted: results,
+        message: `Wiped all: ${Object.entries(results).map(([k, v]) => `${v} ${k}`).join(", ")}`,
+      })
+    }
+
+    // ── Smart bot detection on ContactSubmission ──
     const allContacts = await prisma.contactSubmission.findMany({
       select: { id: true, name: true, email: true, company: true, message: true },
     })
@@ -28,61 +49,10 @@ export async function POST() {
       results.contactSubmissions = del.count
     }
 
-    // ── Companies (name-based detection) ──
-    const allCompanies = await prisma.company.findMany({
-      select: { id: true, name: true, phone: true, website: true, notes: true },
-    })
-    const botCompanyIds = allCompanies
-      .filter((c) => isBotEntry(c.name, null, null, c.notes))
-      .map((c) => c.id)
-    if (botCompanyIds.length > 0) {
-      // Cascade deletes quotes, orders, invoices, contacts via Prisma
-      const del = await prisma.company.deleteMany({ where: { id: { in: botCompanyIds } } })
-      results.companies = del.count
-    }
-
-    // ── Client Contacts (name + email based) ──
-    const allClientContacts = await prisma.clientContact.findMany({
-      select: { id: true, name: true, email: true, roleTitle: true },
-    })
-    const botClientContactIds = allClientContacts
-      .filter((c) => isBotEntry(c.name, c.email, c.roleTitle, null))
-      .map((c) => c.id)
-    if (botClientContactIds.length > 0) {
-      const del = await prisma.clientContact.deleteMany({ where: { id: { in: botClientContactIds } } })
-      results.clientContacts = del.count
-    }
-
-    // ── Users with CLIENT role that look fake ──
-    const allClients = await prisma.user.findMany({
-      where: { role: "CLIENT" },
-      select: { id: true, name: true, email: true, company: true },
-    })
-    const botClientIds = allClients
-      .filter((c) => isBotEntry(c.name, c.email, c.company, null))
-      .map((c) => c.id)
-    if (botClientIds.length > 0) {
-      const del = await prisma.user.deleteMany({ where: { id: { in: botClientIds } } })
-      results.users = del.count
-    }
-
-    // ── Chat messages from bots ──
-    const allMessages = await prisma.message.findMany({
-      where: { senderType: "USER" },
-      select: { id: true, senderName: true, content: true },
-    })
-    const botMsgIds = allMessages
-      .filter((m) => isBotEntry(m.senderName, null, null, m.content))
-      .map((m) => m.id)
-    if (botMsgIds.length > 0) {
-      const del = await prisma.message.deleteMany({ where: { id: { in: botMsgIds } } })
-      results.chatMessages = del.count
-    }
-
     return NextResponse.json({
       success: true,
       deleted: results,
-      message: `Cleaned up: ${Object.entries(results).map(([k, v]) => `${v} ${k}`).join(", ") || "nothing to clean"}`,
+      message: `Cleaned: ${Object.entries(results).map(([k, v]) => `${v} ${k}`).join(", ") || "nothing to clean"}`,
     })
   } catch (error) {
     console.error("[Cleanup Bots]", error)
@@ -90,9 +60,7 @@ export async function POST() {
   }
 }
 
-/**
- * Heuristic bot detector
- */
+/** Heuristic bot detector */
 function isBotEntry(
   name: string | null,
   email: string | null,
@@ -112,7 +80,7 @@ function isBotEntry(
   const disposable = ["tempmail", "mailinator", "guerrillamail", "yopmail", "10minutemail", "throwaway", "trashmail"]
   if (e && disposable.some((d) => e.includes(d))) return true
 
-  // URL/HTML in name or message (classic bot indicator)
+  // URL/HTML in name or message
   if (/<\/?[a-z][\s\S]*>/i.test(n) || /http[s]?:\/\//i.test(n)) return true
   if (/<\/?[a-z][\s\S]*>/i.test(m) || /\[url=/i.test(m)) return true
 
@@ -129,7 +97,7 @@ function isBotEntry(
   const spamKeywords = [
     "viagra", "cialis", "casino", "poker", "seo", "backlink",
     "cryptocurrency", "bitcoin", "forex", "buy cheap", "free money",
-    "weight loss", "diet pills", "click here", "subscribe",
+    "weight loss", "diet pills", "click here",
   ]
   const allText = `${n} ${m} ${c}`
   if (spamKeywords.some((kw) => allText.includes(kw))) return true

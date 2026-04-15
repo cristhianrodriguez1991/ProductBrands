@@ -18,11 +18,9 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
-    outputFileTracingExcludes: {
-      "/**": ["node_modules/sharp/**"],
-    },
   },
-  output: "standalone",
+  // Vercel handles deployment — standalone not needed
+  // output: "standalone",
   // Production optimizations
   compress: true,
   poweredByHeader: false,
