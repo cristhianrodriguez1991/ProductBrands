@@ -486,9 +486,15 @@ export default function AdminSuppliersPage() {
                     {lotResults.map(({ lot, supplier }) => (
                       <tr key={lot.id} className="hover:bg-muted/30">
                         <td className="px-3 py-2.5">
-                          <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">{lot.lotNumber}</span>
+                          <Link href={`/admin/suppliers/${supplier.id}`}>
+                            <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer hover:bg-blue-100 transition-colors">{lot.lotNumber}</span>
+                          </Link>
                         </td>
-                        <td className="px-3 py-2.5 font-medium text-sm">{lot.productName}</td>
+                        <td className="px-3 py-2.5 font-medium text-sm">
+                          <Link href={`/admin/suppliers/${supplier.id}`} className="hover:text-blue-600 transition-colors">
+                            {lot.productName}
+                          </Link>
+                        </td>
                         <td className="px-3 py-2.5 text-sm text-muted-foreground">{supplier.name}</td>
                         <td className="px-3 py-2.5 text-xs text-muted-foreground">{formatDate(lot.receivedAt)}</td>
                         <td className="px-3 py-2.5">
