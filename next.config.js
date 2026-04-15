@@ -18,7 +18,6 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
-    serverComponentsExternalPackages: ["sharp"],
   },
   // Production optimizations
   compress: true,

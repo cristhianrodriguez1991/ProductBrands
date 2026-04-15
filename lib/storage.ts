@@ -42,23 +42,9 @@ export async function uploadFile(
   let finalMimeType = file.type || "application/octet-stream"
   let finalExt = (file.name.split(".").pop() || "bin").toLowerCase()
 
-  // ── HEIC / HEIF → JPEG conversion ──────────────────────────
-  const isHeic =
-    finalExt === "heic" ||
-    finalExt === "heif" ||
-    finalMimeType === "image/heic" ||
-    finalMimeType === "image/heif"
-
-  if (isHeic) {
-    try {
-      const sharp = (await import("sharp")).default
-      buffer = await sharp(buffer as Buffer).jpeg({ quality: 90 }).toBuffer() as Buffer<ArrayBuffer>
-      finalMimeType = "image/jpeg"
-      finalExt = "jpg"
-    } catch (e) {
-      console.warn("[uploadFile] HEIC conversion failed, storing original:", e)
-      // Continue with original buffer — better than failing entirely
-    }
+  // Normalize HEIC/HEIF mime type for proper content-type headers
+  if (finalExt === "heic" || finalExt === "heif") {
+    finalMimeType = "image/heic"
   }
 
   const fileName = `${randomBytes(16).toString("hex")}.${finalExt}`
