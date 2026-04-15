@@ -433,6 +433,16 @@ function BatchLotCard({
           </div>
         )}
 
+        {/* Internal Notes - Always visible and orange if present */}
+        {lot.internalNotes && (
+          <div className="mb-3 p-3 rounded-lg border border-orange-200 bg-orange-50/50">
+            <p className="text-[10px] font-bold text-orange-600 uppercase tracking-widest mb-1 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" /> Internal Notes
+            </p>
+            <p className="text-sm text-orange-900 whitespace-pre-wrap">{lot.internalNotes}</p>
+          </div>
+        )}
+
         {/* Attachments count */}
         {lot.attachments.length > 0 && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
@@ -460,15 +470,6 @@ function BatchLotCard({
 
         {expanded && (
           <div className="mt-4 space-y-4 border-t pt-4">
-            {/* Notes */}
-            {lot.internalNotes && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                  Internal Notes
-                </p>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{lot.internalNotes}</p>
-              </div>
-            )}
             {lot.qcNotes && (
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
