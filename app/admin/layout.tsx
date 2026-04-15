@@ -66,8 +66,8 @@ export default function AdminLayout({
             <Image
               src="/images/logo.png"
               alt="Product Brands logo"
-              width={140}
-              height={48}
+              width={180}
+              height={60}
               className="object-contain"
               priority
             />
