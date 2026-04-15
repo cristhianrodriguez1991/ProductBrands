@@ -17,6 +17,7 @@ import {
   Building2,
   Tag,
   Inbox,
+  Truck,
 } from "lucide-react"
 
 export default function AdminLayout({
@@ -79,6 +80,12 @@ export default function AdminLayout({
             <Button variant="ghost" className="w-full justify-start">
               <Tag className="mr-2 h-4 w-4" />
               Brands
+            </Button>
+          </Link>
+          <Link href="/admin/suppliers">
+            <Button variant="ghost" className="w-full justify-start">
+              <Truck className="mr-2 h-4 w-4" />
+              Suppliers
             </Button>
           </Link>
           <Link href="/admin/listings">

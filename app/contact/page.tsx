@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/components/ui/use-toast"
 import { Navbar } from "@/components/navbar"
 import { Mail, Phone, MapPin, Calendar } from "lucide-react"
+
+function generateChallenge() {
+  const a = Math.floor(Math.random() * 9) + 1
+  const b = Math.floor(Math.random() * 9) + 1
+  return { a, b, answer: a + b }
+}
 
 type SiteSettings = {
   contact_email?: string
@@ -28,23 +34,45 @@ export default function ContactPage() {
   })
   const [loading, setLoading] = useState(false)
   const [settings, setSettings] = useState<SiteSettings>({})
+  const [mathChallenge, setMathChallenge] = useState(generateChallenge)
+  const [mathAnswer, setMathAnswer] = useState("")
+  const formLoadedAtRef = useRef(new Date().toISOString())
 
   useEffect(() => {
     fetch("/api/settings")
       .then((res) => res.json())
       .then((data) => setSettings(data))
       .catch(console.error)
+    setMathChallenge(generateChallenge())
+    formLoadedAtRef.current = new Date().toISOString()
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Math challenge guard
+    if (parseInt(mathAnswer, 10) !== mathChallenge.answer) {
+      toast({
+        title: "Incorrect answer",
+        description: "Please solve the math question to verify you're human.",
+        variant: "destructive",
+      })
+      setMathChallenge(generateChallenge())
+      setMathAnswer("")
+      return
+    }
+
     setLoading(true)
 
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          _hp: "",                              // honeypot — leave empty
+          _form_loaded_at: formLoadedAtRef.current,
+        }),
       })
 
       if (!res.ok) throw new Error("Failed to send message")
@@ -54,6 +82,8 @@ export default function ContactPage() {
         description: "Your message has been sent. We'll get back to you soon!",
       })
       setFormData({ name: "", email: "", company: "", message: "" })
+      setMathChallenge(generateChallenge())
+      setMathAnswer("")
     } catch (error) {
       toast({
         title: "Error",
@@ -137,6 +167,35 @@ export default function ContactPage() {
                       className="mt-1"
                     />
                   </div>
+                  {/* Math challenge — blocks automated bots */}
+                  <div>
+                    <Label htmlFor="contact_math_answer">
+                      Quick verification: What is {mathChallenge.a} + {mathChallenge.b}?
+                    </Label>
+                    <Input
+                      id="contact_math_answer"
+                      type="number"
+                      required
+                      value={mathAnswer}
+                      onChange={(e) => setMathAnswer(e.target.value)}
+                      placeholder="Enter the answer"
+                      className="mt-1 w-36"
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  {/* Honeypot — hidden from real users, bots will fill this */}
+                  <div style={{ display: "none" }} aria-hidden="true">
+                    <label htmlFor="contact_hp">Website (leave blank)</label>
+                    <input
+                      id="contact_hp"
+                      name="_hp"
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
+                  </div>
+
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Sending..." : "Send Message"}
                   </Button>

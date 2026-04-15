@@ -571,6 +571,101 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// ─────────────────────────────────────────────────────────────
+// SUPPLIERS & LOT / BATCH TRACKER
+// ─────────────────────────────────────────────────────────────
+
+enum BatchLotStatus {
+  INCOMING      // On the way
+  RECEIVED      // Arrived at warehouse
+  IN_QC         // Under quality control inspection
+  APPROVED      // QC passed, cleared for use/sale
+  ON_HOLD       // Flagged, awaiting decision
+  RECALLED      // Recalled / pulled from use
+  DISPOSED      // Discarded / destroyed
+}
+
+model Supplier {
+  id            String   @id @default(cuid())
+  name          String
+  contactName   String?
+  email         String?
+  phone         String?
+  address       String?
+  city          String?
+  state         String?
+  country       String?
+  website       String?
+  notes         String?  @db.Text
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  batchLots     BatchLot[]
+
+  @@index([name])
+  @@index([isActive])
+}
+
+model BatchLot {
+  id              String          @id @default(cuid())
+  supplierId      String
+  supplier        Supplier        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  // Identification
+  lotNumber       String          // e.g. "LOT-2024-001", vaccine-style batch number
+  productName     String
+  productSku      String?
+  category        String?
+
+  // Quantities
+  quantityReceived Int?
+  quantityUnit    String?         // "units", "lbs", "kg", "boxes", "pallets"
+
+  // Dates & Timestamps
+  manufacturedAt  DateTime?
+  expiresAt       DateTime?
+  receivedAt      DateTime        @default(now())
+  approvedAt      DateTime?
+
+  // Status & Tracking
+  status          BatchLotStatus  @default(INCOMING)
+  internalNotes   String?         @db.Text
+  qcNotes         String?         @db.Text
+  recallReason    String?         @db.Text
+
+  // Financial
+  unitCost        Float?
+  totalCost       Float?
+  invoiceNumber   String?
+  poNumber        String?         // Purchase Order number
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  attachments     BatchLotAttachment[]
+
+  @@index([supplierId])
+  @@index([lotNumber])
+  @@index([status])
+  @@index([receivedAt])
+  @@index([productName])
+}
+
+model BatchLotAttachment {
+  id          String    @id @default(cuid())
+  batchLotId  String
+  batchLot    BatchLot  @relation(fields: [batchLotId], references: [id], onDelete: Cascade)
+  fileName    String
+  fileUrl     String
+  fileSize    Int?
+  mimeType    String?
+  label       String?   // "Pallet Photo", "Invoice", "COA", "Label", "Other"
+  uploadedAt  DateTime  @default(now())
+
+  @@index([batchLotId])
+}
+
 // Site settings for admin-editable content
 model SiteSetting {
   id        String   @id @default(cuid())

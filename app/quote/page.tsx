@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,13 @@ import { FileText, Upload } from "lucide-react"
 const ACCEPTED_FILE_TYPES = "image/*,.pdf,.doc,.docx"
 const MAX_FILE_SIZE_MB = 10
 
+// Generate a simple math challenge for humans
+function generateChallenge() {
+  const a = Math.floor(Math.random() * 9) + 1
+  const b = Math.floor(Math.random() * 9) + 1
+  return { a, b, answer: a + b }
+}
+
 export default function QuotePage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -28,8 +35,17 @@ export default function QuotePage() {
     description: "",
   })
   const [file, setFile] = useState<File | null>(null)
+  const [mathChallenge, setMathChallenge] = useState(generateChallenge)
+  const [mathAnswer, setMathAnswer] = useState("")
+  const formLoadedAtRef = useRef(new Date().toISOString())
   const searchParams = useSearchParams()
   const submitted = searchParams.get("submitted") === "1"
+
+  // Refresh challenge on mount to prevent server hydration issues
+  useEffect(() => {
+    setMathChallenge(generateChallenge())
+    formLoadedAtRef.current = new Date().toISOString()
+  }, [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -51,6 +67,19 @@ export default function QuotePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Math challenge validation
+    if (parseInt(mathAnswer, 10) !== mathChallenge.answer) {
+      toast({
+        title: "Incorrect answer",
+        description: "Please solve the math question to verify you're human.",
+        variant: "destructive",
+      })
+      setMathChallenge(generateChallenge())
+      setMathAnswer("")
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -59,6 +88,9 @@ export default function QuotePage() {
       formDataToSend.append("email", formData.email.trim().toLowerCase())
       formDataToSend.append("phone", formData.phone.trim())
       formDataToSend.append("description", formData.description.trim())
+      // Bot protection fields
+      formDataToSend.append("website_url", "") // honeypot — must stay empty
+      formDataToSend.append("_form_loaded_at", formLoadedAtRef.current)
 
       if (file) {
         formDataToSend.append("file", file)
@@ -107,7 +139,7 @@ export default function QuotePage() {
               Get a Quote
             </h1>
             <p className="text-gray-600">
-              Share a few details and we’ll get back to you with next steps.
+              Share a few details and we'll get back to you with next steps.
             </p>
           </div>
         </div>
@@ -218,6 +250,35 @@ export default function QuotePage() {
                     <p className="text-xs text-muted-foreground mt-1">
                       Images, PDF, or Word. Max {MAX_FILE_SIZE_MB} MB.
                     </p>
+                  </div>
+
+                  {/* Math challenge — blocks automated bots */}
+                  <div>
+                    <Label htmlFor="math_answer">
+                      Quick verification: What is {mathChallenge.a} + {mathChallenge.b}?
+                    </Label>
+                    <Input
+                      id="math_answer"
+                      type="number"
+                      required
+                      value={mathAnswer}
+                      onChange={(e) => setMathAnswer(e.target.value)}
+                      placeholder="Enter the answer"
+                      className="mt-1.5 w-36"
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  {/* Honeypot — hidden from real users, bots will fill this */}
+                  <div style={{ display: "none" }} aria-hidden="true">
+                    <label htmlFor="website_url">Website (leave blank)</label>
+                    <input
+                      id="website_url"
+                      name="website_url"
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
                   </div>
 
                   <Button

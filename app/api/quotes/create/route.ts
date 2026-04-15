@@ -8,6 +8,14 @@ import { generateQuoteNumber } from "@/lib/admin-utils"
 import { z } from "zod"
 import bcrypt from "bcryptjs"
 import { randomBytes } from "crypto"
+import {
+  checkRateLimit,
+  checkBotSignals,
+  detectBotName,
+  detectBotEmail,
+  getClientIp,
+  HONEYPOT_FIELD,
+} from "@/lib/bot-protection"
 
 const simpleQuoteSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -18,11 +26,48 @@ const simpleQuoteSchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    // --- 1. Rate limiting ---
+    const ip = getClientIp(req)
+    const rateCheck = checkRateLimit(`quote:${ip}`)
+    if (!rateCheck.allowed) {
+      console.warn(`[Quotes] Rate limit exceeded for IP: ${ip}`)
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: rateCheck.retryAfterSeconds
+            ? { "Retry-After": String(rateCheck.retryAfterSeconds) }
+            : {},
+        }
+      )
+    }
+
     const formData = await req.formData()
     const name = (formData.get("name") as string)?.trim()
     const email = (formData.get("email") as string)?.trim()?.toLowerCase()
     const phone = (formData.get("phone") as string)?.trim() ?? ""
     const description = (formData.get("description") as string)?.trim()
+
+    // --- 2. Honeypot + timing check ---
+    const honeypot = (formData.get(HONEYPOT_FIELD) as string) ?? ""
+    const formLoadedAt = (formData.get("_form_loaded_at") as string) ?? ""
+
+    const botCheck = checkBotSignals({ honeypot, formLoadedAt })
+    if (botCheck.blocked) {
+      console.warn(`[Quotes] Bot blocked — reason: ${botCheck.reason}, IP: ${ip}`)
+      // Return 200 to avoid bot retries ("silent drop")
+      return NextResponse.json({ success: true })
+    }
+
+    // --- 3. Pattern-based name/email detection ---
+    if (detectBotName(name)) {
+      console.warn(`[Quotes] Bot-like name detected: "${name}", IP: ${ip}`)
+      return NextResponse.json({ success: true }) // silent drop
+    }
+    if (detectBotEmail(email)) {
+      console.warn(`[Quotes] Bot-like email detected: "${email}", IP: ${ip}`)
+      return NextResponse.json({ success: true }) // silent drop
+    }
 
     const validated = simpleQuoteSchema.parse({ name, email, phone, description })
 

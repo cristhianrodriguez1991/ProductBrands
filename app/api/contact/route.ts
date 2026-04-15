@@ -2,6 +2,13 @@ import { NextResponse } from "next/server"
 import { sendEmail, getCustomEmailHtml, escapeHtml } from "@/lib/email"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
+import {
+  checkRateLimit,
+  checkBotSignals,
+  detectBotName,
+  detectBotEmail,
+  getClientIp,
+} from "@/lib/bot-protection"
 
 const contactSchema = z.object({
   name: z.string().min(1),
@@ -12,8 +19,45 @@ const contactSchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    // --- 1. Rate limiting ---
+    const ip = getClientIp(req)
+    const rateCheck = checkRateLimit(`contact:${ip}`)
+    if (!rateCheck.allowed) {
+      console.warn(`[Contact] Rate limit exceeded for IP: ${ip}`)
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: rateCheck.retryAfterSeconds
+            ? { "Retry-After": String(rateCheck.retryAfterSeconds) }
+            : {},
+        }
+      )
+    }
+
     const body = await req.json()
+
+    // --- 2. Honeypot + timing check ---
+    const botCheck = checkBotSignals({
+      honeypot: body._hp ?? "",
+      formLoadedAt: body._form_loaded_at ?? "",
+    })
+    if (botCheck.blocked) {
+      console.warn(`[Contact] Bot blocked — reason: ${botCheck.reason}, IP: ${ip}`)
+      return NextResponse.json({ success: true }) // silent drop
+    }
+
     const data = contactSchema.parse(body)
+
+    // --- 3. Pattern-based name/email detection ---
+    if (detectBotName(data.name)) {
+      console.warn(`[Contact] Bot-like name: "${data.name}", IP: ${ip}`)
+      return NextResponse.json({ success: true }) // silent drop
+    }
+    if (detectBotEmail(data.email)) {
+      console.warn(`[Contact] Bot-like email: "${data.email}", IP: ${ip}`)
+      return NextResponse.json({ success: true }) // silent drop
+    }
 
     // Send confirmation email to the customer
     const customerContent = `
@@ -63,4 +107,3 @@ export async function POST(req: Request) {
     )
   }
 }
-
