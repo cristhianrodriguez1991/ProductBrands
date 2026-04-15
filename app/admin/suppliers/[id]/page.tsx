@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { convertHeicToJpeg } from "@/lib/convert-heic"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -539,9 +540,11 @@ export default function SupplierDetailPage() {
     setDocError("")
     setDocUploading(true)
     try {
+      // Convert HEIC to JPEG if needed
+      const convertedFile = await convertHeicToJpeg(docFile)
       const fd = new FormData()
-      fd.append("name", docName || docFile.name)
-      fd.append("file", docFile)
+      fd.append("name", docName || convertedFile.name)
+      fd.append("file", convertedFile)
       const res = await fetch(`/api/suppliers/${id}/documents`, { method: "POST", body: fd })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Upload failed")
@@ -684,7 +687,14 @@ export default function SupplierDetailPage() {
       Object.entries(lotForm).forEach(([k, v]) => {
         if (v !== "" && v !== null && v !== undefined) fd.append(k, String(v))
       })
-      files.forEach(({ file, label }) => {
+      // Convert any HEIC files to JPEG before uploading
+      const convertedFiles = await Promise.all(
+        files.map(async ({ file, label }) => ({
+          file: await convertHeicToJpeg(file),
+          label,
+        }))
+      )
+      convertedFiles.forEach(({ file, label }) => {
         fd.append("files", file)
         fd.append("labels", label)
       })
