@@ -70,24 +70,29 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       },
     })
 
-    // Handle file uploads
-    const fileEntries = formData.getAll("files") as File[]
+    // Handle file uploads — each file is independent, failures don't abort the lot
+    const fileEntries = formData.getAll("files")
     const labelEntries = formData.getAll("labels") as string[]
 
     for (let i = 0; i < fileEntries.length; i++) {
-      const file = fileEntries[i]
-      if (file && file.size > 0) {
-        const { url } = await uploadFile(file, "batch-lots")
+      const entry = fileEntries[i]
+      // Only process actual File objects with content
+      if (!(entry instanceof File) || entry.size === 0 || entry.name === "") continue
+      try {
+        const { url } = await uploadFile(entry, "batch-lots")
         await prisma.batchLotAttachment.create({
           data: {
             batchLotId: batchLot.id,
-            fileName: file.name,
+            fileName: entry.name,
             fileUrl: url,
-            fileSize: file.size,
-            mimeType: file.type,
+            fileSize: entry.size,
+            mimeType: entry.type,
             label: labelEntries[i] || "Other",
           },
         })
+      } catch (uploadErr) {
+        // Log but don't fail the whole request over one attachment
+        console.warn(`[BatchLot] File upload skipped for "${entry.name}":`, uploadErr)
       }
     }
 

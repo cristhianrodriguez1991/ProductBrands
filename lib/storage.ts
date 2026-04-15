@@ -32,16 +32,21 @@ export async function uploadFile(
   file: File,
   folder: string = "uploads"
 ): Promise<{ url: string; key: string }> {
+  // Guard: reject empty files
+  if (!file || file.size === 0) {
+    throw new Error("Empty file provided to uploadFile")
+  }
+
   const bytes = await file.arrayBuffer()
   const buffer = Buffer.from(bytes)
 
-  const ext = file.name.split(".").pop()
+  const ext = file.name.split(".").pop() || "bin"
   const fileName = `${randomBytes(16).toString("hex")}.${ext}`
   const key = `${folder}/${fileName}`
 
-  // Use S3 if configured, otherwise use local storage
+  // Use S3 if configured (required for persistent storage in production)
   const client = await getS3Client()
-  if (client && process.env.NODE_ENV === "production") {
+  if (client) {
     const { PutObjectCommand } = await import("@aws-sdk/client-s3")
     await client.send(
       new PutObjectCommand({
@@ -55,14 +60,26 @@ export async function uploadFile(
       ? `${process.env.S3_PUBLIC_URL}/${key}`
       : `https://${BUCKET_NAME}.s3.amazonaws.com/${key}`
     return { url, key }
-  } else {
-    // Local storage fallback
-    const uploadDir = join(process.cwd(), "public", "uploads", folder)
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    // Vercel: /var/task is read-only, use /tmp (ephemeral — configure S3 for persistence)
+    const uploadDir = join("/tmp", "uploads", folder)
     await mkdir(uploadDir, { recursive: true })
     const filePath = join(uploadDir, fileName)
     await writeFile(filePath, buffer)
-    return { url: `/uploads/${folder}/${fileName}`, key }
+    // Return a data URL since /tmp files can't be served statically
+    const mimeType = file.type || "application/octet-stream"
+    const base64 = buffer.toString("base64")
+    return { url: `data:${mimeType};base64,${base64}`, key }
   }
+
+  // Development: write to public/uploads
+  const uploadDir = join(process.cwd(), "public", "uploads", folder)
+  await mkdir(uploadDir, { recursive: true })
+  const filePath = join(uploadDir, fileName)
+  await writeFile(filePath, buffer)
+  return { url: `/uploads/${folder}/${fileName}`, key }
 }
 
 export async function deleteFile(key: string): Promise<void> {
