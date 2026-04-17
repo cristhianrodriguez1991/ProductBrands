@@ -513,6 +513,9 @@ export default function FbaShipmentsPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items: sorted.map(i => ({ id: i.id, sortOrder: i.sortOrder })) })
+    })
+  }
+
   // Extracted functionality
 
   if (loading) return <div className="p-8 text-center animate-pulse text-muted-foreground">Inicializando FBA portal...</div>
