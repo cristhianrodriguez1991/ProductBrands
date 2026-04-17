@@ -253,17 +253,17 @@ export default function FbaShipmentsPage() {
         <meta charset="utf-8" />
         <style>
           table { border-collapse: collapse; font-family: "Calibri", "Arial", sans-serif; }
-          /* Row 2 (Headers) Styling */
+          /* Row 2 (Headers) Styling - REINFORCED FOR EXCEL */
           th { 
-            background-color: #1f4e3d; 
-            color: #ffffff; 
-            font-weight: bold; 
-            font-size: 12px;
-            border: 2px solid #000000; 
-            height: 45px; 
+            background-color: #06402B !important; 
+            color: #ffffff !important; 
+            font-weight: bold !important; 
+            font-size: 14px !important;
+            border: 2pt solid #000000 !important; 
+            height: 60px !important; 
             text-align: center; 
             vertical-align: middle;
-            padding: 5px;
+            padding: 10px;
           }
           td { 
             border: 1px solid #b0b0b0; 
@@ -285,8 +285,8 @@ export default function FbaShipmentsPage() {
         
         <table>
           <thead>
-            <!-- Row 2: Headers (Made taller) -->
-            <tr>
+            <!-- Row 2: Headers (Forced height for Excel compatibility) -->
+            <tr style="height: 60px;" height="60">
               <th style="width: 80px;">Location</th>
               <th style="width: 100px;">Orden de Cajas</th>
               <th style="width: 300px;">NOMBRE COMPLETO DEL PRODUCTO</th>
