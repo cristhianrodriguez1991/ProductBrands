@@ -247,23 +247,23 @@ export default function FbaShipmentsPage() {
       <head>
         <meta charset="utf-8" />
         <style>
-          table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
-          th { background-color: #2e6e4f; color: white; font-weight: bold; border: 1px solid #000; padding: 5px; height: 30px; text-align: center; }
-          td { border: 1px solid #ccc; padding: 5px; text-align: center; vertical-align: middle; }
+          table { border-collapse: collapse; font-family: "Calibri", Arial, sans-serif; font-size: 11px; }
+          th { background-color: #1f4e38; color: white; font-weight: bold; border: 1px solid #a3a3a3; padding: 4px; text-align: center; }
+          td { border: 1px solid #d4d4d4; padding: 3px 6px; text-align: center; vertical-align: middle; white-space: nowrap; }
           .highlight { background-color: #e6f4ea; color: #1e7e34; font-weight: bold; }
-          .img-cell { height: 100px; width: 100px; }
-          img { max-height: 90px; max-width: 90px; }
+          .text-col { mso-number-format:"\\@"; text-align: left; }
+          .left-align { text-align: left; }
         </style>
       </head>
       <body>
-        <h2>INVENTARIO - FBA Shipment (${shipment.name})</h2>
+        <h2 style="font-family: Calibri; margin-bottom: 10px;">INVENTARIO - FBA Shipment (${shipment.name})</h2>
         <table>
           <thead>
             <tr>
               <th>Location</th><th>Orden de Cajas</th><th>NOMBRE</th><th>FnSKU or UPC</th>
               <th>SKU</th><th>Cantidad por Caja</th><th>Cajas Totales</th><th>Total de unidades</th>
               <th>Fecha de Exp</th><th>Largo</th><th>Ancho</th><th>Altura</th><th>Peso de Caja</th>
-              <th>Descripci&#243;n</th><th>Foto</th>
+              <th>Descripci&#243;n</th>
             </tr>
           </thead>
           <tbody>
@@ -271,17 +271,25 @@ export default function FbaShipmentsPage() {
     activeItems.forEach(i => {
       tableHtml += `
             <tr>
-              <td>${i.location || ""}</td><td>${i.boxOrder || ""}</td><td>${i.name || ""}</td><td>${i.fnsku || ""}</td>
-              <td>${i.sku || ""}</td><td>${i.qtyPerBox || ""}</td><td>${i.totalBoxes || ""}</td><td class="highlight">${i.totalUnits || 0}</td>
-              <td>${i.expDate || ""}</td><td>${i.length || ""}</td><td>${i.width || ""}</td><td>${i.height || ""}</td>
-              <td>${i.boxWeight || ""}</td><td>${i.description || ""}</td>
-              <td class="img-cell">${i.imageUrl ? `<img src="${i.imageUrl}" />` : ""}</td>
+              <td>${i.location || ""}</td>
+              <td>${i.boxOrder || ""}</td>
+              <td class="left-align"><strong>${i.name || ""}</strong></td>
+              <td class="text-col">${i.fnsku || ""}</td>
+              <td class="text-col">${i.sku || ""}</td>
+              <td>${i.qtyPerBox || ""}</td>
+              <td>${i.totalBoxes || ""}</td>
+              <td class="highlight">${i.totalUnits || 0}</td>
+              <td>${i.expDate || ""}</td>
+              <td>${i.length || ""}</td>
+              <td>${i.width || ""}</td>
+              <td>${i.height || ""}</td>
+              <td>${i.boxWeight || ""}</td>
+              <td class="left-align">${i.description || ""}</td>
             </tr>
       `
     })
     tableHtml += `</tbody></table></body></html>`
     
-    // Use .xls extension for Microsoft Excel HTML protocol
     const blob = new Blob([tableHtml], { type: "application/vnd.ms-excel" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
