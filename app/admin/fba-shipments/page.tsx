@@ -190,6 +190,8 @@ export default function FbaShipmentsPage() {
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedIdForUpload, setSelectedIdForUpload] = useState<string | null>(null)
+  
   // Auto-sync polling logic
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
   
