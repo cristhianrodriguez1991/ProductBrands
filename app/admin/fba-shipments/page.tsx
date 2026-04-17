@@ -181,6 +181,7 @@ export default function FbaShipmentsPage() {
   const [loading, setLoading] = useState(true)
   const [items, setItems] = useState<FbaItem[]>([])
   const [newShipmentName, setNewShipmentName] = useState("")
+  const [pastShipments, setPastShipments] = useState<any[]>([])
   
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
@@ -228,8 +229,19 @@ export default function FbaShipmentsPage() {
     }
   }
 
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch("/api/admin/fba-shipments/history")
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setPastShipments(data)
+      }
+    } catch(e) {}
+  }
+
   useEffect(() => {
     fetchActiveShipment()
+    fetchHistory()
   }, [])
 
   const handleCreateShipment = async () => {
@@ -253,6 +265,9 @@ export default function FbaShipmentsPage() {
   const handleCloseShipment = async () => {
     if (!confirm("Are you sure you want to finish this shipment? Pending items will roll over to the next one you create.")) return
     try {
+      // Auto-export to excel before closing just in case
+      exportToExcelObject(shipment, items)
+      
       await fetch(`/api/admin/fba-shipments/${shipment.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -260,6 +275,7 @@ export default function FbaShipmentsPage() {
       })
       setShipment(null)
       setItems([])
+      fetchHistory() // Refresh history so the newly closed one appears
     } catch(e) {}
   }
 
@@ -394,9 +410,9 @@ export default function FbaShipmentsPage() {
 
   const handlePrint = () => window.print();
 
-  const exportToExcelObject = () => {
-    if (!shipment) return
-    const activeItems = items.filter(i => i.status === "IN_SHIPMENT")
+  const exportToExcelObject = (targetShipment = shipment, targetItems = items) => {
+    if (!targetShipment) return
+    const activeItems = targetItems.filter((i: any) => i.status === "IN_SHIPMENT")
     
     let tableHtml = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -427,7 +443,8 @@ export default function FbaShipmentsPage() {
         </style>
       </head>
       <body>
-        <h2 style="color: #1f4e3d; font-family: Calibri;">INVENTARIO FBA - ${shipment.name}</h2>
+        <h2 style="color: #1f4e3d; font-family: Calibri;">INVENTARIO FBA - ${targetShipment.name}</h2>
+
         <table>
           <thead>
             <tr style="height: 60px;" height="60">
@@ -475,7 +492,7 @@ export default function FbaShipmentsPage() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = `FBA_Shipment_${shipment.name}.xls`
+    link.download = `FBA_Shipment_${targetShipment.name}.xls`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -485,15 +502,47 @@ export default function FbaShipmentsPage() {
 
   if (!shipment) {
     return (
-      <div className="max-w-2xl mx-auto p-12 mt-20 bg-white rounded-3xl shadow-xl border border-blue-50 text-center">
-        <h2 className="text-3xl font-black mb-3 text-slate-900">No hay Shipment Activo</h2>
-        <div className="flex max-w-md mx-auto items-center gap-3">
-          <Input className="h-12 text-lg rounded-xl shadow-inner bg-slate-50 border-slate-200" placeholder="Nombre (Ej: Abril Mediano 2026)" value={newShipmentName} onChange={e => setNewShipmentName(e.target.value)} />
-          <Button onClick={handleCreateShipment} className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg font-bold">Crear FBA</Button>
+      <div className="max-w-4xl mx-auto pt-20 pb-40">
+        <div className="bg-white rounded-3xl shadow-xl border border-blue-50 text-center p-12 mb-12">
+          <h2 className="text-3xl font-black mb-3 text-slate-900">No hay Shipment Activo</h2>
+          <p className="text-slate-500 mb-8 max-w-lg mx-auto">Crea un nuevo shipment para comenzar a rastrear artículos. Al cerrar el shipment actual, se guardará aquí abajo y el archivo Excel se descargará automáticamente.</p>
+          <div className="flex max-w-md mx-auto items-center gap-3">
+            <Input className="h-12 text-lg rounded-xl shadow-inner bg-slate-50 border-slate-200" placeholder="Nombre (Ej: Abril Mediano 2026)" value={newShipmentName} onChange={e => setNewShipmentName(e.target.value)} />
+            <Button onClick={handleCreateShipment} className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg font-bold">Crear FBA</Button>
+          </div>
         </div>
+        
+        {pastShipments.length > 0 && (
+          <div>
+            <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-500" /> Historial de Envíos Finalizados
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {pastShipments.map(sh => (
+                <Card key={sh.id} className="p-6 rounded-2xl shadow-sm border-slate-200 bg-white hover:border-blue-300 transition-colors group">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-bold text-lg text-slate-900 group-hover:text-blue-700 transition-colors">{sh.name}</h4>
+                    <span className="text-xs font-semibold px-2 py-1 bg-green-100 text-green-700 rounded-md">CERRADO</span>
+                  </div>
+                  <p className="text-sm text-slate-500 mb-6 flex items-center gap-1">
+                    Actualizado: {new Date(sh.updatedAt).toLocaleDateString()}
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="w-full gap-2 text-blue-700 hover:bg-blue-50 hover:text-blue-800 font-semibold"
+                    onClick={() => exportToExcelObject(sh, sh.items)}
+                  >
+                    <Download className="h-4 w-4" /> Exportar a Excel
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     )
   }
+
 
   const inShipmentItems = items.filter(i => i.status === "IN_SHIPMENT")
   const pendingItems = items.filter(i => i.status === "PENDING")
@@ -562,7 +611,7 @@ export default function FbaShipmentsPage() {
           <Button variant="outline" onClick={handlePrint} className="h-12 gap-2 text-slate-700 border-slate-200 bg-white hover:bg-slate-50 rounded-xl shadow-sm px-6 font-bold">
             <Printer className="h-5 w-5" /> Imprimir
           </Button>
-          <Button variant="outline" onClick={exportToExcelObject} className="h-12 gap-2 text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-xl shadow-sm px-6 font-bold">
+          <Button variant="outline" onClick={() => exportToExcelObject()} className="h-12 gap-2 text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-xl shadow-sm px-6 font-bold">
             <Download className="h-5 w-5" /> Exportar a Excel
           </Button>
           <Button onClick={handleCloseShipment} variant="destructive" className="h-12 gap-2 rounded-xl shadow-lg shadow-red-100 px-6 font-bold">
@@ -582,16 +631,16 @@ export default function FbaShipmentsPage() {
                 <th className="py-5 px-4 min-w-[250px] border-r border-white/10">Nombre del Producto</th>
                 <th className="py-5 px-3 w-[150px] border-r border-white/10 text-center">FnSKU / UPC</th>
                 <th className="py-5 px-3 w-[120px] border-r border-white/10 text-center">SKU</th>
-                <th className="py-5 px-3 w-[90px] border-r border-white/10 text-center">Uds/Caja</th>
-                <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total Cajas<br/><span className="text-orange-400 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
+                <th className="py-5 px-3 w-[80px] border-r border-white/10 text-center">Uds/Caja</th>
+                <th className="py-5 px-3 w-[100px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total Cajas<br/><span className="text-orange-400 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
                 <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total Unidades<br/><span className="text-green-300 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
-                <th className="py-5 px-3 w-[130px] border-r border-white/10 text-center">Exp.</th>
-                <th className="py-5 px-2 w-[60px] border-r border-white/10 text-center">L</th>
-                <th className="py-5 px-2 w-[60px] border-r border-white/10 text-center">A</th>
-                <th className="py-5 px-2 w-[60px] border-r border-white/10 text-center">H</th>
-                <th className="py-5 px-3 w-[100px] border-r border-white/10 text-center">Peso</th>
+                <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center">Exp.</th>
+                <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center">L</th>
+                <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center">A</th>
+                <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center">H</th>
+                <th className="py-5 px-3 w-[80px] border-r border-white/10 text-center">Peso</th>
                 <th className="py-5 px-4 w-[250px] border-r border-white/10">Descripción</th>
-                <th className="py-5 px-3 w-[140px] border-r border-white/10 text-center">Fotos</th>
+                <th className="py-5 px-3 w-[120px] border-r border-white/10 text-center">Fotos</th>
                 <th className="py-5 px-3 w-[70px] text-center bg-[#163a2d] no-print">Acción</th>
               </tr>
             </thead>
