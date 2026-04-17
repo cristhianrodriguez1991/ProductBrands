@@ -687,7 +687,7 @@ export default function FbaShipmentsPage() {
                           </tr>
                         </thead>
                         <Reorder.Group axis="y" as="tbody" values={inItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")}>
-                          {inItems.map((item, index) => (
+                          {inItems.map((item: any, index: number) => (
                             <StandaloneRow 
                               key={item.id} item={item} index={index} isPending={false}
                               updateItem={updateItem} deleteItem={() => deleteItem(tab.id, item.id)} switchItemStatus={switchItemStatus}
@@ -736,7 +736,7 @@ export default function FbaShipmentsPage() {
                             </tr>
                           </thead>
                           <Reorder.Group axis="y" as="tbody" values={pItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
-                            {pItems.map((item, index) => (
+                            {pItems.map((item: any, index: number) => (
                               <StandaloneRow 
                                 key={item.id} item={item} index={index} isPending={true}
                                 updateItem={updateItem} deleteItem={() => deleteItem(tab.id, item.id)} switchItemStatus={switchItemStatus}
