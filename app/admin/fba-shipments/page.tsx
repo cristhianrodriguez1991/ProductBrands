@@ -502,30 +502,53 @@ export default function FbaShipmentsPage() {
     <>
       <style jsx global>{`
         @media print {
-          title, meta, .no-print, nav, aside, header, button, .flex-gap-4 { display: none !important; }
-          /* Targeted sidebar removal */
-          [class*="sidebar"], [class*="AdminSidebar"] { display: none !important; }
+          @page { size: landscape; margin: 0.5cm; }
           
-          body { background: white !important; margin: 0 !important; padding: 0 !important; }
+          /* Hide EVERYTHING by default */
+          body * { visibility: hidden; }
+          
+          /* Show ONLY the print area and its children */
+          .print-area, .print-area * { visibility: visible; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          
+          /* Position print area at the top left */
           .print-area { 
-            display: block !important; 
-            width: 100% !important; 
-            margin: 0 !important; 
-            padding: 10px !important;
-            transform: scale(0.98);
-            transform-origin: top left;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
           }
+
+          /* Hide UI noise inside the print area */
+          .no-print, button, .flex-gap-4, .bg-slate-50\/50.p-4.border-t { 
+            display: none !important; 
+            height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            visibility: hidden !important;
+          }
+          
+          /* Force table styling */
           .card-print { 
             box-shadow: none !important; 
             border: 1px solid #eee !important;
-            border-radius: 0 !important;
+            border-radius: 12px !important;
+            overflow: visible !important;
             width: 100% !important;
-            margin-bottom: 20px !important;
           }
+          
           .overflow-x-auto { overflow: visible !important; }
-          table { width: 100% !important; border-collapse: collapse !important; }
-          th, td { border: 1px solid #ddd !important; font-size: 10px !important; }
-          .bg-orange-50\/20 { background: transparent !important; border: 1px solid #eee !important; }
+          table { width: 100% !important; border-collapse: collapse !important; table-layout: auto !important; }
+          
+          /* Ensure headers stay dark */
+          th { background-color: #1f4e3d !important; color: white !important; -webkit-print-color-adjust: exact; }
+          .bg-orange-800 { background-color: #9a3412 !important; -webkit-print-color-adjust: exact; }
+          .bg-\[\#245d48\] { background-color: #245d48 !important; -webkit-print-color-adjust: exact; }
+          
+          /* Text visibility */
+          .text-slate-900 { color: #000 !important; }
+          input { border: none !important; background: transparent !important; }
         }
       `}</style>
       <div className="w-full min-h-full flex flex-col gap-6 pb-40 print-area">
