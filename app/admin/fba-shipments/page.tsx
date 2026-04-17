@@ -405,6 +405,7 @@ export default function FbaShipmentsPage() {
     if (res.ok) {
        const updated = await (await fetch(`/api/admin/fba-shipments?id=${shId}`)).json()
        setTabs(prev => prev.map(t => t.id === shId ? { ...t, items: updated.items } : t))
+       setCopiedItem(null)
     }
   }
 
