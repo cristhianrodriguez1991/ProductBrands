@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, ChevronUp, ChevronDown } from "lucide-react"
+import { Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, ChevronUp, ChevronDown, GripVertical } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Image from "next/image"
 import { compressImage } from "@/lib/image-compression"
+import { Reorder, useDragControls } from "framer-motion"
 
 type FbaItem = {
   id: string
@@ -300,15 +301,39 @@ export default function FbaShipmentsPage() {
     document.body.removeChild(link)
   }
 
-  const handlePrint = () => {
-    window.print();
+  const handleDragReorder = async (newOrderedList: FbaItem[], targetStatus: "IN_SHIPMENT" | "PENDING") => {
+    // Only process if fundamentally changed to prevent over-fetching
+    const listAIDs = newOrderedList.map(i => i.id).join(",");
+    const listBIDs = items.filter(i => i.status === targetStatus).map(i => i.id).join(",");
+    if (listAIDs === listBIDs) return;
+
+    const otherList = items.filter(i => i.status !== targetStatus);
+    const sorted = newOrderedList.map((item, idx) => ({ ...item, sortOrder: idx }));
+    const completeList = targetStatus === "IN_SHIPMENT" ? [...sorted, ...otherList] : [...otherList, ...sorted];
+    setItems(completeList);
+
+    await fetch(`/api/admin/fba-shipments/${shipment.id}/reorder`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: sorted.map(i => ({ id: i.id, sortOrder: i.sortOrder })) })
+    })
   }
 
-  const renderRow = (item: FbaItem, index: number, isPending: boolean = false) => {
+  const RowItem = ({ item, index, isPending }: { item: FbaItem, index: number, isPending: boolean }) => {
+    const controls = useDragControls()
     const expiring = isExpiringSoon(item.expDate)
     
     return (
-      <tr key={item.id} className="border-b hover:bg-slate-50 transition-colors">
+      <Reorder.Item value={item} as="tr" dragListener={false} dragControls={controls} className="border-b hover:bg-slate-50 transition-colors bg-white group/row">
+        <td className="p-0 border-r w-[30px] bg-slate-50 select-none">
+          <div 
+             className="w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing text-slate-300 hover:bg-slate-200 hover:text-slate-600 transition-colors py-2 touch-none"
+             onPointerDown={(e) => controls.start(e)}
+             title="Hold and drag to reorder"
+          >
+             <GripVertical className="h-4 w-4" />
+          </div>
+        </td>
         <td className="p-0"><Input className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={item.location || ""} onChange={e => updateItem(item.id, "location", e.target.value)} /></td>
         <td className="p-0 border-l"><Input className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={item.boxOrder || ""} onChange={e => updateItem(item.id, "boxOrder", e.target.value)} /></td>
         <td className="p-0 border-l"><Input className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2 font-bold text-slate-800" value={item.name || ""} onChange={e => updateItem(item.id, "name", e.target.value)} /></td>
@@ -414,7 +439,7 @@ export default function FbaShipmentsPage() {
             </Button>
           </div>
         </td>
-      </tr>
+      </Reorder.Item>
     )
   }
 
@@ -493,6 +518,7 @@ export default function FbaShipmentsPage() {
           <table className="w-full text-left border-collapse min-w-[1300px]">
             <thead>
               <tr className="bg-[#1e1e2e] text-white/90 text-[10px] uppercase font-black tracking-[0.1em]">
+                <th className="py-4 px-1 w-[30px] border-r border-white/5 text-center"></th>
                 <th className="py-4 px-3 w-[80px] border-r border-white/5">Location</th>
                 <th className="py-4 px-3 w-[85px] border-r border-white/5">Cajas</th>
                 <th className="py-4 px-3 min-w-[200px] border-r border-white/5">NOMBRE DEL PRODUCTO</th>
@@ -511,16 +537,16 @@ export default function FbaShipmentsPage() {
                 <th className="py-4 px-3 w-[65px] text-center">Shift</th>
               </tr>
             </thead>
-            <tbody>
-              {inShipmentItems.map((item, index) => renderRow(item, index, false))}
+            <Reorder.Group as="tbody" values={inShipmentItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")}>
+              {inShipmentItems.map((item, index) => <RowItem key={item.id} item={item} index={index} isPending={false} />)}
               {inShipmentItems.length === 0 && (
                 <tr>
-                  <td colSpan={16} className="py-24 text-center">
+                  <td colSpan={17} className="py-24 text-center">
                      <p className="text-slate-300 italic text-lg font-medium">No hay items cargados en este lote de envío.</p>
                   </td>
                 </tr>
               )}
-            </tbody>
+            </Reorder.Group>
           </table>
         </div>
         <div className="bg-slate-50/50 p-4 border-t">
@@ -547,6 +573,7 @@ export default function FbaShipmentsPage() {
           <table className="w-full text-left border-collapse min-w-[1300px]">
             <thead>
               <tr className="bg-orange-800 text-white/90 text-[9px] uppercase font-black tracking-widest">
+                <th className="py-3 px-1 w-[30px] border-r border-orange-700/50 text-center"></th>
                 <th className="py-3 px-3 w-[80px] border-r border-orange-700/50">Location</th>
                 <th className="py-3 px-3 w-[85px] border-r border-orange-700/50">Cajas</th>
                 <th className="py-3 min-w-[200px] border-r border-orange-700/50 text-orange-100">PRODUCTO PENDIENTE</th>
@@ -565,14 +592,14 @@ export default function FbaShipmentsPage() {
                 <th className="py-3 px-3 w-[65px] text-center">Reset</th>
               </tr>
             </thead>
-            <tbody>
-              {pendingItems.map((item, index) => renderRow(item, index, true))}
+            <Reorder.Group as="tbody" values={pendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
+              {pendingItems.map((item, index) => <RowItem key={item.id} item={item} index={index} isPending={true} />)}
               {pendingItems.length === 0 && (
                 <tr>
-                  <td colSpan={16} className="py-12 text-center text-orange-300 font-medium italic">No hay palets en espera. Todo el stock está asignado al envío activo.</td>
+                  <td colSpan={17} className="py-12 text-center text-orange-300 font-medium italic">No hay palets en espera. Todo el stock está asignado al envío activo.</td>
                 </tr>
               )}
-            </tbody>
+            </Reorder.Group>
           </table>
         </div>
       </div>
