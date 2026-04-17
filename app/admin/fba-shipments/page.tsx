@@ -397,14 +397,79 @@ export default function FbaShipmentsPage() {
   const exportToExcelObject = () => {
     if (!shipment) return
     const activeItems = items.filter(i => i.status === "IN_SHIPMENT")
+    
     let tableHtml = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head><meta charset="utf-8" /></head>
-      <body><table><thead><tr><th>Location</th><th>Orden de Cajas</th><th>NOMBRE</th><th>FnSKU</th><th>SKU</th><th>Uds/Caja</th><th>Total Cajas</th><th>Total Uds</th><th>Exp</th><th>L</th><th>A</th><th>H</th><th>Peso</th><th>Desc</th></tr></thead><tbody>`
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          table { border-collapse: collapse; font-family: "Calibri", "Arial", sans-serif; }
+          th { 
+            background-color: #06402B !important; 
+            color: #ffffff !important; 
+            font-weight: bold !important; 
+            font-size: 14px !important;
+            border: 2pt solid #000000 !important; 
+            height: 60px !important; 
+            text-align: center; 
+            vertical-align: middle;
+            padding: 10px;
+          }
+          td { 
+            border: 1px solid #b0b0b0; 
+            padding: 4px 8px; 
+            font-size: 11px;
+            text-align: center; 
+            vertical-align: middle; 
+          }
+          .name-col { font-weight: bold; text-align: left; background-color: #fafafa; }
+        </style>
+      </head>
+      <body>
+        <h2 style="color: #1f4e3d; font-family: Calibri;">INVENTARIO FBA - ${shipment.name}</h2>
+        <table>
+          <thead>
+            <tr style="height: 60px;" height="60">
+              <th style="width: 100px;">Location</th>
+              <th style="width: 120px;">Orden de Cajas</th>
+              <th style="width: 300px;">NOMBRE COMPLETO DEL PRODUCTO</th>
+              <th style="width: 150px;">FnSKU</th>
+              <th style="width: 110px;">SKU</th>
+              <th style="width: 90px;">Uds/Caja</th>
+              <th style="width: 100px;">Total Cajas</th>
+              <th style="width: 110px;">Total Unidades</th>
+              <th style="width: 120px;">Exp.</th>
+              <th style="width: 60px;">L</th>
+              <th style="width: 60px;">A</th>
+              <th style="width: 60px;">H</th>
+              <th style="width: 90px;">Peso</th>
+              <th style="width: 250px;">Descripción</th>
+            </tr>
+          </thead>
+          <tbody>
+    `
     activeItems.forEach(i => {
-      tableHtml += `<tr><td>${i.location || ""}</td><td>${i.boxOrder || ""}</td><td>${i.name || ""}</td><td>${i.fnsku || ""}</td><td>${i.sku || ""}</td><td>${i.qtyPerBox || ""}</td><td>${i.totalBoxes || ""}</td><td>${i.totalUnits || 0}</td><td>${i.expDate || ""}</td><td>${i.length || ""}</td><td>${i.width || ""}</td><td>${i.height || ""}</td><td>${i.boxWeight || ""}</td><td>${i.description || ""}</td></tr>`
+      tableHtml += `
+            <tr>
+              <td>${i.location || ""}</td>
+              <td>${i.boxOrder || ""}</td>
+              <td class="name-col">${i.name || ""}</td>
+              <td>${i.fnsku || ""}</td>
+              <td>${i.sku || ""}</td>
+              <td>${i.qtyPerBox || ""}</td>
+              <td>${i.totalBoxes || ""}</td>
+              <td style="font-weight: bold; background-color: #f0fdf4;">${i.totalUnits || 0}</td>
+              <td>${i.expDate || ""}</td>
+              <td>${i.length || ""}</td>
+              <td>${i.width || ""}</td>
+              <td>${i.height || ""}</td>
+              <td>${i.boxWeight || ""}</td>
+              <td>${i.description || ""}</td>
+            </tr>
+      `
     })
     tableHtml += `</tbody></table></body></html>`
+    
     const blob = new Blob([tableHtml], { type: "application/vnd.ms-excel" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
@@ -434,6 +499,34 @@ export default function FbaShipmentsPage() {
 
   return (
     <>
+      <style jsx global>{`
+        @media print {
+          title, meta, .no-print, nav, aside, header, button, .flex-gap-4 { display: none !important; }
+          /* Targeted sidebar removal */
+          [class*="sidebar"], [class*="AdminSidebar"] { display: none !important; }
+          
+          body { background: white !important; margin: 0 !important; padding: 0 !important; }
+          .print-area { 
+            display: block !important; 
+            width: 100% !important; 
+            margin: 0 !important; 
+            padding: 10px !important;
+            transform: scale(0.98);
+            transform-origin: top left;
+          }
+          .card-print { 
+            box-shadow: none !important; 
+            border: 1px solid #eee !important;
+            border-radius: 0 !important;
+            width: 100% !important;
+            margin-bottom: 20px !important;
+          }
+          .overflow-x-auto { overflow: visible !important; }
+          table { width: 100% !important; border-collapse: collapse !important; }
+          th, td { border: 1px solid #ddd !important; font-size: 10px !important; }
+          .bg-orange-50\/20 { background: transparent !important; border: 1px solid #eee !important; }
+        }
+      `}</style>
       <div className="w-full min-h-full flex flex-col gap-6 pb-40 print-area">
         <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
       
@@ -466,8 +559,8 @@ export default function FbaShipmentsPage() {
                 <th className="py-5 px-3 w-[150px] border-r border-white/10 text-center">FnSKU / UPC</th>
                 <th className="py-5 px-3 w-[120px] border-r border-white/10 text-center">SKU</th>
                 <th className="py-5 px-3 w-[90px] border-r border-white/10 text-center">Uds/Caja</th>
-                <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center">Total Cajas</th>
-                <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center">Total Uds</th>
+                <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total Cajas<br/><span className="text-orange-400 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
+                <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total Unidades<br/><span className="text-green-300 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
                 <th className="py-5 px-3 w-[130px] border-r border-white/10 text-center">Exp.</th>
                 <th className="py-5 px-2 w-[60px] border-r border-white/10 text-center">L</th>
                 <th className="py-5 px-2 w-[60px] border-r border-white/10 text-center">A</th>
@@ -511,8 +604,8 @@ export default function FbaShipmentsPage() {
                 <th className="py-3 px-3 w-[140px] border-r border-orange-700/50">FnSKU</th>
                 <th className="py-3 px-3 w-[110px] border-r border-orange-700/50">SKU</th>
                 <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center">Uds/Caja</th>
-                <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center">Total Cajas</th>
-                <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center">Total Uds</th>
+                <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center leading-tight">Total Cajas<br/><span className="text-orange-400 text-[10px] block font-bold">({pendingItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
+                <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center leading-tight">Total Unidades<br/><span className="text-green-300 text-[10px] block font-bold">({pendingItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
                 <th className="py-3 px-3 w-[110px] border-r border-orange-700/50">Exp.</th>
                 <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">L</th>
                 <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">A</th>
