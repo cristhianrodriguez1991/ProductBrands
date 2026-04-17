@@ -524,29 +524,29 @@ export default function FbaShipmentsPage() {
 
       <Card className="w-full border-0 shadow-2xl rounded-3xl overflow-hidden bg-white print-area">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[1300px]">
+          <table className="w-full text-left border-collapse min-w-[1400px]">
             <thead>
-              <tr className="bg-[#1e1e2e] text-white/90 text-[10px] uppercase font-black tracking-[0.1em]">
-                <th className="py-4 px-1 w-[30px] border-r border-white/5 text-center"></th>
-                <th className="py-4 px-3 w-[80px] border-r border-white/5">Location</th>
-                <th className="py-4 px-3 w-[85px] border-r border-white/5">Cajas</th>
-                <th className="py-4 px-3 min-w-[200px] border-r border-white/5">NOMBRE DEL PRODUCTO</th>
-                <th className="py-4 px-3 w-[140px] border-r border-white/5">FnSKU / UPC</th>
-                <th className="py-4 px-3 w-[110px] border-r border-white/5">SKU</th>
-                <th className="py-4 px-3 w-[70px] border-r border-white/5 text-center leading-none">Uds/Cj</th>
-                <th className="py-4 px-3 w-[70px] border-r border-white/5 text-center leading-none">Tot.Cajas<br/><span className="text-orange-400 text-[11px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
-                <th className="py-4 px-3 w-[80px] border-r border-white/5 text-center leading-none text-green-400">Total Uds<br/><span className="text-green-300 text-[11px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
-                <th className="py-4 px-3 w-[110px] border-r border-white/5">Fecha Exp.</th>
-                <th className="py-4 px-3 w-[45px] border-r border-white/5 text-center text-[9px]">L</th>
-                <th className="py-4 px-3 w-[45px] border-r border-white/5 text-center text-[9px]">A</th>
-                <th className="py-4 px-3 w-[45px] border-r border-white/5 text-center text-[9px]">H</th>
-                <th className="py-4 px-3 w-[75px] border-r border-white/5 text-center leading-none">Peso Cj</th>
-                <th className="py-4 px-3 w-[220px] border-r border-white/5">Descripción / Notas</th>
-                <th className="py-4 px-3 w-[60px] border-r border-white/5 text-center">Foto</th>
-                <th className="py-4 px-3 w-[65px] text-center">Shift</th>
+              <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-black tracking-wider">
+                <th className="py-5 px-1 w-[35px] border-r border-white/10 text-center bg-[#163a2d]"></th>
+                <th className="py-5 px-3 w-[100px] border-r border-white/10">Location</th>
+                <th className="py-5 px-3 w-[110px] border-r border-white/10">Orden Cajas</th>
+                <th className="py-5 px-4 min-w-[250px] border-r border-white/10">Nombre del Producto</th>
+                <th className="py-5 px-3 w-[150px] border-r border-white/10 text-center">FnSKU / UPC</th>
+                <th className="py-5 px-3 w-[120px] border-r border-white/10 text-center">SKU</th>
+                <th className="py-5 px-3 w-[80px] border-r border-white/10 text-center leading-none">Uds/Cj</th>
+                <th className="py-5 px-3 w-[100px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Tot. Cajas<br/><span className="text-orange-400 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
+                <th className="py-5 px-3 w-[100px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total Uds<br/><span className="text-green-300 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
+                <th className="py-5 px-3 w-[120px] border-r border-white/10 text-center">Fecha Exp.</th>
+                <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center text-[10px]">L</th>
+                <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center text-[10px]">A</th>
+                <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center text-[10px]">H</th>
+                <th className="py-5 px-3 w-[90px] border-r border-white/10 text-center">Peso Cj</th>
+                <th className="py-5 px-4 w-[250px] border-r border-white/10">Descripción / Notas</th>
+                <th className="py-5 px-3 w-[140px] border-r border-white/10 text-center">Fotos</th>
+                <th className="py-5 px-3 w-[70px] text-center bg-[#163a2d]">Acción</th>
               </tr>
             </thead>
-            <Reorder.Group axis="y" as="tbody" values={inShipmentItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")}>
+            <Reorder.Group axis="y" as="tbody" values={inShipmentItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")} className="divide-y divide-slate-100">
               {inShipmentItems.map((item, index) => <RowItem key={item.id} item={item} index={index} isPending={false} />)}
               {inShipmentItems.length === 0 && (
                 <tr>
