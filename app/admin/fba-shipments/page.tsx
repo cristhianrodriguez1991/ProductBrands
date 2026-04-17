@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import Image from "next/image"
 import { compressImage } from "@/lib/image-compression"
 import { Reorder, useDragControls } from "framer-motion"
-import { memo } from "react"
+import { memo, useCallback } from "react"
 
 type FbaItem = {
   id: string
@@ -36,9 +36,13 @@ type FbaItem = {
 }
 
 // Extracted to module scope to prevent React from unmounting inputs on every keystroke, keeping keyboard focus perfectly stable
-const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, switchItemStatus, setExpandedImage, removeImage, setSelectedIdForUpload, fileInputRef, uploadingId }: any) => {
+const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, switchItemStatus, setExpandedImage, removeImage, setSelectedIdForUpload, fileInputRef, uploadingId, setFocusedItemId }: any) => {
   const controls = useDragControls()
   const expiring = item.expDate && new Date(item.expDate.replace(/(\d{2})(\d{2})(\d{2})/, '20$3-$1-$2')) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+
+  // Apply onFocus / onBlur to all inputs to prevent auto-sync from stealing focus
+  const handleFocus = useCallback(() => setFocusedItemId(item.id), [item.id, setFocusedItemId])
+  const handleBlur = useCallback(() => setFocusedItemId(null), [setFocusedItemId])
 
   return (
     <Reorder.Item 
@@ -49,7 +53,7 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
       className="border-b hover:bg-slate-50 transition-colors bg-white group/row"
       style={{ position: "relative" }}
     >
-      <td className="p-0 border-r w-[45px] bg-slate-50 select-none no-print">
+      <td className="p-0 border-r w-[35px] bg-slate-50 select-none no-print">
         <div 
            className="w-full h-12 flex items-center justify-center cursor-grab active:cursor-grabbing text-slate-300 hover:bg-slate-200 hover:text-slate-600 transition-colors touch-none"
            style={{ touchAction: "none" }}
@@ -62,16 +66,17 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
            <GripVertical className="h-6 w-6" />
         </div>
       </td>
-      <td className="p-0"><Input className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1" value={item.location || ""} onChange={e => updateItem(item.id, "location", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1" value={item.boxOrder || ""} onChange={e => updateItem(item.id, "boxOrder", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 font-bold text-slate-800" value={item.name || ""} onChange={e => updateItem(item.id, "name", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input className="h-9 text-[10px] border-0 bg-transparent rounded-none px-1" value={item.fnsku || ""} onChange={e => updateItem(item.id, "fnsku", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input className="h-9 text-[10px] border-0 bg-transparent rounded-none px-1" value={item.sku || ""} onChange={e => updateItem(item.id, "sku", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input type="number" className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={item.qtyPerBox || ""} onChange={e => updateItem(item.id, "qtyPerBox", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input type="number" className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 w-full text-center font-bold text-orange-600" value={item.totalBoxes || ""} onChange={e => updateItem(item.id, "totalBoxes", e.target.value)} /></td>
+      <td className="p-0"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1" value={item.location || ""} onChange={e => updateItem(item.id, "location", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1" value={item.boxOrder || ""} onChange={e => updateItem(item.id, "boxOrder", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 font-bold text-slate-800" value={item.name || ""} onChange={e => updateItem(item.id, "name", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 text-[10px] border-0 bg-transparent rounded-none px-1" value={item.fnsku || ""} onChange={e => updateItem(item.id, "fnsku", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 text-[10px] border-0 bg-transparent rounded-none px-1" value={item.sku || ""} onChange={e => updateItem(item.id, "sku", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={item.qtyPerBox || ""} onChange={e => updateItem(item.id, "qtyPerBox", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 w-full text-center font-bold text-orange-600" value={item.totalBoxes || ""} onChange={e => updateItem(item.id, "totalBoxes", e.target.value)} /></td>
       <td className="p-0 border-l text-center font-black text-[11px] px-1 bg-green-50/50 text-green-700">{item.totalUnits || 0}</td>
       <td className="p-0 border-l relative">
         <Input 
+          onFocus={handleFocus} onBlur={handleBlur}
           className={`h-9 text-[11px] border-0 bg-transparent rounded-none px-1 ${expiring ? "text-red-600 font-bold bg-red-50" : ""}`} 
           value={item.expDate || ""} 
           placeholder="MMDDYY"
@@ -79,11 +84,11 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
         />
         {expiring && <AlertCircle className="h-3 w-3 absolute right-1 top-3 text-red-500 animate-pulse pointer-events-none" />}
       </td>
-      <td className="p-0 border-l"><Input type="number" className="h-9 text-[10px] border-0 bg-transparent rounded-none px-0.5 w-full text-center" value={item.length || ""} onChange={e => updateItem(item.id, "length", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input type="number" className="h-9 text-[10px] border-0 bg-transparent rounded-none px-0.5 w-full text-center" value={item.width || ""} onChange={e => updateItem(item.id, "width", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input type="number" className="h-9 text-[10px] border-0 bg-transparent rounded-none px-0.5 w-full text-center" value={item.height || ""} onChange={e => updateItem(item.id, "height", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input type="number" className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 w-full text-center font-semibold" value={item.boxWeight || ""} onChange={e => updateItem(item.id, "boxWeight", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1" value={item.description || ""} onChange={e => updateItem(item.id, "description", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[10px] border-0 bg-transparent rounded-none px-0.5 w-full text-center" value={item.length || ""} onChange={e => updateItem(item.id, "length", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[10px] border-0 bg-transparent rounded-none px-0.5 w-full text-center" value={item.width || ""} onChange={e => updateItem(item.id, "width", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[10px] border-0 bg-transparent rounded-none px-0.5 w-full text-center" value={item.height || ""} onChange={e => updateItem(item.id, "height", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 w-full text-center font-semibold" value={item.boxWeight || ""} onChange={e => updateItem(item.id, "boxWeight", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 min-w-[90px]" value={item.description || ""} onChange={e => updateItem(item.id, "description", e.target.value)} /></td>
       
       {/* PHOTO COLUMN */}
       <td className="p-1 border-l text-center">
@@ -185,7 +190,32 @@ export default function FbaShipmentsPage() {
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [selectedIdForUpload, setSelectedIdForUpload] = useState<string | null>(null)
+  // Auto-sync polling logic
+  const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
+  
+  useEffect(() => {
+    if (!shipment?.id) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/admin/fba-shipments");
+        const data = await res.json();
+        if (data && data.items && data.id === shipment.id) {
+          setItems(currentItems => {
+            const newItems = data.items.map((serverItem: any) => {
+              const localItem = currentItems.find(li => li.id === serverItem.id);
+              // Ignore server changes for the item the user is actively typing in
+              if (localItem && focusedItemId === localItem.id) return localItem;
+              return serverItem;
+            });
+            return newItems;
+          });
+        }
+      } catch (error) {
+        // Silent background fail
+      }
+    }, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
+  }, [shipment?.id, focusedItemId]);
 
   const fetchActiveShipment = async () => {
     try {
@@ -331,19 +361,32 @@ export default function FbaShipmentsPage() {
     const item = items.find(i => i.id === itemId)
     if (!item) return
 
-    const newImageUrls = (item.imageUrls || []).filter(url => url !== imageUrlToRemove)
-    
-    // Update local state first for instant feedback
-    setItems(prev => prev.map(i => i.id === itemId ? { ...i, imageUrls: newImageUrls } : i))
+    let updates: any = {}
 
-    try {
-      await fetch(`/api/admin/fba-shipments/items/${itemId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrls: newImageUrls })
-      })
-    } catch (error) {
-      console.error("Error removing image:", error)
+    // Check if the removed image was the legacy 'imageUrl' property
+    if (item.imageUrl === imageUrlToRemove) {
+      updates.imageUrl = null
+      setItems(prev => prev.map(i => i.id === itemId ? { ...i, imageUrl: null } : i))
+    }
+    
+    // Check if it exists in the new 'imageUrls' array
+    if (item.imageUrls?.includes(imageUrlToRemove)) {
+      const newImageUrls = item.imageUrls.filter(url => url !== imageUrlToRemove)
+      updates.imageUrls = newImageUrls
+      setItems(prev => prev.map(i => i.id === itemId ? { ...i, imageUrls: newImageUrls } : i))
+    }
+
+    // Only hit API if we actually found something to delete
+    if (Object.keys(updates).length > 0) {
+      try {
+        await fetch(`/api/admin/fba-shipments/items/${itemId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates)
+        })
+      } catch (error) {
+        console.error("Error removing image:", error)
+      }
     }
   }
 
@@ -613,23 +656,23 @@ export default function FbaShipmentsPage() {
           <table className="w-full text-left border-collapse table-auto text-xs">
             <thead>
               <tr className="bg-[#1f4e3d] text-white text-[10px] uppercase font-bold tracking-tight">
-                <th className="py-2.5 px-1 w-[40px] border-r border-white/10 text-center bg-[#163a2d] no-print">Mover</th>
-                <th className="py-2.5 px-1 w-[50px] border-r border-white/10 text-center">Loc.</th>
-                <th className="py-2.5 px-1 w-[50px] border-r border-white/10 text-center">Cajas</th>
-                <th className="py-2.5 px-1 w-[160px] border-r border-white/10">Producto</th>
-                <th className="py-2.5 px-1 w-[70px] border-r border-white/10 text-center">FnSKU</th>
-                <th className="py-2.5 px-1 w-[70px] border-r border-white/10 text-center">SKU</th>
-                <th className="py-2.5 px-1 w-[45px] border-r border-white/10 text-center leading-tight">Uds/Cj</th>
-                <th className="py-2.5 px-1 w-[45px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Tot. Cj<br/><span className="text-orange-400 text-[10px] block font-black">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
-                <th className="py-2.5 px-1 w-[50px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Tot. Uds<br/><span className="text-green-300 text-[10px] block font-black">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
-                <th className="py-2.5 px-1 w-[55px] border-r border-white/10 text-center">Exp.</th>
-                <th className="py-2.5 px-0.5 w-[30px] border-r border-white/10 text-center text-[9px]">L</th>
-                <th className="py-2.5 px-0.5 w-[30px] border-r border-white/10 text-center text-[9px]">A</th>
-                <th className="py-2.5 px-0.5 w-[30px] border-r border-white/10 text-center text-[9px]">H</th>
-                <th className="py-2.5 px-1 w-[45px] border-r border-white/10 text-center">Peso</th>
-                <th className="py-2.5 px-1 w-[100px] border-r border-white/10 text-center">Notas</th>
-                <th className="py-2.5 px-1 w-[60px] border-r border-white/10 text-center">Fotos</th>
-                <th className="py-2.5 px-1 w-[60px] text-center bg-[#163a2d] no-print">Acción</th>
+                <th className="py-2.5 px-1 w-[35px] border-r border-white/10 text-center bg-[#163a2d] no-print">Mover</th>
+                <th className="py-2.5 px-1 w-[45px] border-r border-white/10 text-center">Loc.</th>
+                <th className="py-2.5 px-1 w-[45px] border-r border-white/10 text-center">Cajas</th>
+                <th className="py-2.5 px-1 w-[200px] border-r border-white/10">Producto</th>
+                <th className="py-2.5 px-1 w-[80px] border-r border-white/10 text-center">FnSKU</th>
+                <th className="py-2.5 px-1 w-[80px] border-r border-white/10 text-center">SKU</th>
+                <th className="py-2.5 px-1 w-[40px] border-r border-white/10 text-center leading-tight">Uds/Cj</th>
+                <th className="py-2.5 px-1 w-[40px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Tot. Cj<br/><span className="text-orange-400 text-[10px] block font-black">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
+                <th className="py-2.5 px-1 w-[40px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Tot. Uds<br/><span className="text-green-300 text-[10px] block font-black">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
+                <th className="py-2.5 px-1 w-[65px] border-r border-white/10 text-center">Exp.</th>
+                <th className="py-2.5 px-0.5 w-[26px] border-r border-white/10 text-center text-[9px]">L</th>
+                <th className="py-2.5 px-0.5 w-[26px] border-r border-white/10 text-center text-[9px]">A</th>
+                <th className="py-2.5 px-0.5 w-[26px] border-r border-white/10 text-center text-[9px]">H</th>
+                <th className="py-2.5 px-1 w-[40px] border-r border-white/10 text-center">Peso</th>
+                <th className="py-2.5 px-1 w-[90px] border-r border-white/10 text-center">Notas</th>
+                <th className="py-2.5 px-1 w-[50px] border-r border-white/10 text-center">Fotos</th>
+                <th className="py-2.5 px-1 w-[50px] text-center bg-[#163a2d] no-print">Acción</th>
               </tr>
             </thead>
             <Reorder.Group axis="y" as="tbody" values={inShipmentItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")} className="divide-y divide-slate-100 relative">
@@ -638,7 +681,7 @@ export default function FbaShipmentsPage() {
                   key={item.id} item={item} index={index} isPending={false}
                   updateItem={updateItem} deleteItem={deleteItem} switchItemStatus={switchItemStatus}
                   setExpandedImage={setExpandedImage} removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
-                  fileInputRef={fileInputRef} uploadingId={uploadingId}
+                  fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
                 />
               ))}
               {inShipmentItems.length === 0 && (
@@ -675,23 +718,23 @@ export default function FbaShipmentsPage() {
           <table className="w-full text-left border-collapse table-auto text-xs">
             <thead>
               <tr className="bg-orange-800 text-white/90 text-[10px] uppercase font-bold tracking-tight">
-                <th className="py-2.5 px-1 w-[40px] border-r border-orange-700/50 text-center no-print">Mover</th>
-                <th className="py-2.5 px-1 w-[50px] border-r border-orange-700/50 text-center">Loc.</th>
-                <th className="py-2.5 px-1 w-[50px] border-r border-orange-700/50 text-center">Cajas</th>
-                <th className="py-2.5 px-2 w-[160px] border-r border-orange-700/50 text-orange-100">Producto Pendiente</th>
-                <th className="py-2.5 px-1 w-[70px] border-r border-orange-700/50 text-center">FnSKU</th>
-                <th className="py-2.5 px-1 w-[70px] border-r border-orange-700/50 text-center">SKU</th>
-                <th className="py-2.5 px-1 w-[45px] border-r border-orange-700/50 text-center leading-tight">Uds/Cj</th>
-                <th className="py-2.5 px-1 w-[45px] border-r border-orange-700/50 text-center leading-tight">Tot. Cj</th>
-                <th className="py-2.5 px-1 w-[50px] border-r border-orange-700/50 text-center leading-tight">Tot. Uds</th>
-                <th className="py-2.5 px-1 w-[55px] border-r border-orange-700/50 text-center">Exp.</th>
-                <th className="py-2.5 px-0.5 w-[30px] border-r border-orange-700/50 text-center text-[9px]">L</th>
-                <th className="py-2.5 px-0.5 w-[30px] border-r border-orange-700/50 text-center text-[9px]">A</th>
-                <th className="py-2.5 px-0.5 w-[30px] border-r border-orange-700/50 text-center text-[9px]">H</th>
-                <th className="py-2.5 px-1 w-[45px] border-r border-orange-700/50 text-center">Peso</th>
-                <th className="py-2.5 px-1 w-[100px] border-r border-orange-700/50 text-center">Notas</th>
-                <th className="py-2.5 px-1 w-[60px] border-r border-orange-700/50 text-center">Fotos</th>
-                <th className="py-2.5 px-1 w-[60px] text-center no-print">Acción</th>
+                <th className="py-2.5 px-1 w-[35px] border-r border-orange-700/50 text-center no-print">Mover</th>
+                <th className="py-2.5 px-1 w-[45px] border-r border-orange-700/50 text-center">Loc.</th>
+                <th className="py-2.5 px-1 w-[45px] border-r border-orange-700/50 text-center">Cajas</th>
+                <th className="py-2.5 px-2 w-[200px] border-r border-orange-700/50 text-orange-100">Producto Pendiente</th>
+                <th className="py-2.5 px-1 w-[80px] border-r border-orange-700/50 text-center">FnSKU</th>
+                <th className="py-2.5 px-1 w-[80px] border-r border-orange-700/50 text-center">SKU</th>
+                <th className="py-2.5 px-1 w-[40px] border-r border-orange-700/50 text-center leading-tight">Uds/Cj</th>
+                <th className="py-2.5 px-1 w-[40px] border-r border-orange-700/50 text-center leading-tight">Tot. Cj</th>
+                <th className="py-2.5 px-1 w-[40px] border-r border-orange-700/50 text-center leading-tight">Tot. Uds</th>
+                <th className="py-2.5 px-1 w-[65px] border-r border-orange-700/50 text-center">Exp.</th>
+                <th className="py-2.5 px-0.5 w-[26px] border-r border-orange-700/50 text-center text-[9px]">L</th>
+                <th className="py-2.5 px-0.5 w-[26px] border-r border-orange-700/50 text-center text-[9px]">A</th>
+                <th className="py-2.5 px-0.5 w-[26px] border-r border-orange-700/50 text-center text-[9px]">H</th>
+                <th className="py-2.5 px-1 w-[40px] border-r border-orange-700/50 text-center">Peso</th>
+                <th className="py-2.5 px-1 w-[90px] border-r border-orange-700/50 text-center">Notas</th>
+                <th className="py-2.5 px-1 w-[50px] border-r border-orange-700/50 text-center">Fotos</th>
+                <th className="py-2.5 px-1 w-[50px] text-center no-print">Acción</th>
               </tr>
             </thead>
             <Reorder.Group axis="y" as="tbody" values={pendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")} className="divide-y divide-slate-100 relative">
@@ -700,7 +743,7 @@ export default function FbaShipmentsPage() {
                   key={item.id} item={item} index={index} isPending={true}
                   updateItem={updateItem} deleteItem={deleteItem} switchItemStatus={switchItemStatus}
                   setExpandedImage={setExpandedImage} removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
-                  fileInputRef={fileInputRef} uploadingId={uploadingId}
+                  fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
                 />
               ))}
               {pendingItems.length === 0 && (
