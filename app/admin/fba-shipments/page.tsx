@@ -174,9 +174,7 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
       </td>
     </Reorder.Item>
   )
-})
-
-export default function FbaShipmentsPage() {
+})export default function FbaShipmentsPage() {
   const [shipment, setShipment] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [items, setItems] = useState<FbaItem[]>([])
@@ -265,9 +263,7 @@ export default function FbaShipmentsPage() {
   const handleCloseShipment = async () => {
     if (!confirm("Are you sure you want to finish this shipment? Pending items will roll over to the next one you create.")) return
     try {
-      // Auto-export to excel before closing just in case
       exportToExcelObject(shipment, items)
-      
       await fetch(`/api/admin/fba-shipments/${shipment.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -275,7 +271,23 @@ export default function FbaShipmentsPage() {
       })
       setShipment(null)
       setItems([])
-      fetchHistory() // Refresh history so the newly closed one appears
+      fetchHistory()
+    } catch(e) {}
+  }
+
+  const handleReopenShipment = async (sh: any) => {
+    if (shipment) {
+      return alert(`Ya hay un envío activo "${shipment.name}". Finalízalo antes de reabrir otro.`)
+    }
+    if (!confirm(`¿Deseas reabrir "${sh.name}" para editarlo?`)) return
+    try {
+      await fetch(`/api/admin/fba-shipments/${sh.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ACTIVE" })
+      })
+      await fetchActiveShipment()
+      await fetchHistory()
     } catch(e) {}
   }
 
@@ -444,7 +456,6 @@ export default function FbaShipmentsPage() {
       </head>
       <body>
         <h2 style="color: #1f4e3d; font-family: Calibri;">INVENTARIO FBA - ${targetShipment.name}</h2>
-
         <table>
           <thead>
             <tr style="height: 60px;" height="60">
@@ -487,7 +498,6 @@ export default function FbaShipmentsPage() {
       `
     })
     tableHtml += `</tbody></table></body></html>`
-    
     const blob = new Blob([tableHtml], { type: "application/vnd.ms-excel" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
@@ -498,104 +508,144 @@ export default function FbaShipmentsPage() {
     document.body.removeChild(link)
   }
 
-  if (loading) return <div className="p-8 text-center animate-pulse text-muted-foreground">Inicializando FBA portal...</div>
-
-  if (!shipment) {
-    return (
-      <div className="max-w-4xl mx-auto pt-20 pb-40">
-        <div className="bg-white rounded-3xl shadow-xl border border-blue-50 text-center p-12 mb-12">
-          <h2 className="text-3xl font-black mb-3 text-slate-900">No hay Shipment Activo</h2>
-          <p className="text-slate-500 mb-8 max-w-lg mx-auto">Crea un nuevo shipment para comenzar a rastrear artículos. Al cerrar el shipment actual, se guardará aquí abajo y el archivo Excel se descargará automáticamente.</p>
-          <div className="flex max-w-md mx-auto items-center gap-3">
-            <Input className="h-12 text-lg rounded-xl shadow-inner bg-slate-50 border-slate-200" placeholder="Nombre (Ej: Abril Mediano 2026)" value={newShipmentName} onChange={e => setNewShipmentName(e.target.value)} />
-            <Button onClick={handleCreateShipment} className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg font-bold">Crear FBA</Button>
+  let activeContent = null;
+  if (loading) {
+    activeContent = <div className="p-12 text-center animate-pulse text-slate-400 font-bold">Iniciando Portal FBA...</div>
+  } else if (!shipment) {
+    activeContent = (
+      <div className="bg-white rounded-3xl shadow-xl border border-blue-50 text-center p-12 mb-12">
+        <h2 className="text-3xl font-black mb-3 text-slate-900">No hay Shipment Activo</h2>
+        <p className="text-slate-500 mb-8 max-w-lg mx-auto">Crea un nuevo shipment para comenzar a rastrear artículos. Al cerrar el shipment actual, se guardará en el historial inferior.</p>
+        <div className="flex max-w-md mx-auto items-center gap-3">
+          <Input className="h-12 text-lg rounded-xl shadow-inner bg-slate-50 border-slate-200" placeholder="Nombre (Ej: Abril Mediano 2026)" value={newShipmentName} onChange={e => setNewShipmentName(e.target.value)} />
+          <Button onClick={handleCreateShipment} className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg font-bold">Crear FBA</Button>
+        </div>
+      </div>
+    )
+  } else {
+    const inShipmentItems = items.filter(i => i.status === "IN_SHIPMENT")
+    const pendingItems = items.filter(i => i.status === "PENDING")
+    activeContent = (
+      <div className="flex flex-col gap-6">
+        <div className="flex items-end justify-between">
+          <div className="mb-4">
+            <h1 className="text-4xl font-black tracking-tight text-slate-900 leading-none">FBA Shipment - {shipment.name}</h1>
+          </div>
+          <div className="flex gap-4 no-print pb-3">
+            <Button variant="outline" onClick={handlePrint} className="h-12 gap-2 text-slate-700 border-slate-200 bg-white hover:bg-slate-50 rounded-xl shadow-sm px-6 font-bold">
+              <Printer className="h-5 w-5" /> Imprimir
+            </Button>
+            <Button variant="outline" onClick={() => exportToExcelObject()} className="h-12 gap-2 text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-xl shadow-sm px-6 font-bold">
+              <Download className="h-5 w-5" /> Exportar a Excel
+            </Button>
+            <Button onClick={handleCloseShipment} variant="destructive" className="h-12 gap-2 rounded-xl shadow-lg shadow-red-100 px-6 font-bold">
+              Cerrar & Finalizar Envío
+            </Button>
           </div>
         </div>
-        
-        {pastShipments.length > 0 && (
-          <div>
-            <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-500" /> Historial de Envíos Finalizados
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {pastShipments.map(sh => (
-                <Card key={sh.id} className="p-6 rounded-2xl shadow-sm border-slate-200 bg-white hover:border-blue-300 transition-colors group">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-lg text-slate-900 group-hover:text-blue-700 transition-colors">{sh.name}</h4>
-                    <span className="text-xs font-semibold px-2 py-1 bg-green-100 text-green-700 rounded-md">CERRADO</span>
-                  </div>
-                  <p className="text-sm text-slate-500 mb-6 flex items-center gap-1">
-                    Actualizado: {new Date(sh.updatedAt).toLocaleDateString()}
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    className="w-full gap-2 text-blue-700 hover:bg-blue-50 hover:text-blue-800 font-semibold"
-                    onClick={() => exportToExcelObject(sh, sh.items)}
-                  >
-                    <Download className="h-4 w-4" /> Exportar a Excel
-                  </Button>
-                </Card>
-              ))}
-            </div>
+
+        <Card className="w-full border-0 shadow-2xl rounded-3xl overflow-hidden bg-white card-print">
+          <div className="overflow-x-auto overflow-y-hidden custom-scrollbar">
+            <table className="w-full text-left border-collapse min-w-[1400px]">
+              <thead>
+                <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-black tracking-wider">
+                  <th className="py-5 px-1 w-[30px] border-r border-white/10 text-center bg-[#163a2d]"></th>
+                  <th className="py-5 px-3 w-[100px] border-r border-white/10">Location</th>
+                  <th className="py-5 px-3 w-[120px] border-r border-white/10">Orden de Cajas</th>
+                  <th className="py-5 px-4 min-w-[250px] border-r border-white/10">Nombre del Producto</th>
+                  <th className="py-5 px-3 w-[150px] border-r border-white/10 text-center">FnSKU / UPC</th>
+                  <th className="py-5 px-3 w-[120px] border-r border-white/10 text-center">SKU</th>
+                  <th className="py-5 px-3 w-[80px] border-r border-white/10 text-center">Uds/Caja</th>
+                  <th className="py-5 px-3 w-[100px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total Cajas<br/><span className="text-orange-400 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
+                  <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total Unidades<br/><span className="text-green-300 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
+                  <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center">Exp.</th>
+                  <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center">L</th>
+                  <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center">A</th>
+                  <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center">H</th>
+                  <th className="py-5 px-3 w-[80px] border-r border-white/10 text-center">Peso</th>
+                  <th className="py-5 px-4 w-[250px] border-r border-white/10">Descripción</th>
+                  <th className="py-5 px-3 w-[120px] border-r border-white/10 text-center">Fotos</th>
+                  <th className="py-5 px-3 w-[70px] text-center bg-[#163a2d] no-print">Acción</th>
+                </tr>
+              </thead>
+              <Reorder.Group axis="y" as="tbody" values={inShipmentItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")} className="divide-y divide-slate-100 relative">
+                {inShipmentItems.map((item, index) => (
+                  <StandaloneRow 
+                    key={item.id} item={item} index={index} isPending={false}
+                    updateItem={updateItem} deleteItem={deleteItem} switchItemStatus={switchItemStatus}
+                    removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
+                    fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
+                    setExpandedImage={setExpandedImage}
+                  />
+                ))}
+              </Reorder.Group>
+            </table>
           </div>
-        )}
+          <div className="bg-slate-50/50 p-4 border-t no-print">
+            <Button variant="ghost" onClick={handleAddRow} className="w-full h-14 text-slate-500 font-bold gap-3 border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-600 transition-all rounded-2xl">
+              <Plus className="h-5 w-5" /> AGREGAR NUEVO RENGLÓN
+            </Button>
+          </div>
+        </Card>
+
+        <div className="mt-12 bg-orange-50/20 rounded-3xl p-8 border border-orange-100/50 shadow-inner no-print">
+          <h2 className="text-xl font-black text-orange-900 mb-6">Palets en Espera</h2>
+          <div className="overflow-x-auto overflow-y-hidden custom-scrollbar mt-4 rounded-3xl border shadow-inner">
+            <table className="w-full text-left border-collapse min-w-[1300px]">
+              <thead>
+                <tr className="bg-orange-800 text-white/90 text-[9px] uppercase font-black tracking-widest">
+                  <th className="py-3 px-1 w-[30px] border-r border-orange-700/50 text-center"></th>
+                  <th className="py-3 px-3 w-[100px] border-r border-orange-700/50">Location</th>
+                  <th className="py-3 px-3 w-[120px] border-r border-orange-700/50">Orden de Cajas</th>
+                  <th className="py-3 min-w-[200px] border-r border-orange-700/50 text-orange-100">PRODUCTO PENDIENTE</th>
+                  <th className="py-3 px-3 w-[140px] border-r border-orange-700/50">FnSKU</th>
+                  <th className="py-3 px-3 w-[110px] border-r border-orange-700/50">SKU</th>
+                  <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center">Uds/Caja</th>
+                  <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center leading-tight">Total Cajas<br/><span className="text-orange-400 text-[10px] block font-bold">({pendingItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
+                  <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center leading-tight">Total Unidades<br/><span className="text-green-300 text-[10px] block font-bold">({pendingItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
+                  <th className="py-3 px-3 w-[110px] border-r border-orange-700/50">Exp.</th>
+                  <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">L</th>
+                  <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">A</th>
+                  <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">H</th>
+                  <th className="py-3 px-3 w-[100px] border-r border-orange-700/50 text-center">Peso</th>
+                  <th className="py-3 px-3 w-[220px] border-r border-orange-700/50">Descripción</th>
+                  <th className="py-3 px-3 w-[140px] border-r border-orange-700/50 text-center">Foto</th>
+                  <th className="py-3 px-3 w-[70px] text-center no-print">Acción</th>
+                </tr>
+              </thead>
+              <Reorder.Group axis="y" as="tbody" values={pendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")} className="divide-y divide-slate-100 relative">
+                {pendingItems.map((item, index) => (
+                  <StandaloneRow 
+                    key={item.id} item={item} index={index} isPending={true}
+                    updateItem={updateItem} deleteItem={deleteItem} switchItemStatus={switchItemStatus}
+                    removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
+                    fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
+                    setExpandedImage={setExpandedImage}
+                  />
+                ))}
+              </Reorder.Group>
+            </table>
+          </div>
+        </div>
       </div>
     )
   }
-
-
-  const inShipmentItems = items.filter(i => i.status === "IN_SHIPMENT")
-  const pendingItems = items.filter(i => i.status === "PENDING")
 
   return (
     <>
       <style jsx global>{`
         @media print {
           @page { size: landscape; margin: 0.5cm; }
-          
-          /* Hide EVERYTHING by default */
           body * { visibility: hidden; }
-          
-          /* Show ONLY the print area and its children */
           .print-area, .print-area * { visibility: visible; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          
-          /* Position print area at the top left */
-          .print-area { 
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100% !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-
-          /* Hide UI noise inside the print area */
-          .no-print, button, .flex-gap-4, .bg-slate-50\/50.p-4.border-t { 
-            display: none !important; 
-            height: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            visibility: hidden !important;
-          }
-          
-          /* Force table styling */
-          .card-print { 
-            box-shadow: none !important; 
-            border: 1px solid #eee !important;
-            border-radius: 12px !important;
-            overflow: visible !important;
-            width: 100% !important;
-          }
-          
+          .print-area { position: absolute; left: 0; top: 0; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+          .no-print, button, .flex-gap-4, .bg-slate-50\/50.p-4.border-t { display: none !important; }
+          .card-print { box-shadow: none !important; border: 1px solid #eee !important; border-radius: 12px !important; overflow: visible !important; width: 100% !important; }
           .overflow-x-auto { overflow: visible !important; }
           table { width: 100% !important; border-collapse: collapse !important; table-layout: auto !important; }
-          
-          /* Ensure headers stay dark */
           th { background-color: #1f4e3d !important; color: white !important; -webkit-print-color-adjust: exact; }
           .bg-orange-800 { background-color: #9a3412 !important; -webkit-print-color-adjust: exact; }
           .bg-\[\#245d48\] { background-color: #245d48 !important; -webkit-print-color-adjust: exact; }
-          
-          /* Text visibility */
           .text-slate-900 { color: #000 !important; }
           input { border: none !important; background: transparent !important; }
         }
@@ -603,107 +653,53 @@ export default function FbaShipmentsPage() {
       <div className="w-full min-h-full flex flex-col gap-6 pb-40 print-area">
         <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
       
-      <div className="flex items-end justify-between">
-        <div className="mb-4">
-          <h1 className="text-4xl font-black tracking-tight text-slate-900 leading-none">FBA Shipment - {shipment.name}</h1>
-        </div>
-        <div className="flex gap-4 no-print pb-3">
-          <Button variant="outline" onClick={handlePrint} className="h-12 gap-2 text-slate-700 border-slate-200 bg-white hover:bg-slate-50 rounded-xl shadow-sm px-6 font-bold">
-            <Printer className="h-5 w-5" /> Imprimir
-          </Button>
-          <Button variant="outline" onClick={() => exportToExcelObject()} className="h-12 gap-2 text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-xl shadow-sm px-6 font-bold">
-            <Download className="h-5 w-5" /> Exportar a Excel
-          </Button>
-          <Button onClick={handleCloseShipment} variant="destructive" className="h-12 gap-2 rounded-xl shadow-lg shadow-red-100 px-6 font-bold">
-            Cerrar & Finalizar Envío
-          </Button>
+        <div className="max-w-[1700px] mx-auto w-full px-4">
+          {activeContent}
+
+          {pastShipments.length > 0 && (
+            <div className="mt-20 no-print">
+              <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-500" /> Historial de Envíos Finalizados
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {pastShipments.map(sh => (
+                  <Card key={sh.id} className="p-6 rounded-2xl shadow-sm border-slate-200 bg-white hover:border-blue-300 transition-colors group">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-bold text-lg text-slate-900 group-hover:text-blue-700 transition-colors leading-tight">{sh.name}</h4>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 bg-green-100 text-green-700 rounded-md">CERRADO</span>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-6 flex items-center gap-1">
+                       {new Date(sh.updatedAt).toLocaleDateString()}
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="w-full gap-2 text-blue-700 hover:bg-blue-50 hover:text-blue-800 font-bold border-blue-100"
+                        onClick={() => exportToExcelObject(sh, sh.items)}
+                      >
+                        <Download className="h-4 w-4" /> Exportar Excel
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="w-full gap-2 text-slate-600 hover:bg-slate-100 font-bold"
+                        onClick={() => handleReopenShipment(sh)}
+                      >
+                        <Save className="h-4 w-4" /> Abrir para Editar
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
+    </>
+  )
+}
 
-      <Card className="w-full border-0 shadow-2xl rounded-3xl overflow-hidden bg-white card-print">
-        <div className="overflow-x-auto overflow-y-hidden custom-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[1400px]">
-            <thead>
-              <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-black tracking-wider">
-                <th className="py-5 px-1 w-[30px] border-r border-white/10 text-center bg-[#163a2d]"></th>
-                <th className="py-5 px-3 w-[100px] border-r border-white/10">Location</th>
-                <th className="py-5 px-3 w-[120px] border-r border-white/10">Orden de Cajas</th>
-                <th className="py-5 px-4 min-w-[250px] border-r border-white/10">Nombre del Producto</th>
-                <th className="py-5 px-3 w-[150px] border-r border-white/10 text-center">FnSKU / UPC</th>
-                <th className="py-5 px-3 w-[120px] border-r border-white/10 text-center">SKU</th>
-                <th className="py-5 px-3 w-[80px] border-r border-white/10 text-center">Uds/Caja</th>
-                <th className="py-5 px-3 w-[100px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total Cajas<br/><span className="text-orange-400 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
-                <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total Unidades<br/><span className="text-green-300 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
-                <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center">Exp.</th>
-                <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center">L</th>
-                <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center">A</th>
-                <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center">H</th>
-                <th className="py-5 px-3 w-[80px] border-r border-white/10 text-center">Peso</th>
-                <th className="py-5 px-4 w-[250px] border-r border-white/10">Descripción</th>
-                <th className="py-5 px-3 w-[120px] border-r border-white/10 text-center">Fotos</th>
-                <th className="py-5 px-3 w-[70px] text-center bg-[#163a2d] no-print">Acción</th>
-              </tr>
-            </thead>
-            <Reorder.Group axis="y" as="tbody" values={inShipmentItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")} className="divide-y divide-slate-100 relative">
-              {inShipmentItems.map((item, index) => (
-                <StandaloneRow 
-                  key={item.id} item={item} index={index} isPending={false}
-                  updateItem={updateItem} deleteItem={deleteItem} switchItemStatus={switchItemStatus}
-                  removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
-                  fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
-                  setExpandedImage={setExpandedImage}
-                />
-              ))}
-            </Reorder.Group>
-          </table>
-        </div>
-        <div className="bg-slate-50/50 p-4 border-t no-print">
-          <Button variant="ghost" onClick={handleAddRow} className="w-full h-14 text-slate-500 font-bold gap-3 border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-600 transition-all rounded-2xl">
-            <Plus className="h-5 w-5" /> AGREGAR NUEVO RENGLÓN
-          </Button>
-        </div>
-      </Card>
-
-      <div className="mt-12 bg-orange-50/20 rounded-3xl p-8 border border-orange-100/50 shadow-inner">
-        <h2 className="text-xl font-black text-orange-900 mb-6">Palets en Espera</h2>
-        <div className="overflow-x-auto overflow-y-hidden custom-scrollbar mt-4 rounded-3xl border shadow-inner">
-          <table className="w-full text-left border-collapse min-w-[1300px]">
-            <thead>
-              <tr className="bg-orange-800 text-white/90 text-[9px] uppercase font-black tracking-widest">
-                <th className="py-3 px-1 w-[30px] border-r border-orange-700/50 text-center"></th>
-                <th className="py-3 px-3 w-[100px] border-r border-orange-700/50">Location</th>
-                <th className="py-3 px-3 w-[120px] border-r border-orange-700/50">Orden de Cajas</th>
-                <th className="py-3 min-w-[200px] border-r border-orange-700/50 text-orange-100">PRODUCTO PENDIENTE</th>
-                <th className="py-3 px-3 w-[140px] border-r border-orange-700/50">FnSKU</th>
-                <th className="py-3 px-3 w-[110px] border-r border-orange-700/50">SKU</th>
-                <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center">Uds/Caja</th>
-                <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center leading-tight">Total Cajas<br/><span className="text-orange-400 text-[10px] block font-bold">({pendingItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
-                <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center leading-tight">Total Unidades<br/><span className="text-green-300 text-[10px] block font-bold">({pendingItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
-                <th className="py-3 px-3 w-[110px] border-r border-orange-700/50">Exp.</th>
-                <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">L</th>
-                <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">A</th>
-                <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">H</th>
-                <th className="py-3 px-3 w-[100px] border-r border-orange-700/50 text-center">Peso</th>
-                <th className="py-3 px-3 w-[220px] border-r border-orange-700/50">Descripción</th>
-                <th className="py-3 px-3 w-[140px] border-r border-orange-700/50 text-center">Foto</th>
-                <th className="py-3 px-3 w-[70px] text-center no-print">Acción</th>
-              </tr>
-            </thead>
-            <Reorder.Group axis="y" as="tbody" values={pendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")} className="divide-y divide-slate-100 relative">
-              {pendingItems.map((item, index) => (
-                <StandaloneRow 
-                  key={item.id} item={item} index={index} isPending={true}
-                  updateItem={updateItem} deleteItem={deleteItem} switchItemStatus={switchItemStatus}
-                  removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
-                  fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
-                  setExpandedImage={setExpandedImage}
-                />
-              ))}
-            </Reorder.Group>
-          </table>
-        </div>
-      </div>
-    </div>
-  </>
-)
+    </>
+  )
 }
