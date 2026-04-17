@@ -15,7 +15,10 @@ export async function GET() {
       where: { status: "ACTIVE" },
       include: {
         items: {
-          orderBy: { createdAt: "asc" }
+          orderBy: [
+            { sortOrder: "asc" },
+            { createdAt: "asc" }
+          ]
         }
       }
     })

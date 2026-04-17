@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle } from "lucide-react"
+import { Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, ChevronUp, ChevronDown } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Image from "next/image"
 
@@ -27,6 +27,7 @@ type FbaItem = {
   boxWeight: number | ""
   description: string
   imageUrl?: string
+  sortOrder: number
   status: "IN_SHIPMENT" | "PENDING"
 }
 
@@ -186,6 +187,33 @@ export default function FbaShipmentsPage() {
     await fetch(`/api/admin/fba-shipments/items/${itemId}`, { method: "DELETE" })
   }
 
+  const moveItem = async (index: number, direction: "up" | "down", targetStatus: "IN_SHIPMENT" | "PENDING") => {
+    const list = items.filter(i => i.status === targetStatus)
+    if (direction === "up" && index === 0) return
+    if (direction === "down" && index === list.length - 1) return
+
+    const newIndex = direction === "up" ? index - 1 : index + 1
+    const newList = [...list]
+    
+    // Swap
+    const temp = newList[index]
+    newList[index] = newList[newIndex]
+    newList[newIndex] = temp
+
+    const reorderedList = newList.map((item, i) => ({ ...item, sortOrder: i }))
+    const otherLists = items.filter(i => i.status !== targetStatus)
+    
+    // Merge back to state
+    setItems(targetStatus === "IN_SHIPMENT" ? [...reorderedList, ...otherLists] : [...otherLists, ...reorderedList])
+
+    // Save to DB
+    await fetch(`/api/admin/fba-shipments/${shipment.id}/reorder`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: reorderedList.map(i => ({ id: i.id, sortOrder: i.sortOrder })) })
+    })
+  }
+
   const isExpiringSoon = (dateStr: string) => {
     if (!dateStr || !dateStr.includes("/")) return false
     try {
@@ -200,23 +228,62 @@ export default function FbaShipmentsPage() {
   const exportToExcelObject = () => {
     if (!shipment) return
     const activeItems = items.filter(i => i.status === "IN_SHIPMENT")
-    const headers = ["Location", "Orden de Cajas", "NOMBRE", "FnSKU or UPC", "SKU", "Cantidad por Caja", "Cajas Totales", "Total de unidades", "Fecha de Exp", "Largo", "Ancho", "Altura", "Peso de Caja", "Descripcion"]
-    const rows = activeItems.map(i => [
-      `"${i.location || ""}"`, `"${i.boxOrder || ""}"`, `"${i.name || ""}"`, `"${i.fnsku || ""}"`, `"${i.sku || ""}"`,
-      i.qtyPerBox || "", i.totalBoxes || "", i.totalUnits || "", `"${i.expDate || ""}"`, 
-      i.length || "", i.width || "", i.height || "", i.boxWeight || "", `"${i.description || ""}"`
-    ])
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n")
-    const encodedUri = encodeURI(csvContent)
+    
+    let tableHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
+          th { background-color: #2e6e4f; color: white; font-weight: bold; border: 1px solid #000; padding: 5px; height: 30px; text-align: center; }
+          td { border: 1px solid #ccc; padding: 5px; text-align: center; vertical-align: middle; }
+          .highlight { background-color: #e6f4ea; color: #1e7e34; font-weight: bold; }
+          .img-cell { height: 100px; width: 100px; }
+          img { max-height: 90px; max-width: 90px; }
+        </style>
+      </head>
+      <body>
+        <h2>INVENTARIO - FBA Shipment (${shipment.name})</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Location</th><th>Orden de Cajas</th><th>NOMBRE</th><th>FnSKU or UPC</th>
+              <th>SKU</th><th>Cantidad por Caja</th><th>Cajas Totales</th><th>Total de unidades</th>
+              <th>Fecha de Exp</th><th>Largo</th><th>Ancho</th><th>Altura</th><th>Peso de Caja</th>
+              <th>Descripci&#243;n</th><th>Foto</th>
+            </tr>
+          </thead>
+          <tbody>
+    `
+    activeItems.forEach(i => {
+      tableHtml += `
+            <tr>
+              <td>${i.location || ""}</td><td>${i.boxOrder || ""}</td><td>${i.name || ""}</td><td>${i.fnsku || ""}</td>
+              <td>${i.sku || ""}</td><td>${i.qtyPerBox || ""}</td><td>${i.totalBoxes || ""}</td><td class="highlight">${i.totalUnits || 0}</td>
+              <td>${i.expDate || ""}</td><td>${i.length || ""}</td><td>${i.width || ""}</td><td>${i.height || ""}</td>
+              <td>${i.boxWeight || ""}</td><td>${i.description || ""}</td>
+              <td class="img-cell">${i.imageUrl ? `<img src="${i.imageUrl}" />` : ""}</td>
+            </tr>
+      `
+    })
+    tableHtml += `</tbody></table></body></html>`
+    
+    // Use .xls extension for Microsoft Excel HTML protocol
+    const blob = new Blob([tableHtml], { type: "application/vnd.ms-excel" })
+    const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
-    link.setAttribute("href", encodedUri)
-    link.setAttribute("download", `FBA_Shipment_${shipment.name}.csv`)
+    link.href = url
+    link.download = `FBA_Shipment_${shipment.name}.xls`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
   }
 
-  const renderRow = (item: FbaItem) => {
+  const handlePrint = () => {
+    window.print();
+  }
+
+  const renderRow = (item: FbaItem, index: number, isPending: boolean = false) => {
     const expiring = isExpiringSoon(item.expDate)
     
     return (
@@ -271,7 +338,12 @@ export default function FbaShipmentsPage() {
         </td>
 
         <td className="p-0 border-l">
-          <div className="flex items-center justify-center gap-1 opacity-20 hover:opacity-100 transition-opacity">
+          <div className="flex items-center justify-center gap-0.5 opacity-20 hover:opacity-100 transition-opacity">
+            <div className="flex flex-col gap-0.5 mr-1">
+               <button onClick={() => moveItem(index, "up", isPending ? "PENDING" : "IN_SHIPMENT")} className="bg-slate-100 hover:bg-slate-200 text-slate-500 rounded p-0.5" title="Mover Arriba"><ChevronUp className="h-3 w-3" /></button>
+               <button onClick={() => moveItem(index, "down", isPending ? "PENDING" : "IN_SHIPMENT")} className="bg-slate-100 hover:bg-slate-200 text-slate-500 rounded p-0.5" title="Mover Abajo"><ChevronDown className="h-3 w-3" /></button>
+            </div>
+            
             {item.status === "IN_SHIPMENT" ? (
               <Button variant="ghost" size="icon" className="h-6 w-6 text-orange-600 hover:bg-orange-100" onClick={() => switchItemStatus(item.id, "PENDING")}>
                 <ArrowDown className="h-3.5 w-3.5" />
@@ -327,8 +399,17 @@ export default function FbaShipmentsPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-end justify-between">
-        <div>
+      <style jsx global>{`
+        @media print {
+          body * { visibility: hidden; }
+          .print-area, .print-area * { visibility: visible; }
+          .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
+      
+      <div className="flex items-end justify-between print-area">
+        <div className="mb-4">
           <span className="text-blue-600 font-black text-sm uppercase tracking-widest mb-1 block">Logística de Almacén</span>
           <h1 className="text-4xl font-black tracking-tight text-slate-900 leading-none">FBA Shipment - {shipment.name}</h1>
           <div className="flex items-center gap-3 mt-3">
@@ -338,9 +419,12 @@ export default function FbaShipmentsPage() {
              <p className="text-slate-400 text-xs font-medium uppercase tracking-tighter">Última actualización: {new Date(shipment.updatedAt).toLocaleTimeString()}</p>
           </div>
         </div>
-        <div className="flex gap-4">
-          <Button variant="outline" onClick={exportToExcelObject} className="h-12 gap-2 text-slate-700 border-slate-200 bg-white hover:bg-slate-50 rounded-xl shadow-sm px-6 font-bold">
-            <Download className="h-5 w-5" /> Exportar a CSV
+        <div className="flex gap-4 no-print pb-3">
+          <Button variant="outline" onClick={handlePrint} className="h-12 gap-2 text-slate-700 border-slate-200 bg-white hover:bg-slate-50 rounded-xl shadow-sm px-6 font-bold">
+            <Printer className="h-5 w-5" /> Imprimir
+          </Button>
+          <Button variant="outline" onClick={exportToExcelObject} className="h-12 gap-2 text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-xl shadow-sm px-6 font-bold">
+            <Download className="h-5 w-5" /> Exportar a Excel
           </Button>
           <Button onClick={handleCloseShipment} variant="destructive" className="h-12 gap-2 rounded-xl shadow-lg shadow-red-100 px-6 font-bold">
             Cerrar & Finalizar Envío
@@ -348,7 +432,7 @@ export default function FbaShipmentsPage() {
         </div>
       </div>
 
-      <Card className="w-full border-0 shadow-2xl rounded-3xl overflow-hidden bg-white">
+      <Card className="w-full border-0 shadow-2xl rounded-3xl overflow-hidden bg-white print-area">
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-[1300px]">
             <thead>
@@ -372,7 +456,7 @@ export default function FbaShipmentsPage() {
               </tr>
             </thead>
             <tbody>
-              {inShipmentItems.map(renderRow)}
+              {inShipmentItems.map((item, index) => renderRow(item, index, false))}
               {inShipmentItems.length === 0 && (
                 <tr>
                   <td colSpan={16} className="py-24 text-center">
@@ -426,7 +510,7 @@ export default function FbaShipmentsPage() {
               </tr>
             </thead>
             <tbody>
-              {pendingItems.map(renderRow)}
+              {pendingItems.map((item, index) => renderRow(item, index, true))}
               {pendingItems.length === 0 && (
                 <tr>
                   <td colSpan={16} className="py-12 text-center text-orange-300 font-medium italic">No hay palets en espera. Todo el stock está asignado al envío activo.</td>

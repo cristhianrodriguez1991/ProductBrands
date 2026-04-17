@@ -787,6 +787,7 @@ model FbaShipmentItem {
   boxWeight   Float?
   description String?
   imageUrl    String?
+  sortOrder   Int @default(0)
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -797,3 +798,4 @@ model FbaShipmentItem {
 
 // Update FbaShipmentItem to include imageUrl
 // (Wait, I can't just append if it already exists, I should probably use replace_file_content but since it's at the end...)
+// (I will use replace_file_content to insert sortOrder)
