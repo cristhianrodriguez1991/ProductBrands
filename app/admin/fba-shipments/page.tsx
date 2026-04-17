@@ -176,6 +176,21 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
   )
 })
 
+export default function FbaShipmentsPage() {
+  const [tabs, setTabs] = useState<any[]>([]) 
+  const [activeTabId, setActiveTabId] = useState<string>("dashboard")
+  const [loading, setLoading] = useState(true)
+  const [allShipments, setAllShipments] = useState<any[]>([])
+  const [newShipmentName, setNewShipmentName] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
+  
+  const [expandedImage, setExpandedImage] = useState<string | null>(null)
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedIdForUpload, setSelectedIdForUpload] = useState<string | null>(null)
+  const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
+
   const fetchShipments = async () => {
     try {
       // Fetch everything to unify into one single list
