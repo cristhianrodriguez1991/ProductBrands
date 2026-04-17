@@ -422,6 +422,7 @@ export default function FbaShipmentsPage() {
             text-align: center; 
             vertical-align: middle; 
           }
+          .text-col { mso-number-format:"\\@"; text-align: left; }
           .name-col { font-weight: bold; text-align: left; background-color: #fafafa; }
         </style>
       </head>
@@ -454,8 +455,8 @@ export default function FbaShipmentsPage() {
               <td>${i.location || ""}</td>
               <td>${i.boxOrder || ""}</td>
               <td class="name-col">${i.name || ""}</td>
-              <td>${i.fnsku || ""}</td>
-              <td>${i.sku || ""}</td>
+              <td class="text-col">${i.fnsku || ""}</td>
+              <td class="text-col">${i.sku || ""}</td>
               <td>${i.qtyPerBox || ""}</td>
               <td>${i.totalBoxes || ""}</td>
               <td style="font-weight: bold; background-color: #f0fdf4;">${i.totalUnits || 0}</td>
