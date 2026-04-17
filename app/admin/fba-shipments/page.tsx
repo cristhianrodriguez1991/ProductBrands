@@ -252,23 +252,55 @@ export default function FbaShipmentsPage() {
       <head>
         <meta charset="utf-8" />
         <style>
-          table { border-collapse: collapse; font-family: "Calibri", Arial, sans-serif; font-size: 11px; }
-          th { background-color: #1f4e38; color: white; font-weight: bold; border: 1px solid #a3a3a3; padding: 4px; text-align: center; }
-          td { border: 1px solid #d4d4d4; padding: 3px 6px; text-align: center; vertical-align: middle; white-space: nowrap; }
+          table { border-collapse: collapse; font-family: "Calibri", "Arial", sans-serif; }
+          /* Row 2 (Headers) Styling */
+          th { 
+            background-color: #1f4e3d; 
+            color: #ffffff; 
+            font-weight: bold; 
+            font-size: 12px;
+            border: 2px solid #000000; 
+            height: 45px; 
+            text-align: center; 
+            vertical-align: middle;
+            padding: 5px;
+          }
+          td { 
+            border: 1px solid #b0b0b0; 
+            padding: 4px 8px; 
+            font-size: 11px;
+            text-align: center; 
+            vertical-align: middle; 
+            white-space: nowrap;
+          }
           .highlight { background-color: #e6f4ea; color: #1e7e34; font-weight: bold; }
           .text-col { mso-number-format:"\\@"; text-align: left; }
-          .left-align { text-align: left; }
+          .name-col { font-weight: bold; text-align: left; background-color: #fafafa; }
+          .border-divider { border-right: 2px solid #000; }
         </style>
       </head>
       <body>
-        <h2 style="font-family: Calibri; margin-bottom: 10px;">INVENTARIO - FBA Shipment (${shipment.name})</h2>
+        <!-- Row 1: Title -->
+        <h2 style="font-family: Calibri; margin-bottom: 5px; color: #1f4e3d;">INVENTARIO - FBA Shipment (${shipment.name})</h2>
+        
         <table>
           <thead>
+            <!-- Row 2: Headers (Made taller) -->
             <tr>
-              <th>Location</th><th>Orden de Cajas</th><th>NOMBRE</th><th>FnSKU or UPC</th>
-              <th>SKU</th><th>Cantidad por Caja</th><th>Cajas Totales</th><th>Total de unidades</th>
-              <th>Fecha de Exp</th><th>Largo</th><th>Ancho</th><th>Altura</th><th>Peso de Caja</th>
-              <th>Descripci&#243;n</th>
+              <th style="width: 80px;">Location</th>
+              <th style="width: 100px;">Orden de Cajas</th>
+              <th style="width: 300px;">NOMBRE COMPLETO DEL PRODUCTO</th>
+              <th style="width: 150px;">FnSKU or UPC</th>
+              <th style="width: 120px;">SKU</th>
+              <th style="width: 90px;">Uds / Caja</th>
+              <th style="width: 90px;">Cajas Totales</th>
+              <th style="width: 100px;">Total UNIDADES</th>
+              <th style="width: 110px;">Fecha de Exp</th>
+              <th style="width: 60px;">Largo</th>
+              <th style="width: 60px;">Ancho</th>
+              <th style="width: 60px;">Altura</th>
+              <th style="width: 90px;">Peso Caja</th>
+              <th style="width: 250px;">Descripci&#243;n</th>
             </tr>
           </thead>
           <tbody>
@@ -276,9 +308,9 @@ export default function FbaShipmentsPage() {
     activeItems.forEach(i => {
       tableHtml += `
             <tr>
-              <td>${i.location || ""}</td>
+              <td style="background-color: #f8f9fa;">${i.location || ""}</td>
               <td>${i.boxOrder || ""}</td>
-              <td class="left-align"><strong>${i.name || ""}</strong></td>
+              <td class="name-col">${i.name || ""}</td>
               <td class="text-col">${i.fnsku || ""}</td>
               <td class="text-col">${i.sku || ""}</td>
               <td>${i.qtyPerBox || ""}</td>
@@ -289,7 +321,7 @@ export default function FbaShipmentsPage() {
               <td>${i.width || ""}</td>
               <td>${i.height || ""}</td>
               <td>${i.boxWeight || ""}</td>
-              <td class="left-align">${i.description || ""}</td>
+              <td style="text-align: left;">${i.description || ""}</td>
             </tr>
       `
     })
