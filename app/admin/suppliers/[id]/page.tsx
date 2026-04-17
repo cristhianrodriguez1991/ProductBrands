@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { convertHeicToJpeg } from "@/lib/convert-heic"
+import { compressImage } from "@/lib/image-compression"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -917,13 +918,22 @@ export default function SupplierDetailPage() {
     setDocError("")
     setDocUploading(true)
     try {
-      // Convert HEIC to JPEG if needed
+      // Convert HEIC to JPEG if needed and then compress heavily
       const convertedFile = await convertHeicToJpeg(docFile)
+      const compressedFile = await compressImage(convertedFile)
       const fd = new FormData()
-      fd.append("name", docName || convertedFile.name)
-      fd.append("file", convertedFile)
+      fd.append("name", docName || compressedFile.name)
+      fd.append("file", compressedFile)
       const res = await fetch(`/api/suppliers/${id}/documents`, { method: "POST", body: fd })
-      const data = await res.json()
+      let data: any = {}
+      try {
+        data = await res.json()
+      } catch (err) {
+        if (!res.ok) {
+          if (res.status === 413) throw new Error("File too large. Please limit total size before uploading.")
+          throw new Error(`Server error: ${res.status} ${res.statusText}`)
+        }
+      }
       if (!res.ok) throw new Error(data.error || "Upload failed")
       setDocName("")
       setDocFile(null)
@@ -1024,10 +1034,10 @@ export default function SupplierDetailPage() {
         if (v !== "" && v !== null && v !== undefined) fd.append(k, String(v))
       })
 
-      // Convert any HEIC files to JPEG before uploading
+      // Convert any HEIC files to JPEG and compress before uploading
       const convertedFiles = await Promise.all(
         editFiles.map(async ({ file, label }) => ({
-          file: await convertHeicToJpeg(file),
+          file: await compressImage(await convertHeicToJpeg(file)),
           label,
         }))
       )
@@ -1040,7 +1050,15 @@ export default function SupplierDetailPage() {
         method: "PATCH",
         body: fd,
       })
-      const data = await res.json()
+      let data: any = {}
+      try {
+        data = await res.json()
+      } catch (err) {
+        if (!res.ok) {
+          if (res.status === 413) throw new Error("File too large. Please limit total size before uploading.")
+          throw new Error(`Server error: ${res.status} ${res.statusText}`)
+        }
+      }
       if (!res.ok) throw new Error(data.error || "Failed to update")
       setEditingLot(null)
       setEditFiles([])
@@ -1129,35 +1147,62 @@ export default function SupplierDetailPage() {
       fd.append("notes", lotForm.internalNotes)
       fd.append("items", JSON.stringify(mixedItems))
       
-      // Shared files
-      const convertedFiles = await Promise.all(
-        files.map(async ({ file, label }) => ({
-          file: await convertHeicToJpeg(file),
-          label,
-        }))
-      )
-      convertedFiles.forEach(({ file, label }) => {
-        fd.append("files", file)
-        fd.append("labels", label)
-      })
-
-      // Individual item files
-      for (let idx = 0; idx < mixedItems.length; idx++) {
-        const item = mixedItems[idx];
-        if (item.files && item.files.length > 0) {
-          for (const f of item.files) {
-            const converted = await convertHeicToJpeg(f);
-            fd.append(`item_${idx}_file`, converted);
-          }
-        }
-      }
-
+      // 1. Submit JSON payload ONLY
       const res = await fetch(`/api/suppliers/${id}/master-batches`, {
         method: "POST",
         body: fd,
       })
-      const data = await res.json()
+      let data: any = {}
+      try {
+        data = await res.json()
+      } catch (err) {
+        if (!res.ok) {
+          if (res.status === 413) throw new Error("Payload too large. Please upload smaller files or fewer items at once to stay under 4.5MB.")
+          throw new Error(`Server error: ${res.status} ${res.statusText}`)
+        }
+      }
       if (!res.ok) throw new Error(data.error || "Failed to create mixed pallet")
+      
+      const masterBatchId = data.masterBatch?.id;
+      const batchLots = data.batchLots || [];
+
+      // 2. Upload Shared files one request at a time
+      for (const { file, label } of files) {
+        const converted = await convertHeicToJpeg(file);
+        const compressed = await compressImage(converted);
+        
+        const fileFd = new FormData();
+        fileFd.append("files", compressed);
+        fileFd.append("labels", label);
+        
+        await fetch(`/api/suppliers/${id}/master-batches/${masterBatchId}/attachments`, {
+          method: "POST",
+          body: fileFd
+        });
+      }
+
+      // 3. Upload Individual item files one request at a time
+      for (let idx = 0; idx < mixedItems.length; idx++) {
+        const item = mixedItems[idx];
+        const lotId = batchLots[idx]?.id;
+        if (!lotId) continue; // Skip if backend didn't return matching lot
+
+        if (item.files && item.files.length > 0) {
+          for (const f of item.files) {
+            const converted = await convertHeicToJpeg(f);
+            const compressed = await compressImage(converted);
+            
+            const fileFd = new FormData();
+            fileFd.append("files", compressed);
+            fileFd.append("labels", "Individual Product Note");
+            
+            await fetch(`/api/suppliers/${id}/lots/${lotId}/attachments`, {
+              method: "POST",
+              body: fileFd
+            });
+          }
+        }
+      }
       
       setShowAddLot(false)
       setLotForm(EMPTY_LOT_FORM)
@@ -1182,10 +1227,10 @@ export default function SupplierDetailPage() {
       Object.entries(lotForm).forEach(([k, v]) => {
         if (v !== "" && v !== null && v !== undefined) fd.append(k, String(v))
       })
-      // Convert any HEIC files to JPEG before uploading
+      // Convert any HEIC files to JPEG and compress before uploading
       const convertedFiles = await Promise.all(
         files.map(async ({ file, label }) => ({
-          file: await convertHeicToJpeg(file),
+          file: await compressImage(await convertHeicToJpeg(file)),
           label,
         }))
       )
@@ -1198,7 +1243,15 @@ export default function SupplierDetailPage() {
         method: "POST",
         body: fd,
       })
-      const data = await res.json()
+      let data: any = {}
+      try {
+        data = await res.json()
+      } catch (err) {
+        if (!res.ok) {
+          if (res.status === 413) throw new Error("Payload too large. Please upload smaller files or fewer items to stay under 4.5MB.")
+          throw new Error(`Server error: ${res.status} ${res.statusText}`)
+        }
+      }
       if (!res.ok) throw new Error(data.error || "Failed to create batch lot")
 
       setShowAddLot(false)

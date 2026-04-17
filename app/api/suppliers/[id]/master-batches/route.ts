@@ -40,6 +40,7 @@ export async function POST(
     })
 
     // Create the child BatchLots and handle individual files
+    const createdLots = [];
     for (let idx = 0; idx < items.length; idx++) {
       const item = items[idx];
       const batchLot = await prisma.batchLot.create({
@@ -59,6 +60,7 @@ export async function POST(
           poNumber,
         }
       });
+      createdLots.push(batchLot);
 
       // Handle individual files for this specific item
       const individualFiles = formData.getAll(`item_${idx}_file`);
@@ -106,7 +108,7 @@ export async function POST(
       }
     }
 
-    return NextResponse.json(masterBatch)
+    return NextResponse.json({ masterBatch, batchLots: createdLots })
   } catch (error) {
     console.error("[MasterBatch POST]", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
