@@ -185,6 +185,26 @@ export default function FbaShipmentsPage() {
     }
   }
 
+  const removeImage = async (itemId: string, imageUrlToRemove: string) => {
+    const item = items.find(i => i.id === itemId)
+    if (!item) return
+
+    const newImageUrls = (item.imageUrls || []).filter(url => url !== imageUrlToRemove)
+    
+    // Update local state first for instant feedback
+    setItems(prev => prev.map(i => i.id === itemId ? { ...i, imageUrls: newImageUrls } : i))
+
+    try {
+      await fetch(`/api/admin/fba-shipments/items/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrls: newImageUrls })
+      })
+    } catch (error) {
+      console.error("Error removing image:", error)
+    }
+  }
+
   const switchItemStatus = async (itemId: string, newStatus: "IN_SHIPMENT" | "PENDING") => {
     setItems(items.map(i => i.id === itemId ? { ...i, status: newStatus } : i))
     await fetch(`/api/admin/fba-shipments/items/${itemId}`, {
@@ -397,12 +417,20 @@ export default function FbaShipmentsPage() {
                   <div 
                     key={idx}
                     className="w-[28px] h-[28px] bg-slate-100/50 rounded-md border border-slate-300/80 cursor-pointer overflow-hidden relative group shrink-0"
-                    onClick={() => setExpandedImage(url)}
                   >
-                    <img src={url} alt={`Product ${idx+1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <Plus className="h-3 w-3 text-white" />
-                    </div>
+                    <img 
+                      src={url} 
+                      alt={`Product ${idx+1}`} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
+                      onClick={() => setExpandedImage(url)}
+                    />
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); if(confirm("¿Borrar esta foto?")) removeImage(item.id, url); }}
+                      className="absolute top-0 right-0 bg-red-600/90 text-white rounded-bl shadow-sm p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      title="Eliminar foto"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
                   </div>
                 ))}
                 {/* Adding button always at the end */}
