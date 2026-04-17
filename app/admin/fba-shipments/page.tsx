@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, MoveVertical, GripVertical, LayoutGrid, Maximize2, MousePointer2 } from "lucide-react"
+import { Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, MoveVertical, GripVertical, LayoutGrid, Maximize2, MousePointer2, Copy, ClipboardPaste } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Image from "next/image"
 import { compressImage } from "@/lib/image-compression"
@@ -36,7 +36,7 @@ type FbaItem = {
 }
 
 // Extracted to module scope to prevent React from unmounting inputs on every keystroke, keeping keyboard focus perfectly stable
-const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, switchItemStatus, removeImage, setSelectedIdForUpload, fileInputRef, uploadingId, setFocusedItemId, setExpandedImage }: any) => {
+const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, switchItemStatus, removeImage, setSelectedIdForUpload, fileInputRef, uploadingId, setFocusedItemId, setExpandedImage, copyItem }: any) => {
   const controls = useDragControls()
   const handleFocus = useCallback(() => setFocusedItemId(item.id), [item.id, setFocusedItemId])
   const handleBlur = useCallback(() => setFocusedItemId(null), [setFocusedItemId])
@@ -167,6 +167,9 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
               <ArrowUp className="h-4 w-4" />
             </Button>
           )}
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600 hover:bg-blue-100" title="Copiar Fila" onClick={() => copyItem(item)}>
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 text-red-600 hover:bg-red-100" onClick={() => deleteItem(item.id)}>
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -191,6 +194,7 @@ export default function FbaShipmentsPage() {
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
   const [globalPendingItems, setGlobalPendingItems] = useState<any[]>([])
+  const [copiedItem, setCopiedItem] = useState<any | null>(null)
 
   const fetchShipments = async () => {
     try {
@@ -370,6 +374,37 @@ export default function FbaShipmentsPage() {
     if (res.ok) {
       const updated = await (await fetch(`/api/admin/fba-shipments?id=${shId}`)).json()
       setTabs(prev => prev.map(t => t.id === shId ? { ...t, items: updated.items } : t))
+    }
+  }
+
+  const copyItem = (item: any) => {
+    setCopiedItem(item)
+  }
+
+  const pasteItem = async (shId: string) => {
+    if (!copiedItem) return
+    const tab = tabs.find(t => t.id === shId)
+    if (!tab) return
+    
+    const maxSortOrder = tab.items.length > 0 ? Math.max(...tab.items.map((i: any) => i.sortOrder || 0)) : 0
+    
+    const res = await fetch(`/api/admin/fba-shipments/${shId}/items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...copiedItem,
+        id: undefined, // Let DB generate new ID
+        shipmentId: shId,
+        sortOrder: maxSortOrder + 1,
+        status: "IN_SHIPMENT",
+        imageUrls: copiedItem.imageUrls || [],
+        imageUrl: copiedItem.imageUrl || null
+      })
+    })
+
+    if (res.ok) {
+       const updated = await (await fetch(`/api/admin/fba-shipments?id=${shId}`)).json()
+       setTabs(prev => prev.map(t => t.id === shId ? { ...t, items: updated.items } : t))
     }
   }
 
@@ -690,6 +725,7 @@ export default function FbaShipmentsPage() {
                             <th className="py-6 px-3 w-[70px] text-center bg-[#163a2d] no-print">Acc</th>
                           </tr>
                         </thead>
+
                         <Reorder.Group axis="y" as="tbody" values={inItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")}>
                           {inItems.map((item: any, index: number) => (
                             <StandaloneRow 
@@ -698,15 +734,21 @@ export default function FbaShipmentsPage() {
                               removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
                               fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
                               setExpandedImage={setExpandedImage}
+                              copyItem={copyItem}
                             />
                           ))}
                         </Reorder.Group>
                       </table>
                     </div>
-                    <div className="bg-[#f8fafc]/50 p-8 border-t no-print">
-                      <Button variant="ghost" onClick={() => handleAddRow(tab.id)} className="w-full h-20 text-slate-400 font-bold gap-4 border-4 border-dashed border-slate-100 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-[1.5rem] group">
+                    <div className="bg-[#f8fafc]/50 p-8 border-t no-print flex gap-4">
+                      <Button variant="ghost" onClick={() => handleAddRow(tab.id)} className="flex-1 h-20 text-slate-400 font-bold gap-4 border-4 border-dashed border-slate-100 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-[1.5rem] group">
                         <Plus className="h-6 w-6 group-hover:scale-125 transition-transform" /> AGREGAR ARTÍCULO AL DOCUMENTO
                       </Button>
+                      {copiedItem && (
+                        <Button variant="ghost" onClick={() => pasteItem(tab.id)} className="flex-1 h-20 text-blue-400 font-bold gap-4 border-4 border-dashed border-blue-100 hover:border-green-400 hover:bg-green-50 hover:text-green-600 transition-all rounded-[1.5rem] group">
+                          <ClipboardPaste className="h-6 w-6 group-hover:scale-125 transition-transform" /> PEGAR "{copiedItem.name || "Fila"}"
+                        </Button>
+                      )}
                     </div>
                   </Card>
 
@@ -749,13 +791,13 @@ export default function FbaShipmentsPage() {
                                 fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
                                 setExpandedImage={setExpandedImage}
                                 activeTabId={activeTabId}
+                                copyItem={copyItem}
                               />
                             ))}
                           </Reorder.Group>
                         </table>
                       </div>
                     </div>
-                  )}
                 </div>
               )
             })()
