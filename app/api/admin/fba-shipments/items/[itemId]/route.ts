@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
+const INT_FIELDS = ["qtyPerBox", "totalBoxes", "totalUnits"]
+const FLOAT_FIELDS = ["length", "width", "height", "boxWeight"]
+
 export async function PATCH(
   req: Request,
   { params }: { params: { itemId: string } }
@@ -13,7 +16,22 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const updates = await req.json()
+    const body = await req.json()
+    const updates: any = {}
+
+    // Type casting for numeric fields to ensure Prisma doesn't reject string numbers
+    for (const key in body) {
+      const val = body[key]
+      if (val === null || val === "") {
+        updates[key] = null
+      } else if (INT_FIELDS.includes(key)) {
+        updates[key] = parseInt(val)
+      } else if (FLOAT_FIELDS.includes(key)) {
+        updates[key] = parseFloat(val)
+      } else {
+        updates[key] = val
+      }
+    }
     
     const updatedItem = await prisma.fbaShipmentItem.update({
       where: { id: params.itemId },

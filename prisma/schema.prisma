@@ -786,6 +786,7 @@ model FbaShipmentItem {
   height      Float?
   boxWeight   Float?
   description String?
+  imageUrl    String?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -793,3 +794,6 @@ model FbaShipmentItem {
   @@index([shipmentId])
   @@index([status])
 }
+
+// Update FbaShipmentItem to include imageUrl
+// (Wait, I can't just append if it already exists, I should probably use replace_file_content but since it's at the end...)
