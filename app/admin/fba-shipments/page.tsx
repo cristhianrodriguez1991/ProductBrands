@@ -455,8 +455,8 @@ export default function FbaShipmentsPage() {
               <td>${i.location || ""}</td>
               <td>${i.boxOrder || ""}</td>
               <td class="name-col">${i.name || ""}</td>
-              <td class="text-col">${i.fnsku || ""}</td>
-              <td class="text-col">${i.sku || ""}</td>
+              <td style="mso-number-format:'\\@'; text-align: left;">${i.fnsku ? `&#8203;${i.fnsku}` : ""}</td>
+              <td style="mso-number-format:'\\@'; text-align: left;">${i.sku ? `&#8203;${i.sku}` : ""}</td>
               <td>${i.qtyPerBox || ""}</td>
               <td>${i.totalBoxes || ""}</td>
               <td style="font-weight: bold; background-color: #f0fdf4;">${i.totalUnits || 0}</td>
