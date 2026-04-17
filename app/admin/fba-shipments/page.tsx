@@ -5,11 +5,10 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, ChevronUp, ChevronDown, GripVertical } from "lucide-react"
+import { Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, ChevronUp, ChevronDown, MoveVertical } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Image from "next/image"
 import { compressImage } from "@/lib/image-compression"
-import { Reorder, useDragControls } from "framer-motion"
 
 type FbaItem = {
   id: string
@@ -355,29 +354,15 @@ export default function FbaShipmentsPage() {
     })
   }
 
-  const RowItem = ({ item, index, isPending }: { item: FbaItem, index: number, isPending: boolean }) => {
-    const controls = useDragControls()
+  const renderRow = (item: FbaItem, index: number, isPending: boolean = false) => {
     const expiring = isExpiringSoon(item.expDate)
     
     return (
-      <Reorder.Item 
-        value={item} 
-        as="tr" 
-        dragListener={false} 
-        dragControls={controls} 
-        className="border-b hover:bg-slate-50 transition-colors bg-white group/row"
-        style={{ position: "relative" }}
-      >
-        <td className="p-0 border-r w-[30px] bg-slate-50 select-none">
-          <div 
-             className="w-full h-10 flex items-center justify-center cursor-grab active:cursor-grabbing text-slate-300 hover:bg-slate-200 hover:text-slate-600 transition-colors touch-none"
-             onPointerDown={(e) => {
-               e.preventDefault();
-               controls.start(e);
-             }}
-             title="Presiona y arrastra para reordenar"
-          >
-             <GripVertical className="h-5 w-5" />
+      <tr key={item.id} className="border-b hover:bg-slate-50 transition-colors bg-white group/row">
+        <td className="p-0 border-r w-[45px] bg-slate-50 select-none no-print">
+          <div className="flex flex-col items-center justify-center p-1 gap-1 h-full opacity-60 hover:opacity-100 transition-opacity">
+            <button onClick={() => moveItem(index, "up", isPending ? "PENDING" : "IN_SHIPMENT")} className="bg-slate-200 hover:bg-slate-300 active:bg-blue-200 text-slate-600 rounded w-full h-[22px] flex items-center justify-center drop-shadow-sm touch-manipulation"><ChevronUp className="h-4 w-4" /></button>
+            <button onClick={() => moveItem(index, "down", isPending ? "PENDING" : "IN_SHIPMENT")} className="bg-slate-200 hover:bg-slate-300 active:bg-blue-200 text-slate-600 rounded w-full h-[22px] flex items-center justify-center drop-shadow-sm touch-manipulation"><ChevronDown className="h-4 w-4" /></button>
           </div>
         </td>
         <td className="p-0"><Input className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={item.location || ""} onChange={e => updateItem(item.id, "location", e.target.value)} /></td>
@@ -464,24 +449,23 @@ export default function FbaShipmentsPage() {
           </div>
         </td>
 
-        {/* ACTION COLUMN - NO PRINT */}
-        <td className="p-0 border-l no-print bg-slate-50/30">
-          <div className="flex items-center justify-center gap-1 opacity-20 hover:opacity-100 transition-opacity">
+        <td className="p-0 border-l no-print bg-slate-50/30 w-[60px]">
+          <div className="flex items-center justify-center gap-1 opacity-20 hover:opacity-100 transition-opacity px-1">
             {item.status === "IN_SHIPMENT" ? (
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-orange-600 hover:bg-orange-100" onClick={() => switchItemStatus(item.id, "PENDING")}>
-                <ArrowDown className="h-3.5 w-3.5" />
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-orange-600 hover:bg-orange-100" onClick={() => switchItemStatus(item.id, "PENDING")}>
+                <ArrowDown className="h-4 w-4" />
               </Button>
             ) : (
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-green-600 hover:bg-green-100" onClick={() => switchItemStatus(item.id, "IN_SHIPMENT")}>
-                <ArrowUp className="h-3.5 w-3.5" />
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:bg-green-100" onClick={() => switchItemStatus(item.id, "IN_SHIPMENT")}>
+                <ArrowUp className="h-4 w-4" />
               </Button>
             )}
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-red-600 hover:bg-red-100" onClick={() => deleteItem(item.id)}>
-              <Trash2 className="h-3.5 w-3.5" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-600 hover:bg-red-100" onClick={() => deleteItem(item.id)}>
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </td>
-      </Reorder.Item>
+      </tr>
     )
   }
 
@@ -577,30 +561,30 @@ export default function FbaShipmentsPage() {
         {/* ACTIVE TABLE */}
         <Card className="w-full border-0 shadow-2xl rounded-3xl overflow-hidden bg-white card-print">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[1400px]">
+          <table className="w-full text-left border-collapse min-w-[950px] max-w-[100%] table-fixed">
             <thead>
-              <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-black tracking-wider">
-                <th className="py-5 px-1 w-[35px] border-r border-white/10 text-center bg-[#163a2d]"></th>
-                <th className="py-5 px-3 w-[100px] border-r border-white/10">Location</th>
-                <th className="py-5 px-3 w-[120px] border-r border-white/10">Orden de Cajas</th>
-                <th className="py-5 px-4 min-w-[250px] border-r border-white/10">Nombre del Producto</th>
-                <th className="py-5 px-3 w-[150px] border-r border-white/10 text-center">FnSKU / UPC</th>
-                <th className="py-5 px-3 w-[120px] border-r border-white/10 text-center">SKU</th>
-                <th className="py-5 px-3 w-[90px] border-r border-white/10 text-center leading-none">Unidades por Caja</th>
-                <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total de Cajas<br/><span className="text-orange-400 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
-                <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total de Unidades<br/><span className="text-green-300 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
-                <th className="py-5 px-3 w-[130px] border-r border-white/10 text-center">Fecha de Expiración</th>
-                <th className="py-5 px-2 w-[60px] border-r border-white/10 text-center text-[10px]">Largo</th>
-                <th className="py-5 px-2 w-[60px] border-r border-white/10 text-center text-[10px]">Ancho</th>
-                <th className="py-5 px-2 w-[60px] border-r border-white/10 text-center text-[10px]">Altura</th>
-                <th className="py-5 px-3 w-[100px] border-r border-white/10 text-center">Peso de Caja</th>
-                <th className="py-5 px-4 w-[250px] border-r border-white/10">Descripción / Notas</th>
-                <th className="py-5 px-3 w-[140px] border-r border-white/10 text-center">Fotos</th>
-                <th className="py-5 px-3 w-[70px] text-center bg-[#163a2d] no-print">Acción</th>
+              <tr className="bg-[#1f4e3d] text-white text-[10px] uppercase font-bold tracking-tight">
+                <th className="py-4 px-1 w-[45px] border-r border-white/10 text-center bg-[#163a2d] no-print">Orden</th>
+                <th className="py-4 px-1 w-[60px] border-r border-white/10 text-center">Loc.</th>
+                <th className="py-4 px-1 w-[60px] border-r border-white/10 text-center">Cajas</th>
+                <th className="py-4 px-2 w-[160px] border-r border-white/10">Producto</th>
+                <th className="py-4 px-1 w-[80px] border-r border-white/10 text-center">FnSKU</th>
+                <th className="py-4 px-1 w-[75px] border-r border-white/10 text-center">SKU</th>
+                <th className="py-4 px-1 w-[45px] border-r border-white/10 text-center leading-tight">Uds/Cj</th>
+                <th className="py-4 px-1 w-[50px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Tot. Cj<br/><span className="text-orange-400 text-[10px] block font-black">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
+                <th className="py-4 px-1 w-[50px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Tot. Uds<br/><span className="text-green-300 text-[10px] block font-black">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
+                <th className="py-4 px-1 w-[60px] border-r border-white/10 text-center">Exp.</th>
+                <th className="py-4 px-1 w-[35px] border-r border-white/10 text-center text-[9px]">L</th>
+                <th className="py-4 px-1 w-[35px] border-r border-white/10 text-center text-[9px]">A</th>
+                <th className="py-4 px-1 w-[35px] border-r border-white/10 text-center text-[9px]">H</th>
+                <th className="py-4 px-1 w-[45px] border-r border-white/10 text-center">Peso</th>
+                <th className="py-4 px-1 w-[120px] border-r border-white/10 text-center">Notas</th>
+                <th className="py-4 px-1 w-[70px] border-r border-white/10 text-center">Fotos</th>
+                <th className="py-4 px-1 w-[60px] text-center bg-[#163a2d] no-print">Acción</th>
               </tr>
             </thead>
-            <Reorder.Group axis="y" as="tbody" values={inShipmentItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")} className="divide-y divide-slate-100">
-              {inShipmentItems.map((item, index) => <RowItem key={item.id} item={item} index={index} isPending={false} />)}
+            <tbody className="divide-y divide-slate-100">
+              {inShipmentItems.map((item, index) => renderRow(item, index, false))}
               {inShipmentItems.length === 0 && (
                 <tr>
                   <td colSpan={17} className="py-24 text-center">
@@ -608,7 +592,7 @@ export default function FbaShipmentsPage() {
                   </td>
                 </tr>
               )}
-            </Reorder.Group>
+            </tbody>
           </table>
         </div>
         <div className="bg-slate-50/50 p-4 border-t no-print">
@@ -632,36 +616,36 @@ export default function FbaShipmentsPage() {
         </div>
 
         <div className="overflow-x-auto rounded-2xl border border-orange-200/50 bg-white/70 shadow-sm backdrop-blur">
-          <table className="w-full text-left border-collapse min-w-[1300px]">
+          <table className="w-full text-left border-collapse min-w-[950px] max-w-[100%] table-fixed">
             <thead>
-              <tr className="bg-orange-800 text-white/90 text-[9px] uppercase font-black tracking-widest">
-                <th className="py-3 px-1 w-[30px] border-r border-orange-700/50 text-center"></th>
-                <th className="py-3 px-3 w-[100px] border-r border-orange-700/50">Location</th>
-                <th className="py-3 px-3 w-[120px] border-r border-orange-700/50">Orden de Cajas</th>
-                <th className="py-3 min-w-[200px] border-r border-orange-700/50 text-orange-100">PRODUCTO PENDIENTE</th>
-                <th className="py-3 px-3 w-[140px] border-r border-orange-700/50">FnSKU</th>
-                <th className="py-3 px-3 w-[110px] border-r border-orange-700/50">SKU</th>
-                <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center">Unidades por Caja</th>
-                <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center">Total de Cajas</th>
-                <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center">Total de Unidades</th>
-                <th className="py-3 px-3 w-[110px] border-r border-orange-700/50">Fecha de Expiración</th>
-                <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">Largo</th>
-                <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">Ancho</th>
-                <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">Altura</th>
-                <th className="py-3 px-3 w-[100px] border-r border-orange-700/50 text-center">Peso de Caja</th>
-                <th className="py-3 px-3 w-[220px] border-r border-orange-700/50">Descripción</th>
-                <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">Foto</th>
-                <th className="py-3 px-3 w-[65px] text-center no-print">Reset</th>
+              <tr className="bg-orange-800 text-white/90 text-[10px] uppercase font-bold tracking-tight">
+                <th className="py-3 px-1 w-[45px] border-r border-orange-700/50 text-center no-print">Orden</th>
+                <th className="py-3 px-1 w-[60px] border-r border-orange-700/50 text-center">Loc.</th>
+                <th className="py-3 px-1 w-[60px] border-r border-orange-700/50 text-center">Cajas</th>
+                <th className="py-3 px-2 w-[160px] border-r border-orange-700/50 text-orange-100">Producto Pendiente</th>
+                <th className="py-3 px-1 w-[80px] border-r border-orange-700/50 text-center">FnSKU</th>
+                <th className="py-3 px-1 w-[75px] border-r border-orange-700/50 text-center">SKU</th>
+                <th className="py-3 px-1 w-[45px] border-r border-orange-700/50 text-center leading-tight">Uds/Cj</th>
+                <th className="py-3 px-1 w-[50px] border-r border-orange-700/50 text-center leading-tight">Tot. Cj</th>
+                <th className="py-3 px-1 w-[50px] border-r border-orange-700/50 text-center leading-tight">Tot. Uds</th>
+                <th className="py-3 px-1 w-[60px] border-r border-orange-700/50 text-center">Exp.</th>
+                <th className="py-3 px-1 w-[35px] border-r border-orange-700/50 text-center text-[9px]">L</th>
+                <th className="py-3 px-1 w-[35px] border-r border-orange-700/50 text-center text-[9px]">A</th>
+                <th className="py-3 px-1 w-[35px] border-r border-orange-700/50 text-center text-[9px]">H</th>
+                <th className="py-3 px-1 w-[45px] border-r border-orange-700/50 text-center">Peso</th>
+                <th className="py-3 px-1 w-[120px] border-r border-orange-700/50 text-center">Notas</th>
+                <th className="py-3 px-1 w-[70px] border-r border-orange-700/50 text-center">Fotos</th>
+                <th className="py-3 px-1 w-[60px] text-center no-print">Acción</th>
               </tr>
             </thead>
-            <Reorder.Group axis="y" as="tbody" values={pendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
-              {pendingItems.map((item, index) => <RowItem key={item.id} item={item} index={index} isPending={true} />)}
+            <tbody>
+              {pendingItems.map((item, index) => renderRow(item, index, true))}
               {pendingItems.length === 0 && (
                 <tr>
                   <td colSpan={17} className="py-12 text-center text-orange-300 font-medium italic">No hay palets en espera. Todo el stock está asignado al envío activo.</td>
                 </tr>
               )}
-            </Reorder.Group>
+            </tbody>
           </table>
         </div>
       </div>
