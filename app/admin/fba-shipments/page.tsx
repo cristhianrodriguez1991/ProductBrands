@@ -176,25 +176,9 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
   )
 })
 
-export default function FbaShipmentsPage() {
-  const [tabs, setTabs] = useState<any[]>([]) 
-  const [activeTabId, setActiveTabId] = useState<string>("dashboard")
-  const [loading, setLoading] = useState(true)
-  const [allShipments, setAllShipments] = useState<any[]>([])
-  const [newShipmentName, setNewShipmentName] = useState("")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [showArchived, setShowArchived] = useState(false)
-  
-  const [expandedImage, setExpandedImage] = useState<string | null>(null)
-  const [uploadingId, setUploadingId] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [selectedIdForUpload, setSelectedIdForUpload] = useState<string | null>(null)
-  const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
-
   const fetchShipments = async () => {
     try {
-      // Fetch both history (closed) and active to unify them
+      // Fetch everything to unify into one single list
       const [activeRes, historyRes] = await Promise.all([
         fetch("/api/admin/fba-shipments/active"),
         fetch("/api/admin/fba-shipments/history")
@@ -205,7 +189,7 @@ export default function FbaShipmentsPage() {
       const unified = [
         ...(Array.isArray(activeData) ? activeData : []),
         ...(Array.isArray(historyData) ? historyData : [])
-      ].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       
       setAllShipments(unified)
     } catch(e) {}
@@ -291,24 +275,9 @@ export default function FbaShipmentsPage() {
     } catch(e) {}
   }
 
-  const toggleArchive = async (sh: any) => {
-    const newStatus = sh.status === "CLOSED" ? "ACTIVE" : "CLOSED"
-    try {
-      await fetch(`/api/admin/fba-shipments/${sh.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus })
-      })
-      // Update local state for the tab as well
-      setTabs(prev => prev.map(t => t.id === sh.id ? { ...t, status: newStatus } : t))
-      await fetchShipments()
-    } catch(e) {}
-  }
-
   const deleteShipment = async (shId: string) => {
     if (!confirm("¿Seguro que quieres eliminar este envío permanentemente? No se puede deshacer.")) return
     try {
-      // Assuming a delete endpoint exists or using the shipment ID endpoint with DELETE
       const res = await fetch(`/api/admin/fba-shipments/${shId}`, { method: "DELETE" })
       if (res.ok) {
         closeTab(shId)
@@ -327,7 +296,7 @@ export default function FbaShipmentsPage() {
     }
 
     setSaveStatus("saving")
-    setTabs(prev => prev.map(t => {
+    setTabs(prev => prev.map((t: any) => {
       if (t.id !== currentTabId) return t
       const newItems = t.items.map((i: any) => {
         if (i.id !== itemId) return i
@@ -388,7 +357,7 @@ export default function FbaShipmentsPage() {
     const sorted = newOrderedList.map((item, idx) => ({ ...item, sortOrder: idx }))
     const completeList = targetStatus === "IN_SHIPMENT" ? [...sorted, ...otherList] : [...otherList, ...sorted]
     
-    setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, items: completeList } : t))
+    setTabs(prev => prev.map((t: any) => t.id === activeTabId ? { ...t, items: completeList } : t))
 
     await fetch(`/api/admin/fba-shipments/${activeTabId}/reorder`, {
       method: "POST",
@@ -398,7 +367,7 @@ export default function FbaShipmentsPage() {
   }
 
   const switchItemStatus = async (itemId: string, newStatus: string) => {
-    setTabs(prev => prev.map(t => {
+    setTabs(prev => prev.map((t: any) => {
       if (t.id !== activeTabId) return t
       return { ...t, items: t.items.map((i: any) => i.id === itemId ? { ...i, status: newStatus } : i) }
     }))
@@ -411,7 +380,7 @@ export default function FbaShipmentsPage() {
 
   const deleteItem = async (shId: string, itemId: string) => {
     if (!confirm("¿Borrar este artículo?")) return
-    setTabs(prev => prev.map(t => {
+    setTabs(prev => prev.map((t: any) => {
       if (t.id !== shId) return t
       return { ...t, items: t.items.filter((i: any) => i.id !== itemId) }
     }))
@@ -433,7 +402,7 @@ export default function FbaShipmentsPage() {
         })
         if (res.ok) {
           const updated = await res.json()
-          setTabs(prev => prev.map(t => {
+          setTabs(prev => prev.map((t: any) => {
             if (t.id !== activeTabId) return t
             return { ...t, items: t.items.map((i: any) => i.id === selectedIdForUpload ? { ...i, imageUrls: updated.imageUrls, imageUrl: updated.imageUrl } : i) }
           }))
@@ -447,7 +416,7 @@ export default function FbaShipmentsPage() {
   }
 
   const removeImage = async (itemId: string, imageUrlToRemove: string) => {
-    setTabs(prev => prev.map(t => {
+    setTabs(prev => prev.map((t: any) => {
       if (t.id !== activeTabId) return t
       return { ...t, items: t.items.map((i: any) => {
         if (i.id !== itemId) return i
@@ -514,9 +483,7 @@ export default function FbaShipmentsPage() {
   if (loading) return <div className="p-12 text-center animate-pulse text-slate-400 font-bold">Cargando Portal FBA...</div>
 
   const filteredShipments = allShipments.filter(sh => {
-    const matchesSearch = sh.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const isArchived = sh.status === "CLOSED"
-    return matchesSearch && (showArchived ? isArchived : !isArchived)
+    return sh.name.toLowerCase().includes(searchQuery.toLowerCase())
   })
 
   return (
@@ -537,16 +504,16 @@ export default function FbaShipmentsPage() {
             onClick={() => setActiveTabId("dashboard")}
             className={`flex items-center gap-2 px-6 py-3 rounded-t-2xl cursor-pointer transition-all font-bold min-w-[160px] justify-center ${activeTabId === "dashboard" ? "bg-[#f8fafc] text-blue-600 border-x border-t border-slate-200 -mb-[1px]" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
           >
-            <LayoutGrid className="h-4 w-4" /> Mis Documentos
+            <LayoutGrid className="h-4 w-4" /> Mis Archivos
           </div>
           
-          {tabs.map(tab => (
+          {tabs.map((tab: any) => (
             <div 
               key={tab.id}
               onClick={() => setActiveTabId(tab.id)}
               className={`flex items-center gap-2 px-6 py-3 rounded-t-2xl cursor-pointer transition-all font-bold min-w-[220px] border-x border-t relative group ${activeTabId === tab.id ? "bg-[#f8fafc] text-slate-900 border-slate-200 -mb-[1px]" : "bg-white text-slate-400 border-transparent hover:bg-slate-50"}`}
             >
-              <ImageIcon className={`h-3.5 w-3.5 ${tab.status === "CLOSED" ? "text-slate-300" : "text-blue-400"}`} />
+              <ImageIcon className="h-3.5 w-3.5 text-blue-400" />
               <span className="truncate max-w-[150px]">{tab.name}</span>
               <button onClick={(e) => closeTab(tab.id, e)} className="ml-auto opacity-0 group-hover:opacity-100 hover:bg-slate-200 rounded-full p-1 transition-all"><X className="h-3 w-3" /></button>
             </div>
@@ -556,63 +523,54 @@ export default function FbaShipmentsPage() {
 
         <div className="flex-1 w-full max-w-[1900px] mx-auto p-6 md:p-10">
           {activeTabId === "dashboard" ? (
-            /* CONSOLIDATED DASHBOARD VIEW */
+            /* SIMPLE UNIFIED DASHBOARD VIEW */
             <div className="animate-in fade-in duration-500">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
                 <div>
                   <h1 className="text-4xl font-black text-slate-900 tracking-tight">Mis Envíos FBA</h1>
-                  <p className="text-slate-500 mt-1 font-medium italic">Gestiona tus documentos como archivos locales. Se guardan automáticamente.</p>
+                  <p className="text-slate-500 mt-1 font-medium italic">Todos tus documentos en un solo lugar. Ordenados por fecha de creación.</p>
                 </div>
                 <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
                   <Input 
                     placeholder="Buscar envío..." 
-                    className="border-0 shadow-none bg-transparent w-[250px] font-medium"
+                    className="border-0 shadow-none bg-transparent w-[300px] font-medium"
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                   />
-                  <Button 
-                    variant={showArchived ? "secondary" : "ghost"}
-                    onClick={() => setShowArchived(!showArchived)}
-                    className="rounded-xl font-bold gap-2"
-                  >
-                    <Save className="h-4 w-4" /> {showArchived ? "Ver Activos" : "Ver Archivados"}
-                  </Button>
+                  <div className="text-xs font-bold text-slate-300 px-4 border-l ml-2">
+                    {filteredShipments.length} ARCHIVOS
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {/* NEW SHIPMENT CARD */}
-                {!showArchived && (
-                  <Card className="p-8 rounded-[2rem] border-2 border-dashed border-blue-100 bg-blue-50/20 flex flex-col justify-center items-center text-center group hover:bg-blue-50/40 transition-all cursor-pointer" onClick={() => (document.getElementById('new-sh-input') as any)?.focus()}>
-                    <div className="w-16 h-16 rounded-3xl bg-blue-500 text-white flex items-center justify-center mb-6 shadow-xl group-hover:scale-110 transition-transform">
-                      <Plus className="h-8 w-8" />
-                    </div>
-                    <h3 className="font-black text-slate-900 text-xl mb-4">Nuevo Documento</h3>
-                    <div className="flex gap-2 w-full px-2" onClick={e => e.stopPropagation()}>
-                       <Input id="new-sh-input" placeholder="Nombre del Envío" value={newShipmentName} onChange={e => setNewShipmentName(e.target.value)} className="rounded-xl border-blue-200 outline-none focus:ring-2 ring-blue-500/20" />
-                       <Button onClick={handleCreateShipment} className="bg-blue-600 rounded-xl px-4 font-bold">Crear</Button>
-                    </div>
-                  </Card>
-                )}
+                <Card className="p-8 rounded-[2rem] border-2 border-dashed border-blue-100 bg-blue-50/20 flex flex-col justify-center items-center text-center group hover:bg-blue-50/40 transition-all cursor-pointer" onClick={() => (document.getElementById('new-sh-input') as any)?.focus()}>
+                  <div className="w-16 h-16 rounded-3xl bg-blue-500 text-white flex items-center justify-center mb-6 shadow-xl group-hover:scale-110 transition-transform">
+                    <Plus className="h-8 w-8" />
+                  </div>
+                  <h3 className="font-black text-slate-900 text-xl mb-4">Nuevo Documento</h3>
+                  <div className="flex gap-2 w-full px-2" onClick={e => e.stopPropagation()}>
+                      <Input id="new-sh-input" placeholder="Nombre del Envío" value={newShipmentName} onChange={e => setNewShipmentName(e.target.value)} className="rounded-xl border-blue-200 outline-none focus:ring-2 ring-blue-500/20" />
+                      <Button onClick={handleCreateShipment} className="bg-blue-600 rounded-xl px-4 font-bold">Crear</Button>
+                  </div>
+                </Card>
 
-                {/* SHIPMENT CARDS */}
+                {/* SHIPMENT CARDS - UNIFIED LIST */}
                 {filteredShipments.map(sh => (
                   <Card key={sh.id} className="p-8 rounded-[2rem] border-slate-100 bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col relative overflow-hidden">
-                    {sh.status === "CLOSED" && <div className="absolute top-4 right-4 text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full uppercase">Archivado</div>}
                     <div className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center mb-6 border border-slate-100 group-hover:bg-blue-50 group-hover:text-blue-500 group-hover:rotate-12 transition-all">
                       <ImageIcon className="h-6 w-6" />
                     </div>
-                    <h3 className="font-bold text-slate-900 text-xl mb-1 truncate">{sh.name}</h3>
-                    <p className="text-sm text-slate-400 font-medium mb-8">Última edición: {new Date(sh.updatedAt).toLocaleDateString()}</p>
+                    <h3 className="font-bold text-slate-900 text-xl mb-1 truncate">{sh.name || "Sin nombre"}</h3>
+                    <p className="text-sm text-slate-400 font-medium mb-1">Creado: {new Date(sh.createdAt).toLocaleDateString()}</p>
+                    <p className="text-[11px] text-slate-300 font-bold mb-8 italic uppercase">Status: Siempre Abierto</p>
                     
                     <div className="mt-auto space-y-3">
-                      <Button onClick={() => openTab(sh.id)} className="w-full h-12 rounded-2xl bg-slate-900 hover:bg-black font-black text-sm tracking-wide gap-2">ABRIR ARCHIVO <Maximize2 className="h-4 w-4" /></Button>
+                      <Button onClick={() => openTab(sh.id)} className="w-full h-12 rounded-2xl bg-slate-900 hover:bg-black font-black text-sm tracking-wide gap-2 text-white">ABRIR ARCHIVO <Maximize2 className="h-4 w-4" /></Button>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl border-slate-200 text-slate-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200" title="Exportar Excel" onClick={() => exportToExcelObject(sh, sh.items)}>
                           <Download className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl border-slate-200 text-slate-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200" title="Archivar/Restaurar" onClick={() => toggleArchive(sh)}>
-                          <Save className="h-4 w-4" />
                         </Button>
                         <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600 hover:border-red-200" title="Eliminar" onClick={() => deleteShipment(sh.id)}>
                           <Trash2 className="h-4 w-4" />
@@ -647,7 +605,6 @@ export default function FbaShipmentsPage() {
                         </div>
                         <p className="text-slate-400 mt-2 font-medium flex items-center gap-2">
                           <CheckCircle2 className="h-4 w-4" /> Archivo Editable 
-                          {tab.status === "CLOSED" && <span className="text-slate-400 italic">(Archivado)</span>}
                         </p>
                       </div>
                     </div>
@@ -655,9 +612,6 @@ export default function FbaShipmentsPage() {
                       <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white rounded-xl shadow-sm px-6 font-bold border-slate-200"><Printer className="h-5 w-5" /> Imprimir</Button>
                       <Button variant="outline" onClick={() => exportToExcelObject(tab, tab.items)} className="h-12 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 rounded-xl px-6 font-bold gap-2"><Download className="h-5 w-5" /> Exportar Excel</Button>
                       <Button variant="ghost" onClick={() => closeTab(tab.id)} className="h-12 rounded-xl px-6 font-bold text-slate-500 hover:bg-slate-200">Cerrar Pestaña</Button>
-                      <Button variant={tab.status === "CLOSED" ? "secondary" : "outline"} onClick={() => toggleArchive(tab)} className="h-12 rounded-xl px-6 font-bold">
-                        {tab.status === "CLOSED" ? "Restaurar" : "Archivar"}
-                      </Button>
                     </div>
                   </div>
 
