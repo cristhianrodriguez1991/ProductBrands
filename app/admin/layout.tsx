@@ -17,6 +17,7 @@ import {
   Tag,
   Inbox,
   Truck,
+  Ship,
   Menu,
   X,
 
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/brands", label: "Brands", icon: Tag },
   { href: "/admin/suppliers", label: "Suppliers", icon: Truck },
+  { href: "/admin/fba-shipments", label: "FBA Shipments", icon: Ship },
 
   { href: "/admin/listings", label: "Listings", icon: Package },
   { href: "/admin/quotes", label: "Quotes", icon: FileText },

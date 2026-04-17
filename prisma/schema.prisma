@@ -742,3 +742,54 @@ model ClientDocument {
 
   @@index([supplierId])
 }
+// ─────────────────────────────────────────────────────────────
+// FBA SHIPMENTS
+// ─────────────────────────────────────────────────────────────
+
+enum FbaShipmentStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum FbaShipmentItemStatus {
+  IN_SHIPMENT
+  PENDING
+}
+
+model FbaShipment {
+  id        String   @id @default(cuid())
+  name      String
+  status    FbaShipmentStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items     FbaShipmentItem[]
+}
+
+model FbaShipmentItem {
+  id          String   @id @default(cuid())
+  shipmentId  String
+  shipment    FbaShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  status      FbaShipmentItemStatus @default(IN_SHIPMENT)
+
+  location    String?
+  boxOrder    String?
+  name        String?
+  fnsku       String?
+  sku         String?
+  qtyPerBox   Int?
+  totalBoxes  Int?
+  totalUnits  Int?
+  expDate     String?
+  length      Float?
+  width       Float?
+  height      Float?
+  boxWeight   Float?
+  description String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([shipmentId])
+  @@index([status])
+}
