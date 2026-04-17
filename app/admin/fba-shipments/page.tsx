@@ -66,29 +66,29 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
            <GripVertical className="h-6 w-6" />
         </div>
       </td>
-      <td className="p-0"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1" value={item.location || ""} onChange={e => updateItem(item.id, "location", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1" value={item.boxOrder || ""} onChange={e => updateItem(item.id, "boxOrder", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 font-bold text-slate-800" value={item.name || ""} onChange={e => updateItem(item.id, "name", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 text-[10px] border-0 bg-transparent rounded-none px-1" value={item.fnsku || ""} onChange={e => updateItem(item.id, "fnsku", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 text-[10px] border-0 bg-transparent rounded-none px-1" value={item.sku || ""} onChange={e => updateItem(item.id, "sku", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={item.qtyPerBox || ""} onChange={e => updateItem(item.id, "qtyPerBox", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 w-full text-center font-bold text-orange-600" value={item.totalBoxes || ""} onChange={e => updateItem(item.id, "totalBoxes", e.target.value)} /></td>
+      <td className="p-0"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 w-full min-w-0 text-[11px] border-0 bg-transparent rounded-none px-1" value={item.location || ""} onChange={e => updateItem(item.id, "location", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 w-full min-w-0 text-[11px] border-0 bg-transparent rounded-none px-1" value={item.boxOrder || ""} onChange={e => updateItem(item.id, "boxOrder", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 w-full min-w-0 text-[11px] border-0 bg-transparent rounded-none px-1 font-bold text-slate-800" value={item.name || ""} onChange={e => updateItem(item.id, "name", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 w-full min-w-0 text-[10px] border-0 bg-transparent rounded-none px-1" value={item.fnsku || ""} onChange={e => updateItem(item.id, "fnsku", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 w-full min-w-0 text-[10px] border-0 bg-transparent rounded-none px-1" value={item.sku || ""} onChange={e => updateItem(item.id, "sku", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 w-full min-w-0 text-center" value={item.qtyPerBox || ""} onChange={e => updateItem(item.id, "qtyPerBox", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 w-full min-w-0 text-center font-bold text-orange-600" value={item.totalBoxes || ""} onChange={e => updateItem(item.id, "totalBoxes", e.target.value)} /></td>
       <td className="p-0 border-l text-center font-black text-[11px] px-1 bg-green-50/50 text-green-700">{item.totalUnits || 0}</td>
       <td className="p-0 border-l relative">
         <Input 
           onFocus={handleFocus} onBlur={handleBlur}
-          className={`h-9 text-[11px] border-0 bg-transparent rounded-none px-1 ${expiring ? "text-red-600 font-bold bg-red-50" : ""}`} 
+          className={`h-9 w-full min-w-0 text-[11px] border-0 bg-transparent rounded-none px-1 ${expiring ? "text-red-600 font-bold bg-red-50" : ""}`} 
           value={item.expDate || ""} 
           placeholder="MMDDYY"
           onChange={e => updateItem(item.id, "expDate", e.target.value)} 
         />
         {expiring && <AlertCircle className="h-3 w-3 absolute right-1 top-3 text-red-500 animate-pulse pointer-events-none" />}
       </td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[10px] border-0 bg-transparent rounded-none px-0.5 w-full text-center" value={item.length || ""} onChange={e => updateItem(item.id, "length", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[10px] border-0 bg-transparent rounded-none px-0.5 w-full text-center" value={item.width || ""} onChange={e => updateItem(item.id, "width", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[10px] border-0 bg-transparent rounded-none px-0.5 w-full text-center" value={item.height || ""} onChange={e => updateItem(item.id, "height", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 w-full text-center font-semibold" value={item.boxWeight || ""} onChange={e => updateItem(item.id, "boxWeight", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 min-w-[90px]" value={item.description || ""} onChange={e => updateItem(item.id, "description", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[10px] border-0 bg-transparent rounded-none px-0.5 w-full min-w-0 text-center" value={item.length || ""} onChange={e => updateItem(item.id, "length", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[10px] border-0 bg-transparent rounded-none px-0.5 w-full min-w-0 text-center" value={item.width || ""} onChange={e => updateItem(item.id, "width", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[10px] border-0 bg-transparent rounded-none px-0.5 w-full min-w-0 text-center" value={item.height || ""} onChange={e => updateItem(item.id, "height", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-9 text-[11px] border-0 bg-transparent rounded-none px-1 w-full min-w-0 text-center font-semibold" value={item.boxWeight || ""} onChange={e => updateItem(item.id, "boxWeight", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 w-full min-w-0 text-[11px] border-0 bg-transparent rounded-none px-1" value={item.description || ""} onChange={e => updateItem(item.id, "description", e.target.value)} /></td>
       
       {/* PHOTO COLUMN */}
       <td className="p-1 border-l text-center">
