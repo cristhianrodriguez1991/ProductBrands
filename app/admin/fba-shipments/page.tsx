@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, MoveVertical, GripVertical, LayoutGrid, Maximize2, MousePointer2, Copy, ClipboardPaste } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, MoveVertical, GripVertical, LayoutGrid, Maximize2, MousePointer2, Copy, ClipboardPaste, FileText, MoreVertical, Clock } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import Image from "next/image"
 import { compressImage } from "@/lib/image-compression"
 import { Reorder, useDragControls } from "framer-motion"
@@ -612,64 +612,113 @@ export default function FbaShipmentsPage() {
 
         <div className="flex-1 w-full max-w-[1900px] mx-auto p-6 md:p-10">
           {activeTabId === "dashboard" ? (
-            /* SIMPLE UNIFIED DASHBOARD VIEW */
-            <div className="animate-in fade-in duration-500">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+            /* GOOGLE DRIVE STYLE DASHBOARD VIEW */
+            <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
-                  <h1 className="text-4xl font-black text-slate-900 tracking-tight">Mis Envíos FBA</h1>
-                  <p className="text-slate-500 mt-1 font-medium italic">Todos tus documentos en un solo lugar. Ordenados por fecha de creación.</p>
+                  <h1 className="text-3xl font-black text-slate-900 tracking-tight">Mis Envíos FBA</h1>
+                  <p className="text-slate-500 mt-0.5 text-sm font-medium">Gestiona tus documentos de embarque. Ordenados cronológicamente.</p>
                 </div>
-                <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
-                  <Input 
-                    placeholder="Buscar envío..." 
-                    className="border-0 shadow-none bg-transparent w-[300px] font-medium"
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                  />
-                  <div className="text-xs font-bold text-slate-300 px-4 border-l ml-2">
-                    {filteredShipments.length} ARCHIVOS
+                
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-2xl shadow-sm border border-slate-100">
+                    <Input 
+                      placeholder="Buscar por nombre..." 
+                      className="border-0 shadow-none bg-transparent w-[240px] h-8 text-sm focus-visible:ring-0"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                    />
+                    <span className="text-[10px] font-black text-slate-300 bg-slate-50 px-2 py-1 rounded-md">{filteredShipments.length}</span>
                   </div>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {/* NEW SHIPMENT CARD */}
-                <Card className="p-8 rounded-[2rem] border-2 border-dashed border-blue-100 bg-blue-50/20 flex flex-col justify-center items-center text-center group hover:bg-blue-50/40 transition-all cursor-pointer" onClick={() => (document.getElementById('new-sh-input') as any)?.focus()}>
-                  <div className="w-16 h-16 rounded-3xl bg-blue-500 text-white flex items-center justify-center mb-6 shadow-xl group-hover:scale-110 transition-transform">
-                    <Plus className="h-8 w-8" />
-                  </div>
-                  <h3 className="font-black text-slate-900 text-xl mb-4">Nuevo Documento</h3>
-                  <div className="flex gap-2 w-full px-2" onClick={e => e.stopPropagation()}>
-                      <Input id="new-sh-input" placeholder="Nombre del Envío" value={newShipmentName} onChange={e => setNewShipmentName(e.target.value)} className="rounded-xl border-blue-200 outline-none focus:ring-2 ring-blue-500/20" />
-                      <Button onClick={handleCreateShipment} className="bg-blue-600 rounded-xl px-4 font-bold">Crear</Button>
-                  </div>
-                </Card>
-
-                {/* SHIPMENT CARDS - UNIFIED LIST */}
-                {filteredShipments.map(sh => (
-                  <Card key={sh.id} className="p-8 rounded-[2rem] border-slate-100 bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col relative overflow-hidden">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center mb-6 border border-slate-100 group-hover:bg-blue-50 group-hover:text-blue-500 group-hover:rotate-12 transition-all">
-                      <ImageIcon className="h-6 w-6" />
-                    </div>
-                    <h3 className="font-bold text-slate-900 text-xl mb-1 truncate">{sh.name || "Sin nombre"}</h3>
-                    <p className="text-sm text-slate-400 font-medium mb-1">Creado: {new Date(sh.createdAt).toLocaleDateString()}</p>
-                    <p className="text-[11px] text-slate-300 font-bold mb-8 italic uppercase">Status: Siempre Abierto</p>
-                    
-                    <div className="mt-auto space-y-3">
-                      <Button onClick={() => openTab(sh.id)} className="w-full h-12 rounded-2xl bg-slate-900 hover:bg-black font-black text-sm tracking-wide gap-2 text-white">ABRIR ARCHIVO <Maximize2 className="h-4 w-4" /></Button>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl border-slate-200 text-slate-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200" title="Exportar Excel" onClick={() => exportToExcelObject(sh, sh.items)}>
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600 hover:border-red-200" title="Eliminar" onClick={() => deleteShipment(sh.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button className="bg-[#1a73e8] hover:bg-blue-700 text-white rounded-full px-6 font-bold shadow-md gap-2 h-11">
+                        <Plus className="h-5 w-5" /> Nuevo Envío
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px] rounded-[2rem] border-0 shadow-2xl">
+                      <DialogHeader>
+                        <DialogTitle className="text-2xl font-black text-slate-900">Crear Nuevo Documento</DialogTitle>
+                      </DialogHeader>
+                      <div className="py-6">
+                        <Input 
+                          placeholder="Nombre del Envío (ej. April 17)" 
+                          value={newShipmentName} 
+                          onChange={e => setNewShipmentName(e.target.value)} 
+                          className="h-14 rounded-2xl border-slate-200 text-lg font-medium focus:ring-4 ring-blue-50"
+                          onKeyDown={e => e.key === "Enter" && handleCreateShipment()}
+                        />
                       </div>
-                    </div>
-                  </Card>
-                ))}
+                      <div className="flex justify-end gap-3">
+                        <Button onClick={handleCreateShipment} className="bg-blue-600 rounded-xl px-8 font-black text-white h-12">CREAR AHORA</Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
-              {filteredShipments.length === 0 && searchQuery && <div className="text-center py-20 text-slate-400 font-bold">No se encontraron envíos con "{searchQuery}"</div>}
+
+              {/* LIST VIEW TABLE */}
+              <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-50 text-[11px] font-black text-slate-400 uppercase tracking-widest bg-slate-50/50">
+                      <th className="py-4 px-8 w-[40%]">Nombre</th>
+                      <th className="py-4 px-4 w-[20%]">Detalles</th>
+                      <th className="py-4 px-4 w-[20%]">Status</th>
+                      <th className="py-4 px-8 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {filteredShipments.map(sh => (
+                      <tr 
+                         key={sh.id} 
+                         onClick={() => openTab(sh.id)}
+                         className="group hover:bg-blue-50/30 cursor-pointer transition-colors"
+                      >
+                        <td className="py-4 px-8">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                              <FileText className="h-5 w-5" />
+                            </div>
+                            <span className="font-bold text-slate-700 text-base">{sh.name || "Sin nombre"}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2 text-slate-400 text-sm font-medium">
+                            <Clock className="h-4 w-4" />
+                            <span>{new Date(sh.createdAt).toLocaleDateString()} {new Date(sh.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-3 py-1 rounded-full uppercase">Siempre Abierto</span>
+                        </td>
+                        <td className="py-4 px-8 text-right">
+                          <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50" onClick={() => openTab(sh.id)} title="Abrir">
+                              <Maximize2 className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-slate-400 hover:text-green-600 hover:bg-green-50" onClick={() => exportToExcelObject(sh, sh.items)} title="Excel">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50" onClick={() => deleteShipment(sh.id)} title="Eliminar">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {filteredShipments.length === 0 && (
+                  <div className="py-32 text-center">
+                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200">
+                      <FileText className="h-10 w-10" />
+                    </div>
+                    <p className="text-slate-400 font-bold">No se encontraron documentos</p>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             /* SHIPMENT TAB VIEW */
