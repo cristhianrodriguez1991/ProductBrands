@@ -872,6 +872,7 @@ export default function FbaShipmentsPage() {
         ref={fileInputRef} 
         className="hidden" 
         accept="image/*" 
+        capture="environment"
         multiple 
         onChange={handleImageUpload} 
       />
