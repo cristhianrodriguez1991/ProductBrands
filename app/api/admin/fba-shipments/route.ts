@@ -12,6 +12,15 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get("id")
+    const type = searchParams.get("type")
+
+    if (type === "pending") {
+      const pendingItems = await prisma.fbaShipmentItem.findMany({
+        where: { status: "PENDING" },
+        orderBy: { createdAt: "desc" }
+      })
+      return NextResponse.json(pendingItems)
+    }
 
     if (id) {
       const shipment = await prisma.fbaShipment.findUnique({

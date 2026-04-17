@@ -190,6 +190,7 @@ export default function FbaShipmentsPage() {
   const [selectedIdForUpload, setSelectedIdForUpload] = useState<string | null>(null)
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
+  const [globalPendingItems, setGlobalPendingItems] = useState<any[]>([])
 
   const fetchShipments = async () => {
     try {
@@ -210,18 +211,27 @@ export default function FbaShipmentsPage() {
     } catch(e) {}
   }
 
+  const fetchPendingItems = async () => {
+    try {
+      const res = await fetch("/api/admin/fba-shipments?type=pending")
+      const data = await res.json()
+      if (Array.isArray(data)) setGlobalPendingItems(data)
+    } catch(e) {}
+  }
+
   useEffect(() => {
     const init = async () => {
-      await fetchShipments()
+      await Promise.all([fetchShipments(), fetchPendingItems()])
       setLoading(false)
     }
     init()
   }, [])
 
   useEffect(() => {
-    if (activeTabId === "dashboard") return
     const interval = setInterval(async () => {
       try {
+        await fetchPendingItems()
+        if (activeTabId === "dashboard") return
         const res = await fetch(`/api/admin/fba-shipments?id=${activeTabId}`)
         const data = await res.json()
         if (data && data.items) {
@@ -382,14 +392,43 @@ export default function FbaShipmentsPage() {
   }
 
   const switchItemStatus = async (itemId: string, newStatus: string) => {
+    // If moving to IN_SHIPMENT, it takes the current tab's ID
+    const currentTabId = activeTabId
+    if (currentTabId === "dashboard") return
+
     setTabs(prev => prev.map((t: any) => {
-      if (t.id !== activeTabId) return t
-      return { ...t, items: t.items.map((i: any) => i.id === itemId ? { ...i, status: newStatus } : i) }
+      if (t.id !== currentTabId) return t
+      if (newStatus === "IN_SHIPMENT") {
+        // Find in global pending if not in local items
+        const inLocal = t.items.find((i: any) => i.id === itemId)
+        if (inLocal) {
+          return { ...t, items: t.items.map((i: any) => i.id === itemId ? { ...i, status: newStatus } : i) }
+        } else {
+          const fromPending = globalPendingItems.find(i => i.id === itemId)
+          if (fromPending) {
+             return { ...t, items: [...t.items, { ...fromPending, status: newStatus, shipmentId: currentTabId }] }
+          }
+        }
+      } else {
+         return { ...t, items: t.items.map((i: any) => i.id === itemId ? { ...i, status: newStatus } : i) }
+      }
+      return t
     }))
+
+    if (newStatus === "PENDING") {
+      setGlobalPendingItems(prev => {
+        const item = tabs.find(t => t.id === currentTabId)?.items.find((i: any) => i.id === itemId)
+        if (item) return [{ ...item, status: "PENDING" }, ...prev]
+        return prev
+      })
+    } else {
+      setGlobalPendingItems(prev => prev.filter(i => i.id !== itemId))
+    }
+
     await fetch(`/api/admin/fba-shipments/items/${itemId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus })
+      body: JSON.stringify({ status: newStatus, shipmentId: newStatus === "IN_SHIPMENT" ? currentTabId : undefined })
     })
   }
 
@@ -599,36 +638,32 @@ export default function FbaShipmentsPage() {
             </div>
           ) : (
             /* SHIPMENT TAB VIEW */
-            (() => {
-              const tab = tabs.find(t => t.id === activeTabId)
-              if (!tab) return null
-              const inItems = tab.items.filter((i: any) => i.status === "IN_SHIPMENT")
-              const pItems = tab.items.filter((i: any) => i.status === "PENDING")
+              (() => {
+                const tab = tabs.find(t => t.id === activeTabId)
+                if (!tab) return null
+                const inItems = tab.items.filter((i: any) => i.status === "IN_SHIPMENT")
 
-              return (
-                <div className="animate-in slide-in-from-bottom-5 duration-500">
-                  <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8 no-print">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
-                        <ImageIcon className="h-7 w-7" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-3">
-                           <h1 className="text-3xl font-black text-slate-900 leading-none">{tab.name}</h1>
-                           {saveStatus === "saving" && <span className="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full font-bold animate-pulse">Guardando...</span>}
-                           {saveStatus === "saved" && <span className="text-[10px] bg-green-50 text-green-500 px-2 py-0.5 rounded-full font-bold">Guardado</span>}
+                return (
+                  <div className="animate-in slide-in-from-bottom-5 duration-500">
+                    <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8 no-print">
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
+                          <ImageIcon className="h-7 w-7" />
                         </div>
-                        <p className="text-slate-400 mt-2 font-medium flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4" /> Archivo Editable 
-                        </p>
+                        <div>
+                          <div className="flex items-center gap-3">
+                             <h1 className="text-3xl font-black text-slate-900 leading-none">{tab.name}</h1>
+                             {saveStatus === "saving" && <span className="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full font-bold animate-pulse">Guardando...</span>}
+                             {saveStatus === "saved" && <span className="text-[10px] bg-green-50 text-green-500 px-2 py-0.5 rounded-full font-bold">Guardado</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white rounded-xl shadow-sm px-6 font-bold border-slate-200"><Printer className="h-5 w-5" /> Imprimir</Button>
+                        <Button variant="outline" onClick={() => exportToExcelObject(tab, tab.items)} className="h-12 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 rounded-xl px-6 font-bold gap-2"><Download className="h-5 w-5" /> Exportar Excel</Button>
+                        <Button variant="ghost" onClick={() => closeTab(tab.id)} className="h-12 rounded-xl px-6 font-bold text-slate-500 hover:bg-slate-200">Cerrar Pestaña</Button>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-3">
-                      <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white rounded-xl shadow-sm px-6 font-bold border-slate-200"><Printer className="h-5 w-5" /> Imprimir</Button>
-                      <Button variant="outline" onClick={() => exportToExcelObject(tab, tab.items)} className="h-12 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 rounded-xl px-6 font-bold gap-2"><Download className="h-5 w-5" /> Exportar Excel</Button>
-                      <Button variant="ghost" onClick={() => closeTab(tab.id)} className="h-12 rounded-xl px-6 font-bold text-slate-500 hover:bg-slate-200">Cerrar Pestaña</Button>
-                    </div>
-                  </div>
 
                   {/* MAIN TABLE */}
                   <Card className="w-full border-0 shadow-2xl rounded-[2.5rem] overflow-hidden bg-white mb-10 border border-slate-100">
@@ -675,16 +710,17 @@ export default function FbaShipmentsPage() {
                     </div>
                   </Card>
 
-                  {/* PENDING SECTION */}
-                  {pItems.length > 0 && (
-                    <div className="no-print bg-orange-50/20 rounded-[3rem] p-10 border border-orange-100/50 shadow-inner">
-                      <h2 className="text-2xl font-black text-orange-900 mb-8 flex items-center gap-3">
-                        <MousePointer2 className="h-6 w-6" /> Palets en Espera (Pendientes)
+                  {/* GLOBAL PENDING SECTION */}
+                  {globalPendingItems.length > 0 && (
+                    <div className="no-print bg-amber-50/40 rounded-[3rem] p-10 border border-amber-100/50 shadow-inner mt-10 mb-20 animate-in fade-in zoom-in duration-500">
+                      <h2 className="text-2xl font-black text-amber-900 mb-8 flex items-center gap-3">
+                        <MousePointer2 className="h-6 w-6" /> Palets en Espera (Global)
+                        <span className="text-[10px] font-black bg-amber-600 text-white px-3 py-1 rounded-full uppercase tracking-tighter">Disponible para este envío</span>
                       </h2>
-                      <div className="overflow-x-auto rounded-[2rem] border border-orange-200 bg-white shadow-xl">
+                      <div className="overflow-x-auto rounded-[2rem] border border-amber-200 bg-white shadow-xl">
                         <table className="w-full text-left min-w-[1300px]">
                           <thead>
-                            <tr className="bg-orange-800 text-white text-[10px] uppercase font-black tracking-widest">
+                            <tr className="bg-amber-800 text-white text-[10px] uppercase font-black tracking-widest">
                               <th className="py-4 px-1 w-[30px] text-center"></th>
                               <th className="py-4 px-3 w-[110px]">Location</th>
                               <th className="py-4 px-3 w-[130px]">Orden</th>
@@ -692,8 +728,8 @@ export default function FbaShipmentsPage() {
                               <th className="py-4 px-3 w-[150px]">FnSKU</th>
                               <th className="py-4 px-3 w-[120px]">SKU</th>
                               <th className="py-4 px-3 w-[90px] text-center">U/C</th>
-                              <th className="py-4 px-3 w-[90px] text-center leading-tight">Cajas<br/><span className="text-[9px] text-orange-200">({pItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</span></th>
-                              <th className="py-4 px-3 w-[90px] text-center leading-tight">Unds<br/><span className="text-[9px] text-orange-200">({pItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalUnits) || 0), 0)})</span></th>
+                              <th className="py-4 px-3 w-[90px] text-center leading-tight">Cajas<br/><span className="text-[9px] text-amber-200">({globalPendingItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</span></th>
+                              <th className="py-4 px-3 w-[90px] text-center leading-tight">Unds<br/><span className="text-[9px] text-amber-200">({globalPendingItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalUnits) || 0), 0)})</span></th>
                               <th className="py-4 px-3 w-[110px]">Exp</th>
                               <th className="py-4 px-3 w-[60px] text-center">L</th>
                               <th className="py-4 px-3 w-[60px] text-center">A</th>
@@ -704,14 +740,15 @@ export default function FbaShipmentsPage() {
                               <th className="py-4 px-3 text-center no-print">Acc</th>
                             </tr>
                           </thead>
-                          <Reorder.Group axis="y" as="tbody" values={pItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
-                            {pItems.map((item: any, index: number) => (
+                          <Reorder.Group axis="y" as="tbody" values={globalPendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
+                            {globalPendingItems.map((item: any, index: number) => (
                               <StandaloneRow 
                                 key={item.id} item={item} index={index} isPending={true}
                                 updateItem={updateItem} deleteItem={() => deleteItem(tab.id, item.id)} switchItemStatus={switchItemStatus}
                                 removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
                                 fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
                                 setExpandedImage={setExpandedImage}
+                                activeTabId={activeTabId}
                               />
                             ))}
                           </Reorder.Group>
