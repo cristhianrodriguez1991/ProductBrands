@@ -36,7 +36,7 @@ type FbaItem = {
 }
 
 // Extracted to module scope to prevent React from unmounting inputs on every keystroke, keeping keyboard focus perfectly stable
-const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, switchItemStatus, setExpandedImage, removeImage, setSelectedIdForUpload, fileInputRef, uploadingId, setFocusedItemId }: any) => {
+const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, switchItemStatus, removeImage, setSelectedIdForUpload, fileInputRef, uploadingId, setFocusedItemId, setExpandedRowGalleryId }: any) => {
   const controls = useDragControls()
   const expiring = item.expDate && new Date(item.expDate.replace(/(\d{2})(\d{2})(\d{2})/, '20$3-$1-$2')) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
 
@@ -91,89 +91,29 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-9 w-full min-w-0 text-[11px] border-0 bg-transparent rounded-none px-1" value={item.description || ""} onChange={e => updateItem(item.id, "description", e.target.value)} /></td>
       
       {/* PHOTO COLUMN */}
-      <td className="p-1 border-l text-center">
-        <div className="flex flex-wrap items-center justify-center gap-1 mx-auto">
-          {item.imageUrls && item.imageUrls.length > 0 ? (
-            <>
-              {item.imageUrls.map((url: string, idx: number) => (
-                <div 
-                  key={idx}
-                  className="w-[28px] h-[28px] bg-slate-100/50 rounded-md border border-slate-300/80 cursor-pointer overflow-hidden relative group shrink-0"
-                >
-                  <img 
-                    src={url} 
-                    alt={`Product ${idx+1}`} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
-                    onClick={() => setExpandedImage(url)}
-                  />
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); if(confirm("¿Borrar esta foto?")) removeImage(item.id, url); }}
-                    className="absolute top-0 right-0 bg-red-600/90 text-white rounded-bl shadow-sm p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 touch-manipulation"
-                    title="Eliminar foto"
-                  >
-                    <X className="h-2.5 w-2.5" />
-                  </button>
-                </div>
-              ))}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className={`h-7 w-7 shrink-0 rounded-md bg-slate-50 border border-dashed border-slate-300 ${uploadingId === item.id ? "animate-pulse bg-blue-50 border-blue-300 text-blue-500" : "text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-300"}`}
-                onClick={() => { setSelectedIdForUpload(item.id); fileInputRef.current?.click(); }}
-                title="Añadir más fotos"
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
-            </>
-          ) : item.imageUrl ? (
-            <>
-              <div 
-                className="w-[30px] h-[30px] bg-slate-100 rounded border border-slate-300 cursor-pointer overflow-hidden relative group shrink-0"
-              >
-                <img src={item.imageUrl} alt="Product" className="w-full h-full object-cover group-hover:scale-110 transition-transform" onClick={() => setExpandedImage(item.imageUrl!)} />
-                <button 
-                  onClick={(e) => { e.stopPropagation(); if(confirm("¿Borrar esta foto?")) removeImage(item.id, item.imageUrl!); }}
-                  className="absolute top-0 right-0 bg-red-600/90 text-white rounded-bl shadow-sm p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 touch-manipulation"
-                >
-                  <X className="h-2.5 w-2.5" />
-                </button>
-              </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className={`h-7 w-7 shrink-0 rounded-md bg-slate-50 border border-dashed border-slate-300 ${uploadingId === item.id ? "animate-pulse" : "text-slate-400 hover:text-blue-600"}`}
-                onClick={() => { setSelectedIdForUpload(item.id); fileInputRef.current?.click(); }}
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
-            </>
-          ) : (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className={`h-8 w-14 rounded-md border border-slate-200/50 bg-slate-50 shadow-inner ${uploadingId === item.id ? "animate-pulse bg-blue-50 border-blue-200 text-blue-500" : "text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50"}`}
-              onClick={() => { setSelectedIdForUpload(item.id); fileInputRef.current?.click(); }}
-            >
-              <Camera className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+      <td className="p-0 border-l text-center no-print">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className={`h-9 px-1 font-bold w-full rounded-none tracking-tighter ${uploadingId === item.id ? "animate-pulse bg-blue-50 text-blue-500" : (item.imageUrls?.length || item.imageUrl ? "text-blue-700 bg-blue-50/50 hover:bg-blue-100" : "text-slate-400 hover:text-blue-600 hover:bg-slate-100")}`}
+          onClick={() => setExpandedRowGalleryId(item.id)}
+          title="Ver o agregar fotos"
+        >
+          <Camera className="h-4 w-4 mr-0.5" />
+          <span className="text-[10px]">
+             {(item.imageUrls?.length || (item.imageUrl ? 1 : 0)) > 0 ? (item.imageUrls?.length || (item.imageUrl ? 1 : 0)) : "+"}
+          </span>
+        </Button>
       </td>
 
-      <td className="p-0 border-l no-print bg-slate-50/30 w-[60px]">
-        <div className="flex items-center justify-center gap-1 opacity-20 hover:opacity-100 transition-opacity px-1">
+      <td className="p-0 border-l no-print bg-slate-50/30 w-[24px]">
+        <div className="flex flex-col items-center justify-center gap-0 opacity-40 hover:opacity-100 py-0.5 h-full">
           {item.status === "IN_SHIPMENT" ? (
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-orange-600 hover:bg-orange-100 touch-manipulation" onClick={() => switchItemStatus(item.id, "PENDING")}>
-              <ArrowDown className="h-5 w-5" />
-            </Button>
+            <button onClick={() => switchItemStatus(item.id, "PENDING")} className="p-1 hover:bg-orange-100 rounded text-orange-600 touch-manipulation"><ArrowDown className="h-3 w-3" /></button>
           ) : (
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:bg-green-100 touch-manipulation" onClick={() => switchItemStatus(item.id, "IN_SHIPMENT")}>
-              <ArrowUp className="h-5 w-5" />
-            </Button>
+            <button onClick={() => switchItemStatus(item.id, "IN_SHIPMENT")} className="p-1 hover:bg-green-100 rounded text-green-600 touch-manipulation"><ArrowUp className="h-3 w-3" /></button>
           )}
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:bg-red-100 touch-manipulation" onClick={() => deleteItem(item.id)}>
-            <Trash2 className="h-5 w-5" />
-          </Button>
+          <button onClick={() => deleteItem(item.id)} className="p-1 hover:bg-red-100 rounded text-red-600 touch-manipulation"><Trash2 className="h-3 w-3" /></button>
         </div>
       </td>
     </Reorder.Item>
@@ -187,7 +127,7 @@ export default function FbaShipmentsPage() {
   const [newShipmentName, setNewShipmentName] = useState("")
   
   // Photo modal state
-  const [expandedImage, setExpandedImage] = useState<string | null>(null)
+  const [expandedRowGalleryId, setExpandedRowGalleryId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedIdForUpload, setSelectedIdForUpload] = useState<string | null>(null)
@@ -616,16 +556,44 @@ export default function FbaShipmentsPage() {
         <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
         
         {/* EXPANDED IMAGE MODAL FIXED OVERSYNC */}
-        <Dialog open={!!expandedImage} onOpenChange={() => setExpandedImage(null)}>
-          <DialogContent className="max-w-6xl w-11/12 p-0 overflow-hidden border-0 bg-transparent flex items-center justify-center shadow-none">
-            <div className="relative w-full h-[90vh] flex items-center justify-center bg-black/40 backdrop-blur-3xl rounded-3xl p-4 md:p-8">
-               <button className="absolute top-4 right-4 md:top-6 md:right-6 z-50 text-white hover:text-red-400 bg-black/50 p-2.5 rounded-full transition-colors" onClick={() => setExpandedImage(null)}><X className="h-6 w-6"/></button>
-               {expandedImage && (
-                 <img src={expandedImage} alt="Large View" className="w-auto h-auto max-w-full max-h-[85vh] object-contain drop-shadow-[0_0_40px_rgba(0,0,0,0.5)] rounded-md" />
-               )}
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Dialog open={!!expandedRowGalleryId} onOpenChange={(open) => !open && setExpandedRowGalleryId(null)}>
+        <DialogContent className="max-w-xl bg-slate-50 border-0 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-slate-700">Galería de Fotos: <span className="font-bold text-slate-900">{items.find(i => i.id === expandedRowGalleryId)?.name}</span></DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 overflow-y-auto max-h-[60vh]">
+            { (() => {
+              const item = items.find(i => i.id === expandedRowGalleryId);
+              if (!item) return null;
+              const urls = item.imageUrls?.length ? item.imageUrls : (item.imageUrl ? [item.imageUrl] : []);
+              
+              return (
+                <>
+                  {urls.map((url, idx) => (
+                    <div key={idx} className="relative aspect-square bg-slate-200 rounded-lg overflow-hidden border border-slate-300 group shadow-sm hover:shadow-md transition-shadow">
+                      <Image src={url} alt={`Photo ${idx}`} fill className="object-cover" />
+                      <button 
+                        onClick={() => { if(confirm("¿Borrar esta foto?")) removeImage(item.id, url); }}
+                        className="absolute top-1.5 right-1.5 bg-red-600/95 text-white rounded p-1.5 hover:bg-red-700 shadow-md transition-transform active:scale-95"
+                        title="Borrar Foto"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button 
+                    onClick={() => { setSelectedIdForUpload(item.id); fileInputRef.current?.click(); }}
+                    className={`flex flex-col items-center justify-center aspect-square rounded-lg border-2 border-dashed border-slate-300 text-slate-500 hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50/50 transition-colors shadow-sm ${uploadingId === item.id ? "animate-pulse" : ""}`}
+                  >
+                    <Plus className="h-8 w-8 mb-2" />
+                    <span className="text-sm font-semibold tracking-tight">{uploadingId === item.id ? "Subiendo..." : "Añadir Foto"}</span>
+                  </button>
+                </>
+              )
+            })() }
+          </div>
+        </DialogContent>
+      </Dialog>
         
         {/* HEADER SECTION */}
         <div className="flex items-end justify-between">
@@ -658,23 +626,23 @@ export default function FbaShipmentsPage() {
           <table className="w-full text-left border-collapse table-auto text-xs">
             <thead>
               <tr className="bg-[#1f4e3d] text-white text-[10px] uppercase font-bold tracking-tight">
-                <th className="py-2.5 px-1 w-[35px] border-r border-white/10 text-center bg-[#163a2d] no-print">Mover</th>
-                <th className="py-2.5 px-1 w-[45px] border-r border-white/10 text-center">Loc.</th>
-                <th className="py-2.5 px-1 w-[45px] border-r border-white/10 text-center">Cajas</th>
-                <th className="py-2.5 px-1 w-[200px] border-r border-white/10">Producto</th>
-                <th className="py-2.5 px-1 w-[80px] border-r border-white/10 text-center">FnSKU</th>
-                <th className="py-2.5 px-1 w-[80px] border-r border-white/10 text-center">SKU</th>
-                <th className="py-2.5 px-1 w-[40px] border-r border-white/10 text-center leading-tight">Uds/Cj</th>
-                <th className="py-2.5 px-1 w-[40px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Tot. Cj<br/><span className="text-orange-400 text-[10px] block font-black">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
-                <th className="py-2.5 px-1 w-[40px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Tot. Uds<br/><span className="text-green-300 text-[10px] block font-black">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
-                <th className="py-2.5 px-1 w-[65px] border-r border-white/10 text-center">Exp.</th>
-                <th className="py-2.5 px-0.5 w-[26px] border-r border-white/10 text-center text-[9px]">L</th>
-                <th className="py-2.5 px-0.5 w-[26px] border-r border-white/10 text-center text-[9px]">A</th>
-                <th className="py-2.5 px-0.5 w-[26px] border-r border-white/10 text-center text-[9px]">H</th>
-                <th className="py-2.5 px-1 w-[40px] border-r border-white/10 text-center">Peso</th>
-                <th className="py-2.5 px-1 w-[90px] border-r border-white/10 text-center">Notas</th>
-                <th className="py-2.5 px-1 w-[50px] border-r border-white/10 text-center">Fotos</th>
-                <th className="py-2.5 px-1 w-[50px] text-center bg-[#163a2d] no-print">Acción</th>
+                <th className="py-2.5 px-0.5 w-[24px] border-r border-white/10 text-center bg-[#163a2d] no-print text-[9px]">Mov</th>
+                <th className="py-2.5 px-1 w-[40px] border-r border-white/10 text-center">Loc.</th>
+                <th className="py-2.5 px-1 w-[40px] border-r border-white/10 text-center">Cajas</th>
+                <th className="py-2.5 px-1 w-full border-r border-white/10">Producto</th>
+                <th className="py-2.5 px-1 w-[70px] border-r border-white/10 text-center">FnSKU</th>
+                <th className="py-2.5 px-1 w-[70px] border-r border-white/10 text-center">SKU</th>
+                <th className="py-2.5 px-0.5 w-[32px] border-r border-white/10 text-center leading-tight">Uds/Cj</th>
+                <th className="py-2.5 px-0.5 w-[32px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Tot. Cj<br/><span className="text-orange-400 text-[9px] block font-black">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
+                <th className="py-2.5 px-0.5 w-[32px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Tot. Uds<br/><span className="text-green-300 text-[9px] block font-black">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
+                <th className="py-2.5 px-1 w-[55px] border-r border-white/10 text-center">Exp.</th>
+                <th className="py-2.5 px-0.5 w-[24px] border-r border-white/10 text-center text-[9px]">L</th>
+                <th className="py-2.5 px-0.5 w-[24px] border-r border-white/10 text-center text-[9px]">A</th>
+                <th className="py-2.5 px-0.5 w-[24px] border-r border-white/10 text-center text-[9px]">H</th>
+                <th className="py-2.5 px-1 w-[38px] border-r border-white/10 text-center">Peso</th>
+                <th className="py-2.5 px-1 w-[80px] border-r border-white/10 text-center">Notas</th>
+                <th className="py-2.5 px-0.5 w-[36px] border-r border-white/10 text-center text-[10px]">Fotos</th>
+                <th className="py-2.5 px-0.5 w-[24px] text-center bg-[#163a2d] no-print text-[10px]">Act</th>
               </tr>
             </thead>
             <Reorder.Group axis="y" as="tbody" values={inShipmentItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")} className="divide-y divide-slate-100 relative">
@@ -682,8 +650,9 @@ export default function FbaShipmentsPage() {
                 <StandaloneRow 
                   key={item.id} item={item} index={index} isPending={false}
                   updateItem={updateItem} deleteItem={deleteItem} switchItemStatus={switchItemStatus}
-                  setExpandedImage={setExpandedImage} removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
+                  removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
                   fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
+                  setExpandedRowGalleryId={setExpandedRowGalleryId}
                 />
               ))}
               {inShipmentItems.length === 0 && (
@@ -720,23 +689,23 @@ export default function FbaShipmentsPage() {
           <table className="w-full text-left border-collapse table-auto text-xs">
             <thead>
               <tr className="bg-orange-800 text-white/90 text-[10px] uppercase font-bold tracking-tight">
-                <th className="py-2.5 px-1 w-[35px] border-r border-orange-700/50 text-center no-print">Mover</th>
-                <th className="py-2.5 px-1 w-[45px] border-r border-orange-700/50 text-center">Loc.</th>
-                <th className="py-2.5 px-1 w-[45px] border-r border-orange-700/50 text-center">Cajas</th>
-                <th className="py-2.5 px-2 w-[200px] border-r border-orange-700/50 text-orange-100">Producto Pendiente</th>
-                <th className="py-2.5 px-1 w-[80px] border-r border-orange-700/50 text-center">FnSKU</th>
-                <th className="py-2.5 px-1 w-[80px] border-r border-orange-700/50 text-center">SKU</th>
-                <th className="py-2.5 px-1 w-[40px] border-r border-orange-700/50 text-center leading-tight">Uds/Cj</th>
-                <th className="py-2.5 px-1 w-[40px] border-r border-orange-700/50 text-center leading-tight">Tot. Cj</th>
-                <th className="py-2.5 px-1 w-[40px] border-r border-orange-700/50 text-center leading-tight">Tot. Uds</th>
-                <th className="py-2.5 px-1 w-[65px] border-r border-orange-700/50 text-center">Exp.</th>
-                <th className="py-2.5 px-0.5 w-[26px] border-r border-orange-700/50 text-center text-[9px]">L</th>
-                <th className="py-2.5 px-0.5 w-[26px] border-r border-orange-700/50 text-center text-[9px]">A</th>
-                <th className="py-2.5 px-0.5 w-[26px] border-r border-orange-700/50 text-center text-[9px]">H</th>
-                <th className="py-2.5 px-1 w-[40px] border-r border-orange-700/50 text-center">Peso</th>
-                <th className="py-2.5 px-1 w-[90px] border-r border-orange-700/50 text-center">Notas</th>
-                <th className="py-2.5 px-1 w-[50px] border-r border-orange-700/50 text-center">Fotos</th>
-                <th className="py-2.5 px-1 w-[50px] text-center no-print">Acción</th>
+                <th className="py-2.5 px-0.5 w-[24px] border-r border-orange-700/50 text-center no-print text-[9px]">Mov</th>
+                <th className="py-2.5 px-1 w-[40px] border-r border-orange-700/50 text-center">Loc.</th>
+                <th className="py-2.5 px-1 w-[40px] border-r border-orange-700/50 text-center">Cajas</th>
+                <th className="py-2.5 px-2 w-full border-r border-orange-700/50 text-orange-100">Producto Pendiente</th>
+                <th className="py-2.5 px-1 w-[70px] border-r border-orange-700/50 text-center">FnSKU</th>
+                <th className="py-2.5 px-1 w-[70px] border-r border-orange-700/50 text-center">SKU</th>
+                <th className="py-2.5 px-0.5 w-[32px] border-r border-orange-700/50 text-center leading-tight">Uds/Cj</th>
+                <th className="py-2.5 px-0.5 w-[32px] border-r border-orange-700/50 text-center leading-tight">Tot. Cj</th>
+                <th className="py-2.5 px-0.5 w-[32px] border-r border-orange-700/50 text-center leading-tight">Tot. Uds</th>
+                <th className="py-2.5 px-1 w-[55px] border-r border-orange-700/50 text-center">Exp.</th>
+                <th className="py-2.5 px-0.5 w-[24px] border-r border-orange-700/50 text-center text-[9px]">L</th>
+                <th className="py-2.5 px-0.5 w-[24px] border-r border-orange-700/50 text-center text-[9px]">A</th>
+                <th className="py-2.5 px-0.5 w-[24px] border-r border-orange-700/50 text-center text-[9px]">H</th>
+                <th className="py-2.5 px-1 w-[38px] border-r border-orange-700/50 text-center">Peso</th>
+                <th className="py-2.5 px-1 w-[80px] border-r border-orange-700/50 text-center">Notas</th>
+                <th className="py-2.5 px-0.5 w-[36px] border-r border-orange-700/50 text-center text-[10px]">Fotos</th>
+                <th className="py-2.5 px-0.5 w-[24px] text-center no-print text-[10px]">Act</th>
               </tr>
             </thead>
             <Reorder.Group axis="y" as="tbody" values={pendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")} className="divide-y divide-slate-100 relative">
@@ -744,8 +713,9 @@ export default function FbaShipmentsPage() {
                 <StandaloneRow 
                   key={item.id} item={item} index={index} isPending={true}
                   updateItem={updateItem} deleteItem={deleteItem} switchItemStatus={switchItemStatus}
-                  setExpandedImage={setExpandedImage} removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
+                  removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
                   fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
+                  setExpandedRowGalleryId={setExpandedRowGalleryId}
                 />
               ))}
               {pendingItems.length === 0 && (
