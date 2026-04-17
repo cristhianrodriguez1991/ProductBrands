@@ -292,14 +292,14 @@ export default function FbaShipmentsPage() {
               <th style="width: 300px;">NOMBRE COMPLETO DEL PRODUCTO</th>
               <th style="width: 150px;">FnSKU or UPC</th>
               <th style="width: 120px;">SKU</th>
-              <th style="width: 90px;">Uds / Caja</th>
-              <th style="width: 90px;">Cajas Totales</th>
-              <th style="width: 100px;">Total UNIDADES</th>
-              <th style="width: 110px;">Fecha de Exp</th>
+              <th style="width: 120px;">Unidades por Caja</th>
+              <th style="width: 110px;">Total de Cajas</th>
+              <th style="width: 110px;">Total UNIDADES</th>
+              <th style="width: 130px;">Fecha de Expiraci&#243;n</th>
               <th style="width: 60px;">Largo</th>
               <th style="width: 60px;">Ancho</th>
               <th style="width: 60px;">Altura</th>
-              <th style="width: 90px;">Peso Caja</th>
+              <th style="width: 100px;">Peso de Caja</th>
               <th style="width: 250px;">Descripci&#243;n</th>
             </tr>
           </thead>
@@ -596,18 +596,18 @@ export default function FbaShipmentsPage() {
               <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-black tracking-wider">
                 <th className="py-5 px-1 w-[35px] border-r border-white/10 text-center bg-[#163a2d]"></th>
                 <th className="py-5 px-3 w-[100px] border-r border-white/10">Location</th>
-                <th className="py-5 px-3 w-[110px] border-r border-white/10">Orden Cajas</th>
+                <th className="py-5 px-3 w-[120px] border-r border-white/10">Orden de Cajas</th>
                 <th className="py-5 px-4 min-w-[250px] border-r border-white/10">Nombre del Producto</th>
                 <th className="py-5 px-3 w-[150px] border-r border-white/10 text-center">FnSKU / UPC</th>
                 <th className="py-5 px-3 w-[120px] border-r border-white/10 text-center">SKU</th>
-                <th className="py-5 px-3 w-[80px] border-r border-white/10 text-center leading-none">Uds/Cj</th>
-                <th className="py-5 px-3 w-[100px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Tot. Cajas<br/><span className="text-orange-400 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
-                <th className="py-5 px-3 w-[100px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total Uds<br/><span className="text-green-300 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
-                <th className="py-5 px-3 w-[120px] border-r border-white/10 text-center">Fecha Exp.</th>
-                <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center text-[10px]">L</th>
-                <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center text-[10px]">A</th>
-                <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center text-[10px]">H</th>
-                <th className="py-5 px-3 w-[90px] border-r border-white/10 text-center">Peso Cj</th>
+                <th className="py-5 px-3 w-[90px] border-r border-white/10 text-center leading-none">Unidades por Caja</th>
+                <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total de Cajas<br/><span className="text-orange-400 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
+                <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total de Unidades<br/><span className="text-green-300 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
+                <th className="py-5 px-3 w-[130px] border-r border-white/10 text-center">Fecha de Expiración</th>
+                <th className="py-5 px-2 w-[60px] border-r border-white/10 text-center text-[10px]">Largo</th>
+                <th className="py-5 px-2 w-[60px] border-r border-white/10 text-center text-[10px]">Ancho</th>
+                <th className="py-5 px-2 w-[60px] border-r border-white/10 text-center text-[10px]">Altura</th>
+                <th className="py-5 px-3 w-[100px] border-r border-white/10 text-center">Peso de Caja</th>
                 <th className="py-5 px-4 w-[250px] border-r border-white/10">Descripción / Notas</th>
                 <th className="py-5 px-3 w-[140px] border-r border-white/10 text-center">Fotos</th>
                 <th className="py-5 px-3 w-[70px] text-center bg-[#163a2d] no-print">Acción</th>
@@ -650,19 +650,19 @@ export default function FbaShipmentsPage() {
             <thead>
               <tr className="bg-orange-800 text-white/90 text-[9px] uppercase font-black tracking-widest">
                 <th className="py-3 px-1 w-[30px] border-r border-orange-700/50 text-center"></th>
-                <th className="py-3 px-3 w-[80px] border-r border-orange-700/50">Location</th>
-                <th className="py-3 px-3 w-[85px] border-r border-orange-700/50">Cajas</th>
+                <th className="py-3 px-3 w-[100px] border-r border-orange-700/50">Location</th>
+                <th className="py-3 px-3 w-[120px] border-r border-orange-700/50">Orden de Cajas</th>
                 <th className="py-3 min-w-[200px] border-r border-orange-700/50 text-orange-100">PRODUCTO PENDIENTE</th>
                 <th className="py-3 px-3 w-[140px] border-r border-orange-700/50">FnSKU</th>
                 <th className="py-3 px-3 w-[110px] border-r border-orange-700/50">SKU</th>
-                <th className="py-3 px-3 w-[70px] border-r border-orange-700/50 text-center">U/C</th>
-                <th className="py-3 px-3 w-[70px] border-r border-orange-700/50 text-center">Tot</th>
-                <th className="py-3 px-3 w-[80px] border-r border-orange-700/50 text-center">Units</th>
-                <th className="py-3 px-3 w-[110px] border-r border-orange-700/50">Exp</th>
-                <th className="py-3 px-3 w-[45px] border-r border-orange-700/50 text-center">L</th>
-                <th className="py-3 px-3 w-[45px] border-r border-orange-700/50 text-center">A</th>
-                <th className="py-3 px-3 w-[45px] border-r border-orange-700/50 text-center">H</th>
-                <th className="py-3 px-3 w-[75px] border-r border-orange-700/50 text-center">Weight</th>
+                <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center">Unidades por Caja</th>
+                <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center">Total de Cajas</th>
+                <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center">Total de Unidades</th>
+                <th className="py-3 px-3 w-[110px] border-r border-orange-700/50">Fecha de Expiración</th>
+                <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">Largo</th>
+                <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">Ancho</th>
+                <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">Altura</th>
+                <th className="py-3 px-3 w-[100px] border-r border-orange-700/50 text-center">Peso de Caja</th>
                 <th className="py-3 px-3 w-[220px] border-r border-orange-700/50">Descripción</th>
                 <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">Foto</th>
                 <th className="py-3 px-3 w-[65px] text-center no-print">Reset</th>
