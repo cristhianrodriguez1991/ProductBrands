@@ -432,8 +432,9 @@ export default function FbaShipmentsPage() {
   const pendingItems = items.filter(i => i.status === "PENDING")
 
   return (
-    <div className="w-full min-h-full flex flex-col gap-6 pb-40 print-area">
-      <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
+    <>
+      <div className="w-full min-h-full flex flex-col gap-6 pb-40 print-area">
+        <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
       
       <div className="flex items-end justify-between">
         <div className="mb-4">
