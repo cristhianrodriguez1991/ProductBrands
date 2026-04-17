@@ -265,10 +265,11 @@ export default function FbaShipmentsPage() {
 
   const handleAddRow = async () => {
     if (!shipment) return
+    const maxSortOrder = items.length > 0 ? Math.max(...items.map(i => i.sortOrder || 0)) : 0
     const res = await fetch(`/api/admin/fba-shipments/${shipment.id}/items`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "" })
+      body: JSON.stringify({ name: "", sortOrder: maxSortOrder + 1 })
     })
     if (res.ok) fetchActiveShipment()
   }

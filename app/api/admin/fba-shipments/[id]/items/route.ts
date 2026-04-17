@@ -32,7 +32,8 @@ export async function POST(
         height: data.height ? parseFloat(data.height) : null,
         boxWeight: data.boxWeight ? parseFloat(data.boxWeight) : null,
         description: data.description || "",
-        status: "IN_SHIPMENT"
+        status: "IN_SHIPMENT",
+        sortOrder: data.sortOrder || 0
       }
     })
 
