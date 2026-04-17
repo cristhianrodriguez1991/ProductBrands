@@ -29,8 +29,8 @@ type FbaItem = {
   height: number | ""
   boxWeight: number | ""
   description: string
-  imageUrl?: string
-  imageUrls?: string[]
+  imageUrl?: string | null
+  imageUrls?: string[] | null
   sortOrder: number
   status: "IN_SHIPMENT" | "PENDING"
 }
