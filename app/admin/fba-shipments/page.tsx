@@ -569,14 +569,17 @@ export default function FbaShipmentsPage() {
     return raw
   }
 
+  const filteredShipments = (allShipments || []).filter(sh => 
+    (sh.name || "").toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   if (loading) return <div className="p-12 text-center animate-pulse text-slate-400 font-bold">Cargando Portal FBA...</div>
 
-  const filteredShipments = allShipments.filter(sh => {
-    return sh.name.toLowerCase().includes(searchQuery.toLowerCase())
-  })
+  const activeTab = tabs.find(t => t.id === activeTabId)
 
   return (
     <>
+      <div className="w-full flex flex-col h-full bg-[#f8fafc] min-h-screen font-sans">
       <style jsx global>{`
         @media print {
           @page { size: landscape; margin: 0.5cm; }
@@ -585,8 +588,6 @@ export default function FbaShipmentsPage() {
           .tab-bar, .no-print { display: none !important; }
         }
       `}</style>
-
-      <div className="w-full flex flex-col h-full bg-[#f8fafc] min-h-screen font-sans">
         {/* TOP TAB NAV */}
         <div className="tab-bar no-print flex items-end gap-1 px-6 bg-white border-b border-slate-200 pt-4 shadow-sm z-30">
           <div 
@@ -720,137 +721,130 @@ export default function FbaShipmentsPage() {
                 )}
               </div>
             </div>
-          ) : (
+          ) : activeTab ? (
             /* SHIPMENT TAB VIEW */
-              (() => {
-                const tab = tabs.find(t => t.id === activeTabId)
-                if (!tab) return null
-                const inItems = tab.items.filter((i: any) => i.status === "IN_SHIPMENT")
-
-                return (
-                  <div className="animate-in slide-in-from-bottom-5 duration-500">
-                    <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8 no-print">
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
-                          <ImageIcon className="h-7 w-7" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-3">
-                             <h1 className="text-3xl font-black text-slate-900 leading-none">{tab.name}</h1>
-                             {saveStatus === "saving" && <span className="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full font-bold animate-pulse">Guardando...</span>}
-                             {saveStatus === "saved" && <span className="text-[10px] bg-green-50 text-green-500 px-2 py-0.5 rounded-full font-bold">Guardado</span>}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-3">
-                        <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white rounded-xl shadow-sm px-6 font-bold border-slate-200"><Printer className="h-5 w-5" /> Imprimir</Button>
-                        <Button variant="outline" onClick={() => exportToExcelObject(tab, tab.items)} className="h-12 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 rounded-xl px-6 font-bold gap-2"><Download className="h-5 w-5" /> Exportar Excel</Button>
-                        <Button variant="ghost" onClick={() => closeTab(tab.id)} className="h-12 rounded-xl px-6 font-bold text-slate-500 hover:bg-slate-200">Cerrar Pestaña</Button>
-                      </div>
+            <div className="animate-in slide-in-from-bottom-5 duration-500">
+              <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8 no-print">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
+                    <ImageIcon className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-3xl font-black text-slate-900 leading-none">{activeTab.name}</h1>
+                        {saveStatus === "saving" && <span className="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full font-bold animate-pulse">Guardando...</span>}
+                        {saveStatus === "saved" && <span className="text-[10px] bg-green-50 text-green-500 px-2 py-0.5 rounded-full font-bold">Guardado</span>}
                     </div>
-
-                  {/* MAIN TABLE */}
-                  <Card className="w-full border-0 shadow-2xl rounded-3xl overflow-hidden bg-white mb-10 border border-slate-100">
-                    <div className="overflow-x-auto custom-scrollbar">
-                      <table className="w-full text-left border-collapse min-w-[1500px]">
-                        <thead>
-                          <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-black tracking-widest">
-                            <th className="py-6 px-1 w-[35px] text-center bg-[#163a2d]"></th>
-                            <th className="py-6 px-3 w-[110px] border-r border-white/5">Location</th>
-                            <th className="py-6 px-3 w-[130px] border-r border-white/5">Orden Cajas</th>
-                            <th className="py-6 px-5 min-w-[300px] border-r border-white/5">Producto</th>
-                            <th className="py-6 px-3 w-[160px] border-r border-white/5 text-center">FnSKU</th>
-                            <th className="py-6 px-3 w-[130px] border-r border-white/5 text-center">SKU</th>
-                            <th className="py-6 px-3 w-[85px] border-r border-white/5 text-center">U/C</th>
-                            <th className="py-6 px-3 w-[105px] border-r border-white/5 text-center bg-[#245d48]">Cajas ({inItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</th>
-                            <th className="py-6 px-3 w-[115px] border-r border-white/5 text-center bg-[#245d48]">Und ({inItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalUnits) || 0), 0)})</th>
-                            <th className="py-6 px-3 w-[115px] border-r border-white/5 text-center">Exp. Date</th>
-                            <th className="py-6 px-2 w-[55px] border-r border-white/5 text-center">L</th>
-                            <th className="py-6 px-2 w-[55px] border-r border-white/5 text-center">A</th>
-                            <th className="py-6 px-2 w-[55px] border-r border-white/5 text-center">H</th>
-                            <th className="py-6 px-4 w-[90px] border-r border-white/5 text-center">Peso</th>
-                            <th className="py-6 px-6 w-[300px] border-r border-white/5">Descripción</th>
-                            <th className="py-6 px-3 w-[130px] border-r border-white/5 text-center">Fotos</th>
-                            <th className="py-6 px-3 w-[70px] text-center bg-[#163a2d] no-print">Acc</th>
-                          </tr>
-                        </thead>
-
-                        <Reorder.Group axis="y" as="tbody" values={inItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")}>
-                          {inItems.map((item: any, index: number) => (
-                            <StandaloneRow 
-                              key={item.id} item={item} index={index} isPending={false}
-                              updateItem={updateItem} deleteItem={() => deleteItem(tab.id, item.id)} switchItemStatus={switchItemStatus}
-                              removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
-                              fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
-                              setExpandedImage={setExpandedImage}
-                              copyItem={copyItem}
-                            />
-                          ))}
-                        </Reorder.Group>
-                      </table>
-                    </div>
-                    <div className="bg-[#f8fafc]/50 p-8 border-t no-print flex gap-4">
-                      <Button variant="ghost" onClick={() => handleAddRow(tab.id)} className="flex-1 h-20 text-slate-400 font-bold gap-4 border-4 border-dashed border-slate-100 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-[1.5rem] group">
-                        <Plus className="h-6 w-6 group-hover:scale-125 transition-transform" /> AGREGAR ARTÍCULO AL DOCUMENTO
-                      </Button>
-                      {copiedItem && (
-                        <Button variant="ghost" onClick={() => pasteItem(tab.id)} className="flex-1 h-20 text-blue-400 font-bold gap-4 border-4 border-dashed border-blue-100 hover:border-green-400 hover:bg-green-50 hover:text-green-600 transition-all rounded-[1.5rem] group">
-                          <ClipboardPaste className="h-6 w-6 group-hover:scale-125 transition-transform" /> PEGAR "{copiedItem.name || "Fila"}"
-                        </Button>
-                      )}
-                    </div>
-                  </Card>
-
-                  {/* GLOBAL PENDING SECTION */}
-                  {globalPendingItems.length > 0 && (
-                    <div className="no-print bg-amber-50/40 rounded-3xl p-10 border border-amber-100/50 shadow-inner mt-10 mb-20 animate-in fade-in zoom-in duration-500">
-                      <h2 className="text-2xl font-black text-amber-900 mb-8 flex items-center gap-3">
-                        <MousePointer2 className="h-6 w-6" /> Palets en Espera (Global)
-                        <span className="text-[10px] font-black bg-amber-600 text-white px-3 py-1 rounded-full uppercase tracking-tighter">Disponible para este envío</span>
-                      </h2>
-                      <div className="overflow-x-auto rounded-[2rem] border border-amber-200 bg-white shadow-xl">
-                        <table className="w-full text-left min-w-[1300px]">
-                          <thead>
-                            <tr className="bg-amber-800 text-white text-[10px] uppercase font-black tracking-widest">
-                              <th className="py-4 px-1 w-[30px] text-center"></th>
-                              <th className="py-4 px-3 w-[110px]">Location</th>
-                              <th className="py-4 px-3 w-[130px]">Orden</th>
-                              <th className="py-4 min-w-[200px]">PRODUCTO PENDIENTE</th>
-                              <th className="py-4 px-3 w-[150px]">FnSKU</th>
-                              <th className="py-4 px-3 w-[120px]">SKU</th>
-                              <th className="py-4 px-3 w-[90px] text-center">U/C</th>
-                              <th className="py-4 px-3 w-[90px] text-center leading-tight">Cajas<br/><span className="text-[9px] text-amber-200">({globalPendingItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</span></th>
-                              <th className="py-4 px-3 w-[90px] text-center leading-tight">Unds<br/><span className="text-[9px] text-amber-200">({globalPendingItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalUnits) || 0), 0)})</span></th>
-                              <th className="py-4 px-3 w-[110px]">Exp</th>
-                              <th className="py-4 px-3 w-[60px] text-center">L</th>
-                              <th className="py-4 px-3 w-[60px] text-center">A</th>
-                              <th className="py-4 px-3 w-[60px] text-center">H</th>
-                              <th className="py-4 px-3 w-[100px] text-center">Peso</th>
-                              <th className="py-4 px-5 w-[250px]">Desc</th>
-                              <th className="py-4 px-3 w-[150px] text-center">Foto</th>
-                              <th className="py-4 px-3 text-center no-print">Acc</th>
-                            </tr>
-                          </thead>
-                          <Reorder.Group axis="y" as="tbody" values={globalPendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
-                            {globalPendingItems.map((item: any, index: number) => (
-                              <StandaloneRow 
-                                key={item.id} item={item} index={index} isPending={true}
-                                updateItem={updateItem} deleteItem={() => deleteItem(tab.id, item.id)} switchItemStatus={switchItemStatus}
-                                removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
-                                fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
-                                setExpandedImage={setExpandedImage}
-                                activeTabId={activeTabId}
-                                copyItem={copyItem}
-                              />
-                            ))}
-                          </Reorder.Group>
-                        </table>
-                      </div>
-                    </div>
+                  </div>
                 </div>
-              )
-            })()
-          )}
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white rounded-xl shadow-sm px-6 font-bold border-slate-200"><Printer className="h-5 w-5" /> Imprimir</Button>
+                  <Button variant="outline" onClick={() => exportToExcelObject(activeTab, activeTab.items)} className="h-12 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 rounded-xl px-6 font-bold gap-2"><Download className="h-5 w-5" /> Exportar Excel</Button>
+                  <Button variant="ghost" onClick={() => closeTab(activeTab.id)} className="h-12 rounded-xl px-6 font-bold text-slate-500 hover:bg-slate-200">Cerrar Pestaña</Button>
+                </div>
+              </div>
+
+              {/* MAIN TABLE */}
+              <Card className="w-full border-0 shadow-2xl rounded-3xl overflow-hidden bg-white mb-10 border border-slate-100">
+                <div className="overflow-x-auto custom-scrollbar">
+                  <table className="w-full text-left border-collapse min-w-[1500px]">
+                    <thead>
+                      <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-black tracking-widest">
+                        <th className="py-6 px-1 w-[35px] text-center bg-[#163a2d]"></th>
+                        <th className="py-6 px-3 w-[110px] border-r border-white/5">Location</th>
+                        <th className="py-6 px-3 w-[130px] border-r border-white/5">Orden Cajas</th>
+                        <th className="py-6 px-5 min-w-[300px] border-r border-white/5">Producto</th>
+                        <th className="py-6 px-3 w-[160px] border-r border-white/5 text-center">FnSKU</th>
+                        <th className="py-6 px-3 w-[130px] border-r border-white/5 text-center">SKU</th>
+                        <th className="py-6 px-3 w-[85px] border-r border-white/5 text-center">U/C</th>
+                        <th className="py-6 px-3 w-[105px] border-r border-white/5 text-center bg-[#245d48]">Cajas ({activeTab.items.filter((i: any) => i.status === "IN_SHIPMENT").reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</th>
+                        <th className="py-6 px-3 w-[115px] border-r border-white/5 text-center bg-[#245d48]">Und ({activeTab.items.filter((i: any) => i.status === "IN_SHIPMENT").reduce((acc: number, i: any) => acc + (parseInt(i.totalUnits) || 0), 0)})</th>
+                        <th className="py-6 px-3 w-[115px] border-r border-white/5 text-center">Exp. Date</th>
+                        <th className="py-6 px-2 w-[55px] border-r border-white/5 text-center">L</th>
+                        <th className="py-6 px-2 w-[55px] border-r border-white/5 text-center">A</th>
+                        <th className="py-6 px-2 w-[55px] border-r border-white/5 text-center">H</th>
+                        <th className="py-6 px-4 w-[90px] border-r border-white/5 text-center">Peso</th>
+                        <th className="py-6 px-6 w-[300px] border-r border-white/5">Descripción</th>
+                        <th className="py-6 px-3 w-[130px] border-r border-white/5 text-center">Fotos</th>
+                        <th className="py-6 px-3 w-[70px] text-center bg-[#163a2d] no-print">Acc</th>
+                      </tr>
+                    </thead>
+
+                    <Reorder.Group axis="y" as="tbody" values={activeTab.items.filter((i: any) => i.status === "IN_SHIPMENT")} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")}>
+                      {activeTab.items.filter((i: any) => i.status === "IN_SHIPMENT").map((item: any, index: number) => (
+                        <StandaloneRow 
+                          key={item.id} item={item} index={index} isPending={false}
+                          updateItem={updateItem} deleteItem={() => deleteItem(activeTab.id, item.id)} switchItemStatus={switchItemStatus}
+                          removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
+                          fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
+                          setExpandedImage={setExpandedImage}
+                          copyItem={copyItem}
+                        />
+                      ))}
+                    </Reorder.Group>
+                  </table>
+                </div>
+                <div className="bg-[#f8fafc]/50 p-8 border-t no-print flex gap-4">
+                  <Button variant="ghost" onClick={() => handleAddRow(activeTab.id)} className="flex-1 h-20 text-slate-400 font-bold gap-4 border-4 border-dashed border-slate-100 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-[1.5rem] group">
+                    <Plus className="h-6 w-6 group-hover:scale-125 transition-transform" /> AGREGAR ARTÍCULO AL DOCUMENTO
+                  </Button>
+                  {copiedItem && (
+                    <Button variant="ghost" onClick={() => pasteItem(activeTab.id)} className="flex-1 h-20 text-blue-400 font-bold gap-4 border-4 border-dashed border-blue-100 hover:border-green-400 hover:bg-green-50 hover:text-green-600 transition-all rounded-[1.5rem] group">
+                      <ClipboardPaste className="h-6 w-6 group-hover:scale-125 transition-transform" /> PEGAR "{copiedItem.name || "Fila"}"
+                    </Button>
+                  )}
+                </div>
+              </Card>
+
+              {/* GLOBAL PENDING SECTION */}
+              {globalPendingItems.length > 0 && (
+                <div className="no-print bg-amber-50/40 rounded-3xl p-10 border border-amber-100/50 shadow-inner mt-10 mb-20 animate-in fade-in zoom-in duration-500">
+                  <h2 className="text-2xl font-black text-amber-900 mb-8 flex items-center gap-3">
+                    <MousePointer2 className="h-6 w-6" /> Palets en Espera (Global)
+                    <span className="text-[10px] font-black bg-amber-600 text-white px-3 py-1 rounded-full uppercase tracking-tighter">Disponible para este envío</span>
+                  </h2>
+                  <div className="overflow-x-auto rounded-[2rem] border border-amber-200 bg-white shadow-xl">
+                    <table className="w-full text-left min-w-[1300px]">
+                      <thead>
+                        <tr className="bg-amber-800 text-white text-[10px] uppercase font-black tracking-widest">
+                          <th className="py-4 px-1 w-[30px] text-center"></th>
+                          <th className="py-4 px-3 w-[110px]">Location</th>
+                          <th className="py-4 px-3 w-[130px]">Orden</th>
+                          <th className="py-4 min-w-[200px]">PRODUCTO PENDIENTE</th>
+                          <th className="py-4 px-3 w-[150px]">FnSKU</th>
+                          <th className="py-4 px-3 w-[120px]">SKU</th>
+                          <th className="py-4 px-3 w-[90px] text-center">U/C</th>
+                          <th className="py-4 px-3 w-[90px] text-center leading-tight">Cajas<br/><span className="text-[9px] text-amber-200">({globalPendingItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</span></th>
+                          <th className="py-4 px-3 w-[90px] text-center leading-tight">Unds<br/><span className="text-[9px] text-amber-200">({globalPendingItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalUnits) || 0), 0)})</span></th>
+                          <th className="py-4 px-3 w-[110px]">Exp</th>
+                          <th className="py-4 px-3 w-[60px] text-center">L</th>
+                          <th className="py-4 px-3 w-[60px] text-center">A</th>
+                          <th className="py-4 px-3 w-[60px] text-center">H</th>
+                          <th className="py-4 px-3 w-[100px] text-center">Peso</th>
+                          <th className="py-4 px-5 w-[250px]">Desc</th>
+                          <th className="py-4 px-3 w-[150px] text-center">Foto</th>
+                          <th className="py-4 px-3 text-center no-print">Acc</th>
+                        </tr>
+                      </thead>
+                      <Reorder.Group axis="y" as="tbody" values={globalPendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
+                        {globalPendingItems.map((item: any, index: number) => (
+                          <StandaloneRow 
+                            key={item.id} item={item} index={index} isPending={true}
+                            updateItem={updateItem} deleteItem={() => deleteItem(activeTab.id, item.id)} switchItemStatus={switchItemStatus}
+                            removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
+                            fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
+                            setExpandedImage={setExpandedImage}
+                            activeTabId={activeTabId}
+                            copyItem={copyItem}
+                          />
+                        ))}
+                      </Reorder.Group>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
 
