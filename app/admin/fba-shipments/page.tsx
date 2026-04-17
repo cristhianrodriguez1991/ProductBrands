@@ -174,7 +174,9 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
       </td>
     </Reorder.Item>
   )
-})export default function FbaShipmentsPage() {
+})
+
+export default function FbaShipmentsPage() {
   const [shipment, setShipment] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [items, setItems] = useState<FbaItem[]>([])
@@ -700,6 +702,4 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
   )
 }
 
-    </>
-  )
 }
