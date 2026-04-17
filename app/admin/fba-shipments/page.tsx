@@ -865,6 +865,16 @@ export default function FbaShipmentsPage() {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* HIDDEN INPUT FOR PHOTOS */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        accept="image/*" 
+        multiple 
+        onChange={handleImageUpload} 
+      />
     </>
   )
 }
