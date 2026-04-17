@@ -432,7 +432,8 @@ export default function FbaShipmentsPage() {
           </div>
         </td>
 
-        <td className="p-0 border-l">
+        {/* ACTION COLUMN - NO PRINT */}
+        <td className="p-0 border-l no-print bg-slate-50/30">
           <div className="flex items-center justify-center gap-1 opacity-20 hover:opacity-100 transition-opacity">
             {item.status === "IN_SHIPMENT" ? (
               <Button variant="ghost" size="icon" className="h-6 w-6 text-orange-600 hover:bg-orange-100" onClick={() => switchItemStatus(item.id, "PENDING")}>
@@ -491,38 +492,72 @@ export default function FbaShipmentsPage() {
 
       <style jsx global>{`
         @media print {
-          body * { visibility: hidden; }
-          .print-area, .print-area * { visibility: visible; }
-          .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+          title, meta { display: none; }
           .no-print { display: none !important; }
+          body { background: white !important; }
+          .print-area { 
+            display: block !important; 
+            width: 100% !important; 
+            margin: 0 !important; 
+            padding: 0 !important;
+          }
+          /* Ensure everything is visible in print area */
+          .print-area, .print-area * {
+            visibility: visible !important;
+          }
+          /* Reset card shadows and borders for print */
+          .card-print { 
+            box-shadow: none !important; 
+            border: 1px solid #eee !important;
+            border-radius: 0 !important;
+          }
+          /* Hide sidebar and other layout elements */
+          nav, aside, footer, header:not(.print-area) { display: none !important; }
         }
       `}</style>
       
-      <div className="flex items-end justify-between print-area">
-        <div className="mb-4">
-          <span className="text-blue-600 font-black text-sm uppercase tracking-widest mb-1 block">Logística de Almacén</span>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900 leading-none">FBA Shipment - {shipment.name}</h1>
-          <div className="flex items-center gap-3 mt-3">
-             <div className="flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold ring-1 ring-green-200 shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> ACTIVO
-             </div>
-             <p className="text-slate-400 text-xs font-medium uppercase tracking-tighter">Última actualización: {new Date(shipment.updatedAt).toLocaleTimeString()}</p>
+      <div className="w-full min-h-full flex flex-col gap-6 pb-40 print-area">
+        <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
+        
+        {/* EXPANDED IMAGE MODAL FIXED OVERSYNC */}
+        <Dialog open={!!expandedImage} onOpenChange={() => setExpandedImage(null)}>
+          <DialogContent className="max-w-6xl w-11/12 p-0 overflow-hidden border-0 bg-transparent flex items-center justify-center shadow-none">
+            <div className="relative w-full h-[90vh] flex items-center justify-center bg-black/40 backdrop-blur-3xl rounded-3xl p-4 md:p-8">
+               <button className="absolute top-4 right-4 md:top-6 md:right-6 z-50 text-white hover:text-red-400 bg-black/50 p-2.5 rounded-full transition-colors" onClick={() => setExpandedImage(null)}><X className="h-6 w-6"/></button>
+               {expandedImage && (
+                 <img src={expandedImage} alt="Large View" className="w-auto h-auto max-w-full max-h-[85vh] object-contain drop-shadow-[0_0_40px_rgba(0,0,0,0.5)] rounded-md" />
+               )}
+            </div>
+          </DialogContent>
+        </Dialog>
+        
+        {/* HEADER SECTION */}
+        <div className="flex items-end justify-between">
+          <div className="mb-4">
+            <span className="text-blue-600 font-black text-sm uppercase tracking-widest mb-1 block">Logística de Almacén</span>
+            <h1 className="text-4xl font-black tracking-tight text-slate-900 leading-none">FBA Shipment - {shipment.name}</h1>
+            <div className="flex items-center gap-3 mt-3">
+               <div className="flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold ring-1 ring-green-200 shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> ACTIVO
+               </div>
+               <p className="text-slate-400 text-xs font-medium uppercase tracking-tighter">Última actualización: {new Date(shipment.updatedAt).toLocaleTimeString()}</p>
+            </div>
+          </div>
+          <div className="flex gap-4 no-print pb-3">
+            <Button variant="outline" onClick={handlePrint} className="h-12 gap-2 text-slate-700 border-slate-200 bg-white hover:bg-slate-50 rounded-xl shadow-sm px-6 font-bold">
+              <Printer className="h-5 w-5" /> Imprimir
+            </Button>
+            <Button variant="outline" onClick={exportToExcelObject} className="h-12 gap-2 text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-xl shadow-sm px-6 font-bold">
+              <Download className="h-5 w-5" /> Exportar a Excel
+            </Button>
+            <Button onClick={handleCloseShipment} variant="destructive" className="h-12 gap-2 rounded-xl shadow-lg shadow-red-100 px-6 font-bold">
+              Cerrar & Finalizar Envío
+            </Button>
           </div>
         </div>
-        <div className="flex gap-4 no-print pb-3">
-          <Button variant="outline" onClick={handlePrint} className="h-12 gap-2 text-slate-700 border-slate-200 bg-white hover:bg-slate-50 rounded-xl shadow-sm px-6 font-bold">
-            <Printer className="h-5 w-5" /> Imprimir
-          </Button>
-          <Button variant="outline" onClick={exportToExcelObject} className="h-12 gap-2 text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-xl shadow-sm px-6 font-bold">
-            <Download className="h-5 w-5" /> Exportar a Excel
-          </Button>
-          <Button onClick={handleCloseShipment} variant="destructive" className="h-12 gap-2 rounded-xl shadow-lg shadow-red-100 px-6 font-bold">
-            Cerrar & Finalizar Envío
-          </Button>
-        </div>
-      </div>
 
-      <Card className="w-full border-0 shadow-2xl rounded-3xl overflow-hidden bg-white print-area">
+        {/* ACTIVE TABLE */}
+        <Card className="w-full border-0 shadow-2xl rounded-3xl overflow-hidden bg-white card-print">
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-[1400px]">
             <thead>
@@ -543,7 +578,7 @@ export default function FbaShipmentsPage() {
                 <th className="py-5 px-3 w-[90px] border-r border-white/10 text-center">Peso Cj</th>
                 <th className="py-5 px-4 w-[250px] border-r border-white/10">Descripción / Notas</th>
                 <th className="py-5 px-3 w-[140px] border-r border-white/10 text-center">Fotos</th>
-                <th className="py-5 px-3 w-[70px] text-center bg-[#163a2d]">Acción</th>
+                <th className="py-5 px-3 w-[70px] text-center bg-[#163a2d] no-print">Acción</th>
               </tr>
             </thead>
             <Reorder.Group axis="y" as="tbody" values={inShipmentItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")} className="divide-y divide-slate-100">
@@ -558,7 +593,7 @@ export default function FbaShipmentsPage() {
             </Reorder.Group>
           </table>
         </div>
-        <div className="bg-slate-50/50 p-4 border-t">
+        <div className="bg-slate-50/50 p-4 border-t no-print">
           <Button variant="ghost" onClick={handleAddRow} className="w-full h-14 text-slate-500 font-bold gap-3 border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-600 transition-all rounded-2xl">
             <Plus className="h-5 w-5" /> AGREGAR NUEVO RENGLÓN DE INVENTARIO
           </Button>
@@ -598,7 +633,7 @@ export default function FbaShipmentsPage() {
                 <th className="py-3 px-3 w-[75px] border-r border-orange-700/50 text-center">Weight</th>
                 <th className="py-3 px-3 w-[220px] border-r border-orange-700/50">Descripción</th>
                 <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">Foto</th>
-                <th className="py-3 px-3 w-[65px] text-center">Reset</th>
+                <th className="py-3 px-3 w-[65px] text-center no-print">Reset</th>
               </tr>
             </thead>
             <Reorder.Group axis="y" as="tbody" values={pendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
