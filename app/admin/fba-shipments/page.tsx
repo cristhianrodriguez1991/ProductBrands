@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, MoveVertical, GripVertical } from "lucide-react"
+import { Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, MoveVertical, GripVertical, LayoutGrid, Maximize2, MousePointer2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Image from "next/image"
 import { compressImage } from "@/lib/image-compression"
@@ -177,72 +177,95 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
 })
 
 export default function FbaShipmentsPage() {
-  const [shipment, setShipment] = useState<any>(null)
+  const [tabs, setTabs] = useState<any[]>([]) // Array of { id, name, items, status }
+  const [activeTabId, setActiveTabId] = useState<string>("dashboard")
   const [loading, setLoading] = useState(true)
-  const [items, setItems] = useState<FbaItem[]>([])
-  const [newShipmentName, setNewShipmentName] = useState("")
+  const [activeShipments, setActiveShipments] = useState<any[]>([])
   const [pastShipments, setPastShipments] = useState<any[]>([])
+  const [newShipmentName, setNewShipmentName] = useState("")
   
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedIdForUpload, setSelectedIdForUpload] = useState<string | null>(null)
-  
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
-  
-  useEffect(() => {
-    if (!shipment?.id) return;
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch("/api/admin/fba-shipments");
-        const data = await res.json();
-        if (data && data.items && data.id === shipment.id) {
-          setItems(currentItems => {
-            const newItems = data.items.map((serverItem: any) => {
-              const localItem = currentItems.find(li => li.id === serverItem.id);
-              if (localItem && focusedItemId === localItem.id) return localItem;
-              return serverItem;
-            });
-            return newItems;
-          });
-        }
-      } catch (error) {}
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [shipment?.id, focusedItemId]);
 
-  const fetchActiveShipment = async () => {
+  const fetchActiveShipmentsList = async () => {
     try {
-      const res = await fetch("/api/admin/fba-shipments")
+      const res = await fetch("/api/admin/fba-shipments/active")
       const data = await res.json()
-      if (data && data.id) {
-        setShipment(data)
-        setItems(data.items || [])
-      } else {
-        setShipment(null)
-        setItems([])
-      }
-    } catch(e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
+      if (Array.isArray(data)) setActiveShipments(data)
+    } catch(e) {}
   }
 
   const fetchHistory = async () => {
     try {
       const res = await fetch("/api/admin/fba-shipments/history")
       const data = await res.json()
-      if (Array.isArray(data)) {
-        setPastShipments(data)
-      }
+      if (Array.isArray(data)) setPastShipments(data)
     } catch(e) {}
   }
 
   useEffect(() => {
-    fetchActiveShipment()
-    fetchHistory()
+    const init = async () => {
+      await Promise.all([fetchActiveShipmentsList(), fetchHistory()])
+      setLoading(false)
+    }
+    init()
   }, [])
+
+  useEffect(() => {
+    if (activeTabId === "dashboard") return
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/admin/fba-shipments?id=${activeTabId}`)
+        const data = await res.json()
+        if (data && data.items) {
+          setTabs(currentTabs => currentTabs.map(t => {
+            if (t.id !== activeTabId) return t
+            const updatedItems = data.items.map((serverItem: any) => {
+              const localItem = t.items.find((li: any) => li.id === serverItem.id)
+              if (localItem && focusedItemId === localItem.id) return localItem
+              return serverItem
+            })
+            return { ...t, items: updatedItems }
+          }))
+        }
+      } catch (error) {}
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [activeTabId, focusedItemId])
+
+  const openTab = async (shId: string) => {
+    if (tabs.find(t => t.id === shId)) {
+      setActiveTabId(shId)
+      return
+    }
+    try {
+      const res = await fetch(`/api/admin/fba-shipments?id=${shId}`)
+      const data = await res.json()
+      if (data && data.id) {
+        setTabs(prev => [...prev, { 
+          id: data.id, 
+          name: data.name, 
+          status: data.status, 
+          items: data.items || [] 
+        }])
+        setActiveTabId(data.id)
+      }
+    } catch(e) {
+      alert("Error al abrir el envío.")
+    }
+  }
+
+  const closeTab = (shId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    const newTabs = tabs.filter(t => t.id !== shId)
+    setTabs(newTabs)
+    if (activeTabId === shId) {
+      setActiveTabId(newTabs.length > 0 ? newTabs[newTabs.length - 1].id : "dashboard")
+    }
+  }
 
   const handleCreateShipment = async () => {
     if (!newShipmentName) return alert("Please enter a name for the new shipment")
@@ -252,35 +275,18 @@ export default function FbaShipmentsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newShipmentName })
       })
+      const data = await res.json()
       if (res.ok) {
         setNewShipmentName("")
-        fetchActiveShipment()
+        fetchActiveShipmentsList()
+        openTab(data.id)
       } else {
-        const data = await res.json()
         alert(data.error)
       }
     } catch(e) {}
   }
 
-  const handleCloseShipment = async () => {
-    if (!confirm("Are you sure you want to finish this shipment? Pending items will roll over to the next one you create.")) return
-    try {
-      exportToExcelObject(shipment, items)
-      await fetch(`/api/admin/fba-shipments/${shipment.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "CLOSED" })
-      })
-      setShipment(null)
-      setItems([])
-      fetchHistory()
-    } catch(e) {}
-  }
-
   const handleReopenShipment = async (sh: any) => {
-    if (shipment) {
-      return alert(`Ya hay un envío activo "${shipment.name}". Finalízalo antes de reabrir otro.`)
-    }
     if (!confirm(`¿Deseas reabrir "${sh.name}" para editarlo?`)) return
     try {
       await fetch(`/api/admin/fba-shipments/${sh.id}`, {
@@ -288,47 +294,60 @@ export default function FbaShipmentsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "ACTIVE" })
       })
-      await fetchActiveShipment()
-      await fetchHistory()
+      await Promise.all([fetchActiveShipmentsList(), fetchHistory()])
+      openTab(sh.id)
     } catch(e) {}
   }
 
-  const handleAddRow = async () => {
-    if (!shipment) return
-    const maxSortOrder = items.length > 0 ? Math.max(...items.map(i => i.sortOrder || 0)) : 0
-    const res = await fetch(`/api/admin/fba-shipments/${shipment.id}/items`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "", sortOrder: maxSortOrder + 1 })
-    })
-    if (res.ok) fetchActiveShipment()
-  }
-
-  const formatDateString = (raw: string) => {
-    const digits = raw.replace(/\D/g, "")
-    if (digits.length === 6) {
-      return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/20${digits.slice(4, 6)}`
-    } else if (digits.length === 8) {
-      return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`
-    }
-    return raw
+  const handleFinalizeShipment = async (shId: string) => {
+    const tab = tabs.find(t => t.id === shId)
+    if (!tab) return
+    if (!confirm("¿Seguro que quieres finalizar este envío? Se archivará y se descargará el Excel.")) return
+    try {
+      exportToExcelObject(tab, tab.items)
+      await fetch(`/api/admin/fba-shipments/${shId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CLOSED" })
+      })
+      closeTab(shId)
+      await Promise.all([fetchActiveShipmentsList(), fetchHistory()])
+    } catch(e) {}
   }
 
   const updateItem = async (itemId: string, field: string, value: any) => {
+    const currentTabId = activeTabId
+    if (currentTabId === "dashboard") return
+
     let finalValue = value
     if (field === "expDate" && value.length >= 6 && !value.includes("/")) {
       finalValue = formatDateString(value)
     }
-    setItems(items.map(i => i.id === itemId ? { ...i, [field]: finalValue } : i))
-    const payload: any = { [field]: finalValue === "" ? null : finalValue }
-    if (field === "qtyPerBox" || field === "totalBoxes") {
-      const current = items.find(i => i.id === itemId)
-      const qty = field === "qtyPerBox" ? value : (current?.qtyPerBox || 0)
-      const boxes = field === "totalBoxes" ? value : (current?.totalBoxes || 0)
-      const total = (parseInt(qty) || 0) * (parseInt(boxes) || 0)
-      payload.totalUnits = total
-      setItems(prev => prev.map(i => i.id === itemId ? { ...i, [field]: finalValue, totalUnits: total } : i))
+
+    setTabs(prev => prev.map(t => {
+      if (t.id !== currentTabId) return t
+      const newItems = t.items.map((i: any) => {
+        if (i.id !== itemId) return i
+        let updated = { ...i, [field]: finalValue }
+        if (field === "qtyPerBox" || field === "totalBoxes") {
+           const qty = field === "qtyPerBox" ? value : (i.qtyPerBox || 0)
+           const boxes = field === "totalBoxes" ? value : (i.totalBoxes || 0)
+           updated.totalUnits = (parseInt(qty) || 0) * (parseInt(boxes) || 0)
+        }
+        return updated
+      })
+      return { ...t, items: newItems }
+    }))
+
+    const activeTab = tabs.find(t => t.id === currentTabId)
+    const itemBefore = activeTab?.items.find((i: any) => i.id === itemId)
+    const payload: any = { 
+      [field]: finalValue === "" ? null : finalValue,
+      totalUnits: (field === "qtyPerBox" || field === "totalBoxes") ? 
+        ((parseInt(field === "qtyPerBox" ? value : itemBefore.qtyPerBox) || 0) * (parseInt(field === "totalBoxes" ? value : itemBefore.totalBoxes) || 0)) 
+        : undefined
     }
+
     await fetch(`/api/admin/fba-shipments/items/${itemId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -336,13 +355,65 @@ export default function FbaShipmentsPage() {
     })
   }
 
+  const handleAddRow = async (shId: string) => {
+    const tab = tabs.find(t => t.id === shId)
+    if (!tab) return
+    const maxSortOrder = tab.items.length > 0 ? Math.max(...tab.items.map((i: any) => i.sortOrder || 0)) : 0
+    const res = await fetch(`/api/admin/fba-shipments/${shId}/items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "", sortOrder: maxSortOrder + 1 })
+    })
+    if (res.ok) {
+      const updated = await (await fetch(`/api/admin/fba-shipments?id=${shId}`)).json()
+      setTabs(prev => prev.map(t => t.id === shId ? { ...t, items: updated.items } : t))
+    }
+  }
+
+  const handleDragReorder = async (newOrderedList: any[], targetStatus: string) => {
+    if (activeTabId === "dashboard") return
+    const currentTab = tabs.find(t => t.id === activeTabId)
+    if (!currentTab) return
+
+    const otherList = currentTab.items.filter((i: any) => i.status !== targetStatus)
+    const sorted = newOrderedList.map((item, idx) => ({ ...item, sortOrder: idx }))
+    const completeList = targetStatus === "IN_SHIPMENT" ? [...sorted, ...otherList] : [...otherList, ...sorted]
+    
+    setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, items: completeList } : t))
+
+    await fetch(`/api/admin/fba-shipments/${activeTabId}/reorder`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: sorted.map(i => ({ id: i.id, sortOrder: i.sortOrder })) })
+    })
+  }
+
+  const switchItemStatus = async (itemId: string, newStatus: string) => {
+    setTabs(prev => prev.map(t => {
+      if (t.id !== activeTabId) return t
+      return { ...t, items: t.items.map((i: any) => i.id === itemId ? { ...i, status: newStatus } : i) }
+    }))
+    await fetch(`/api/admin/fba-shipments/items/${itemId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus })
+    })
+  }
+
+  const deleteItem = async (shId: string, itemId: string) => {
+    if (!confirm("Remove this item?")) return
+    setTabs(prev => prev.map(t => {
+      if (t.id !== shId) return t
+      return { ...t, items: t.items.filter((i: any) => i.id !== itemId) }
+    }))
+    await fetch(`/api/admin/fba-shipments/items/${itemId}`, { method: "DELETE" })
+  }
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    if (files.length === 0 || !selectedIdForUpload) return
+    if (files.length === 0 || !selectedIdForUpload || activeTabId === "dashboard") return
     setUploadingId(selectedIdForUpload)
     try {
-      let currentItem = items.find(i => i.id === selectedIdForUpload)
-      let currentUrls = currentItem?.imageUrls || (currentItem?.imageUrl ? [currentItem.imageUrl] : [])
       for (const file of files) {
         const compressed = await compressImage(file)
         const fd = new FormData()
@@ -353,13 +424,13 @@ export default function FbaShipmentsPage() {
         })
         if (res.ok) {
           const updated = await res.json()
-          currentUrls = updated.imageUrls || [updated.imageUrl]
-          setItems(items => items.map(i => i.id === selectedIdForUpload ? { ...i, imageUrls: currentUrls, imageUrl: updated.imageUrl } : i))
+          setTabs(prev => prev.map(t => {
+            if (t.id !== activeTabId) return t
+            return { ...t, items: t.items.map((i: any) => i.id === selectedIdForUpload ? { ...i, imageUrls: updated.imageUrls, imageUrl: updated.imageUrl } : i) }
+          }))
         }
       }
-    } catch(e) {
-      console.error(e)
-    } finally {
+    } catch(e) {} finally {
       setUploadingId(null)
       setSelectedIdForUpload(null)
       if (fileInputRef.current) fileInputRef.current.value = ""
@@ -367,64 +438,26 @@ export default function FbaShipmentsPage() {
   }
 
   const removeImage = async (itemId: string, imageUrlToRemove: string) => {
-    const item = items.find(i => i.id === itemId)
-    if (!item) return
-    let updates: any = {}
-    if (item.imageUrl === imageUrlToRemove) {
-      updates.imageUrl = null
-      setItems(prev => prev.map(i => i.id === itemId ? { ...i, imageUrl: null } : i))
-    }
-    if (item.imageUrls?.includes(imageUrlToRemove)) {
-      const newImageUrls = item.imageUrls.filter(url => url !== imageUrlToRemove)
-      updates.imageUrls = newImageUrls
-      setItems(prev => prev.map(i => i.id === itemId ? { ...i, imageUrls: newImageUrls } : i))
-    }
-    if (Object.keys(updates).length > 0) {
-      try {
-        await fetch(`/api/admin/fba-shipments/${itemId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updates)
-        })
-      } catch (error) {
-        console.error("Error removing image:", error)
-      }
-    }
+    setTabs(prev => prev.map(t => {
+      if (t.id !== activeTabId) return t
+      return { ...t, items: t.items.map((i: any) => {
+        if (i.id !== itemId) return i
+        let updates: any = { ...i }
+        if (i.imageUrl === imageUrlToRemove) updates.imageUrl = null
+        if (i.imageUrls?.includes(imageUrlToRemove)) updates.imageUrls = i.imageUrls.filter((u: string) => u !== imageUrlToRemove)
+        return updates
+      }) }
+    }))
+    try {
+      await fetch(`/api/admin/fba-shipments/items/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl: null, imageUrls: [] })
+      })
+    } catch (e) {}
   }
 
-  const switchItemStatus = async (itemId: string, newStatus: "IN_SHIPMENT" | "PENDING") => {
-    setItems(items.map(i => i.id === itemId ? { ...i, status: newStatus } : i))
-    await fetch(`/api/admin/fba-shipments/items/${itemId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus })
-    })
-  }
-
-  const deleteItem = async (itemId: string) => {
-    if (!confirm("Remove this item?")) return
-    setItems(items.filter(i => i.id !== itemId))
-    await fetch(`/api/admin/fba-shipments/items/${itemId}`, { method: "DELETE" })
-  }
-
-  const handleDragReorder = async (newOrderedList: FbaItem[], targetStatus: "IN_SHIPMENT" | "PENDING") => {
-    const listAIDs = newOrderedList.map(i => i.id).join(",");
-    const listBIDs = items.filter(i => i.status === targetStatus).map(i => i.id).join(",");
-    if (listAIDs === listBIDs) return;
-    const otherList = items.filter(i => i.status !== targetStatus);
-    const sorted = newOrderedList.map((item, idx) => ({ ...item, sortOrder: idx }));
-    const completeList = targetStatus === "IN_SHIPMENT" ? [...sorted, ...otherList] : [...otherList, ...sorted];
-    setItems(completeList);
-    await fetch(`/api/admin/fba-shipments/${shipment.id}/reorder`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: sorted.map(i => ({ id: i.id, sortOrder: i.sortOrder })) })
-    })
-  }
-
-  const handlePrint = () => window.print();
-
-  const exportToExcelObject = (targetShipment = shipment, targetItems = items) => {
+  const exportToExcelObject = (targetShipment: any, targetItems: any[]) => {
     if (!targetShipment) return
     const activeItems = targetItems.filter((i: any) => i.status === "IN_SHIPMENT")
     
@@ -434,69 +467,21 @@ export default function FbaShipmentsPage() {
         <meta charset="utf-8" />
         <style>
           table { border-collapse: collapse; font-family: "Calibri", "Arial", sans-serif; }
-          th { 
-            background-color: #06402B !important; 
-            color: #ffffff !important; 
-            font-weight: bold !important; 
-            font-size: 14px !important;
-            border: 2pt solid #000000 !important; 
-            height: 60px !important; 
-            text-align: center; 
-            vertical-align: middle;
-            padding: 10px;
-          }
-          td { 
-            border: 1px solid #b0b0b0; 
-            padding: 4px 8px; 
-            font-size: 11px;
-            text-align: center; 
-            vertical-align: middle; 
-          }
-          .text-col { mso-number-format:"\\@"; text-align: left; }
-          .name-col { font-weight: bold; text-align: left; background-color: #fafafa; }
+          th { background-color: #06402B !important; color: #ffffff !important; font-weight: bold !important; font-size: 14px !important; border: 2pt solid #000000 !important; height: 60px !important; text-align: center; vertical-align: middle; padding: 10px; }
+          td { border: 1px solid #b0b0b0; padding: 4px 8px; font-size: 11px; text-align: center; vertical-align: middle; }
         </style>
       </head>
       <body>
         <h2 style="color: #1f4e3d; font-family: Calibri;">INVENTARIO FBA - ${targetShipment.name}</h2>
         <table>
           <thead>
-            <tr style="height: 60px;" height="60">
-              <th style="width: 100px;">Location</th>
-              <th style="width: 120px;">Orden de Cajas</th>
-              <th style="width: 300px;">NOMBRE COMPLETO DEL PRODUCTO</th>
-              <th style="width: 150px;">FnSKU</th>
-              <th style="width: 110px;">SKU</th>
-              <th style="width: 90px;">Uds/Caja</th>
-              <th style="width: 100px;">Total Cajas</th>
-              <th style="width: 110px;">Total Unidades</th>
-              <th style="width: 120px;">Exp.</th>
-              <th style="width: 60px;">L</th>
-              <th style="width: 60px;">A</th>
-              <th style="width: 60px;">H</th>
-              <th style="width: 90px;">Peso</th>
-              <th style="width: 250px;">Descripción</th>
-            </tr>
+            <tr style="height: 60px;"><th style="width: 100px;">Location</th><th style="width: 120px;">Orden de Cajas</th><th style="width: 300px;">NOMBRE COMPLETO DEL PRODUCTO</th><th style="width: 150px;">FnSKU</th><th style="width: 110px;">SKU</th><th style="width: 90px;">Uds/Caja</th><th style="width: 100px;">Total Cajas</th><th style="width: 110px;">Total Unidades</th><th style="width: 120px;">Exp.</th><th style="width: 60px;">L</th><th style="width: 60px;">A</th><th style="width: 60px;">H</th><th style="width: 90px;">Peso</th><th style="width: 250px;">Descripción</th></tr>
           </thead>
           <tbody>
     `
     activeItems.forEach(i => {
       tableHtml += `
-            <tr>
-              <td>${i.location || ""}</td>
-              <td>${i.boxOrder || ""}</td>
-              <td class="name-col">${i.name || ""}</td>
-              <td style="mso-number-format:'\\@'; text-align: left;">${i.fnsku ? `&#8203;${i.fnsku}` : ""}</td>
-              <td style="mso-number-format:'\\@'; text-align: left;">${i.sku ? `&#8203;${i.sku}` : ""}</td>
-              <td>${i.qtyPerBox || ""}</td>
-              <td>${i.totalBoxes || ""}</td>
-              <td style="font-weight: bold; background-color: #f0fdf4;">${i.totalUnits || 0}</td>
-              <td>${i.expDate || ""}</td>
-              <td>${i.length || ""}</td>
-              <td>${i.width || ""}</td>
-              <td>${i.height || ""}</td>
-              <td>${i.boxWeight || ""}</td>
-              <td>${i.description || ""}</td>
-            </tr>
+            <tr><td>${i.location || ""}</td><td>${i.boxOrder || ""}</td><td style="font-weight:bold;">${i.name || ""}</td><td style="mso-number-format:'\\@';">${i.fnsku ? `&#8203;${i.fnsku}` : ""}</td><td style="mso-number-format:'\\@';">${i.sku ? `&#8203;${i.sku}` : ""}</td><td>${i.qtyPerBox || ""}</td><td>${i.totalBoxes || ""}</td><td style="font-weight:bold; background-color:#f0fdf4;">${i.totalUnits || 0}</td><td>${i.expDate || ""}</td><td>${i.length || ""}</td><td>${i.width || ""}</td><td>${i.height || ""}</td><td>${i.boxWeight || ""}</td><td>${i.description || ""}</td></tr>
       `
     })
     tableHtml += `</tbody></table></body></html>`
@@ -510,128 +495,14 @@ export default function FbaShipmentsPage() {
     document.body.removeChild(link)
   }
 
-  let activeContent = null;
-  if (loading) {
-    activeContent = <div className="p-12 text-center animate-pulse text-slate-400 font-bold">Iniciando Portal FBA...</div>
-  } else if (!shipment) {
-    activeContent = (
-      <div className="bg-white rounded-3xl shadow-xl border border-blue-50 text-center p-12 mb-12">
-        <h2 className="text-3xl font-black mb-3 text-slate-900">No hay Shipment Activo</h2>
-        <p className="text-slate-500 mb-8 max-w-lg mx-auto">Crea un nuevo shipment para comenzar a rastrear artículos. Al cerrar el shipment actual, se guardará en el historial inferior.</p>
-        <div className="flex max-w-md mx-auto items-center gap-3">
-          <Input className="h-12 text-lg rounded-xl shadow-inner bg-slate-50 border-slate-200" placeholder="Nombre (Ej: Abril Mediano 2026)" value={newShipmentName} onChange={e => setNewShipmentName(e.target.value)} />
-          <Button onClick={handleCreateShipment} className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg font-bold">Crear FBA</Button>
-        </div>
-      </div>
-    )
-  } else {
-    const inShipmentItems = items.filter(i => i.status === "IN_SHIPMENT")
-    const pendingItems = items.filter(i => i.status === "PENDING")
-    activeContent = (
-      <div className="flex flex-col gap-6">
-        <div className="flex items-end justify-between">
-          <div className="mb-4">
-            <h1 className="text-4xl font-black tracking-tight text-slate-900 leading-none">FBA Shipment - {shipment.name}</h1>
-          </div>
-          <div className="flex gap-4 no-print pb-3">
-            <Button variant="outline" onClick={handlePrint} className="h-12 gap-2 text-slate-700 border-slate-200 bg-white hover:bg-slate-50 rounded-xl shadow-sm px-6 font-bold">
-              <Printer className="h-5 w-5" /> Imprimir
-            </Button>
-            <Button variant="outline" onClick={() => exportToExcelObject()} className="h-12 gap-2 text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-xl shadow-sm px-6 font-bold">
-              <Download className="h-5 w-5" /> Exportar a Excel
-            </Button>
-            <Button onClick={handleCloseShipment} variant="destructive" className="h-12 gap-2 rounded-xl shadow-lg shadow-red-100 px-6 font-bold">
-              Cerrar & Finalizar Envío
-            </Button>
-          </div>
-        </div>
-
-        <Card className="w-full border-0 shadow-2xl rounded-3xl overflow-hidden bg-white card-print">
-          <div className="overflow-x-auto overflow-y-hidden custom-scrollbar">
-            <table className="w-full text-left border-collapse min-w-[1400px]">
-              <thead>
-                <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-black tracking-wider">
-                  <th className="py-5 px-1 w-[30px] border-r border-white/10 text-center bg-[#163a2d]"></th>
-                  <th className="py-5 px-3 w-[100px] border-r border-white/10">Location</th>
-                  <th className="py-5 px-3 w-[120px] border-r border-white/10">Orden de Cajas</th>
-                  <th className="py-5 px-4 min-w-[250px] border-r border-white/10">Nombre del Producto</th>
-                  <th className="py-5 px-3 w-[150px] border-r border-white/10 text-center">FnSKU / UPC</th>
-                  <th className="py-5 px-3 w-[120px] border-r border-white/10 text-center">SKU</th>
-                  <th className="py-5 px-3 w-[80px] border-r border-white/10 text-center">Uds/Caja</th>
-                  <th className="py-5 px-3 w-[100px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total Cajas<br/><span className="text-orange-400 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
-                  <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center leading-tight bg-[#245d48]">Total Unidades<br/><span className="text-green-300 text-[12px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
-                  <th className="py-5 px-3 w-[110px] border-r border-white/10 text-center">Exp.</th>
-                  <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center">L</th>
-                  <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center">A</th>
-                  <th className="py-5 px-2 w-[50px] border-r border-white/10 text-center">H</th>
-                  <th className="py-5 px-3 w-[80px] border-r border-white/10 text-center">Peso</th>
-                  <th className="py-5 px-4 w-[250px] border-r border-white/10">Descripción</th>
-                  <th className="py-5 px-3 w-[120px] border-r border-white/10 text-center">Fotos</th>
-                  <th className="py-5 px-3 w-[70px] text-center bg-[#163a2d] no-print">Acción</th>
-                </tr>
-              </thead>
-              <Reorder.Group axis="y" as="tbody" values={inShipmentItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")} className="divide-y divide-slate-100 relative">
-                {inShipmentItems.map((item, index) => (
-                  <StandaloneRow 
-                    key={item.id} item={item} index={index} isPending={false}
-                    updateItem={updateItem} deleteItem={deleteItem} switchItemStatus={switchItemStatus}
-                    removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
-                    fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
-                    setExpandedImage={setExpandedImage}
-                  />
-                ))}
-              </Reorder.Group>
-            </table>
-          </div>
-          <div className="bg-slate-50/50 p-4 border-t no-print">
-            <Button variant="ghost" onClick={handleAddRow} className="w-full h-14 text-slate-500 font-bold gap-3 border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-600 transition-all rounded-2xl">
-              <Plus className="h-5 w-5" /> AGREGAR NUEVO RENGLÓN
-            </Button>
-          </div>
-        </Card>
-
-        <div className="mt-12 bg-orange-50/20 rounded-3xl p-8 border border-orange-100/50 shadow-inner no-print">
-          <h2 className="text-xl font-black text-orange-900 mb-6">Palets en Espera</h2>
-          <div className="overflow-x-auto overflow-y-hidden custom-scrollbar mt-4 rounded-3xl border shadow-inner">
-            <table className="w-full text-left border-collapse min-w-[1300px]">
-              <thead>
-                <tr className="bg-orange-800 text-white/90 text-[9px] uppercase font-black tracking-widest">
-                  <th className="py-3 px-1 w-[30px] border-r border-orange-700/50 text-center"></th>
-                  <th className="py-3 px-3 w-[100px] border-r border-orange-700/50">Location</th>
-                  <th className="py-3 px-3 w-[120px] border-r border-orange-700/50">Orden de Cajas</th>
-                  <th className="py-3 min-w-[200px] border-r border-orange-700/50 text-orange-100">PRODUCTO PENDIENTE</th>
-                  <th className="py-3 px-3 w-[140px] border-r border-orange-700/50">FnSKU</th>
-                  <th className="py-3 px-3 w-[110px] border-r border-orange-700/50">SKU</th>
-                  <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center">Uds/Caja</th>
-                  <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center leading-tight">Total Cajas<br/><span className="text-orange-400 text-[10px] block font-bold">({pendingItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
-                  <th className="py-3 px-3 w-[90px] border-r border-orange-700/50 text-center leading-tight">Total Unidades<br/><span className="text-green-300 text-[10px] block font-bold">({pendingItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
-                  <th className="py-3 px-3 w-[110px] border-r border-orange-700/50">Exp.</th>
-                  <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">L</th>
-                  <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">A</th>
-                  <th className="py-3 px-3 w-[60px] border-r border-orange-700/50 text-center">H</th>
-                  <th className="py-3 px-3 w-[100px] border-r border-orange-700/50 text-center">Peso</th>
-                  <th className="py-3 px-3 w-[220px] border-r border-orange-700/50">Descripción</th>
-                  <th className="py-3 px-3 w-[140px] border-r border-orange-700/50 text-center">Foto</th>
-                  <th className="py-3 px-3 w-[70px] text-center no-print">Acción</th>
-                </tr>
-              </thead>
-              <Reorder.Group axis="y" as="tbody" values={pendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")} className="divide-y divide-slate-100 relative">
-                {pendingItems.map((item, index) => (
-                  <StandaloneRow 
-                    key={item.id} item={item} index={index} isPending={true}
-                    updateItem={updateItem} deleteItem={deleteItem} switchItemStatus={switchItemStatus}
-                    removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
-                    fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
-                    setExpandedImage={setExpandedImage}
-                  />
-                ))}
-              </Reorder.Group>
-            </table>
-          </div>
-        </div>
-      </div>
-    )
+  const formatDateString = (raw: string) => {
+    const digits = raw.replace(/\D/g, "")
+    if (digits.length === 6) return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/20${digits.slice(4, 6)}`
+    if (digits.length === 8) return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`
+    return raw
   }
+
+  if (loading) return <div className="p-12 text-center animate-pulse text-slate-400 font-bold">Cargando Sistema FBA...</div>
 
   return (
     <>
@@ -641,63 +512,235 @@ export default function FbaShipmentsPage() {
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .print-area { position: absolute; left: 0; top: 0; width: 100% !important; padding: 0 !important; margin: 0 !important; }
-          .no-print, button, .flex-gap-4, .bg-slate-50\/50.p-4.border-t { display: none !important; }
-          .card-print { box-shadow: none !important; border: 1px solid #eee !important; border-radius: 12px !important; overflow: visible !important; width: 100% !important; }
-          .overflow-x-auto { overflow: visible !important; }
-          table { width: 100% !important; border-collapse: collapse !important; table-layout: auto !important; }
+          .no-print, .tab-bar, button { display: none !important; }
+          .card-print { box-shadow: none !important; border: 1px solid #eee !important; border-radius: 12px !important; }
+          table { width: 100% !important; border-collapse: collapse !important; }
           th { background-color: #1f4e3d !important; color: white !important; -webkit-print-color-adjust: exact; }
-          .bg-orange-800 { background-color: #9a3412 !important; -webkit-print-color-adjust: exact; }
-          .bg-\[\#245d48\] { background-color: #245d48 !important; -webkit-print-color-adjust: exact; }
-          .text-slate-900 { color: #000 !important; }
-          input { border: none !important; background: transparent !important; }
         }
       `}</style>
-      <div className="w-full min-h-full flex flex-col gap-6 pb-40 print-area">
-        <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
-      
-        <div className="max-w-[1700px] mx-auto w-full px-4">
-          {activeContent}
 
-          {pastShipments.length > 0 && (
-            <div className="mt-20 no-print">
-              <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-green-500" /> Historial de Envíos Finalizados
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {pastShipments.map(sh => (
-                  <Card key={sh.id} className="p-6 rounded-2xl shadow-sm border-slate-200 bg-white hover:border-blue-300 transition-colors group">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-bold text-lg text-slate-900 group-hover:text-blue-700 transition-colors leading-tight">{sh.name}</h4>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 bg-green-100 text-green-700 rounded-md">CERRADO</span>
+      <div className="w-full flex flex-col h-full bg-slate-50 min-h-screen">
+        <div className="tab-bar no-print flex items-end gap-1 px-4 bg-white border-b border-slate-200 overflow-x-auto overflow-y-hidden custom-scrollbar pt-4">
+          <div 
+            onClick={() => setActiveTabId("dashboard")}
+            className={`flex items-center gap-2 px-6 py-3 rounded-t-xl cursor-pointer transition-all font-bold min-w-[150px] justify-center ${activeTabId === "dashboard" ? "bg-slate-50 text-blue-600 border-x border-t border-slate-200 -mb-[1px]" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50/50"}`}
+          >
+            <LayoutGrid className="h-4 w-4" /> Tablero Global
+          </div>
+          
+          {tabs.map(tab => (
+            <div 
+              key={tab.id}
+              onClick={() => setActiveTabId(tab.id)}
+              className={`flex items-center gap-2 px-6 py-3 rounded-t-xl cursor-pointer transition-all font-bold min-w-[200px] border-x border-t relative group ${activeTabId === tab.id ? "bg-slate-50 text-slate-900 border-slate-200 -mb-[1px]" : "bg-white text-slate-400 border-transparent hover:bg-slate-50/50"}`}
+            >
+              <span className="truncate max-w-[150px]">{tab.name}</span>
+              <button 
+                onClick={(e) => closeTab(tab.id, e)}
+                className="ml-auto opacity-0 group-hover:opacity-100 hover:bg-slate-200 rounded-full p-0.5 transition-all text-slate-500"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setActiveTabId("dashboard")}
+            className="mb-1 rounded-full w-8 h-8 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="flex-1 w-full max-w-[1800px] mx-auto p-6 md:p-8 print-area">
+          <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
+
+          {activeTabId === "dashboard" ? (
+            <div className="no-print">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div className="lg:col-span-8 space-y-8">
+                  <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 p-10 border border-slate-100">
+                    <h2 className="text-3xl font-black mb-2 text-slate-900">Portal de Envíos FBA</h2>
+                    <p className="text-slate-500 mb-8 max-w-lg">Crea un nuevo shipment o continúa trabajando en los envíos abiertos.</p>
+                    <div className="flex max-w-md items-center gap-3">
+                      <Input 
+                        className="h-14 text-lg rounded-2xl shadow-inner bg-slate-50 border-slate-200" 
+                        placeholder="Nombre del Envío" 
+                        value={newShipmentName} 
+                        onChange={e => setNewShipmentName(e.target.value)} 
+                      />
+                      <Button onClick={handleCreateShipment} className="h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-lg font-bold">Crear</Button>
                     </div>
-                    <p className="text-xs text-slate-500 mb-6 flex items-center gap-1">
-                       {new Date(sh.updatedAt).toLocaleDateString()}
-                    </p>
-                    <div className="flex flex-col gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="w-full gap-2 text-blue-700 hover:bg-blue-50 hover:text-blue-800 font-bold border-blue-100"
-                        onClick={() => exportToExcelObject(sh, sh.items)}
-                      >
-                        <Download className="h-4 w-4" /> Exportar Excel
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="w-full gap-2 text-slate-600 hover:bg-slate-100 font-bold"
-                        onClick={() => handleReopenShipment(sh)}
-                      >
-                        <Save className="h-4 w-4" /> Abrir para Editar
+                  </div>
+
+                  {activeShipments.length > 0 && (
+                    <div className="space-y-4">
+                      <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 px-4">
+                        <MousePointer2 className="h-5 w-5 text-blue-500" /> EnProgreso
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {activeShipments.map(sh => (
+                          <Card key={sh.id} className="p-6 rounded-3xl shadow-sm border-slate-200 bg-white hover:border-blue-400 transition-all hover:shadow-lg group">
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <h4 className="font-bold text-xl text-slate-900 truncate max-w-[200px]">{sh.name}</h4>
+                                <p className="text-xs text-slate-400">{new Date(sh.createdAt).toLocaleDateString()}</p>
+                              </div>
+                              <span className="text-[10px] font-bold px-3 py-1 bg-blue-50 text-blue-600 rounded-full">ACTIVO</span>
+                            </div>
+                            <Button onClick={() => openTab(sh.id)} className="w-full h-11 rounded-2xl bg-slate-900 hover:bg-black font-bold gap-2">Abrir Tab <Maximize2 className="h-4 w-4" /></Button>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="lg:col-span-4 space-y-6">
+                  <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 px-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500" /> Historial
+                  </h3>
+                  <div className="flex flex-col gap-3 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                    {pastShipments.map(sh => (
+                      <Card key={sh.id} className="p-5 rounded-2xl border-slate-100 bg-white">
+                        <h4 className="font-bold text-slate-800 truncate mb-1">{sh.name}</h4>
+                        <p className="text-[10px] text-slate-400 mb-3">{new Date(sh.updatedAt).toLocaleDateString()}</p>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" className="flex-1 rounded-xl text-blue-600" onClick={() => exportToExcelObject(sh, sh.items)}>Excel</Button>
+                          <Button variant="ghost" size="sm" className="flex-1 rounded-xl border border-slate-100" onClick={() => handleReopenShipment(sh)}>Reabrir</Button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            (() => {
+              const tab = tabs.find(t => t.id === activeTabId)
+              if (!tab) return null
+              const inItems = tab.items.filter((i: any) => i.status === "IN_SHIPMENT")
+              const pItems = tab.items.filter((i: any) => i.status === "PENDING")
+
+              return (
+                <div className="flex flex-col gap-6">
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <h1 className="text-4xl font-black text-slate-900">{tab.name}</h1>
+                      <p className="text-slate-400">Panel de Control de Envío</p>
+                    </div>
+                    <div className="flex gap-3 no-print pb-1">
+                      <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white rounded-xl px-6 font-bold"><Printer className="h-5 w-5" /></Button>
+                      <Button variant="outline" onClick={() => exportToExcelObject(tab, tab.items)} className="h-12 bg-blue-50 text-blue-700 rounded-xl px-6 font-bold">Excel</Button>
+                      <Button variant="secondary" onClick={() => closeTab(tab.id)} className="h-12 rounded-xl px-6 font-bold">Pausar</Button>
+                      <Button onClick={() => handleFinalizeShipment(tab.id)} variant="destructive" className="h-12 rounded-xl px-6 font-bold">Finalizar</Button>
+                    </div>
+                  </div>
+
+                  <Card className="w-full border-0 shadow-2xl rounded-[2.5rem] overflow-hidden bg-white card-print">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left min-w-[1400px]">
+                        <thead>
+                          <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-bold">
+                            <th className="py-5 px-1 w-[30px] text-center bg-[#163a2d]"></th>
+                            <th className="py-5 px-3 w-[100px]">Location</th>
+                            <th className="py-5 px-3 w-[120px]">Orden</th>
+                            <th className="py-5 px-4 min-w-[250px]">Nombre</th>
+                            <th className="py-5 px-3 w-[150px] text-center">FnSKU</th>
+                            <th className="py-5 px-3 w-[120px] text-center">SKU</th>
+                            <th className="py-5 px-3 w-[80px] text-center">U/C</th>
+                            <th className="py-5 px-3 w-[100px] text-center bg-[#245d48]">Cajas ({inItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</th>
+                            <th className="py-5 px-3 w-[110px] text-center bg-[#245d48]">Und ({inItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalUnits) || 0), 0)})</th>
+                            <th className="py-5 px-3 w-[110px] text-center">Exp.</th>
+                            <th className="py-5 px-2 w-[50px] text-center">L</th>
+                            <th className="py-5 px-2 w-[50px] text-center">A</th>
+                            <th className="py-5 px-2 w-[50px] text-center">H</th>
+                            <th className="py-5 px-3 w-[80px] text-center">Peso</th>
+                            <th className="py-5 px-4 w-[250px]">Desc</th>
+                            <th className="py-5 px-3 w-[120px] text-center">Fotos</th>
+                            <th className="py-5 px-3 w-[70px] text-center bg-[#163a2d] no-print">Acc</th>
+                          </tr>
+                        </thead>
+                        <Reorder.Group axis="y" as="tbody" values={inItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")}>
+                          {inItems.map((item, index) => (
+                            <StandaloneRow 
+                              key={item.id} item={item} index={index} isPending={false}
+                              updateItem={updateItem} deleteItem={() => deleteItem(tab.id, item.id)} switchItemStatus={switchItemStatus}
+                              removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
+                              fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
+                              setExpandedImage={setExpandedImage}
+                            />
+                          ))}
+                        </Reorder.Group>
+                      </table>
+                    </div>
+                    <div className="bg-slate-50/50 p-6 border-t no-print">
+                      <Button variant="ghost" onClick={() => handleAddRow(tab.id)} className="w-full h-16 text-slate-500 font-bold gap-3 border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all rounded-2xl">
+                        <Plus className="h-5 w-5" /> AGREGAR ARTÍCULO
                       </Button>
                     </div>
                   </Card>
-                ))}
-              </div>
-            </div>
+
+                  {pItems.length > 0 && (
+                    <div className="mt-12 no-print bg-orange-50/30 rounded-[2.5rem] p-8 border border-orange-100">
+                      <h2 className="text-xl font-black text-orange-900 mb-6">En Espera</h2>
+                      <div className="overflow-x-auto rounded-3xl border border-orange-200 bg-white">
+                        <table className="w-full text-left min-w-[1300px]">
+                          <thead>
+                            <tr className="bg-orange-800 text-white text-[10px] uppercase font-bold">
+                              <th className="py-4 px-1 w-[30px] text-center"></th>
+                              <th className="py-4 px-3 w-[100px]">Location</th>
+                              <th className="py-4 px-3 w-[120px]">Orden</th>
+                              <th className="py-4 min-w-[200px]">Producto</th>
+                              <th className="py-4 px-3 w-[140px]">FnSKU</th>
+                              <th className="py-4 px-3 w-[110px]">SKU</th>
+                              <th className="py-4 px-3 w-[90px] text-center">U/C</th>
+                              <th className="py-4 px-3 w-[90px] text-center">Cajas</th>
+                              <th className="py-4 px-3 w-[90px] text-center">Und</th>
+                              <th className="py-4 px-3 w-[110px] text-center">Exp</th>
+                              <th className="py-4 px-3 w-[60px] text-center">L</th>
+                              <th className="py-4 px-3 w-[60px] text-center">A</th>
+                              <th className="py-4 px-3 w-[60px] text-center">H</th>
+                              <th className="py-4 px-3 w-[100px] text-center">Peso</th>
+                              <th className="py-4 px-3 w-[220px]">Desc</th>
+                              <th className="py-4 px-3 w-[140px] text-center">Foto</th>
+                              <th className="py-4 px-3 text-center">Acc</th>
+                            </tr>
+                          </thead>
+                          <Reorder.Group axis="y" as="tbody" values={pItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
+                            {pItems.map((item, index) => (
+                              <StandaloneRow 
+                                key={item.id} item={item} index={index} isPending={true}
+                                updateItem={updateItem} deleteItem={() => deleteItem(tab.id, item.id)} switchItemStatus={switchItemStatus}
+                                removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
+                                fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
+                                setExpandedImage={setExpandedImage}
+                              />
+                            ))}
+                          </Reorder.Group>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()
           )}
         </div>
       </div>
+
+      <Dialog open={!!expandedImage} onOpenChange={() => setExpandedImage(null)}>
+        <DialogContent className="max-w-4xl p-0 border-0 bg-transparent shadow-none">
+          {expandedImage && (
+            <div className="relative w-full aspect-video bg-black/90 rounded-3xl flex items-center justify-center">
+              <img src={expandedImage} alt="Fullscreen" className="max-w-full max-h-full object-contain" />
+              <button onClick={() => setExpandedImage(null)} className="absolute top-4 right-4 bg-white/20 text-white rounded-full p-2"><X className="h-6 w-6" /></button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

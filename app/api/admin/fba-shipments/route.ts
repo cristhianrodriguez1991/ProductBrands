@@ -3,14 +3,32 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session || (session.user as any)?.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Attempt to find the active shipment
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get("id")
+
+    if (id) {
+      const shipment = await prisma.fbaShipment.findUnique({
+        where: { id },
+        include: {
+          items: {
+            orderBy: [
+              { sortOrder: "asc" },
+              { createdAt: "asc" }
+            ]
+          }
+        }
+      })
+      return NextResponse.json(shipment)
+    }
+
+    // Attempt to find the first active shipment (legacy support)
     let activeShipment = await prisma.fbaShipment.findFirst({
       where: { status: "ACTIVE" },
       include: {
@@ -40,14 +58,6 @@ export async function POST(req: Request) {
     const { name } = await req.json()
     if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 })
 
-    // Check if there is an active shipment. We only allow 1 active shipment.
-    const currentActive = await prisma.fbaShipment.findFirst({
-      where: { status: "ACTIVE" }
-    })
-    
-    if (currentActive) {
-      return NextResponse.json({ error: "Please close the current active shipment first." }, { status: 400 })
-    }
 
     // Gather all PENDING items from any past shipment that haven't been completed
     const pendingItems = await prisma.fbaShipmentItem.findMany({
