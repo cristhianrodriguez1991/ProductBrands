@@ -443,8 +443,8 @@ export default function FbaShipmentsPage() {
                 <th className="py-4 px-3 w-[140px] border-r border-white/5">FnSKU / UPC</th>
                 <th className="py-4 px-3 w-[110px] border-r border-white/5">SKU</th>
                 <th className="py-4 px-3 w-[70px] border-r border-white/5 text-center leading-none">Uds/Cj</th>
-                <th className="py-4 px-3 w-[70px] border-r border-white/5 text-center leading-none">Tot.Cajas</th>
-                <th className="py-4 px-3 w-[80px] border-r border-white/5 text-center leading-none text-green-400">Total Uds</th>
+                <th className="py-4 px-3 w-[70px] border-r border-white/5 text-center leading-none">Tot.Cajas<br/><span className="text-orange-400 text-[11px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalBoxes as string) || 0), 0)})</span></th>
+                <th className="py-4 px-3 w-[80px] border-r border-white/5 text-center leading-none text-green-400">Total Uds<br/><span className="text-green-300 text-[11px] block mt-1">({inShipmentItems.reduce((acc, i) => acc + (parseInt(i.totalUnits as string) || 0), 0)})</span></th>
                 <th className="py-4 px-3 w-[110px] border-r border-white/5">Fecha Exp.</th>
                 <th className="py-4 px-3 w-[45px] border-r border-white/5 text-center text-[9px]">L</th>
                 <th className="py-4 px-3 w-[45px] border-r border-white/5 text-center text-[9px]">A</th>
