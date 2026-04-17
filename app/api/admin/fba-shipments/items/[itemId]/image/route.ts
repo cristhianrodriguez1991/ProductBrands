@@ -23,9 +23,14 @@ export async function POST(
 
     const { url } = await uploadFile(file, "fba-shipments")
     
+    // We update imageUrls with { push: url } so we support infinite photos
+    // We also set imageUrl for backwards compatibility if needed
     const updatedItem = await prisma.fbaShipmentItem.update({
       where: { id: params.itemId },
-      data: { imageUrl: url }
+      data: { 
+        imageUrl: url,
+        imageUrls: { push: url }
+      }
     })
 
     return NextResponse.json(updatedItem)

@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, ChevronUp, ChevronDown } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Image from "next/image"
+import { compressImage } from "@/lib/image-compression"
 
 type FbaItem = {
   id: string
@@ -27,6 +28,7 @@ type FbaItem = {
   boxWeight: number | ""
   description: string
   imageUrl?: string
+  imageUrls?: string[]
   sortOrder: number
   status: "IN_SHIPMENT" | "PENDING"
 }
@@ -149,26 +151,37 @@ export default function FbaShipmentsPage() {
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !selectedIdForUpload) return
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0 || !selectedIdForUpload) return
 
     setUploadingId(selectedIdForUpload)
     try {
-      const fd = new FormData()
-      fd.append("file", file)
-      const res = await fetch(`/api/admin/fba-shipments/items/${selectedIdForUpload}/image`, {
-        method: "POST",
-        body: fd
-      })
-      if (res.ok) {
-        const updated = await res.json()
-        setItems(items.map(i => i.id === selectedIdForUpload ? { ...i, imageUrl: updated.imageUrl } : i))
+      let currentItem = items.find(i => i.id === selectedIdForUpload)
+      let currentUrls = currentItem?.imageUrls || (currentItem?.imageUrl ? [currentItem.imageUrl] : [])
+
+      for (const file of files) {
+        // Compress using our unified system to dodge the 4.5MB limit payload sizes organically!
+        const compressed = await compressImage(file)
+        const fd = new FormData()
+        fd.append("file", compressed)
+        
+        const res = await fetch(`/api/admin/fba-shipments/items/${selectedIdForUpload}/image`, {
+          method: "POST",
+          body: fd
+        })
+        if (res.ok) {
+          const updated = await res.json()
+          currentUrls = updated.imageUrls || [updated.imageUrl]
+          // Update state dynamically across the upload lifecycle to show feedback per-photo
+          setItems(items => items.map(i => i.id === selectedIdForUpload ? { ...i, imageUrls: currentUrls, imageUrl: updated.imageUrl } : i))
+        }
       }
     } catch(e) {
       console.error(e)
     } finally {
       setUploadingId(null)
       setSelectedIdForUpload(null)
+      if (fileInputRef.current) fileInputRef.current.value = ""
     }
   }
 
@@ -312,23 +325,58 @@ export default function FbaShipmentsPage() {
         <td className="p-0 border-l"><Input className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2 min-w-[150px]" value={item.description || ""} onChange={e => updateItem(item.id, "description", e.target.value)} /></td>
         
         {/* PHOTO COLUMN */}
-        <td className="p-1 border-l text-center">
-          <div className="flex justify-center items-center">
-            {item.imageUrl ? (
-              <div 
-                className="w-10 h-6 bg-slate-100 rounded border border-slate-200 cursor-pointer overflow-hidden relative group"
-                onClick={() => setExpandedImage(item.imageUrl!)}
-              >
-                <img src={item.imageUrl} alt="Product" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <Plus className="h-3 w-3 text-white" />
+        <td className="p-1 border-l text-center min-w-[120px]">
+          <div className="flex flex-wrap items-center justify-center gap-1 min-w-0 max-w-[150px] mx-auto">
+            {item.imageUrls && item.imageUrls.length > 0 ? (
+              <>
+                {item.imageUrls.map((url, idx) => (
+                  <div 
+                    key={idx}
+                    className="w-[28px] h-[28px] bg-slate-100/50 rounded-md border border-slate-300/80 cursor-pointer overflow-hidden relative group shrink-0"
+                    onClick={() => setExpandedImage(url)}
+                  >
+                    <img src={url} alt={`Product ${idx+1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <Plus className="h-3 w-3 text-white" />
+                    </div>
+                  </div>
+                ))}
+                {/* Adding button always at the end */}
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={`h-7 w-7 shrink-0 rounded-md bg-slate-50 border border-dashed border-slate-300 ${uploadingId === item.id ? "animate-pulse bg-blue-50 border-blue-300 text-blue-500" : "text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-300"}`}
+                  onClick={() => { setSelectedIdForUpload(item.id); fileInputRef.current?.click(); }}
+                  title="Añadir más fotos"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            ) : item.imageUrl ? (
+              <>
+                <div 
+                  className="w-[30px] h-[30px] bg-slate-100 rounded border border-slate-300 cursor-pointer overflow-hidden relative group shrink-0"
+                  onClick={() => setExpandedImage(item.imageUrl!)}
+                >
+                  <img src={item.imageUrl} alt="Product" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <Plus className="h-3 w-3 text-white" />
+                  </div>
                 </div>
-              </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={`h-7 w-7 shrink-0 rounded-md bg-slate-50 border border-dashed border-slate-300 ${uploadingId === item.id ? "animate-pulse" : "text-slate-400 hover:text-blue-600"}`}
+                  onClick={() => { setSelectedIdForUpload(item.id); fileInputRef.current?.click(); }}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
+              </>
             ) : (
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className={`h-7 w-7 ${uploadingId === item.id ? "animate-pulse" : "text-slate-400 hover:text-blue-600"}`}
+                className={`h-8 w-14 rounded-md border border-slate-200/50 bg-slate-50 shadow-inner ${uploadingId === item.id ? "animate-pulse bg-blue-50 border-blue-200 text-blue-500" : "text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50"}`}
                 onClick={() => { setSelectedIdForUpload(item.id); fileInputRef.current?.click(); }}
               >
                 <Camera className="h-4 w-4" />
@@ -385,15 +433,15 @@ export default function FbaShipmentsPage() {
 
   return (
     <div className="w-full min-h-full flex flex-col gap-6 pb-40">
-      <input type="file" className="hidden" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
+      <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
       
-      {/* EXPANDED IMAGE MODAL */}
+      {/* EXPANDED IMAGE MODAL FIXED OVERSYNC */}
       <Dialog open={!!expandedImage} onOpenChange={() => setExpandedImage(null)}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden border-0 bg-black/95">
-          <div className="relative w-full aspect-video flex items-center justify-center">
-             <button className="absolute top-4 right-4 z-50 text-white/50 hover:text-white" onClick={() => setExpandedImage(null)}><X className="h-8 w-8"/></button>
+        <DialogContent className="max-w-6xl w-11/12 p-0 overflow-hidden border-0 bg-transparent flex items-center justify-center shadow-none">
+          <div className="relative w-full h-[90vh] flex items-center justify-center bg-black/40 backdrop-blur-3xl rounded-3xl p-4 md:p-8">
+             <button className="absolute top-4 right-4 md:top-6 md:right-6 z-50 text-white hover:text-red-400 bg-black/50 p-2.5 rounded-full transition-colors" onClick={() => setExpandedImage(null)}><X className="h-6 w-6"/></button>
              {expandedImage && (
-               <img src={expandedImage} alt="Large View" className="max-w-full max-h-[90vh] object-contain" />
+               <img src={expandedImage} alt="Large View" className="w-auto h-auto max-w-full max-h-[85vh] object-contain drop-shadow-[0_0_40px_rgba(0,0,0,0.5)] rounded-md" />
              )}
           </div>
         </DialogContent>

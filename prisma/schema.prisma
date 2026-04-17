@@ -787,6 +787,7 @@ model FbaShipmentItem {
   boxWeight   Float?
   description String?
   imageUrl    String?
+  imageUrls   String[] @default([])
   sortOrder   Int @default(0)
 
   createdAt   DateTime @default(now())
