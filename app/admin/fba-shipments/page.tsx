@@ -239,6 +239,10 @@ export default function FbaShipmentsPage() {
     } catch { return false }
   }
 
+  const handlePrint = () => {
+    window.print();
+  }
+
   const exportToExcelObject = () => {
     if (!shipment) return
     const activeItems = items.filter(i => i.status === "IN_SHIPMENT")
