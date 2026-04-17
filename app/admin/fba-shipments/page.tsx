@@ -177,38 +177,43 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
 })
 
 export default function FbaShipmentsPage() {
-  const [tabs, setTabs] = useState<any[]>([]) // Array of { id, name, items, status }
+  const [tabs, setTabs] = useState<any[]>([]) 
   const [activeTabId, setActiveTabId] = useState<string>("dashboard")
   const [loading, setLoading] = useState(true)
-  const [activeShipments, setActiveShipments] = useState<any[]>([])
-  const [pastShipments, setPastShipments] = useState<any[]>([])
+  const [allShipments, setAllShipments] = useState<any[]>([])
   const [newShipmentName, setNewShipmentName] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [showArchived, setShowArchived] = useState(false)
   
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedIdForUpload, setSelectedIdForUpload] = useState<string | null>(null)
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
 
-  const fetchActiveShipmentsList = async () => {
+  const fetchShipments = async () => {
     try {
-      const res = await fetch("/api/admin/fba-shipments/active")
-      const data = await res.json()
-      if (Array.isArray(data)) setActiveShipments(data)
-    } catch(e) {}
-  }
-
-  const fetchHistory = async () => {
-    try {
-      const res = await fetch("/api/admin/fba-shipments/history")
-      const data = await res.json()
-      if (Array.isArray(data)) setPastShipments(data)
+      // Fetch both history (closed) and active to unify them
+      const [activeRes, historyRes] = await Promise.all([
+        fetch("/api/admin/fba-shipments/active"),
+        fetch("/api/admin/fba-shipments/history")
+      ])
+      const activeData = await activeRes.json()
+      const historyData = await historyRes.json()
+      
+      const unified = [
+        ...(Array.isArray(activeData) ? activeData : []),
+        ...(Array.isArray(historyData) ? historyData : [])
+      ].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      
+      setAllShipments(unified)
     } catch(e) {}
   }
 
   useEffect(() => {
     const init = async () => {
-      await Promise.all([fetchActiveShipmentsList(), fetchHistory()])
+      await fetchShipments()
       setLoading(false)
     }
     init()
@@ -228,7 +233,7 @@ export default function FbaShipmentsPage() {
               if (localItem && focusedItemId === localItem.id) return localItem
               return serverItem
             })
-            return { ...t, items: updatedItems }
+            return { ...t, items: updatedItems, name: data.name, status: data.status }
           }))
         }
       } catch (error) {}
@@ -268,7 +273,7 @@ export default function FbaShipmentsPage() {
   }
 
   const handleCreateShipment = async () => {
-    if (!newShipmentName) return alert("Please enter a name for the new shipment")
+    if (!newShipmentName) return alert("Por favor ingresa un nombre")
     try {
       const res = await fetch("/api/admin/fba-shipments", {
         method: "POST",
@@ -278,7 +283,7 @@ export default function FbaShipmentsPage() {
       const data = await res.json()
       if (res.ok) {
         setNewShipmentName("")
-        fetchActiveShipmentsList()
+        await fetchShipments()
         openTab(data.id)
       } else {
         alert(data.error)
@@ -286,32 +291,29 @@ export default function FbaShipmentsPage() {
     } catch(e) {}
   }
 
-  const handleReopenShipment = async (sh: any) => {
-    if (!confirm(`¿Deseas reabrir "${sh.name}" para editarlo?`)) return
+  const toggleArchive = async (sh: any) => {
+    const newStatus = sh.status === "CLOSED" ? "ACTIVE" : "CLOSED"
     try {
       await fetch(`/api/admin/fba-shipments/${sh.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "ACTIVE" })
+        body: JSON.stringify({ status: newStatus })
       })
-      await Promise.all([fetchActiveShipmentsList(), fetchHistory()])
-      openTab(sh.id)
+      // Update local state for the tab as well
+      setTabs(prev => prev.map(t => t.id === sh.id ? { ...t, status: newStatus } : t))
+      await fetchShipments()
     } catch(e) {}
   }
 
-  const handleFinalizeShipment = async (shId: string) => {
-    const tab = tabs.find(t => t.id === shId)
-    if (!tab) return
-    if (!confirm("¿Seguro que quieres finalizar este envío? Se archivará y se descargará el Excel.")) return
+  const deleteShipment = async (shId: string) => {
+    if (!confirm("¿Seguro que quieres eliminar este envío permanentemente? No se puede deshacer.")) return
     try {
-      exportToExcelObject(tab, tab.items)
-      await fetch(`/api/admin/fba-shipments/${shId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "CLOSED" })
-      })
-      closeTab(shId)
-      await Promise.all([fetchActiveShipmentsList(), fetchHistory()])
+      // Assuming a delete endpoint exists or using the shipment ID endpoint with DELETE
+      const res = await fetch(`/api/admin/fba-shipments/${shId}`, { method: "DELETE" })
+      if (res.ok) {
+        closeTab(shId)
+        await fetchShipments()
+      }
     } catch(e) {}
   }
 
@@ -324,6 +326,7 @@ export default function FbaShipmentsPage() {
       finalValue = formatDateString(value)
     }
 
+    setSaveStatus("saving")
     setTabs(prev => prev.map(t => {
       if (t.id !== currentTabId) return t
       const newItems = t.items.map((i: any) => {
@@ -348,11 +351,17 @@ export default function FbaShipmentsPage() {
         : undefined
     }
 
-    await fetch(`/api/admin/fba-shipments/items/${itemId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
+    try {
+      await fetch(`/api/admin/fba-shipments/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      setSaveStatus("saved")
+      setTimeout(() => setSaveStatus("idle"), 2000)
+    } catch(e) {
+      setSaveStatus("idle")
+    }
   }
 
   const handleAddRow = async (shId: string) => {
@@ -401,7 +410,7 @@ export default function FbaShipmentsPage() {
   }
 
   const deleteItem = async (shId: string, itemId: string) => {
-    if (!confirm("Remove this item?")) return
+    if (!confirm("¿Borrar este artículo?")) return
     setTabs(prev => prev.map(t => {
       if (t.id !== shId) return t
       return { ...t, items: t.items.filter((i: any) => i.id !== itemId) }
@@ -475,7 +484,7 @@ export default function FbaShipmentsPage() {
         <h2 style="color: #1f4e3d; font-family: Calibri;">INVENTARIO FBA - ${targetShipment.name}</h2>
         <table>
           <thead>
-            <tr style="height: 60px;"><th style="width: 100px;">Location</th><th style="width: 120px;">Orden de Cajas</th><th style="width: 300px;">NOMBRE COMPLETO DEL PRODUCTO</th><th style="width: 150px;">FnSKU</th><th style="width: 110px;">SKU</th><th style="width: 90px;">Uds/Caja</th><th style="width: 100px;">Total Cajas</th><th style="width: 110px;">Total Unidades</th><th style="width: 120px;">Exp.</th><th style="width: 60px;">L</th><th style="width: 60px;">A</th><th style="width: 60px;">H</th><th style="width: 90px;">Peso</th><th style="width: 250px;">Descripción</th></tr>
+            <tr style="height: 60px;"><th style="width: 100px;">Location</th><th style="width: 120px;">Orden de Cajas</th><th style="width: 300px;">PRODUCTO</th><th style="width: 150px;">FnSKU</th><th style="width: 110px;">SKU</th><th style="width: 90px;">U/C</th><th style="width: 100px;">Cajas</th><th style="width: 110px;">Unidades</th><th style="width: 120px;">Exp.</th><th style="width: 60px;">L</th><th style="width: 60px;">A</th><th style="width: 60px;">H</th><th style="width: 90px;">Peso</th><th style="width: 250px;">Descripción</th></tr>
           </thead>
           <tbody>
     `
@@ -502,7 +511,13 @@ export default function FbaShipmentsPage() {
     return raw
   }
 
-  if (loading) return <div className="p-12 text-center animate-pulse text-slate-400 font-bold">Cargando Sistema FBA...</div>
+  if (loading) return <div className="p-12 text-center animate-pulse text-slate-400 font-bold">Cargando Portal FBA...</div>
+
+  const filteredShipments = allShipments.filter(sh => {
+    const matchesSearch = sh.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const isArchived = sh.status === "CLOSED"
+    return matchesSearch && (showArchived ? isArchived : !isArchived)
+  })
 
   return (
     <>
@@ -511,113 +526,106 @@ export default function FbaShipmentsPage() {
           @page { size: landscape; margin: 0.5cm; }
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .print-area { position: absolute; left: 0; top: 0; width: 100% !important; padding: 0 !important; margin: 0 !important; }
-          .no-print, .tab-bar, button { display: none !important; }
-          .card-print { box-shadow: none !important; border: 1px solid #eee !important; border-radius: 12px !important; }
-          table { width: 100% !important; border-collapse: collapse !important; }
-          th { background-color: #1f4e3d !important; color: white !important; -webkit-print-color-adjust: exact; }
+          .tab-bar, .no-print { display: none !important; }
         }
       `}</style>
 
-      <div className="w-full flex flex-col h-full bg-slate-50 min-h-screen">
-        <div className="tab-bar no-print flex items-end gap-1 px-4 bg-white border-b border-slate-200 overflow-x-auto overflow-y-hidden custom-scrollbar pt-4">
+      <div className="w-full flex flex-col h-full bg-[#f8fafc] min-h-screen font-sans">
+        {/* TOP TAB NAV */}
+        <div className="tab-bar no-print flex items-end gap-1 px-6 bg-white border-b border-slate-200 pt-4 shadow-sm z-30">
           <div 
             onClick={() => setActiveTabId("dashboard")}
-            className={`flex items-center gap-2 px-6 py-3 rounded-t-xl cursor-pointer transition-all font-bold min-w-[150px] justify-center ${activeTabId === "dashboard" ? "bg-slate-50 text-blue-600 border-x border-t border-slate-200 -mb-[1px]" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50/50"}`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-t-2xl cursor-pointer transition-all font-bold min-w-[160px] justify-center ${activeTabId === "dashboard" ? "bg-[#f8fafc] text-blue-600 border-x border-t border-slate-200 -mb-[1px]" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
           >
-            <LayoutGrid className="h-4 w-4" /> Tablero Global
+            <LayoutGrid className="h-4 w-4" /> Mis Documentos
           </div>
           
           {tabs.map(tab => (
             <div 
               key={tab.id}
               onClick={() => setActiveTabId(tab.id)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-t-xl cursor-pointer transition-all font-bold min-w-[200px] border-x border-t relative group ${activeTabId === tab.id ? "bg-slate-50 text-slate-900 border-slate-200 -mb-[1px]" : "bg-white text-slate-400 border-transparent hover:bg-slate-50/50"}`}
+              className={`flex items-center gap-2 px-6 py-3 rounded-t-2xl cursor-pointer transition-all font-bold min-w-[220px] border-x border-t relative group ${activeTabId === tab.id ? "bg-[#f8fafc] text-slate-900 border-slate-200 -mb-[1px]" : "bg-white text-slate-400 border-transparent hover:bg-slate-50"}`}
             >
+              <ImageIcon className={`h-3.5 w-3.5 ${tab.status === "CLOSED" ? "text-slate-300" : "text-blue-400"}`} />
               <span className="truncate max-w-[150px]">{tab.name}</span>
-              <button 
-                onClick={(e) => closeTab(tab.id, e)}
-                className="ml-auto opacity-0 group-hover:opacity-100 hover:bg-slate-200 rounded-full p-0.5 transition-all text-slate-500"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+              <button onClick={(e) => closeTab(tab.id, e)} className="ml-auto opacity-0 group-hover:opacity-100 hover:bg-slate-200 rounded-full p-1 transition-all"><X className="h-3 w-3" /></button>
             </div>
           ))}
-
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setActiveTabId("dashboard")}
-            className="mb-1 rounded-full w-8 h-8 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setActiveTabId("dashboard")} className="mb-2 ml-2 rounded-full w-8 h-8 p-0 text-slate-300 hover:text-blue-500 hover:bg-blue-50"><Plus className="h-4 w-4" /></Button>
         </div>
 
-        <div className="flex-1 w-full max-w-[1800px] mx-auto p-6 md:p-8 print-area">
-          <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
-
+        <div className="flex-1 w-full max-w-[1900px] mx-auto p-6 md:p-10">
           {activeTabId === "dashboard" ? (
-            <div className="no-print">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                <div className="lg:col-span-8 space-y-8">
-                  <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 p-10 border border-slate-100">
-                    <h2 className="text-3xl font-black mb-2 text-slate-900">Portal de Envíos FBA</h2>
-                    <p className="text-slate-500 mb-8 max-w-lg">Crea un nuevo shipment o continúa trabajando en los envíos abiertos.</p>
-                    <div className="flex max-w-md items-center gap-3">
-                      <Input 
-                        className="h-14 text-lg rounded-2xl shadow-inner bg-slate-50 border-slate-200" 
-                        placeholder="Nombre del Envío" 
-                        value={newShipmentName} 
-                        onChange={e => setNewShipmentName(e.target.value)} 
-                      />
-                      <Button onClick={handleCreateShipment} className="h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-lg font-bold">Crear</Button>
-                    </div>
-                  </div>
-
-                  {activeShipments.length > 0 && (
-                    <div className="space-y-4">
-                      <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 px-4">
-                        <MousePointer2 className="h-5 w-5 text-blue-500" /> EnProgreso
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {activeShipments.map(sh => (
-                          <Card key={sh.id} className="p-6 rounded-3xl shadow-sm border-slate-200 bg-white hover:border-blue-400 transition-all hover:shadow-lg group">
-                            <div className="flex justify-between items-start mb-4">
-                              <div>
-                                <h4 className="font-bold text-xl text-slate-900 truncate max-w-[200px]">{sh.name}</h4>
-                                <p className="text-xs text-slate-400">{new Date(sh.createdAt).toLocaleDateString()}</p>
-                              </div>
-                              <span className="text-[10px] font-bold px-3 py-1 bg-blue-50 text-blue-600 rounded-full">ACTIVO</span>
-                            </div>
-                            <Button onClick={() => openTab(sh.id)} className="w-full h-11 rounded-2xl bg-slate-900 hover:bg-black font-bold gap-2">Abrir Tab <Maximize2 className="h-4 w-4" /></Button>
-                          </Card>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+            /* CONSOLIDATED DASHBOARD VIEW */
+            <div className="animate-in fade-in duration-500">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+                <div>
+                  <h1 className="text-4xl font-black text-slate-900 tracking-tight">Mis Envíos FBA</h1>
+                  <p className="text-slate-500 mt-1 font-medium italic">Gestiona tus documentos como archivos locales. Se guardan automáticamente.</p>
                 </div>
-
-                <div className="lg:col-span-4 space-y-6">
-                  <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 px-2">
-                    <CheckCircle2 className="h-5 w-5 text-green-500" /> Historial
-                  </h3>
-                  <div className="flex flex-col gap-3 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-                    {pastShipments.map(sh => (
-                      <Card key={sh.id} className="p-5 rounded-2xl border-slate-100 bg-white">
-                        <h4 className="font-bold text-slate-800 truncate mb-1">{sh.name}</h4>
-                        <p className="text-[10px] text-slate-400 mb-3">{new Date(sh.updatedAt).toLocaleDateString()}</p>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="flex-1 rounded-xl text-blue-600" onClick={() => exportToExcelObject(sh, sh.items)}>Excel</Button>
-                          <Button variant="ghost" size="sm" className="flex-1 rounded-xl border border-slate-100" onClick={() => handleReopenShipment(sh)}>Reabrir</Button>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
+                <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
+                  <Input 
+                    placeholder="Buscar envío..." 
+                    className="border-0 shadow-none bg-transparent w-[250px] font-medium"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                  />
+                  <Button 
+                    variant={showArchived ? "secondary" : "ghost"}
+                    onClick={() => setShowArchived(!showArchived)}
+                    className="rounded-xl font-bold gap-2"
+                  >
+                    <Save className="h-4 w-4" /> {showArchived ? "Ver Activos" : "Ver Archivados"}
+                  </Button>
                 </div>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {/* NEW SHIPMENT CARD */}
+                {!showArchived && (
+                  <Card className="p-8 rounded-[2rem] border-2 border-dashed border-blue-100 bg-blue-50/20 flex flex-col justify-center items-center text-center group hover:bg-blue-50/40 transition-all cursor-pointer" onClick={() => (document.getElementById('new-sh-input') as any)?.focus()}>
+                    <div className="w-16 h-16 rounded-3xl bg-blue-500 text-white flex items-center justify-center mb-6 shadow-xl group-hover:scale-110 transition-transform">
+                      <Plus className="h-8 w-8" />
+                    </div>
+                    <h3 className="font-black text-slate-900 text-xl mb-4">Nuevo Documento</h3>
+                    <div className="flex gap-2 w-full px-2" onClick={e => e.stopPropagation()}>
+                       <Input id="new-sh-input" placeholder="Nombre del Envío" value={newShipmentName} onChange={e => setNewShipmentName(e.target.value)} className="rounded-xl border-blue-200 outline-none focus:ring-2 ring-blue-500/20" />
+                       <Button onClick={handleCreateShipment} className="bg-blue-600 rounded-xl px-4 font-bold">Crear</Button>
+                    </div>
+                  </Card>
+                )}
+
+                {/* SHIPMENT CARDS */}
+                {filteredShipments.map(sh => (
+                  <Card key={sh.id} className="p-8 rounded-[2rem] border-slate-100 bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col relative overflow-hidden">
+                    {sh.status === "CLOSED" && <div className="absolute top-4 right-4 text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full uppercase">Archivado</div>}
+                    <div className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center mb-6 border border-slate-100 group-hover:bg-blue-50 group-hover:text-blue-500 group-hover:rotate-12 transition-all">
+                      <ImageIcon className="h-6 w-6" />
+                    </div>
+                    <h3 className="font-bold text-slate-900 text-xl mb-1 truncate">{sh.name}</h3>
+                    <p className="text-sm text-slate-400 font-medium mb-8">Última edición: {new Date(sh.updatedAt).toLocaleDateString()}</p>
+                    
+                    <div className="mt-auto space-y-3">
+                      <Button onClick={() => openTab(sh.id)} className="w-full h-12 rounded-2xl bg-slate-900 hover:bg-black font-black text-sm tracking-wide gap-2">ABRIR ARCHIVO <Maximize2 className="h-4 w-4" /></Button>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl border-slate-200 text-slate-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200" title="Exportar Excel" onClick={() => exportToExcelObject(sh, sh.items)}>
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl border-slate-200 text-slate-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200" title="Archivar/Restaurar" onClick={() => toggleArchive(sh)}>
+                          <Save className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600 hover:border-red-200" title="Eliminar" onClick={() => deleteShipment(sh.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+              {filteredShipments.length === 0 && searchQuery && <div className="text-center py-20 text-slate-400 font-bold">No se encontraron envíos con "{searchQuery}"</div>}
             </div>
           ) : (
+            /* SHIPMENT TAB VIEW */
             (() => {
               const tab = tabs.find(t => t.id === activeTabId)
               if (!tab) return null
@@ -625,42 +633,57 @@ export default function FbaShipmentsPage() {
               const pItems = tab.items.filter((i: any) => i.status === "PENDING")
 
               return (
-                <div className="flex flex-col gap-6">
-                  <div className="flex items-end justify-between">
-                    <div>
-                      <h1 className="text-4xl font-black text-slate-900">{tab.name}</h1>
-                      <p className="text-slate-400">Panel de Control de Envío</p>
+                <div className="animate-in slide-in-from-bottom-5 duration-500">
+                  <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8 no-print">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
+                        <ImageIcon className="h-7 w-7" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-3">
+                           <h1 className="text-3xl font-black text-slate-900 leading-none">{tab.name}</h1>
+                           {saveStatus === "saving" && <span className="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full font-bold animate-pulse">Guardando...</span>}
+                           {saveStatus === "saved" && <span className="text-[10px] bg-green-50 text-green-500 px-2 py-0.5 rounded-full font-bold">Guardado</span>}
+                        </div>
+                        <p className="text-slate-400 mt-2 font-medium flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4" /> Archivo Editable 
+                          {tab.status === "CLOSED" && <span className="text-slate-400 italic">(Archivado)</span>}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex gap-3 no-print pb-1">
-                      <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white rounded-xl px-6 font-bold"><Printer className="h-5 w-5" /></Button>
-                      <Button variant="outline" onClick={() => exportToExcelObject(tab, tab.items)} className="h-12 bg-blue-50 text-blue-700 rounded-xl px-6 font-bold">Excel</Button>
-                      <Button variant="secondary" onClick={() => closeTab(tab.id)} className="h-12 rounded-xl px-6 font-bold">Pausar</Button>
-                      <Button onClick={() => handleFinalizeShipment(tab.id)} variant="destructive" className="h-12 rounded-xl px-6 font-bold">Finalizar</Button>
+                    <div className="flex flex-wrap gap-3">
+                      <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white rounded-xl shadow-sm px-6 font-bold border-slate-200"><Printer className="h-5 w-5" /> Imprimir</Button>
+                      <Button variant="outline" onClick={() => exportToExcelObject(tab, tab.items)} className="h-12 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 rounded-xl px-6 font-bold gap-2"><Download className="h-5 w-5" /> Exportar Excel</Button>
+                      <Button variant="ghost" onClick={() => closeTab(tab.id)} className="h-12 rounded-xl px-6 font-bold text-slate-500 hover:bg-slate-200">Cerrar Pestaña</Button>
+                      <Button variant={tab.status === "CLOSED" ? "secondary" : "outline"} onClick={() => toggleArchive(tab)} className="h-12 rounded-xl px-6 font-bold">
+                        {tab.status === "CLOSED" ? "Restaurar" : "Archivar"}
+                      </Button>
                     </div>
                   </div>
 
-                  <Card className="w-full border-0 shadow-2xl rounded-[2.5rem] overflow-hidden bg-white card-print">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left min-w-[1400px]">
+                  {/* MAIN TABLE */}
+                  <Card className="w-full border-0 shadow-2xl rounded-[2.5rem] overflow-hidden bg-white mb-10 border border-slate-100">
+                    <div className="overflow-x-auto custom-scrollbar">
+                      <table className="w-full text-left border-collapse min-w-[1500px]">
                         <thead>
-                          <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-bold">
-                            <th className="py-5 px-1 w-[30px] text-center bg-[#163a2d]"></th>
-                            <th className="py-5 px-3 w-[100px]">Location</th>
-                            <th className="py-5 px-3 w-[120px]">Orden</th>
-                            <th className="py-5 px-4 min-w-[250px]">Nombre</th>
-                            <th className="py-5 px-3 w-[150px] text-center">FnSKU</th>
-                            <th className="py-5 px-3 w-[120px] text-center">SKU</th>
-                            <th className="py-5 px-3 w-[80px] text-center">U/C</th>
-                            <th className="py-5 px-3 w-[100px] text-center bg-[#245d48]">Cajas ({inItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</th>
-                            <th className="py-5 px-3 w-[110px] text-center bg-[#245d48]">Und ({inItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalUnits) || 0), 0)})</th>
-                            <th className="py-5 px-3 w-[110px] text-center">Exp.</th>
-                            <th className="py-5 px-2 w-[50px] text-center">L</th>
-                            <th className="py-5 px-2 w-[50px] text-center">A</th>
-                            <th className="py-5 px-2 w-[50px] text-center">H</th>
-                            <th className="py-5 px-3 w-[80px] text-center">Peso</th>
-                            <th className="py-5 px-4 w-[250px]">Desc</th>
-                            <th className="py-5 px-3 w-[120px] text-center">Fotos</th>
-                            <th className="py-5 px-3 w-[70px] text-center bg-[#163a2d] no-print">Acc</th>
+                          <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-black tracking-widest">
+                            <th className="py-6 px-1 w-[35px] text-center bg-[#163a2d]"></th>
+                            <th className="py-6 px-3 w-[110px] border-r border-white/5">Location</th>
+                            <th className="py-6 px-3 w-[130px] border-r border-white/5">Orden Cajas</th>
+                            <th className="py-6 px-5 min-w-[300px] border-r border-white/5">Producto</th>
+                            <th className="py-6 px-3 w-[160px] border-r border-white/5 text-center">FnSKU</th>
+                            <th className="py-6 px-3 w-[130px] border-r border-white/5 text-center">SKU</th>
+                            <th className="py-6 px-3 w-[85px] border-r border-white/5 text-center">U/C</th>
+                            <th className="py-6 px-3 w-[105px] border-r border-white/5 text-center bg-[#245d48]">Cajas ({inItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</th>
+                            <th className="py-6 px-3 w-[115px] border-r border-white/5 text-center bg-[#245d48]">Und ({inItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalUnits) || 0), 0)})</th>
+                            <th className="py-6 px-3 w-[115px] border-r border-white/5 text-center">Exp. Date</th>
+                            <th className="py-6 px-2 w-[55px] border-r border-white/5 text-center">L</th>
+                            <th className="py-6 px-2 w-[55px] border-r border-white/5 text-center">A</th>
+                            <th className="py-6 px-2 w-[55px] border-r border-white/5 text-center">H</th>
+                            <th className="py-6 px-4 w-[90px] border-r border-white/5 text-center">Peso</th>
+                            <th className="py-6 px-6 w-[300px] border-r border-white/5">Descripción</th>
+                            <th className="py-6 px-3 w-[130px] border-r border-white/5 text-center">Fotos</th>
+                            <th className="py-6 px-3 w-[70px] text-center bg-[#163a2d] no-print">Acc</th>
                           </tr>
                         </thead>
                         <Reorder.Group axis="y" as="tbody" values={inItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")}>
@@ -676,37 +699,40 @@ export default function FbaShipmentsPage() {
                         </Reorder.Group>
                       </table>
                     </div>
-                    <div className="bg-slate-50/50 p-6 border-t no-print">
-                      <Button variant="ghost" onClick={() => handleAddRow(tab.id)} className="w-full h-16 text-slate-500 font-bold gap-3 border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all rounded-2xl">
-                        <Plus className="h-5 w-5" /> AGREGAR ARTÍCULO
+                    <div className="bg-[#f8fafc]/50 p-8 border-t no-print">
+                      <Button variant="ghost" onClick={() => handleAddRow(tab.id)} className="w-full h-20 text-slate-400 font-bold gap-4 border-4 border-dashed border-slate-100 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-[1.5rem] group">
+                        <Plus className="h-6 w-6 group-hover:scale-125 transition-transform" /> AGREGAR ARTÍCULO AL DOCUMENTO
                       </Button>
                     </div>
                   </Card>
 
+                  {/* PENDING SECTION */}
                   {pItems.length > 0 && (
-                    <div className="mt-12 no-print bg-orange-50/30 rounded-[2.5rem] p-8 border border-orange-100">
-                      <h2 className="text-xl font-black text-orange-900 mb-6">En Espera</h2>
-                      <div className="overflow-x-auto rounded-3xl border border-orange-200 bg-white">
+                    <div className="no-print bg-orange-50/20 rounded-[3rem] p-10 border border-orange-100/50 shadow-inner">
+                      <h2 className="text-2xl font-black text-orange-900 mb-8 flex items-center gap-3">
+                        <MousePointer2 className="h-6 w-6" /> Palets en Espera (Pendientes)
+                      </h2>
+                      <div className="overflow-x-auto rounded-[2rem] border border-orange-200 bg-white shadow-xl">
                         <table className="w-full text-left min-w-[1300px]">
                           <thead>
-                            <tr className="bg-orange-800 text-white text-[10px] uppercase font-bold">
+                            <tr className="bg-orange-800 text-white text-[10px] uppercase font-black tracking-widest">
                               <th className="py-4 px-1 w-[30px] text-center"></th>
-                              <th className="py-4 px-3 w-[100px]">Location</th>
-                              <th className="py-4 px-3 w-[120px]">Orden</th>
-                              <th className="py-4 min-w-[200px]">Producto</th>
-                              <th className="py-4 px-3 w-[140px]">FnSKU</th>
-                              <th className="py-4 px-3 w-[110px]">SKU</th>
+                              <th className="py-4 px-3 w-[110px]">Location</th>
+                              <th className="py-4 px-3 w-[130px]">Orden</th>
+                              <th className="py-4 min-w-[200px]">PRODUCTO PENDIENTE</th>
+                              <th className="py-4 px-3 w-[150px]">FnSKU</th>
+                              <th className="py-4 px-3 w-[120px]">SKU</th>
                               <th className="py-4 px-3 w-[90px] text-center">U/C</th>
-                              <th className="py-4 px-3 w-[90px] text-center">Cajas</th>
-                              <th className="py-4 px-3 w-[90px] text-center">Und</th>
-                              <th className="py-4 px-3 w-[110px] text-center">Exp</th>
+                              <th className="py-4 px-3 w-[90px] text-center leading-tight">Cajas<br/><span className="text-[9px] text-orange-200">({pItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</span></th>
+                              <th className="py-4 px-3 w-[90px] text-center leading-tight">Unds<br/><span className="text-[9px] text-orange-200">({pItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalUnits) || 0), 0)})</span></th>
+                              <th className="py-4 px-3 w-[110px]">Exp</th>
                               <th className="py-4 px-3 w-[60px] text-center">L</th>
                               <th className="py-4 px-3 w-[60px] text-center">A</th>
                               <th className="py-4 px-3 w-[60px] text-center">H</th>
                               <th className="py-4 px-3 w-[100px] text-center">Peso</th>
-                              <th className="py-4 px-3 w-[220px]">Desc</th>
-                              <th className="py-4 px-3 w-[140px] text-center">Foto</th>
-                              <th className="py-4 px-3 text-center">Acc</th>
+                              <th className="py-4 px-5 w-[250px]">Desc</th>
+                              <th className="py-4 px-3 w-[150px] text-center">Foto</th>
+                              <th className="py-4 px-3 text-center no-print">Acc</th>
                             </tr>
                           </thead>
                           <Reorder.Group axis="y" as="tbody" values={pItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
@@ -731,12 +757,18 @@ export default function FbaShipmentsPage() {
         </div>
       </div>
 
+      {/* FULLSCREEN IMAGE */}
       <Dialog open={!!expandedImage} onOpenChange={() => setExpandedImage(null)}>
-        <DialogContent className="max-w-4xl p-0 border-0 bg-transparent shadow-none">
+        <DialogContent className="max-w-5xl p-0 border-0 bg-transparent shadow-none">
           {expandedImage && (
-            <div className="relative w-full aspect-video bg-black/90 rounded-3xl flex items-center justify-center">
-              <img src={expandedImage} alt="Fullscreen" className="max-w-full max-h-full object-contain" />
-              <button onClick={() => setExpandedImage(null)} className="absolute top-4 right-4 bg-white/20 text-white rounded-full p-2"><X className="h-6 w-6" /></button>
+            <div className="relative w-full aspect-video bg-black/95 rounded-[3rem] flex items-center justify-center p-4">
+              <img src={expandedImage} alt="Fullscreen" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" />
+              <button 
+                onClick={() => setExpandedImage(null)} 
+                className="absolute top-8 right-8 bg-white/10 hover:bg-white/30 text-white rounded-full p-3 backdrop-blur-md transition-all"
+              >
+                <X className="h-8 w-8" />
+              </button>
             </div>
           )}
         </DialogContent>
