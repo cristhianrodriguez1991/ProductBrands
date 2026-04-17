@@ -77,7 +77,7 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
           className={`h-8 text-[11px] border-0 bg-transparent rounded-none px-2 ${expiring ? "text-red-600 font-bold bg-red-50" : ""}`} 
           value={item.expDate || ""} 
           placeholder="MMDDYY"
-          onChange={e => updateItem(item.expDate, "expDate", e.target.value)} 
+          onChange={e => updateItem(item.id, "expDate", e.target.value)} 
         />
         {expiring && <AlertCircle className="h-3 w-3 absolute right-1 top-2.5 text-red-500 animate-pulse pointer-events-none" />}
       </td>
@@ -659,7 +659,7 @@ export default function FbaShipmentsPage() {
               </div>
 
               {/* LIST VIEW TABLE */}
-              <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden">
+              <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-50 text-[11px] font-black text-slate-400 uppercase tracking-widest bg-slate-50/50">
@@ -750,7 +750,7 @@ export default function FbaShipmentsPage() {
                     </div>
 
                   {/* MAIN TABLE */}
-                  <Card className="w-full border-0 shadow-2xl rounded-[2.5rem] overflow-hidden bg-white mb-10 border border-slate-100">
+                  <Card className="w-full border-0 shadow-2xl rounded-3xl overflow-hidden bg-white mb-10 border border-slate-100">
                     <div className="overflow-x-auto custom-scrollbar">
                       <table className="w-full text-left border-collapse min-w-[1500px]">
                         <thead>
@@ -803,7 +803,7 @@ export default function FbaShipmentsPage() {
 
                   {/* GLOBAL PENDING SECTION */}
                   {globalPendingItems.length > 0 && (
-                    <div className="no-print bg-amber-50/40 rounded-[3rem] p-10 border border-amber-100/50 shadow-inner mt-10 mb-20 animate-in fade-in zoom-in duration-500">
+                    <div className="no-print bg-amber-50/40 rounded-3xl p-10 border border-amber-100/50 shadow-inner mt-10 mb-20 animate-in fade-in zoom-in duration-500">
                       <h2 className="text-2xl font-black text-amber-900 mb-8 flex items-center gap-3">
                         <MousePointer2 className="h-6 w-6" /> Palets en Espera (Global)
                         <span className="text-[10px] font-black bg-amber-600 text-white px-3 py-1 rounded-full uppercase tracking-tighter">Disponible para este envío</span>
@@ -858,7 +858,7 @@ export default function FbaShipmentsPage() {
       <Dialog open={!!expandedImage} onOpenChange={() => setExpandedImage(null)}>
         <DialogContent className="max-w-5xl p-0 border-0 bg-transparent shadow-none">
           {expandedImage && (
-            <div className="relative w-full aspect-video bg-black/95 rounded-[3rem] flex items-center justify-center p-4">
+            <div className="relative w-full aspect-video bg-black/95 rounded-3xl flex items-center justify-center p-4">
               <img src={expandedImage} alt="Fullscreen" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" />
               <button 
                 onClick={() => setExpandedImage(null)} 
