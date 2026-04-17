@@ -312,7 +312,7 @@ export default function FbaShipmentsPage() {
   const pendingItems = items.filter(i => i.status === "PENDING")
 
   return (
-    <div className="w-full h-full flex flex-col gap-6 pb-40">
+    <div className="w-full min-h-full flex flex-col gap-6 pb-40">
       <input type="file" className="hidden" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
       
       {/* EXPANDED IMAGE MODAL */}
