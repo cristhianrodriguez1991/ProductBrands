@@ -328,14 +328,24 @@ export default function FbaShipmentsPage() {
     const expiring = isExpiringSoon(item.expDate)
     
     return (
-      <Reorder.Item value={item} as="tr" dragListener={false} dragControls={controls} className="border-b hover:bg-slate-50 transition-colors bg-white group/row">
+      <Reorder.Item 
+        value={item} 
+        as="tr" 
+        dragListener={false} 
+        dragControls={controls} 
+        className="border-b hover:bg-slate-50 transition-colors bg-white group/row"
+        style={{ position: "relative" }}
+      >
         <td className="p-0 border-r w-[30px] bg-slate-50 select-none">
           <div 
-             className="w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing text-slate-300 hover:bg-slate-200 hover:text-slate-600 transition-colors py-2 touch-none"
-             onPointerDown={(e) => controls.start(e)}
-             title="Hold and drag to reorder"
+             className="w-full h-10 flex items-center justify-center cursor-grab active:cursor-grabbing text-slate-300 hover:bg-slate-200 hover:text-slate-600 transition-colors touch-none"
+             onPointerDown={(e) => {
+               e.preventDefault();
+               controls.start(e);
+             }}
+             title="Presiona y arrastra para reordenar"
           >
-             <GripVertical className="h-4 w-4" />
+             <GripVertical className="h-5 w-5" />
           </div>
         </td>
         <td className="p-0"><Input className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={item.location || ""} onChange={e => updateItem(item.id, "location", e.target.value)} /></td>
@@ -423,12 +433,7 @@ export default function FbaShipmentsPage() {
         </td>
 
         <td className="p-0 border-l">
-          <div className="flex items-center justify-center gap-0.5 opacity-20 hover:opacity-100 transition-opacity">
-            <div className="flex flex-col gap-0.5 mr-1">
-               <button onClick={() => moveItem(index, "up", isPending ? "PENDING" : "IN_SHIPMENT")} className="bg-slate-100 hover:bg-slate-200 text-slate-500 rounded p-0.5" title="Mover Arriba"><ChevronUp className="h-3 w-3" /></button>
-               <button onClick={() => moveItem(index, "down", isPending ? "PENDING" : "IN_SHIPMENT")} className="bg-slate-100 hover:bg-slate-200 text-slate-500 rounded p-0.5" title="Mover Abajo"><ChevronDown className="h-3 w-3" /></button>
-            </div>
-            
+          <div className="flex items-center justify-center gap-1 opacity-20 hover:opacity-100 transition-opacity">
             {item.status === "IN_SHIPMENT" ? (
               <Button variant="ghost" size="icon" className="h-6 w-6 text-orange-600 hover:bg-orange-100" onClick={() => switchItemStatus(item.id, "PENDING")}>
                 <ArrowDown className="h-3.5 w-3.5" />
@@ -541,7 +546,7 @@ export default function FbaShipmentsPage() {
                 <th className="py-4 px-3 w-[65px] text-center">Shift</th>
               </tr>
             </thead>
-            <Reorder.Group as="tbody" values={inShipmentItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")}>
+            <Reorder.Group axis="y" as="tbody" values={inShipmentItems} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")}>
               {inShipmentItems.map((item, index) => <RowItem key={item.id} item={item} index={index} isPending={false} />)}
               {inShipmentItems.length === 0 && (
                 <tr>
@@ -596,7 +601,7 @@ export default function FbaShipmentsPage() {
                 <th className="py-3 px-3 w-[65px] text-center">Reset</th>
               </tr>
             </thead>
-            <Reorder.Group as="tbody" values={pendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
+            <Reorder.Group axis="y" as="tbody" values={pendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
               {pendingItems.map((item, index) => <RowItem key={item.id} item={item} index={index} isPending={true} />)}
               {pendingItems.length === 0 && (
                 <tr>
