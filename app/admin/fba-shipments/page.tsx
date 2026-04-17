@@ -507,21 +507,7 @@ export default function FbaShipmentsPage() {
   const pendingItems = items.filter(i => i.status === "PENDING")
 
   return (
-    <div className="w-full min-h-full flex flex-col gap-6 pb-40">
-      <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
-      
-      {/* EXPANDED IMAGE MODAL FIXED OVERSYNC */}
-      <Dialog open={!!expandedImage} onOpenChange={() => setExpandedImage(null)}>
-        <DialogContent className="max-w-6xl w-11/12 p-0 overflow-hidden border-0 bg-transparent flex items-center justify-center shadow-none">
-          <div className="relative w-full h-[90vh] flex items-center justify-center bg-black/40 backdrop-blur-3xl rounded-3xl p-4 md:p-8">
-             <button className="absolute top-4 right-4 md:top-6 md:right-6 z-50 text-white hover:text-red-400 bg-black/50 p-2.5 rounded-full transition-colors" onClick={() => setExpandedImage(null)}><X className="h-6 w-6"/></button>
-             {expandedImage && (
-               <img src={expandedImage} alt="Large View" className="w-auto h-auto max-w-full max-h-[85vh] object-contain drop-shadow-[0_0_40px_rgba(0,0,0,0.5)] rounded-md" />
-             )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
+    <>
       <style jsx global>{`
         @media print {
           title, meta { display: none; }
@@ -680,5 +666,6 @@ export default function FbaShipmentsPage() {
         </div>
       </div>
     </div>
-  )
+  </>
+)
 }
