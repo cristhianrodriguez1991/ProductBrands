@@ -218,7 +218,7 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
     try {
       const res = await fetch(`/api/admin/machines/${setup.id}/image?type=${uploadType}`, { 
         method: "POST", 
-        body: formData 
+        body: fd 
       })
       if (res.ok) {
         const updated = await res.json()
