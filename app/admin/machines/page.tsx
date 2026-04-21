@@ -157,14 +157,14 @@ export default function MachineSetupPage() {
                 <Table className="min-w-[2200px]">
                   <TableHeader>
                     <TableRow className="bg-[#1e3a2f] hover:bg-[#1e3a2f] border-0">
+                      <TableHead className="w-[60px]"></TableHead>
                       <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-10 w-[350px]">PRODUCTO</TableHead>
                       <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[150px]">PESO</TableHead>
                       <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[720px] text-center border-x border-white/5">FOTOS DE REFERENCIA (PRODUCTO / PESA / EMPAQUE / PARÁMETROS)</TableHead>
-                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[750px]">DESCRIPCIÓN</TableHead>
+                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[500px]">DESCRIPCIÓN</TableHead>
                       <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[180px] text-center">BAG SIZE</TableHead>
                       <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[250px] text-center border-x border-white/5">VELOCIDADES</TableHead>
-                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[150px]">AJUSTES</TableHead>
-                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-10 text-right">ACC</TableHead>
+                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-10">AJUSTES</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -296,6 +296,17 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
 
   return (
     <TableRow className="group hover:bg-slate-50/50 transition-all border-slate-50">
+      <TableCell className="py-20 px-4 text-center border-r border-slate-50">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => onDelete(localSetup.id, localSetup.productName)}
+          className="h-10 w-10 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </TableCell>
+
       <TableCell className="py-20 px-10 border-r border-slate-50">
         <Input 
           value={localSetup.productName}
@@ -370,25 +381,14 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
         </div>
       </TableCell>
 
-      <TableCell className="py-20 px-8 border-r border-slate-50">
+      <TableCell className="py-20 px-10">
         <Textarea 
           value={localSetup.additionalChanges}
-          placeholder="AJUSTES..."
+          placeholder="AJUSTES FISICOS..."
           onChange={(e) => setLocalSetup({ ...localSetup, additionalChanges: e.target.value })}
           onBlur={(e) => handleBlur("additionalChanges", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 min-h-[140px] p-0 text-[10px] font-black text-orange-600 uppercase tracking-tighter resize-none leading-tight placeholder:text-orange-100"
+          className="border-0 bg-transparent focus-visible:ring-0 min-h-[220px] p-0 text-sm font-black text-orange-600 uppercase tracking-tighter resize-none leading-tight placeholder:text-orange-100"
         />
-      </TableCell>
-
-      <TableCell className="py-20 px-10 text-right">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => onDelete(localSetup.id, localSetup.productName)}
-          className="h-20 w-20 text-slate-100 hover:text-red-600 hover:bg-red-50 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-all duration-300 border-2 border-transparent hover:border-red-100 hover:shadow-xl hover:shadow-red-100"
-        >
-          <Trash2 className="h-8 w-8" />
-        </Button>
       </TableCell>
     </TableRow>
   )
