@@ -187,8 +187,7 @@ export default function MachineSetupPage() {
   )
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 w-full">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
             <TableIcon className="h-8 w-8 text-blue-600" />
@@ -204,11 +203,6 @@ export default function MachineSetupPage() {
             resetForm()
           }
         }}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#1e293b] hover:bg-black text-white rounded-xl px-6 font-bold shadow-lg transition-all gap-2 h-12">
-              <Plus className="h-5 w-5" /> New Product Setup
-            </Button>
-          </DialogTrigger>
           <DialogContent className="max-w-4xl rounded-3xl p-0 overflow-hidden border-0 shadow-2xl">
             <DialogHeader className="p-8 bg-slate-50 border-b">
               <div className="flex items-center gap-4">
@@ -421,6 +415,22 @@ export default function MachineSetupPage() {
               </Table>
             </div>
           )}
+
+          <div className="p-8 bg-slate-50/30">
+            <button 
+              onClick={() => {
+                resetForm()
+                setEditingSetup(null)
+                setIsDialogOpen(true)
+              }}
+              className="w-full py-6 border-2 border-dashed border-slate-200 rounded-3xl flex items-center justify-center gap-3 text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50/50 transition-all group"
+            >
+              <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                <Plus className="h-5 w-5" />
+              </div>
+              <span className="font-black tracking-widest text-xs uppercase">AGREGAR PRODUCTO AL MANUAL</span>
+            </button>
+          </div>
         </CardContent>
       </Card>
 
