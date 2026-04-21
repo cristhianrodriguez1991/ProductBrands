@@ -1,13 +1,10 @@
 const { execSync } = require('child_process');
-const path = require('path');
-
-const nodePath = '/Users/cristhian/.nvm/versions/node/v24.15.0/bin/node';
 const npxPath = '/Users/cristhian/.nvm/versions/node/v24.15.0/bin/npx';
 const projectDir = '/Users/cristhian/Desktop/ProductBrand Code';
 
 try {
-  console.log('Running prisma db push...');
-  execSync(`${npxPath} prisma db push`, {
+  console.log('Running prisma db push --accept-data-loss...');
+  execSync(`${npxPath} prisma db push --accept-data-loss`, {
     cwd: projectDir,
     env: {
       ...process.env,

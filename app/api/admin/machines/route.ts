@@ -10,13 +10,13 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const machines = await prisma.machine.findMany({
+    const setups = await prisma.machineSetup.findMany({
       orderBy: { createdAt: "desc" },
     })
 
-    return NextResponse.json(machines)
+    return NextResponse.json(setups)
   } catch (error) {
-    console.error("[MACHINES_GET]", error)
+    console.error("[MACHINE_SETUPS_GET]", error)
     return new NextResponse("Internal Error", { status: 500 })
   }
 }
@@ -30,44 +30,42 @@ export async function POST(req: Request) {
 
     const body = await req.json()
     const { 
-      name, 
-      modelNumber, 
-      serialNumber, 
-      manufacturer, 
-      purchaseDate, 
-      lastMaintenance, 
-      nextMaintenance, 
-      status, 
-      location, 
-      notes,
-      imageUrl,
-      manualUrl
+      productName, 
+      weightGrams, 
+      description, 
+      bagSize, 
+      presetSpeed, 
+      actualSpeed, 
+      additionalChanges, 
+      productImageUrl, 
+      weightingImageUrl, 
+      packagingImageUrl, 
+      parametersImageUrl 
     } = body
 
-    if (!name) {
-      return new NextResponse("Name is required", { status: 400 })
+    if (!productName) {
+      return new NextResponse("Product Name is required", { status: 400 })
     }
 
-    const machine = await prisma.machine.create({
+    const setup = await prisma.machineSetup.create({
       data: {
-        name,
-        modelNumber,
-        serialNumber,
-        manufacturer,
-        purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
-        lastMaintenance: lastMaintenance ? new Date(lastMaintenance) : null,
-        nextMaintenance: nextMaintenance ? new Date(nextMaintenance) : null,
-        status: status || "OPERATIONAL",
-        location,
-        notes,
-        imageUrl,
-        manualUrl,
+        productName,
+        weightGrams,
+        description,
+        bagSize,
+        presetSpeed,
+        actualSpeed,
+        additionalChanges,
+        productImageUrl,
+        weightingImageUrl,
+        packagingImageUrl,
+        parametersImageUrl
       },
     })
 
-    return NextResponse.json(machine)
+    return NextResponse.json(setup)
   } catch (error) {
-    console.error("[MACHINES_POST]", error)
+    console.error("[MACHINE_SETUPS_POST]", error)
     return new NextResponse("Internal Error", { status: 500 })
   }
 }

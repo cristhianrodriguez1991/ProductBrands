@@ -13,17 +13,17 @@ export async function GET(
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const machine = await prisma.machine.findUnique({
+    const setup = await prisma.machineSetup.findUnique({
       where: { id: params.id },
     })
 
-    if (!machine) {
+    if (!setup) {
       return new NextResponse("Not found", { status: 404 })
     }
 
-    return NextResponse.json(machine)
+    return NextResponse.json(setup)
   } catch (error) {
-    console.error("[MACHINE_GET]", error)
+    console.error("[MACHINE_SETUP_GET]", error)
     return new NextResponse("Internal Error", { status: 500 })
   }
 }
@@ -40,41 +40,39 @@ export async function PATCH(
 
     const body = await req.json()
     const { 
-      name, 
-      modelNumber, 
-      serialNumber, 
-      manufacturer, 
-      purchaseDate, 
-      lastMaintenance, 
-      nextMaintenance, 
-      status, 
-      location, 
-      notes,
-      imageUrl,
-      manualUrl
+      productName, 
+      weightGrams, 
+      description, 
+      bagSize, 
+      presetSpeed, 
+      actualSpeed, 
+      additionalChanges, 
+      productImageUrl, 
+      weightingImageUrl, 
+      packagingImageUrl, 
+      parametersImageUrl 
     } = body
 
-    const machine = await prisma.machine.update({
+    const setup = await prisma.machineSetup.update({
       where: { id: params.id },
       data: {
-        name,
-        modelNumber,
-        serialNumber,
-        manufacturer,
-        purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
-        lastMaintenance: lastMaintenance ? new Date(lastMaintenance) : null,
-        nextMaintenance: nextMaintenance ? new Date(nextMaintenance) : null,
-        status,
-        location,
-        notes,
-        imageUrl,
-        manualUrl,
+        productName,
+        weightGrams,
+        description,
+        bagSize,
+        presetSpeed,
+        actualSpeed,
+        additionalChanges,
+        productImageUrl,
+        weightingImageUrl,
+        packagingImageUrl,
+        parametersImageUrl
       },
     })
 
-    return NextResponse.json(machine)
+    return NextResponse.json(setup)
   } catch (error) {
-    console.error("[MACHINE_PATCH]", error)
+    console.error("[MACHINE_SETUP_PATCH]", error)
     return new NextResponse("Internal Error", { status: 500 })
   }
 }
@@ -89,13 +87,13 @@ export async function DELETE(
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    await prisma.machine.delete({
+    await prisma.machineSetup.delete({
       where: { id: params.id },
     })
 
     return new NextResponse(null, { status: 204 })
   } catch (error) {
-    console.error("[MACHINE_DELETE]", error)
+    console.error("[MACHINE_SETUP_DELETE]", error)
     return new NextResponse("Internal Error", { status: 500 })
   }
 }

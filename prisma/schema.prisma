@@ -798,28 +798,30 @@ model FbaShipmentItem {
 }
 
 // ─────────────────────────────────────────────────────────────
-// MACHINES
+// MACHINE SETUPS BY PRODUCT
 // ─────────────────────────────────────────────────────────────
 
-model Machine {
-  id              String   @id @default(cuid())
-  name            String
-  modelNumber     String?
-  serialNumber    String?
-  manufacturer    String?
-  purchaseDate    DateTime?
-  lastMaintenance DateTime?
-  nextMaintenance DateTime?
-  status          String   @default("OPERATIONAL") // OPERATIONAL, MAINTENANCE, DOWN, DECOMMISSIONED
-  location        String?
-  notes           String?  @db.Text
-  imageUrl        String?
-  manualUrl       String?  @db.Text
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+model MachineSetup {
+  id                      String   @id @default(cuid())
+  productName             String
+  weightGrams             String?  // e.g. "500g"
+  description             String?  @db.Text
+  bagSize                 String?  // e.g. "200mm"
+  presetSpeed             String?  // e.g. "45/min"
+  actualSpeed             String?  // e.g. "22min"
+  additionalChanges       String?  @db.Text
+  
+  // Multiple images as requested in the screenshot
+  productImageUrl         String?  // Picture of Product
+  weightingImageUrl       String?  // Picture of weighting machine
+  packagingImageUrl       String?  // picture of packaging machine
+  parametersImageUrl      String?  // Parameters of packaging (screen)
+  
+  sortOrder               Int      @default(0)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
-  @@index([name])
-  @@index([status])
+  @@index([productName])
 }
 // (Wait, I can't just append if it already exists, I should probably use replace_file_content but since it's at the end...)
 // (I will use replace_file_content to insert sortOrder)

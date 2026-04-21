@@ -32,6 +32,7 @@ const NAV_ITEMS = [
   { href: "/admin/brands", label: "Brands", icon: Tag },
   { href: "/admin/suppliers", label: "Suppliers", icon: Truck },
   { href: "/admin/fba-shipments", label: "FBA Shipments", icon: Ship },
+  { href: "/admin/machines", label: "Machine Setup", icon: Cpu },
 
   { href: "/admin/listings", label: "Listings", icon: Package },
   { href: "/admin/quotes", label: "Quotes", icon: FileText },
@@ -40,7 +41,6 @@ const NAV_ITEMS = [
   { href: "/admin/orders", label: "Orders", icon: Package },
   { href: "/admin/invoices", label: "Invoices", icon: Receipt },
   { href: "/admin/chat", label: "Live Chat", icon: MessageSquare },
-  { href: "/admin/machines", label: "Machine Information", icon: Cpu },
   { href: "/admin/settings", label: "Site Settings", icon: Settings },
 ]
 
