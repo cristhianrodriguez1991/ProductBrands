@@ -333,7 +333,6 @@ export default function MachineSetupPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
 
       <Card className="border-0 shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
         <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
