@@ -189,7 +189,7 @@ export default function MachineSetupPage() {
         .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; border-radius: 20px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 20px; border: 3px solid #f8fafc; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-      `}`}</style>
+      `}</style>
     </div>
   )
 }
