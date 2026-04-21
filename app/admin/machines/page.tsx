@@ -158,11 +158,11 @@ export default function MachineSetupPage() {
                   <TableHeader>
                     <TableRow className="bg-[#1e3a2f] hover:bg-[#1e3a2f] border-0">
                       <TableHead className="w-[60px]"></TableHead>
-                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-10 w-[350px]">PRODUCTO</TableHead>
+                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-10 w-[300px]">PRODUCTO</TableHead>
                       <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[150px]">PESO</TableHead>
-                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[720px] text-center border-x border-white/5">FOTOS DE REFERENCIA (PRODUCTO / PESA / EMPAQUE / PARÁMETROS)</TableHead>
-                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[500px]">DESCRIPCIÓN</TableHead>
-                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[180px] text-center">BAG SIZE</TableHead>
+                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[650px] text-center border-x border-white/5">FOTOS DE REFERENCIA</TableHead>
+                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[700px]">DESCRIPCIÓN</TableHead>
+                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[150px] text-center">BAG SIZE</TableHead>
                       <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[250px] text-center border-x border-white/5">VELOCIDADES</TableHead>
                       <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-10">AJUSTES</TableHead>
                     </TableRow>
@@ -204,6 +204,13 @@ export default function MachineSetupPage() {
         </Card>
       </div>
 
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar { height: 12px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; border-radius: 20px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 20px; border: 3px solid #f8fafc; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+      `}</style>
+
       <Dialog open={!!expandedImage} onOpenChange={() => setExpandedImage(null)}>
         <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 border-0 bg-transparent shadow-none outline-none">
           {expandedImage && (
@@ -213,13 +220,6 @@ export default function MachineSetupPage() {
           )}
         </DialogContent>
       </Dialog>
-
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar { height: 12px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; border-radius: 20px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 20px; border: 3px solid #f8fafc; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-      `}</style>
     </div>
   )
 }
@@ -261,34 +261,34 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
   }
 
   const ImageInput = ({ field, url, label }: { field: string, url: string, label: string }) => (
-    <div className="relative group w-[160px] h-[120px] shrink-0">
+    <div className="relative group w-[120px] h-[90px] shrink-0">
       <div 
-        className="w-full h-full bg-slate-50 border-4 border-slate-100 rounded-[2rem] overflow-hidden flex items-center justify-center cursor-pointer transition-all hover:border-blue-400 hover:ring-[12px] ring-blue-50/50"
+        className="w-full h-full bg-slate-50 border-2 border-slate-100 rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer transition-all hover:border-blue-400 hover:ring-8 ring-blue-50/50"
         onClick={() => url ? onExpandImage(url) : null}
       >
         {url ? (
           <img src={url} alt={label} className="w-full h-full object-cover" />
         ) : (
-          <div className="flex flex-col items-center gap-3 opacity-10">
-             <ImageIcon className="h-8 w-8" />
-             <span className="text-[10px] font-black uppercase tracking-[0.2em]">{label}</span>
+          <div className="flex flex-col items-center gap-2 opacity-10">
+             <ImageIcon className="h-6 w-6" />
+             <span className="text-[8px] font-black uppercase tracking-[0.1em]">{label}</span>
           </div>
         )}
       </div>
       
       <button 
         onClick={() => { setUploadType(field); fileInputRef.current?.click(); }}
-        className="absolute -top-3 -right-3 bg-blue-600 text-white p-3 rounded-2xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 hover:scale-110 active:scale-95"
+        className="absolute -top-2 -right-2 bg-blue-600 text-white p-2 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 z-10"
       >
-        <Camera className="h-5 w-5" />
+        <Camera className="h-4 w-4" />
       </button>
       
       {url && (
         <button 
           onClick={(e) => { e.stopPropagation(); onUpdate(setup.id, field, null); }}
-          className="absolute -bottom-3 -right-3 bg-red-500 text-white p-2 rounded-2xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 hover:scale-110 active:scale-95"
+          className="absolute -bottom-2 -right-2 bg-red-500 text-white p-1.5 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 z-10"
         >
-          <Trash className="h-5 w-5" />
+          <Trash className="h-4 w-4" />
         </button>
       )}
     </div>
@@ -308,31 +308,31 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
       </TableCell>
 
       <TableCell className="py-20 px-10 border-r border-slate-50">
-        <Input 
+        <Textarea 
           value={localSetup.productName}
           onChange={(e) => setLocalSetup({ ...localSetup, productName: e.target.value })}
           onBlur={(e) => handleBlur("productName", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-800 placeholder:text-slate-100 h-auto p-0 text-2xl uppercase tracking-tighter"
+          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-800 placeholder:text-slate-100 min-h-[120px] p-0 text-xl uppercase tracking-tighter resize-none overflow-hidden leading-tight"
         />
         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleImageUpload} />
       </TableCell>
       
-      <TableCell className="py-20 px-8 border-r border-slate-50">
+      <TableCell className="py-20 px-8 border-r border-slate-50 text-center">
         <Input 
           value={localSetup.weightGrams}
           placeholder="000G"
           onChange={(e) => setLocalSetup({ ...localSetup, weightGrams: e.target.value })}
           onBlur={(e) => handleBlur("weightGrams", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-500 placeholder:text-slate-100 h-auto p-0 text-xl tracking-tight"
+          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-500 placeholder:text-slate-100 h-auto p-0 text-xl tracking-tight text-center"
         />
       </TableCell>
 
       <TableCell className="py-20 px-8 border-r border-slate-100 bg-slate-50/10">
-        <div className="flex gap-6 items-center justify-center">
-          <ImageInput field="productImageUrl" url={localSetup.productImageUrl} label="PRODUCTO" />
+        <div className="grid grid-cols-2 gap-4 items-center justify-center mx-auto w-fit">
+          <ImageInput field="productImageUrl" url={localSetup.productImageUrl} label="PROD" />
           <ImageInput field="weightingImageUrl" url={localSetup.weightingImageUrl} label="PESA" />
-          <ImageInput field="packagingImageUrl" url={localSetup.packagingImageUrl} label="EMPAQUE" />
-          <ImageInput field="parametersImageUrl" url={localSetup.parametersImageUrl} label="AJUSTES" />
+          <ImageInput field="packagingImageUrl" url={localSetup.packagingImageUrl} label="PACK" />
+          <ImageInput field="parametersImageUrl" url={localSetup.parametersImageUrl} label="PARAM" />
         </div>
       </TableCell>
 
@@ -384,7 +384,7 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
       <TableCell className="py-20 px-10">
         <Textarea 
           value={localSetup.additionalChanges}
-          placeholder="AJUSTES FISICOS..."
+          placeholder="AJUSTES..."
           onChange={(e) => setLocalSetup({ ...localSetup, additionalChanges: e.target.value })}
           onBlur={(e) => handleBlur("additionalChanges", e.target.value)}
           className="border-0 bg-transparent focus-visible:ring-0 min-h-[220px] p-0 text-sm font-black text-orange-600 uppercase tracking-tighter resize-none leading-tight placeholder:text-orange-100"
