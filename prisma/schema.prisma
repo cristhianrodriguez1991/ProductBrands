@@ -797,6 +797,29 @@ model FbaShipmentItem {
   @@index([status])
 }
 
-// Update FbaShipmentItem to include imageUrl
+// ─────────────────────────────────────────────────────────────
+// MACHINES
+// ─────────────────────────────────────────────────────────────
+
+model Machine {
+  id              String   @id @default(cuid())
+  name            String
+  modelNumber     String?
+  serialNumber    String?
+  manufacturer    String?
+  purchaseDate    DateTime?
+  lastMaintenance DateTime?
+  nextMaintenance DateTime?
+  status          String   @default("OPERATIONAL") // OPERATIONAL, MAINTENANCE, DOWN, DECOMMISSIONED
+  location        String?
+  notes           String?  @db.Text
+  imageUrl        String?
+  manualUrl       String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([name])
+  @@index([status])
+}
 // (Wait, I can't just append if it already exists, I should probably use replace_file_content but since it's at the end...)
 // (I will use replace_file_content to insert sortOrder)

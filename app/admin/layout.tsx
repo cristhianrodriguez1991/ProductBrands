@@ -20,6 +20,7 @@ import {
   Ship,
   Menu,
   X,
+  Cpu,
 
 } from "lucide-react"
 import Image from "next/image"
@@ -39,6 +40,7 @@ const NAV_ITEMS = [
   { href: "/admin/orders", label: "Orders", icon: Package },
   { href: "/admin/invoices", label: "Invoices", icon: Receipt },
   { href: "/admin/chat", label: "Live Chat", icon: MessageSquare },
+  { href: "/admin/machines", label: "Machine Information", icon: Cpu },
   { href: "/admin/settings", label: "Site Settings", icon: Settings },
 ]
 
