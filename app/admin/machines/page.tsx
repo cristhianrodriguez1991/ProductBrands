@@ -30,6 +30,7 @@ export default function MachineSetupPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
+  const [zoom, setZoom] = useState(1.0)
   
   useEffect(() => {
     fetchSetups()
@@ -100,15 +101,43 @@ export default function MachineSetupPage() {
 
   return (
     <div className="space-y-6 w-full px-4">
-      <div className="py-4">
-        <h1 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-4 uppercase">
-          <TableIcon className="h-10 w-10 text-blue-600" />
-          Machine Setup by Product
-        </h1>
-        <p className="text-slate-500 mt-2 font-bold italic text-lg uppercase tracking-wider opacity-60">Manual técnico de configuración por SKU</p>
+      <div className="py-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-4 uppercase">
+            <TableIcon className="h-10 w-10 text-blue-600" />
+            Machine Setup by Product
+          </h1>
+          <p className="text-slate-500 mt-2 font-bold italic text-lg uppercase tracking-wider opacity-60">Manual técnico de configuración por SKU</p>
+        </div>
+
+        <div className="flex items-center gap-3 bg-white p-2 rounded-3xl border-2 border-slate-100 shadow-xl">
+           <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setZoom(prev => Math.max(0.5, prev - 0.1))}
+            className="h-12 w-12 rounded-2xl hover:bg-slate-50 text-slate-400"
+          >
+            <span className="text-2xl font-black">-</span>
+          </Button>
+          <div 
+            className="px-4 py-2 bg-slate-50 rounded-xl font-black text-slate-600 text-sm cursor-pointer hover:bg-slate-100 transition-colors"
+            onClick={() => setZoom(1.0)}
+          >
+            {Math.round(zoom * 100)}%
+          </div>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setZoom(prev => Math.min(2.0, prev + 0.1))}
+            className="h-12 w-12 rounded-2xl hover:bg-slate-50 text-slate-400"
+          >
+             <span className="text-2xl font-black">+</span>
+          </Button>
+        </div>
       </div>
 
-      <Card className="border-0 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] rounded-[4rem] overflow-hidden bg-white">
+      <div style={{ zoom: zoom }}>
+        <Card className="border-0 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] rounded-[4rem] overflow-hidden bg-white mt-4">
         <CardHeader className="bg-slate-50/50 border-b p-10 flex flex-row items-center justify-between">
           <div className="flex items-center gap-6 bg-white px-8 py-5 rounded-[2.5rem] border-2 border-slate-100 shadow-sm w-full max-w-xl focus-within:ring-8 ring-blue-50 transition-all">
             <Search className="h-6 w-6 text-slate-400" />
@@ -173,6 +202,7 @@ export default function MachineSetupPage() {
           </div>
         </CardContent>
       </Card>
+    </div>
 
       <Dialog open={!!expandedImage} onOpenChange={() => setExpandedImage(null)}>
         <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 border-0 bg-transparent shadow-none outline-none">
