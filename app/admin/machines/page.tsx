@@ -154,17 +154,16 @@ export default function MachineSetupPage() {
               <div className="py-20 text-center animate-pulse text-slate-400 font-black tracking-widest text-lg uppercase">Cargando Manual...</div>
             ) : (
               <div className="overflow-x-auto overflow-y-visible custom-scrollbar">
-                <Table className="min-w-[1800px] border-collapse">
+                <Table className="min-w-[1700px] border-collapse">
                   <TableHeader>
                     <TableRow className="bg-[#1e3a2f] hover:bg-[#1e3a2f] border-b-2 border-slate-900">
                       <TableHead className="w-[50px] border-r border-white/10"></TableHead>
                       <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[250px] border-r border-white/10">PRODUCTO</TableHead>
                       <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[120px] border-r border-white/10 text-center">PESO</TableHead>
                       <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[550px] text-center border-r border-white/10">FOTOS DE REFERENCIA</TableHead>
-                      <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[500px] border-r border-white/10 text-center">DESCRIPCIÓN</TableHead>
                       <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[130px] text-center border-r border-white/10">BAG SIZE</TableHead>
                       <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[200px] text-center border-r border-white/10">VELOCIDADES</TableHead>
-                      <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-8 text-center">AJUSTES</TableHead>
+                      <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-8">DESCRIPCIÓN</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -179,7 +178,7 @@ export default function MachineSetupPage() {
                     ))}
                     {filteredSetups.length === 0 && !loading && (
                       <TableRow>
-                        <TableCell colSpan={8} className="py-20 text-center text-slate-300 font-black text-xl uppercase tracking-widest italic">
+                        <TableCell colSpan={7} className="py-20 text-center text-slate-300 font-black text-xl uppercase tracking-widest italic">
                           No hay registros
                         </TableCell>
                       </TableRow>
@@ -336,23 +335,13 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
         </div>
       </TableCell>
 
-      <TableCell className="py-10 px-6 border-r border-slate-200">
-        <Textarea 
-          value={localSetup.description}
-          placeholder="NOTAS TÉCNICAS..."
-          onChange={(e) => setLocalSetup({ ...localSetup, description: e.target.value })}
-          onBlur={(e) => handleBlur("description", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 min-h-[120px] p-0 text-sm font-bold text-slate-700 resize-none overflow-hidden leading-relaxed uppercase placeholder:text-slate-100"
-        />
-      </TableCell>
-
       <TableCell className="py-10 px-6 border-r border-slate-200 bg-blue-50/20 text-center">
         <Input 
           value={localSetup.bagSize}
           placeholder="000MM"
           onChange={(e) => setLocalSetup({ ...localSetup, bagSize: e.target.value })}
           onBlur={(e) => handleBlur("bagSize", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 font-black text-blue-600 text-center placeholder:text-blue-100 h-auto p-0 text-xl"
+          className="border-0 bg-transparent focus-visible:ring-0 font-black text-blue-600 text-center placeholder:text-blue-100 h-auto p-0 text-md"
         />
       </TableCell>
 
@@ -383,11 +372,11 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
 
       <TableCell className="py-10 px-8">
         <Textarea 
-          value={localSetup.additionalChanges}
-          placeholder="AJUSTES..."
-          onChange={(e) => setLocalSetup({ ...localSetup, additionalChanges: e.target.value })}
-          onBlur={(e) => handleBlur("additionalChanges", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 min-h-[120px] p-0 text-xs font-black text-orange-600 uppercase tracking-tight resize-none leading-tight placeholder:text-orange-100"
+          value={localSetup.description}
+          placeholder="NOTAS TÉCNICAS..."
+          onChange={(e) => setLocalSetup({ ...localSetup, description: e.target.value })}
+          onBlur={(e) => handleBlur("description", e.target.value)}
+          className="border-0 bg-transparent focus-visible:ring-0 min-h-[140px] p-0 text-sm font-bold text-slate-700 resize-none overflow-hidden leading-relaxed uppercase placeholder:text-slate-100"
         />
       </TableCell>
     </TableRow>
