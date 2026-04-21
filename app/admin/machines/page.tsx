@@ -138,71 +138,71 @@ export default function MachineSetupPage() {
 
       <div style={{ zoom: zoom }}>
         <Card className="border-0 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] rounded-[4rem] overflow-hidden bg-white mt-4">
-        <CardHeader className="bg-slate-50/50 border-b p-10 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-6 bg-white px-8 py-5 rounded-[2.5rem] border-2 border-slate-100 shadow-sm w-full max-w-xl focus-within:ring-8 ring-blue-50 transition-all">
-            <Search className="h-6 w-6 text-slate-400" />
-            <Input 
-              placeholder="BUSCAR PRODUCTO..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="border-0 bg-transparent focus-visible:ring-0 h-8 p-0 text-xl font-black text-slate-700 placeholder:text-slate-200"
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="py-40 text-center animate-pulse text-slate-300 font-black tracking-[0.5em] text-2xl uppercase">Cargando Manual...</div>
-          ) : (
-            <div className="overflow-x-auto overflow-y-visible custom-scrollbar">
-              <Table className="min-w-[2000px]">
-                <TableHeader>
-                  <TableRow className="bg-[#1e3a2f] hover:bg-[#1e3a2f] border-0">
-                    <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-10 w-[350px]">PRODUCTO</TableHead>
-                    <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[180px]">PESO (G)</TableHead>
-                    <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[750px] text-center border-x border-white/5">FOTOS DE REFERENCIA (PRODUCTO / PESA / EMPAQUE / PARÁMETROS)</TableHead>
-                    <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[400px]">DESCRIPCIÓN</TableHead>
-                    <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[200px] text-center">BAG SIZE</TableHead>
-                    <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[280px] text-center border-x border-white/5">VELOCIDADES</TableHead>
-                    <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[400px]">AJUSTES ADICIONALES</TableHead>
-                    <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-10 text-right">ACC</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSetups.map((s) => (
-                    <EditableMachineRow 
-                      key={s.id} 
-                      setup={s} 
-                      onUpdate={updateSetupField}
-                      onDelete={deleteSetup}
-                      onExpandImage={setExpandedImage}
-                    />
-                  ))}
-                  {filteredSetups.length === 0 && !loading && (
-                    <TableRow>
-                      <TableCell colSpan={8} className="py-40 text-center text-slate-200 font-black text-3xl uppercase tracking-[0.2em] italic">
-                        No hay registros
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+          <CardHeader className="bg-slate-50/50 border-b p-10 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-6 bg-white px-8 py-5 rounded-[2.5rem] border-2 border-slate-100 shadow-sm w-full max-w-xl focus-within:ring-8 ring-blue-50 transition-all">
+              <Search className="h-6 w-6 text-slate-400" />
+              <Input 
+                placeholder="BUSCAR PRODUCTO..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="border-0 bg-transparent focus-visible:ring-0 h-8 p-0 text-xl font-black text-slate-700 placeholder:text-slate-200"
+              />
             </div>
-          )}
-
-          <div className="p-12 bg-slate-50/50">
-            <button 
-              onClick={addNewSetup}
-              className="w-full py-16 border-8 border-dashed border-slate-200 rounded-[4rem] flex items-center justify-center gap-8 text-slate-300 hover:text-blue-600 hover:border-blue-200 hover:bg-white hover:shadow-[0_40px_80px_-20px_rgba(59,130,246,0.2)] transition-all duration-500 group"
-            >
-              <div className="w-20 h-20 rounded-[2rem] bg-white border-4 border-slate-100 flex items-center justify-center shadow-xl group-hover:scale-110 group-hover:rotate-90 transition-all duration-500">
-                <Plus className="h-10 w-10 text-slate-400 group-hover:text-blue-600" />
+          </CardHeader>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="py-40 text-center animate-pulse text-slate-300 font-black tracking-[0.5em] text-2xl uppercase">Cargando Manual...</div>
+            ) : (
+              <div className="overflow-x-auto overflow-y-visible custom-scrollbar">
+                <Table className="min-w-[2200px]">
+                  <TableHeader>
+                    <TableRow className="bg-[#1e3a2f] hover:bg-[#1e3a2f] border-0">
+                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-10 w-[350px]">PRODUCTO</TableHead>
+                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[150px]">PESO</TableHead>
+                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[720px] text-center border-x border-white/5">FOTOS DE REFERENCIA (PRODUCTO / PESA / EMPAQUE / PARÁMETROS)</TableHead>
+                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[750px]">DESCRIPCIÓN</TableHead>
+                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[180px] text-center">BAG SIZE</TableHead>
+                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[250px] text-center border-x border-white/5">VELOCIDADES</TableHead>
+                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-8 w-[150px]">AJUSTES</TableHead>
+                      <TableHead className="font-black text-[14px] uppercase tracking-[0.3em] text-white/90 py-16 px-10 text-right">ACC</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSetups.map((s) => (
+                      <EditableMachineRow 
+                        key={s.id} 
+                        setup={s} 
+                        onUpdate={updateSetupField}
+                        onDelete={deleteSetup}
+                        onExpandImage={setExpandedImage}
+                      />
+                    ))}
+                    {filteredSetups.length === 0 && !loading && (
+                      <TableRow>
+                        <TableCell colSpan={8} className="py-40 text-center text-slate-200 font-black text-3xl uppercase tracking-[0.2em] italic">
+                          No hay registros
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-              <span className="font-black tracking-[0.4em] text-xl uppercase">AGREGAR PRODUCTO AL MANUAL</span>
-            </button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+            )}
+
+            <div className="p-12 bg-slate-50/50">
+              <button 
+                onClick={addNewSetup}
+                className="w-full py-16 border-8 border-dashed border-slate-200 rounded-[4rem] flex items-center justify-center gap-8 text-slate-300 hover:text-blue-600 hover:border-blue-200 hover:bg-white hover:shadow-[0_40px_80px_-20px_rgba(59,130,246,0.2)] transition-all duration-500 group"
+              >
+                <div className="w-20 h-20 rounded-[2rem] bg-white border-4 border-slate-100 flex items-center justify-center shadow-xl group-hover:scale-110 group-hover:rotate-90 transition-all duration-500">
+                  <Plus className="h-10 w-10 text-slate-400 group-hover:text-blue-600" />
+                </div>
+                <span className="font-black tracking-[0.4em] text-xl uppercase">AGREGAR PRODUCTO AL MANUAL</span>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Dialog open={!!expandedImage} onOpenChange={() => setExpandedImage(null)}>
         <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 border-0 bg-transparent shadow-none outline-none">
@@ -331,11 +331,11 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
           placeholder="NOTAS TÉCNICAS..."
           onChange={(e) => setLocalSetup({ ...localSetup, description: e.target.value })}
           onBlur={(e) => handleBlur("description", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 min-h-[180px] p-0 text-lg font-bold text-slate-400 resize-none overflow-hidden leading-relaxed uppercase placeholder:text-slate-100"
+          className="border-0 bg-transparent focus-visible:ring-0 min-h-[220px] p-0 text-md font-bold text-slate-500 resize-none overflow-hidden leading-relaxed uppercase placeholder:text-slate-100"
         />
       </TableCell>
 
-      <TableCell className="py-20 px-8 border-r border-slate-50 bg-blue-50/5">
+      <TableCell className="py-20 px-8 border-r border-slate-50 bg-blue-50/5 text-center">
         <Input 
           value={localSetup.bagSize}
           placeholder="000MM"
@@ -345,26 +345,26 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
         />
       </TableCell>
 
-      <TableCell className="py-20 px-8 border-r border-slate-100 bg-slate-50/10">
+      <TableCell className="py-20 px-8 border-r border-slate-100 bg-slate-50/10 text-center">
         <div className="flex flex-col gap-6 items-center">
-          <div className="flex flex-col items-start gap-2 bg-white px-6 py-4 rounded-[1.5rem] border-2 border-slate-50 shadow-sm w-full">
+          <div className="flex flex-col items-center gap-2 bg-white px-6 py-4 rounded-[1.5rem] border-2 border-slate-50 shadow-sm w-full">
             <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest shrink-0">Preset Speed</span>
             <Input 
               value={localSetup.presetSpeed}
               placeholder="00/MIN"
               onChange={(e) => setLocalSetup({ ...localSetup, presetSpeed: e.target.value })}
               onBlur={(e) => handleBlur("presetSpeed", e.target.value)}
-              className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-800 w-full h-auto p-0 text-lg text-right uppercase"
+              className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-800 w-full h-auto p-0 text-lg text-center uppercase"
             />
           </div>
-          <div className="flex flex-col items-start gap-2 bg-white px-6 py-4 rounded-[1.5rem] border-2 border-slate-50 shadow-sm w-full">
+          <div className="flex flex-col items-center gap-2 bg-white px-6 py-4 rounded-[1.5rem] border-2 border-slate-50 shadow-sm w-full">
             <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest shrink-0">Actual Speed</span>
             <Input 
               value={localSetup.actualSpeed}
               placeholder="00MIN"
               onChange={(e) => setLocalSetup({ ...localSetup, actualSpeed: e.target.value })}
               onBlur={(e) => handleBlur("actualSpeed", e.target.value)}
-              className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-800 w-full h-auto p-0 text-lg text-right uppercase"
+              className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-800 w-full h-auto p-0 text-lg text-center uppercase"
             />
           </div>
         </div>
@@ -373,10 +373,10 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
       <TableCell className="py-20 px-8 border-r border-slate-50">
         <Textarea 
           value={localSetup.additionalChanges}
-          placeholder="AJUSTES FÍSICOS..."
+          placeholder="AJUSTES..."
           onChange={(e) => setLocalSetup({ ...localSetup, additionalChanges: e.target.value })}
           onBlur={(e) => handleBlur("additionalChanges", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 min-h-[180px] p-0 text-sm font-black text-orange-600 uppercase tracking-tighter resize-none leading-tight placeholder:text-orange-100"
+          className="border-0 bg-transparent focus-visible:ring-0 min-h-[140px] p-0 text-[10px] font-black text-orange-600 uppercase tracking-tighter resize-none leading-tight placeholder:text-orange-100"
         />
       </TableCell>
 
