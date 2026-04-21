@@ -314,26 +314,26 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
         />
       </TableCell>
 
-      <TableCell className="py-6 px-4 border-r border-slate-100 bg-slate-50/30">
+      <TableCell className="py-6 px-4 border-r border-slate-100 bg-slate-50/10">
         <div className="flex flex-col gap-2 items-center">
-          <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm">
-            <span className="text-[9px] font-black text-slate-300 uppercase">PR:</span>
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-100 shadow-sm w-full">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter shrink-0">Preset Speed</span>
             <Input 
               value={localSetup.presetSpeed}
               placeholder="00/min"
               onChange={(e) => setLocalSetup({ ...localSetup, presetSpeed: e.target.value })}
               onBlur={(e) => handleBlur("presetSpeed", e.target.value)}
-              className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 w-16 h-auto p-0 text-[11px] text-center"
+              className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-600 w-full h-auto p-0 text-[11px] text-right"
             />
           </div>
-          <div className="flex items-center gap-1.5 bg-blue-600 px-2 py-1 rounded-lg shadow-md shadow-blue-200">
-            <span className="text-[9px] font-black text-white/50 uppercase">AC:</span>
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-100 shadow-sm w-full">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter shrink-0">Actual Speed</span>
             <Input 
               value={localSetup.actualSpeed}
               placeholder="00min"
               onChange={(e) => setLocalSetup({ ...localSetup, actualSpeed: e.target.value })}
               onBlur={(e) => handleBlur("actualSpeed", e.target.value)}
-              className="border-0 bg-transparent focus-visible:ring-0 font-black text-white w-16 h-auto p-0 text-[11px] text-center"
+              className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-600 w-full h-auto p-0 text-[11px] text-right"
             />
           </div>
         </div>
