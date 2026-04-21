@@ -328,7 +328,7 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
       </TableCell>
 
       <TableCell className="py-20 px-8 border-r border-slate-100 bg-slate-50/10">
-        <div className="grid grid-cols-2 gap-4 items-center justify-center mx-auto w-fit">
+        <div className="flex gap-4 items-center justify-center">
           <ImageInput field="productImageUrl" url={localSetup.productImageUrl} label="PROD" />
           <ImageInput field="weightingImageUrl" url={localSetup.weightingImageUrl} label="PESA" />
           <ImageInput field="packagingImageUrl" url={localSetup.packagingImageUrl} label="PACK" />
