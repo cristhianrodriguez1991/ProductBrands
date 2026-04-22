@@ -823,5 +823,25 @@ model MachineSetup {
 
   @@index([productName])
 }
+
+// CLEANING LOGS
+// ─────────────────────────────────────────────────────────────
+
+model CleaningLog {
+  id                String   @id @default(cuid())
+  date              DateTime @default(now())
+  time              String?  // e.g. "10:30 AM"
+  areaCleaned       String?
+  tasksCompleted    String?  @db.Text
+  cleanedBy         String?
+  supervisorInitials String?
+  notes             String?  @db.Text
+  imageUrl          String?  // picture upload
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([date])
+}
 // (Wait, I can't just append if it already exists, I should probably use replace_file_content but since it's at the end...)
 // (I will use replace_file_content to insert sortOrder)

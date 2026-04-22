@@ -21,6 +21,7 @@ import {
   Menu,
   X,
   Cpu,
+  ClipboardCheck,
 
 } from "lucide-react"
 import Image from "next/image"
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { href: "/admin/suppliers", label: "Suppliers", icon: Truck },
   { href: "/admin/fba-shipments", label: "FBA Shipments", icon: Ship },
   { href: "/admin/machines", label: "Machine Setup", icon: Cpu },
+  { href: "/admin/cleaning-logs", label: "Clean Logs", icon: ClipboardCheck },
 
   { href: "/admin/listings", label: "Listings", icon: Package },
   { href: "/admin/quotes", label: "Quotes", icon: FileText },
