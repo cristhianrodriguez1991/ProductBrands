@@ -171,14 +171,14 @@ export default function CleaningLogsPage() {
                   <TableHeader>
                     <TableRow className="bg-[#1a2b3c] hover:bg-[#1a2b3c] border-b-2 border-slate-900">
                       <TableHead className="w-[60px] border-r border-white/10"></TableHead>
-                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-4 w-[160px] border-r border-white/10 text-center">FECHA</TableHead>
-                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-4 w-[130px] border-r border-white/10 text-center">HORA</TableHead>
-                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-6 w-[220px] border-r border-white/10">ÁREA LIMPIADA</TableHead>
-                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-6 w-[130px] border-r border-white/10 text-center">FOTO</TableHead>
-                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-6 w-[450px] border-r border-white/10">TAREAS COMPLETADAS</TableHead>
-                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-6 w-[220px] border-r border-white/10 text-center">LIMPIADO POR</TableHead>
-                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-4 w-[110px] border-r border-white/10 text-center">SUP. (INT)</TableHead>
-                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-8 text-center text-right">NOTAS / COMENTARIOS</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-4 w-[160px] border-r border-white/10 text-center">FECHA</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-4 w-[130px] border-r border-white/10 text-center">HORA</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-6 w-[220px] border-r border-white/10 text-center">ÁREA LIMPIADA</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-6 w-[130px] border-r border-white/10 text-center">FOTO</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-6 w-[450px] border-r border-white/10 text-center">TAREAS COMPLETADAS</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-6 w-[220px] border-r border-white/10 text-center">LIMPIADO POR</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-4 w-[110px] border-r border-white/10 text-center">SUP. (INT)</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-8 text-center">NOTAS / COMENTARIOS</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -229,7 +229,7 @@ export default function CleaningLogsPage() {
         <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 border-0 bg-transparent shadow-none outline-none">
           {expandedImage && (
             <div className="relative w-full h-full flex items-center justify-center p-4">
-              <img src={expandedImage} alt="Cleaning Reference" className="max-w-full max-h-[90vh] object-contain rounded-[2rem] shadow-2xl ring-[12px] ring-white/20" />
+              <img src={expandedImage} alt="Cleaning Reference" className="max-w-full max-h-[90vh] object-contain rounded-[2rem] shadow-2xl ring-[12px] ring-white/10" />
             </div>
           )}
         </DialogContent>
@@ -274,8 +274,8 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
   }
 
   return (
-    <TableRow className="group hover:bg-slate-50 transition-all border-b border-slate-200">
-      <TableCell className="py-8 px-4 text-center border-r border-slate-200 align-top">
+    <TableRow className="group hover:bg-slate-50 transition-all border-b border-slate-200 min-h-[120px]">
+      <TableCell className="py-8 px-4 text-center border-r border-slate-200 align-middle">
         <Button 
           variant="ghost" 
           size="icon" 
@@ -286,8 +286,8 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
         </Button>
       </TableCell>
 
-      <TableCell className="py-8 px-4 border-r border-slate-200 text-center align-top">
-        <div className="flex flex-col items-center gap-1.5 pt-1">
+      <TableCell className="py-8 px-4 border-r border-slate-200 text-center align-middle">
+        <div className="flex flex-col items-center gap-1.5">
           <CalendarIcon className="h-4 w-4 text-slate-400" />
           <Input 
             type="date"
@@ -299,8 +299,8 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
         </div>
       </TableCell>
 
-      <TableCell className="py-8 px-4 border-r border-slate-200 text-center align-top">
-        <div className="flex flex-col items-center gap-1.5 pt-1">
+      <TableCell className="py-8 px-4 border-r border-slate-200 text-center align-middle">
+        <div className="flex flex-col items-center gap-1.5">
           <Clock className="h-4 w-4 text-slate-400" />
           <Input 
             value={localLog.time}
@@ -312,17 +312,17 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
         </div>
       </TableCell>
 
-      <TableCell className="py-8 px-6 border-r border-slate-200 align-top">
+      <TableCell className="py-8 px-6 border-r border-slate-200 align-middle">
         <Textarea 
           value={localLog.areaCleaned}
           placeholder="ESPECIFICAR ÁREA..."
           onChange={(e) => setLocalLog({ ...localLog, areaCleaned: e.target.value })}
           onBlur={(e) => handleBlur("areaCleaned", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 placeholder:text-slate-100 min-h-[100px] p-0 text-sm uppercase tracking-tight resize-none overflow-hidden leading-tight"
+          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 placeholder:text-slate-100 min-h-[60px] p-0 text-sm uppercase tracking-tight resize-none text-center leading-tight"
         />
       </TableCell>
 
-      <TableCell className="py-8 px-6 border-r border-slate-200 align-top">
+      <TableCell className="py-8 px-6 border-r border-slate-200 align-middle">
         <div className="relative group/img w-[110px] h-[80px] mx-auto">
           <div 
             className="w-full h-full bg-slate-50 border-2 border-slate-300 rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer transition-all hover:border-green-600 hover:ring-8 ring-green-50 shadow-sm"
@@ -355,44 +355,44 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
         </div>
       </TableCell>
 
-      <TableCell className="py-8 px-6 border-r border-slate-200 bg-slate-50/30 align-top">
+      <TableCell className="py-8 px-6 border-r border-slate-200 bg-slate-50/30 align-middle">
         <Textarea 
           value={localLog.tasksCompleted}
           placeholder="DETALLE DE TAREAS..."
           onChange={(e) => setLocalLog({ ...localLog, tasksCompleted: e.target.value })}
           onBlur={(e) => handleBlur("tasksCompleted", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 min-h-[150px] p-0 text-xs font-bold text-slate-700 resize-none overflow-hidden leading-relaxed uppercase placeholder:text-slate-100"
+          className="border-0 bg-transparent focus-visible:ring-0 min-h-[100px] p-0 text-xs font-bold text-slate-700 resize-none overflow-hidden leading-relaxed uppercase placeholder:text-slate-100 text-center"
         />
       </TableCell>
 
-      <TableCell className="py-8 px-6 border-r border-slate-200 align-top">
+      <TableCell className="py-8 px-6 border-r border-slate-200 align-middle font-black">
         <Textarea 
           value={localLog.cleanedBy}
-          placeholder="NOMBRE DEL PERSONAL..."
+          placeholder="NOMBRE..."
           onChange={(e) => setLocalLog({ ...localLog, cleanedBy: e.target.value })}
           onBlur={(e) => handleBlur("cleanedBy", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 text-center placeholder:text-slate-200 min-h-[100px] p-0 text-sm uppercase resize-none overflow-hidden leading-tight"
+          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 text-center placeholder:text-slate-200 min-h-[60px] p-0 text-sm uppercase resize-none overflow-hidden leading-tight"
         />
       </TableCell>
 
-      <TableCell className="py-8 px-6 border-r border-slate-200 text-center bg-blue-50/20 align-top">
+      <TableCell className="py-8 px-6 border-r border-slate-200 text-center bg-blue-50/20 align-middle">
         <Input 
           value={localLog.supervisorInitials}
           placeholder="INT"
           maxLength={5}
           onChange={(e) => setLocalLog({ ...localLog, supervisorInitials: e.target.value })}
           onBlur={(e) => handleBlur("supervisorInitials", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 font-black text-blue-700 text-center placeholder:text-blue-200 h-auto p-0 text-xl uppercase pt-1"
+          className="border-0 bg-transparent focus-visible:ring-0 font-black text-blue-700 text-center placeholder:text-blue-200 h-auto p-0 text-xl uppercase"
         />
       </TableCell>
 
-      <TableCell className="py-8 px-8 bg-slate-50/30 align-top">
+      <TableCell className="py-8 px-8 bg-slate-50/30 align-middle">
         <Textarea 
           value={localLog.notes}
-          placeholder="COMENTARIOS ADICIONALES..."
+          placeholder="COMENTARIOS..."
           onChange={(e) => setLocalLog({ ...localLog, notes: e.target.value })}
           onBlur={(e) => handleBlur("notes", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 min-h-[150px] p-0 text-xs font-black text-slate-500 uppercase tracking-tight resize-none leading-tight placeholder:text-slate-100"
+          className="border-0 bg-transparent focus-visible:ring-0 min-h-[100px] p-0 text-xs font-black text-slate-500 uppercase tracking-tight resize-none leading-tight placeholder:text-slate-100 text-center"
         />
       </TableCell>
     </TableRow>
