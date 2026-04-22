@@ -29,7 +29,9 @@ export async function POST(
     const log = await prisma.cleaningLog.update({
       where: { id },
       data: {
-        imageUrl: blob.url,
+        imageUrls: {
+          push: blob.url
+        }
       },
     })
 

@@ -171,10 +171,9 @@ export default function CleaningLogsPage() {
                   <TableHeader>
                     <TableRow className="bg-[#1a2b3c] hover:bg-[#1a2b3c] border-b-2 border-slate-900">
                       <TableHead className="w-[60px] border-r border-white/10"></TableHead>
-                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-4 w-[160px] border-r border-white/10 text-center">FECHA</TableHead>
-                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-4 w-[130px] border-r border-white/10 text-center">HORA</TableHead>
-                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-6 w-[220px] border-r border-white/10 text-center">ÁREA LIMPIADA</TableHead>
-                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-6 w-[130px] border-r border-white/10 text-center">FOTO</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-4 w-[200px] border-r border-white/10 text-center">FECHA Y HORA</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-6 w-[250px] border-r border-white/10 text-center">ÁREA LIMPIADA</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-6 w-[400px] border-r border-white/10 text-center">FOTOS DE EVIDENCIA</TableHead>
                       <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-6 w-[450px] border-r border-white/10 text-center">TAREAS COMPLETADAS</TableHead>
                       <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-6 w-[220px] border-r border-white/10 text-center">LIMPIADO POR</TableHead>
                       <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-10 px-4 w-[110px] border-r border-white/10 text-center">SUP. (INT)</TableHead>
@@ -193,7 +192,7 @@ export default function CleaningLogsPage() {
                     ))}
                     {!loading && filteredLogs.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={9} className="py-20 text-center text-slate-300 font-black text-xl uppercase tracking-widest italic">
+                        <TableCell colSpan={8} className="py-20 text-center text-slate-300 font-black text-xl uppercase tracking-widest italic">
                           No hay registros encontrados
                         </TableCell>
                       </TableRow>
@@ -266,15 +265,21 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
       })
       if (res.ok) {
         const updated = await res.json()
-        onUpdate(log.id, "imageUrl", updated.imageUrl)
+        onUpdate(log.id, "imageUrls", updated.imageUrls)
       }
     } catch (error) {
       toast({ title: "Error", description: "Error al subir la imagen." })
     }
   }
 
+  const removeImage = (index: number) => {
+    const newImages = [...localLog.imageUrls]
+    newImages.splice(index, 1)
+    onUpdate(log.id, "imageUrls", newImages)
+  }
+
   return (
-    <TableRow className="group hover:bg-slate-50 transition-all border-b border-slate-200 min-h-[120px]">
+    <TableRow className="group hover:bg-slate-50 transition-all border-b border-slate-200 min-h-[140px]">
       <TableCell className="py-8 px-4 text-center border-r border-slate-200 align-middle">
         <Button 
           variant="ghost" 
@@ -287,28 +292,27 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
       </TableCell>
 
       <TableCell className="py-8 px-4 border-r border-slate-200 text-center align-middle">
-        <div className="flex flex-col items-center gap-1.5">
-          <CalendarIcon className="h-4 w-4 text-slate-400" />
-          <Input 
-            type="date"
-            value={localLog.date ? format(new Date(localLog.date), "yyyy-MM-dd") : ""}
-            onChange={(e) => setLocalLog({ ...localLog, date: e.target.value })}
-            onBlur={(e) => handleBlur("date", e.target.value)}
-            className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 p-0 h-auto text-xs text-center"
-          />
-        </div>
-      </TableCell>
-
-      <TableCell className="py-8 px-4 border-r border-slate-200 text-center align-middle">
-        <div className="flex flex-col items-center gap-1.5">
-          <Clock className="h-4 w-4 text-slate-400" />
-          <Input 
-            value={localLog.time}
-            placeholder="00:00 AM"
-            onChange={(e) => setLocalLog({ ...localLog, time: e.target.value })}
-            onBlur={(e) => handleBlur("time", e.target.value)}
-            className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 p-0 h-auto text-xs text-center uppercase"
-          />
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 w-full">
+            <CalendarIcon className="h-4 w-4 text-slate-400 shrink-0" />
+            <Input 
+              type="date"
+              value={localLog.date ? format(new Date(localLog.date), "yyyy-MM-dd") : ""}
+              onChange={(e) => setLocalLog({ ...localLog, date: e.target.value })}
+              onBlur={(e) => handleBlur("date", e.target.value)}
+              className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 p-0 h-auto text-xs"
+            />
+          </div>
+          <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 w-full">
+            <Clock className="h-4 w-4 text-slate-400 shrink-0" />
+            <Input 
+              value={localLog.time}
+              placeholder="00:00 AM"
+              onChange={(e) => setLocalLog({ ...localLog, time: e.target.value })}
+              onBlur={(e) => handleBlur("time", e.target.value)}
+              className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 p-0 h-auto text-xs uppercase"
+            />
+          </div>
         </div>
       </TableCell>
 
@@ -318,40 +322,37 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
           placeholder="ESPECIFICAR ÁREA..."
           onChange={(e) => setLocalLog({ ...localLog, areaCleaned: e.target.value })}
           onBlur={(e) => handleBlur("areaCleaned", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 placeholder:text-slate-100 min-h-[60px] p-0 text-sm uppercase tracking-tight resize-none text-center leading-tight"
+          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 placeholder:text-slate-100 min-h-[60px] p-0 text-md uppercase tracking-tight resize-none text-center leading-tight"
         />
       </TableCell>
 
       <TableCell className="py-8 px-6 border-r border-slate-200 align-middle">
-        <div className="relative group/img w-[110px] h-[80px] mx-auto">
-          <div 
-            className="w-full h-full bg-slate-50 border-2 border-slate-300 rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer transition-all hover:border-green-600 hover:ring-8 ring-green-50 shadow-sm"
-            onClick={() => localLog.imageUrl ? onExpandImage(localLog.imageUrl) : null}
-          >
-            {localLog.imageUrl ? (
-              <img src={localLog.imageUrl} alt="Clean" className="w-full h-full object-cover" />
-            ) : (
-              <div className="flex flex-col items-center gap-1 opacity-20 text-slate-900">
-                 <ImageIcon className="h-5 w-5" />
-                 <span className="text-[8px] font-black uppercase">FOTO</span>
+        <div className="flex flex-wrap gap-2 justify-center max-w-[340px] mx-auto min-h-[100px] items-center">
+          {localLog.imageUrls?.map((url: string, idx: number) => (
+            <div key={idx} className="relative group/img w-[80px] h-[60px]">
+              <div 
+                className="w-full h-full bg-slate-50 border-2 border-slate-300 rounded-xl overflow-hidden flex items-center justify-center cursor-pointer transition-all hover:border-green-600 hover:ring-4 ring-green-50 shadow-sm"
+                onClick={() => onExpandImage(url)}
+              >
+                <img src={url} alt={`Clean ${idx}`} className="w-full h-full object-cover" />
               </div>
-            )}
-          </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
+                className="absolute -top-1 -right-1 bg-red-600 text-white p-1 rounded-full shadow-lg opacity-0 group-hover/img:opacity-100 transition-all z-10 border border-white"
+              >
+                <Trash className="h-2 w-2" />
+              </button>
+            </div>
+          ))}
+          
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="absolute -top-2 -right-2 bg-green-600 text-white p-2 rounded-xl shadow-lg opacity-0 group-hover/img:opacity-100 transition-all z-10 border-2 border-white"
+            className="w-[80px] h-[60px] border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center gap-1 text-slate-300 hover:text-green-600 hover:border-green-400 hover:bg-green-50/30 transition-all group/plus"
           >
-            <Camera className="h-3 w-3" />
+            <Camera className="h-4 w-4" />
+            <span className="text-[6px] font-black uppercase tracking-widest">AÑADIR</span>
           </button>
           <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleImageUpload} />
-          {localLog.imageUrl && (
-            <button 
-              onClick={(e) => { e.stopPropagation(); onUpdate(localLog.id, "imageUrl", null); }}
-              className="absolute -bottom-2 -right-2 bg-red-600 text-white p-1.5 rounded-xl shadow-lg opacity-0 group-hover/img:opacity-100 transition-all z-10 border-2 border-white"
-            >
-              <Trash className="h-3 w-3" />
-            </button>
-          )}
         </div>
       </TableCell>
 
@@ -361,7 +362,7 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
           placeholder="DETALLE DE TAREAS..."
           onChange={(e) => setLocalLog({ ...localLog, tasksCompleted: e.target.value })}
           onBlur={(e) => handleBlur("tasksCompleted", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 min-h-[100px] p-0 text-xs font-bold text-slate-700 resize-none overflow-hidden leading-relaxed uppercase placeholder:text-slate-100 text-center"
+          className="border-0 bg-transparent focus-visible:ring-0 min-h-[120px] p-0 text-xs font-bold text-slate-700 resize-none overflow-hidden leading-relaxed uppercase placeholder:text-slate-100 text-center"
         />
       </TableCell>
 
@@ -392,7 +393,7 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
           placeholder="COMENTARIOS..."
           onChange={(e) => setLocalLog({ ...localLog, notes: e.target.value })}
           onBlur={(e) => handleBlur("notes", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 min-h-[100px] p-0 text-xs font-black text-slate-500 uppercase tracking-tight resize-none leading-tight placeholder:text-slate-100 text-center"
+          className="border-0 bg-transparent focus-visible:ring-0 min-h-[120px] p-0 text-xs font-black text-slate-500 uppercase tracking-tight resize-none leading-tight placeholder:text-slate-100 text-center"
         />
       </TableCell>
     </TableRow>
