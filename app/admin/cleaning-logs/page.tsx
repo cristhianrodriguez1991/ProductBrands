@@ -120,7 +120,7 @@ export default function CleaningLogsPage() {
             <ClipboardCheck className="h-8 w-8 text-green-600" />
             Job Site Clean Logs
           </h1>
-          <p className="text-slate-600 mt-1 font-bold italic text-md uppercase tracking-wider opacity-80">Registro de limpieza y mantenimiento</p>
+          <p className="text-slate-600 mt-1 font-bold italic text-md uppercase tracking-wider">Registro industrial de limpieza y mantenimiento</p>
         </div>
 
         <div className="flex items-center gap-3 bg-white p-1.5 rounded-2xl border-2 border-slate-200 shadow-lg">
@@ -150,15 +150,15 @@ export default function CleaningLogsPage() {
       </div>
 
       <div style={{ zoom: zoom }}>
-        <Card className="border-2 border-slate-200 shadow-2xl rounded-[3rem] overflow-hidden bg-white mt-4">
-          <CardHeader className="bg-slate-50 border-b-2 border-slate-200 p-8 flex flex-row items-center justify-between">
-            <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-2xl border-2 border-slate-200 shadow-sm w-full max-w-md focus-within:ring-4 ring-green-50 transition-all">
+        <Card className="border-2 border-slate-300 shadow-2xl rounded-[2.5rem] overflow-hidden bg-white mt-4">
+          <CardHeader className="bg-slate-100/50 border-b-2 border-slate-300 p-6 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-4 bg-white px-6 py-2.5 rounded-2xl border-2 border-slate-200 shadow-sm w-full max-w-md focus-within:ring-4 ring-green-50 transition-all">
               <Search className="h-5 w-5 text-slate-400" />
               <Input 
                 placeholder="BUSCAR ÁREA O PERSONAL..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="border-0 bg-transparent focus-visible:ring-0 h-6 p-0 text-md font-black text-slate-900"
+                className="border-0 bg-transparent focus-visible:ring-0 h-6 p-0 text-md font-black text-slate-900 placeholder:text-slate-200"
               />
             </div>
           </CardHeader>
@@ -169,16 +169,16 @@ export default function CleaningLogsPage() {
               <div className="overflow-x-auto overflow-y-visible custom-scrollbar">
                 <Table className="min-w-[1800px] border-collapse">
                   <TableHeader>
-                    <TableRow className="bg-[#1e2d3a] hover:bg-[#1e2d3a] border-b-2 border-slate-900">
-                      <TableHead className="w-[50px] border-r border-white/10"></TableHead>
-                      <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[150px] border-r border-white/10 text-center">FECHA</TableHead>
-                      <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[120px] border-r border-white/10 text-center">HORA</TableHead>
-                      <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[200px] border-r border-white/10">ÁREA LIMPIADA</TableHead>
-                      <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[130px] border-r border-white/10 text-center">FOTO</TableHead>
-                      <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[400px] border-r border-white/10">TAREAS COMPLETADAS</TableHead>
-                      <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[200px] border-r border-white/10 text-center">LIMPIADO POR</TableHead>
-                      <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[100px] border-r border-white/10 text-center">SUP. (INT)</TableHead>
-                      <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-8 text-center">NOTAS / COMENTARIOS</TableHead>
+                    <TableRow className="bg-[#1a2b3c] hover:bg-[#1a2b3c] border-b-2 border-slate-900">
+                      <TableHead className="w-[60px] border-r border-white/10"></TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-4 w-[160px] border-r border-white/10 text-center">FECHA</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-4 w-[130px] border-r border-white/10 text-center">HORA</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-6 w-[220px] border-r border-white/10">ÁREA LIMPIADA</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-6 w-[130px] border-r border-white/10 text-center">FOTO</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-6 w-[450px] border-r border-white/10">TAREAS COMPLETADAS</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-6 w-[220px] border-r border-white/10 text-center">LIMPIADO POR</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-4 w-[110px] border-r border-white/10 text-center">SUP. (INT)</TableHead>
+                      <TableHead className="font-black text-[11px] uppercase tracking-widest text-white/90 py-8 px-8 text-center text-right">NOTAS / COMENTARIOS</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -191,10 +191,10 @@ export default function CleaningLogsPage() {
                         onExpandImage={setExpandedImage}
                       />
                     ))}
-                    {filteredLogs.length === 0 && !loading && (
+                    {!loading && filteredLogs.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={9} className="py-20 text-center text-slate-300 font-black text-xl uppercase tracking-widest italic">
-                          No hay registros
+                          No hay registros encontrados
                         </TableCell>
                       </TableRow>
                     )}
@@ -203,15 +203,15 @@ export default function CleaningLogsPage() {
               </div>
             )}
 
-            <div className="p-8 bg-slate-50">
+            <div className="p-8 bg-slate-50 border-t-2 border-slate-200">
               <button 
                 onClick={addNewLog}
-                className="w-full py-10 border-4 border-dashed border-slate-200 rounded-[2rem] flex items-center justify-center gap-6 text-slate-400 hover:text-green-600 hover:border-green-300 hover:bg-white hover:shadow-xl transition-all duration-300 group"
+                className="w-full py-8 border-4 border-dashed border-slate-300 rounded-[2rem] flex items-center justify-center gap-6 text-slate-400 hover:text-green-600 hover:border-green-400 hover:bg-white hover:shadow-xl transition-all duration-300 group"
               >
-                <div className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-100 flex items-center justify-center shadow-md group-hover:scale-110 group-hover:rotate-90 transition-all duration-300">
-                  <Plus className="h-6 w-6 text-slate-400 group-hover:text-green-600" />
+                <div className="w-12 h-12 rounded-2xl bg-white border-2 border-slate-200 flex items-center justify-center shadow-md group-hover:scale-110 group-hover:rotate-90 transition-all duration-300">
+                  <Plus className="h-6 w-6 text-slate-500 group-hover:text-green-600" />
                 </div>
-                <span className="font-black tracking-widest text-sm uppercase">NUEVO REGISTRO DE LIMPIEZA</span>
+                <span className="font-black tracking-widest text-xs uppercase text-slate-500 group-hover:text-green-600">NUEVO REGISTRO DE LIMPIEZA</span>
               </button>
             </div>
           </CardContent>
@@ -229,7 +229,7 @@ export default function CleaningLogsPage() {
         <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 border-0 bg-transparent shadow-none outline-none">
           {expandedImage && (
             <div className="relative w-full h-full flex items-center justify-center p-4">
-              <img src={expandedImage} alt="Cleaning Reference" className="max-w-full max-h-[90vh] object-contain rounded-[2rem] shadow-2xl ring-[12px] ring-white/10" />
+              <img src={expandedImage} alt="Cleaning Reference" className="max-w-full max-h-[90vh] object-contain rounded-[2rem] shadow-2xl ring-[12px] ring-white/20" />
             </div>
           )}
         </DialogContent>
@@ -275,7 +275,7 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
 
   return (
     <TableRow className="group hover:bg-slate-50 transition-all border-b border-slate-200">
-      <TableCell className="py-6 px-4 text-center border-r border-slate-200">
+      <TableCell className="py-8 px-4 text-center border-r border-slate-200 align-top">
         <Button 
           variant="ghost" 
           size="icon" 
@@ -286,58 +286,60 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
         </Button>
       </TableCell>
 
-      <TableCell className="py-6 px-4 border-r border-slate-200 text-center">
-        <div className="flex flex-col items-center gap-1">
-          <CalendarIcon className="h-4 w-4 text-slate-300" />
+      <TableCell className="py-8 px-4 border-r border-slate-200 text-center align-top">
+        <div className="flex flex-col items-center gap-1.5 pt-1">
+          <CalendarIcon className="h-4 w-4 text-slate-400" />
           <Input 
             type="date"
             value={localLog.date ? format(new Date(localLog.date), "yyyy-MM-dd") : ""}
             onChange={(e) => setLocalLog({ ...localLog, date: e.target.value })}
             onBlur={(e) => handleBlur("date", e.target.value)}
-            className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-800 p-0 h-auto text-sm text-center"
+            className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 p-0 h-auto text-xs text-center"
           />
         </div>
       </TableCell>
 
-      <TableCell className="py-6 px-4 border-r border-slate-200 text-center">
-        <div className="flex flex-col items-center gap-1 text-slate-400">
-          <Clock className="h-4 w-4" />
+      <TableCell className="py-8 px-4 border-r border-slate-200 text-center align-top">
+        <div className="flex flex-col items-center gap-1.5 pt-1">
+          <Clock className="h-4 w-4 text-slate-400" />
           <Input 
             value={localLog.time}
             placeholder="00:00 AM"
             onChange={(e) => setLocalLog({ ...localLog, time: e.target.value })}
             onBlur={(e) => handleBlur("time", e.target.value)}
-            className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 p-0 h-auto text-sm text-center uppercase"
+            className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 p-0 h-auto text-xs text-center uppercase"
           />
         </div>
       </TableCell>
 
-      <TableCell className="py-6 px-6 border-r border-slate-200">
+      <TableCell className="py-8 px-6 border-r border-slate-200 align-top">
         <Textarea 
           value={localLog.areaCleaned}
+          placeholder="ESPECIFICAR ÁREA..."
           onChange={(e) => setLocalLog({ ...localLog, areaCleaned: e.target.value })}
           onBlur={(e) => handleBlur("areaCleaned", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 placeholder:text-slate-100 min-h-[60px] p-0 text-sm uppercase tracking-tight resize-none overflow-hidden leading-tight"
+          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 placeholder:text-slate-100 min-h-[100px] p-0 text-sm uppercase tracking-tight resize-none overflow-hidden leading-tight"
         />
       </TableCell>
 
-      <TableCell className="py-6 px-6 border-r border-slate-200">
+      <TableCell className="py-8 px-6 border-r border-slate-200 align-top">
         <div className="relative group/img w-[110px] h-[80px] mx-auto">
           <div 
-            className="w-full h-full bg-slate-50 border-2 border-slate-200 rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer transition-all hover:border-green-400 hover:ring-8 ring-green-50 shadow-sm"
+            className="w-full h-full bg-slate-50 border-2 border-slate-300 rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer transition-all hover:border-green-600 hover:ring-8 ring-green-50 shadow-sm"
             onClick={() => localLog.imageUrl ? onExpandImage(localLog.imageUrl) : null}
           >
             {localLog.imageUrl ? (
               <img src={localLog.imageUrl} alt="Clean" className="w-full h-full object-cover" />
             ) : (
-              <div className="flex flex-col items-center gap-1 opacity-20">
-                 <ImageIcon className="h-5 w-5 text-slate-900" />
+              <div className="flex flex-col items-center gap-1 opacity-20 text-slate-900">
+                 <ImageIcon className="h-5 w-5" />
+                 <span className="text-[8px] font-black uppercase">FOTO</span>
               </div>
             )}
           </div>
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="absolute -top-2 -right-2 bg-green-600 text-white p-2 rounded-xl shadow-lg opacity-0 group-hover/img:opacity-100 transition-all z-10"
+            className="absolute -top-2 -right-2 bg-green-600 text-white p-2 rounded-xl shadow-lg opacity-0 group-hover/img:opacity-100 transition-all z-10 border-2 border-white"
           >
             <Camera className="h-3 w-3" />
           </button>
@@ -345,7 +347,7 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
           {localLog.imageUrl && (
             <button 
               onClick={(e) => { e.stopPropagation(); onUpdate(localLog.id, "imageUrl", null); }}
-              className="absolute -bottom-2 -right-2 bg-red-500 text-white p-1.5 rounded-xl shadow-lg opacity-0 group-hover/img:opacity-100 transition-all z-10"
+              className="absolute -bottom-2 -right-2 bg-red-600 text-white p-1.5 rounded-xl shadow-lg opacity-0 group-hover/img:opacity-100 transition-all z-10 border-2 border-white"
             >
               <Trash className="h-3 w-3" />
             </button>
@@ -353,44 +355,44 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
         </div>
       </TableCell>
 
-      <TableCell className="py-6 px-6 border-r border-slate-200 bg-slate-50/50">
+      <TableCell className="py-8 px-6 border-r border-slate-200 bg-slate-50/30 align-top">
         <Textarea 
           value={localLog.tasksCompleted}
-          placeholder="TAREAS REALIZADAS..."
+          placeholder="DETALLE DE TAREAS..."
           onChange={(e) => setLocalLog({ ...localLog, tasksCompleted: e.target.value })}
           onBlur={(e) => handleBlur("tasksCompleted", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 min-h-[100px] p-0 text-xs font-bold text-slate-700 resize-none overflow-hidden leading-relaxed uppercase placeholder:text-slate-100"
+          className="border-0 bg-transparent focus-visible:ring-0 min-h-[150px] p-0 text-xs font-bold text-slate-700 resize-none overflow-hidden leading-relaxed uppercase placeholder:text-slate-100"
         />
       </TableCell>
 
-      <TableCell className="py-6 px-6 border-r border-slate-200 text-center">
-        <Input 
+      <TableCell className="py-8 px-6 border-r border-slate-200 align-top">
+        <Textarea 
           value={localLog.cleanedBy}
-          placeholder="NOMBRE..."
+          placeholder="NOMBRE DEL PERSONAL..."
           onChange={(e) => setLocalLog({ ...localLog, cleanedBy: e.target.value })}
           onBlur={(e) => handleBlur("cleanedBy", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 text-center placeholder:text-slate-200 h-auto p-0 text-sm uppercase"
+          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 text-center placeholder:text-slate-200 min-h-[100px] p-0 text-sm uppercase resize-none overflow-hidden leading-tight"
         />
       </TableCell>
 
-      <TableCell className="py-6 px-6 border-r border-slate-200 text-center bg-blue-50/20">
+      <TableCell className="py-8 px-6 border-r border-slate-200 text-center bg-blue-50/20 align-top">
         <Input 
           value={localLog.supervisorInitials}
           placeholder="INT"
           maxLength={5}
           onChange={(e) => setLocalLog({ ...localLog, supervisorInitials: e.target.value })}
           onBlur={(e) => handleBlur("supervisorInitials", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 font-black text-blue-600 text-center placeholder:text-blue-200 h-auto p-0 text-lg uppercase"
+          className="border-0 bg-transparent focus-visible:ring-0 font-black text-blue-700 text-center placeholder:text-blue-200 h-auto p-0 text-xl uppercase pt-1"
         />
       </TableCell>
 
-      <TableCell className="py-6 px-8 bg-slate-50/30">
+      <TableCell className="py-8 px-8 bg-slate-50/30 align-top">
         <Textarea 
           value={localLog.notes}
-          placeholder="NOTAS ADICIONALES..."
+          placeholder="COMENTARIOS ADICIONALES..."
           onChange={(e) => setLocalLog({ ...localLog, notes: e.target.value })}
           onBlur={(e) => handleBlur("notes", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 min-h-[100px] p-0 text-xs font-black text-slate-500 uppercase tracking-tight resize-none leading-tight placeholder:text-slate-100"
+          className="border-0 bg-transparent focus-visible:ring-0 min-h-[150px] p-0 text-xs font-black text-slate-500 uppercase tracking-tight resize-none leading-tight placeholder:text-slate-100"
         />
       </TableCell>
     </TableRow>
