@@ -287,7 +287,14 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
     >
       <div 
         className="w-full h-full bg-slate-50 border-2 border-slate-200 rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer transition-all hover:border-blue-400 hover:ring-8 ring-blue-50 shadow-sm"
-        onClick={() => url ? onExpandImage(url) : null}
+        onClick={() => {
+          if (url) {
+            onExpandImage(url);
+          } else {
+            setUploadType(field);
+            fileInputRef.current?.click();
+          }
+        }}
       >
         {url ? (
           <img src={url} alt={label} className="w-full h-full object-cover" />
