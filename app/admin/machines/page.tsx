@@ -311,7 +311,7 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
           value={localSetup.productName}
           onChange={(e) => setLocalSetup({ ...localSetup, productName: e.target.value })}
           onBlur={(e) => handleBlur("productName", e.target.value)}
-          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 placeholder:text-slate-100 min-h-[80px] p-0 text-md uppercase tracking-tight resize-none overflow-hidden leading-tight"
+          className="border-0 bg-transparent focus-visible:ring-0 font-black text-slate-900 placeholder:text-slate-100 min-h-[140px] h-full p-0 text-md uppercase tracking-tight resize-none overflow-hidden leading-tight"
         />
         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleImageUpload} />
       </TableCell>

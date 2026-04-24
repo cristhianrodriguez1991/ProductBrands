@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       cleanedBy,
       supervisorInitials,
       notes,
-      imageUrl
+      imageUrls
     } = body
 
     const log = await prisma.cleaningLog.create({
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
         cleanedBy,
         supervisorInitials,
         notes,
-        imageUrl
+        ...(imageUrls && { imageUrls })
       },
     })
 
