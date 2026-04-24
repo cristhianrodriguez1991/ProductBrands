@@ -419,7 +419,7 @@ function WarehouseScene({
   // Wall -> Rack A -> Floor A -> Aisle -> Floor B -> Rack B -> Rack C -> Floor C
   
   return (
-    <>
+    <group scale={[3, 3, 3]}>
       {/* Lighting */}
       <ambientLight intensity={0.6} />
       <directionalLight position={[10, 15, 8]} intensity={0.8} castShadow />
@@ -459,7 +459,7 @@ function WarehouseScene({
       {/* RACK C (Flush left, Back-to-back with Rack B) */}
       <Rack3D position={[-2.25, 0, 0.6]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
       <Floor3D position={[-2.25, 0, 1.8]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
-    </>
+    </group>
   )
 }
 
@@ -497,14 +497,14 @@ export default function Warehouse3D({
       </div>
 
       <Canvas shadows>
-        <PerspectiveCamera makeDefault position={[0, 8, 12]} fov={50} />
+        <PerspectiveCamera makeDefault position={[0, 12, 18]} fov={50} />
         <OrbitControls
           enablePan={true}
           enableZoom={true}
           enableRotate={true}
           minDistance={1}
-          maxDistance={50}
-          target={[0, 1.5, -2.5]}
+          maxDistance={150}
+          target={[0, 4.5, -7.5]}
         />
         <WarehouseScene pallets={pallets} onSelect={onSelectPallet} />
       </Canvas>
