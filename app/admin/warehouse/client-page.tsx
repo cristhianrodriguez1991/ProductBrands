@@ -1,6 +1,9 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, lazy, Suspense } from "react"
+import dynamic from "next/dynamic"
+
+const Warehouse3D = dynamic(() => import("./warehouse-3d"), { ssr: false, loading: () => <div className="w-full h-[700px] rounded-2xl bg-slate-100 animate-pulse flex items-center justify-center text-slate-400 font-black text-lg uppercase tracking-widest">Cargando vista 3D...</div> })
 import {
   Package,
   Search,
@@ -13,6 +16,8 @@ import {
   Warehouse,
   AlertTriangle,
   ChevronDown,
+  Box,
+  LayoutGrid,
   ChevronUp,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -102,6 +107,9 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
   const [rackFilter, setRackFilter] = useState<string>("ALL")
   const [statusFilter, setStatusFilter] = useState<string>("ALL")
   const [skuFilter, setSkuFilter] = useState("")
+
+  // View mode
+  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d")
 
   // Collapsed rack sections
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
@@ -391,6 +399,20 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
             Mapa visual de inventario por racks, cells y pallets
           </p>
         </div>
+        <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+          <button
+            onClick={() => setViewMode("2d")}
+            className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${viewMode === "2d" ? "bg-white shadow-md text-slate-900" : "text-slate-400 hover:text-slate-600"}`}
+          >
+            <LayoutGrid className="h-4 w-4" /> 2D Grid
+          </button>
+          <button
+            onClick={() => setViewMode("3d")}
+            className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${viewMode === "3d" ? "bg-white shadow-md text-slate-900" : "text-slate-400 hover:text-slate-600"}`}
+          >
+            <Box className="h-4 w-4" /> 3D Map
+          </button>
+        </div>
       </div>
 
       {/* Capacity Summary */}
@@ -500,6 +522,8 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
         <div className="py-20 text-center animate-pulse text-slate-400 font-black tracking-widest text-lg uppercase">
           Inicializando warehouse...
         </div>
+      ) : viewMode === "3d" ? (
+        <Warehouse3D pallets={pallets} onSelectPallet={openPalletForm} />
       ) : (
         <div className="space-y-6">
           {Object.entries(RACKS).map(([rackName, config]) => (
