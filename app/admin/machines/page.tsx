@@ -299,11 +299,41 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
         {url ? (
           <img src={url} alt={label} className="w-full h-full object-cover" />
         ) : (
-          <div className="flex flex-col items-center gap-1 opacity-20">
+          <div className="flex flex-col items-center gap-1 opacity-20 relative -top-2">
              <ImageIcon className="h-5 w-5 text-slate-900" />
              <span className="text-[8px] font-black uppercase tracking-tight text-slate-900">{label}</span>
           </div>
         )}
+        
+        <input 
+          type="text"
+          placeholder="PEGAR LINK/IMG"
+          className="absolute bottom-0 left-0 w-full h-[22px] bg-white/95 backdrop-blur-sm text-[7px] text-center font-black rounded-b-[14px] border-t border-slate-200 outline-none text-blue-600 placeholder:text-slate-400 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all z-20 cursor-text"
+          onClick={(e) => e.stopPropagation()}
+          onPaste={(e) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            for (let i = 0; i < items.length; i++) {
+              if (items[i].type.indexOf('image') !== -1) {
+                const blob = items[i].getAsFile();
+                if (blob) {
+                  e.preventDefault();
+                  uploadImageFile(blob, field);
+                  return;
+                }
+              }
+            }
+          }}
+          onBlur={(e) => {
+            if (e.target.value.startsWith('http')) {
+              onUpdate(setup.id, field, e.target.value);
+              e.target.value = "";
+            }
+          }}
+          onKeyDown={(e) => {
+             if (e.key === "Enter") e.currentTarget.blur();
+          }}
+        />
       </div>
       
       <button 
