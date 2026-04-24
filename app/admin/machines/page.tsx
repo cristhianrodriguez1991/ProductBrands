@@ -9,7 +9,8 @@ import {
   Image as ImageIcon,
   Camera,
   Trash,
-  Clipboard
+  Clipboard,
+  Upload
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -227,7 +228,8 @@ export default function MachineSetupPage() {
 
 function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
   const [localSetup, setLocalSetup] = useState(setup)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const [uploadType, setUploadType] = useState<string | null>(null)
 
   useEffect(() => {
@@ -310,7 +312,7 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
             onExpandImage(url);
           } else {
             setUploadType(field);
-            fileInputRef.current?.click();
+            galleryInputRef.current?.click();
           }
         }}
       >
@@ -370,7 +372,18 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
       </button>
       
       <button 
-        onClick={() => { setUploadType(field); fileInputRef.current?.click(); }}
+        type="button"
+        title="Subir archivo"
+        onClick={(e) => { e.stopPropagation(); setUploadType(field); galleryInputRef.current?.click(); }}
+        className="absolute -bottom-2 -left-2 bg-slate-800 text-white w-6 h-6 rounded-[8px] flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-all z-10"
+      >
+        <Upload className="h-3 w-3" />
+      </button>
+
+      <button 
+        type="button"
+        title="Tomar Foto"
+        onClick={(e) => { e.stopPropagation(); setUploadType(field); cameraInputRef.current?.click(); }}
         className="absolute -top-2 -right-2 bg-blue-600 text-white w-6 h-6 rounded-[8px] flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-all z-10"
       >
         <Camera className="h-3 w-3" />
@@ -415,7 +428,8 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
             (localSetup.productName?.length || 0) > 40 ? 'text-sm leading-tight' : 'text-base leading-tight'
           }`}
         />
-        <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleImageUpload} />
+        <input type="file" ref={galleryInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+        <input type="file" ref={cameraInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleImageUpload} />
       </TableCell>
       
       <TableCell className="py-10 px-4 border-r border-slate-200 text-center">
