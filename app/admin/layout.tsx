@@ -22,6 +22,7 @@ import {
   X,
   Cpu,
   ClipboardCheck,
+  MapPin,
 
 } from "lucide-react"
 import Image from "next/image"
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { href: "/admin/suppliers", label: "Suppliers", icon: Truck },
   { href: "/admin/fba-shipments", label: "FBA Shipments", icon: Ship },
   { href: "/admin/machines", label: "Machine Setup", icon: Cpu },
+  { href: "/admin/warehouse", label: "Warehouse Map", icon: MapPin },
   { href: "/admin/cleaning-logs", label: "Clean Logs", icon: ClipboardCheck },
 
   { href: "/admin/listings", label: "Listings", icon: Package },

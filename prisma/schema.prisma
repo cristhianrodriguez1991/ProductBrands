@@ -845,5 +845,33 @@ model CleaningLog {
 
   @@index([date])
 }
-// (Wait, I can't just append if it already exists, I should probably use replace_file_content but since it's at the end...)
-// (I will use replace_file_content to insert sortOrder)
+// ─────────────────────────────────────────────────────────────
+// WAREHOUSE RACK MAP / PALLET INVENTORY
+// ─────────────────────────────────────────────────────────────
+
+model WarehousePallet {
+  id                String   @id @default(cuid())
+  locationCode      String   @unique  // e.g. "A-TOP-01-P1", "FLOOR-A-01-P2"
+  
+  rack              String   // "A", "B", "C", "FLOOR-A", "FLOOR-B", "FLOOR-C"
+  level             String   // "TOP", "MID", "BOT", "FLOOR"
+  cellNumber        Int      // 1-8 for rack A, 1-5 for B/C
+  palletPosition    Int      // 1 or 2
+
+  sku               String?
+  productName       String?
+  quantity          Int?
+  lotNumber         String?
+  expirationDate    DateTime?
+  palletHeightIn    Float?   // height in inches
+  status            String   @default("AVAILABLE") // AVAILABLE, RESERVED, DAMAGED, HOLD, INBOUND, OUTBOUND
+  notes             String?  @db.Text
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([rack])
+  @@index([status])
+  @@index([sku])
+  @@index([locationCode])
+}
