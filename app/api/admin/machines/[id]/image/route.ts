@@ -30,10 +30,18 @@ export async function POST(
 
     const { url } = await uploadFile(file, "machine-setups")
     
-    const updated = await prisma.machineSetup.update({
-      where: { id: params.id },
-      data: { [type]: url }
-    })
+    let updated;
+    if (type === "dynamic") {
+      updated = await prisma.machineSetup.update({
+        where: { id: params.id },
+        data: { imageUrls: { push: url } }
+      })
+    } else {
+      updated = await prisma.machineSetup.update({
+        where: { id: params.id },
+        data: { [type]: url }
+      })
+    }
 
     return NextResponse.json(updated)
   } catch (error) {

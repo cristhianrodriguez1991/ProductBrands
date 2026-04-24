@@ -335,11 +335,61 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
       </TableCell>
 
       <TableCell className="py-10 px-6 border-r border-slate-200 bg-slate-50/10">
-        <div className="flex gap-3 items-center justify-center">
+        <div className="flex gap-3 items-center justify-center flex-wrap max-w-[500px]">
           <ImageInput field="productImageUrl" url={localSetup.productImageUrl} label="PROD" />
           <ImageInput field="weightingImageUrl" url={localSetup.weightingImageUrl} label="PESA" />
           <ImageInput field="packagingImageUrl" url={localSetup.packagingImageUrl} label="PACK" />
           <ImageInput field="parametersImageUrl" url={localSetup.parametersImageUrl} label="PARAM" />
+          
+          {localSetup.imageUrls?.map((url: string, idx: number) => (
+            <div key={idx} className="relative group w-[110px] h-[80px] shrink-0">
+              <div 
+                className="w-full h-full bg-slate-50 border-2 border-slate-200 rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer transition-all hover:border-blue-400 hover:ring-8 ring-blue-50 shadow-sm"
+                onClick={() => onExpandImage(url)}
+              >
+                <img src={url} alt={`Link ${idx}`} className="w-full h-full object-cover" />
+              </div>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const newImages = [...localSetup.imageUrls];
+                  newImages.splice(idx, 1);
+                  onUpdate(setup.id, "imageUrls", newImages);
+                }}
+                className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-all z-10"
+              >
+                <Trash className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+
+          <div className="w-[110px] h-[80px] shrink-0 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden group/add bg-white hover:border-blue-300 transition-all">
+            <input 
+              type="text" 
+              placeholder="PEGAR LINK" 
+              className="w-full h-1/2 bg-transparent text-[8px] font-black text-center border-0 border-b border-dashed border-slate-200 px-1 placeholder:text-slate-300 focus:ring-0 focus:outline-none"
+              onBlur={(e) => {
+                if (e.target.value) {
+                  const newImages = [...(localSetup.imageUrls || []), e.target.value];
+                  onUpdate(setup.id, "imageUrls", newImages);
+                  e.target.value = "";
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.currentTarget.blur();
+                }
+              }}
+            />
+            <button 
+              onClick={() => { setUploadType("dynamic"); fileInputRef.current?.click(); }}
+              className="w-full h-1/2 flex items-center justify-center gap-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
+            >
+              <Camera className="h-4 w-4" />
+              <span className="text-[8px] font-black uppercase tracking-widest">SUBIR FOTO</span>
+            </button>
+          </div>
+
         </div>
       </TableCell>
 

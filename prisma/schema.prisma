@@ -817,6 +817,8 @@ model MachineSetup {
   packagingImageUrl       String?  // picture of packaging machine
   parametersImageUrl      String?  // Parameters of packaging (screen)
   
+  imageUrls               String[] @default([]) // Dynamic list of image links/uploads
+  
   sortOrder               Int      @default(0)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
