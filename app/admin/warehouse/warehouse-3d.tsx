@@ -289,7 +289,7 @@ function Rack3D({
       })}
 
       {/* Horizontal beams per level */}
-      {[0, 1.05, 2.2, 3.5].map((y, i) => (
+      {[0, 1.05, 2.2].map((y, i) => (
         <RoundedBox
           key={`beam${i}`}
           args={[totalWidth + 0.2, 0.06, 0.5]}
@@ -393,9 +393,10 @@ function Floor3D({
 // ── Warehouse Floor Grid ──
 function WarehouseFloor() {
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
-      <planeGeometry args={[30, 20]} />
-      <meshStandardMaterial color="#f8fafc" roughness={0.95} />
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-0.1, -0.05, -2.5]} receiveShadow>
+      {/* Width 9.6, Depth 14.0 spans precisely around the walls and racks */}
+      <planeGeometry args={[9.6, 14.0]} />
+      <meshStandardMaterial color="#e3e8ed" roughness={0.95} />
     </mesh>
   )
 }
@@ -436,8 +437,8 @@ function WarehouseScene({
         </RoundedBox>
         
         {/* L-Shape Side wall (flanking left side of racks at X = -4.0) */}
-        {/* Length = 12, going from Z = -9 to Z = +3 */}
-        <RoundedBox args={[0.4, 5, 12]} radius={0.05} position={[-4.2, 0, 6]}>
+        {/* Length = 13.5, roughly going from Z = -9 down to Z = +4.5 */}
+        <RoundedBox args={[0.4, 5, 13.5]} radius={0.05} position={[-4.2, 0, 6.75]}>
           <meshStandardMaterial color="#cbd5e1" roughness={0.9} />
         </RoundedBox>
 
@@ -506,7 +507,7 @@ export default function Warehouse3D({
           maxPolarAngle={Math.PI / 2.2}
           minDistance={3}
           maxDistance={35}
-          target={[0, 1.5, -3]}
+          target={[0, 1.5, -2.5]}
         />
         <WarehouseScene pallets={pallets} onSelect={onSelectPallet} />
       </Canvas>
