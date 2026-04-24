@@ -8,7 +8,8 @@ import {
   Table as TableIcon,
   Image as ImageIcon,
   Camera,
-  Trash
+  Trash,
+  Clipboard
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -309,16 +310,22 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
           </div>
         )}
         
+      </div>
+      
+      {/* Floating Paste Button overlapping box */}
+      <div 
+        title="Pegar link o imagen (Ctrl+V)"
+        className="absolute -top-2 -left-2 bg-indigo-500 text-white p-2 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-all z-20 flex items-center justify-center overflow-hidden"
+      >
+        <Clipboard className="h-3 w-3" />
         <input 
           type="text"
-          placeholder="PEGAR LINK/IMG"
-          className="absolute bottom-0 left-0 w-full h-[22px] bg-white/95 backdrop-blur-sm text-[7px] text-center font-black rounded-b-[14px] border-t border-slate-200 outline-none text-blue-600 placeholder:text-slate-400 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all z-20 cursor-text"
+          className="absolute inset-0 w-full h-full opacity-0 cursor-copy"
           onClick={(e) => e.stopPropagation()}
           onPaste={(e) => {
             const items = e.clipboardData?.items;
             if (!items) return;
             
-            // 1. Try to find raw image data (works for standard picture copies)
             for (let i = 0; i < items.length; i++) {
               if (items[i].type.indexOf('image') !== -1) {
                 const blob = items[i].getAsFile();
@@ -330,7 +337,6 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
               }
             }
 
-            // 2. Try to extract an image URL from HTML (works for Google Sheets & Excel)
             const htmlData = e.clipboardData.getData('text/html');
             if (htmlData) {
                const imgMatch = htmlData.match(/<img[^>]+src="([^">]+)"/);
