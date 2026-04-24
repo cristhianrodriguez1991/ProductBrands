@@ -238,29 +238,53 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
     }
   }
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || !files[0] || !uploadType) return
-
+  const uploadImageFile = async (file: File, type: string) => {
     const fd = new FormData()
-    fd.append("file", files[0])
+    fd.append("file", file)
 
     try {
-      const res = await fetch(`/api/admin/machines/${setup.id}/image?type=${uploadType}`, { 
+      const res = await fetch(`/api/admin/machines/${setup.id}/image?type=${type}`, { 
         method: "POST", 
         body: fd 
       })
       if (res.ok) {
         const updated = await res.json()
-        onUpdate(setup.id, uploadType, updated[uploadType])
+        if (type === "dynamic") {
+            onUpdate(setup.id, "imageUrls", updated.imageUrls)
+        } else {
+            onUpdate(setup.id, type, updated[type])
+        }
       }
     } catch (error) {
       toast({ title: "Error", description: "Error al subir la imagen." })
     }
   }
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || !files[0] || !uploadType) return
+    uploadImageFile(files[0], uploadType)
+  }
+
   const ImageInput = ({ field, url, label }: { field: string, url: string, label: string }) => (
-    <div className="relative group w-[110px] h-[80px] shrink-0">
+    <div 
+      className="relative group w-[110px] h-[80px] shrink-0 outline-none"
+      tabIndex={0}
+      onPaste={(e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            const blob = items[i].getAsFile();
+            if (blob) {
+              e.preventDefault();
+              uploadImageFile(blob, field);
+              return;
+            }
+          }
+        }
+      }}
+    >
       <div 
         className="w-full h-full bg-slate-50 border-2 border-slate-200 rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer transition-all hover:border-blue-400 hover:ring-8 ring-blue-50 shadow-sm"
         onClick={() => url ? onExpandImage(url) : null}
@@ -366,8 +390,22 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
           <div className="w-[110px] h-[80px] shrink-0 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden group/add bg-white hover:border-blue-300 transition-all">
             <input 
               type="text" 
-              placeholder="PEGAR LINK" 
-              className="w-full h-1/2 bg-transparent text-[8px] font-black text-center border-0 border-b border-dashed border-slate-200 px-1 placeholder:text-slate-300 focus:ring-0 focus:outline-none"
+              placeholder="PEGAR LINK O IMAGEN" 
+              className="w-full h-1/2 bg-transparent text-[8px] font-black text-center border-0 border-b border-dashed border-slate-200 px-1 placeholder:text-slate-400 focus:ring-0 focus:outline-none"
+              onPaste={(e) => {
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                for (let i = 0; i < items.length; i++) {
+                  if (items[i].type.indexOf('image') !== -1) {
+                    const blob = items[i].getAsFile();
+                    if (blob) {
+                      e.preventDefault();
+                      uploadImageFile(blob, "dynamic");
+                      return;
+                    }
+                  }
+                }
+              }}
               onBlur={(e) => {
                 if (e.target.value) {
                   const newImages = [...(localSetup.imageUrls || []), e.target.value];
