@@ -239,6 +239,7 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
   }
 
   const uploadImageFile = async (file: File, type: string) => {
+    toast({ title: "Subiendo...", description: "Guardando imagen, por favor espere...", duration: 3000 })
     const fd = new FormData()
     fd.append("file", file)
 
@@ -254,9 +255,12 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
         } else {
             onUpdate(setup.id, type, updated[type])
         }
+        toast({ title: "Éxito", description: "Imagen guardada correctamente.", duration: 2000 })
+      } else {
+        toast({ title: "Error", description: "Hubo un problema al guardar.", variant: "destructive" })
       }
     } catch (error) {
-      toast({ title: "Error", description: "Error al subir la imagen." })
+      toast({ title: "Error", description: "Error al subir la imagen.", variant: "destructive" })
     }
   }
 
@@ -313,6 +317,8 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
           onPaste={(e) => {
             const items = e.clipboardData?.items;
             if (!items) return;
+            
+            // 1. Try to find raw image data (works for standard picture copies)
             for (let i = 0; i < items.length; i++) {
               if (items[i].type.indexOf('image') !== -1) {
                 const blob = items[i].getAsFile();
@@ -322,6 +328,19 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
                   return;
                 }
               }
+            }
+
+            // 2. Try to extract an image URL from HTML (works for Google Sheets & Excel)
+            const htmlData = e.clipboardData.getData('text/html');
+            if (htmlData) {
+               const imgMatch = htmlData.match(/<img[^>]+src="([^">]+)"/);
+               if (imgMatch && imgMatch[1]) {
+                  e.preventDefault();
+                  let extractedUrl = imgMatch[1];
+                  toast({ title: "Enlace detectado", description: "Procesando imagen desde Google Sheets...", duration: 2000 });
+                  onUpdate(setup.id, field, extractedUrl);
+                  return;
+               }
             }
           }}
           onBlur={(e) => {
