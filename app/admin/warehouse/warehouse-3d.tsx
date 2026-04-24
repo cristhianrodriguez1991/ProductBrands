@@ -436,58 +436,23 @@ function AisleLine() {
   )
 }
 
-// ── Google-Maps-style zoom controller ──
-// Zooms toward cursor position using raycasting
-function SmartZoom({ controlsRef }: { controlsRef: React.RefObject<any> }) {
-  const { camera, gl, raycaster, scene } = useThree()
+// ── Camera clamp: keeps the orbit target within warehouse bounds every frame ──
+function CameraClamp({ controlsRef }: { controlsRef: React.RefObject<any> }) {
+  // Warehouse bounds (approximate)
+  const minX = -14 * S
+  const maxX = 14 * S
+  const minZ = -5.5 * S
+  const maxZ = 2 * S
 
-  useEffect(() => {
-    const el = gl.domElement
+  useFrame(() => {
+    if (!controlsRef.current) return
+    const target = controlsRef.current.target as THREE.Vector3
 
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-
-      if (!controlsRef.current) return
-      const controls = controlsRef.current
-      const orbitTarget = controls.target as THREE.Vector3
-
-      // Get mouse position in NDC
-      const rect = el.getBoundingClientRect()
-      const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1
-      const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1
-
-      // Raycast from mouse
-      raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera)
-      const hits = raycaster.intersectObjects(scene.children, true)
-
-      // Smooth zoom factor like Google Maps
-      const zoomDir = e.deltaY > 0 ? 1 : -1
-      const factor = 1 + zoomDir * 0.15
-
-      if (hits.length > 0) {
-        // Zoom toward the hit point (Google Maps style)
-        const hitPoint = hits[0].point
-
-        // Move camera closer/further from hit point
-        const camToHit = new THREE.Vector3().subVectors(hitPoint, camera.position)
-        camera.position.addScaledVector(camToHit, 1 - factor)
-
-        // Also pull orbit target toward the hit
-        const targetToHit = new THREE.Vector3().subVectors(hitPoint, orbitTarget)
-        orbitTarget.addScaledVector(targetToHit, 1 - factor)
-      } else {
-        // Zoom toward orbit target if nothing under cursor
-        const camToTarget = new THREE.Vector3().subVectors(orbitTarget, camera.position)
-        camera.position.addScaledVector(camToTarget, 1 - factor)
-      }
-
-      controls.update()
-    }
-
-    el.addEventListener("wheel", handleWheel, { passive: false })
-    return () => el.removeEventListener("wheel", handleWheel)
-  }, [camera, gl, raycaster, scene, controlsRef])
+    // Clamp orbit target to stay within warehouse
+    target.x = Math.max(minX, Math.min(maxX, target.x))
+    target.y = Math.max(0, Math.min(12 * S, target.y))
+    target.z = Math.max(minZ, Math.min(maxZ, target.z))
+  })
 
   return null
 }
@@ -574,8 +539,8 @@ export default function Warehouse3D({
       <div className="absolute bottom-4 left-4 z-10 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-slate-200">
         <div className="flex gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
           <span>🖱 Drag = Rotar</span>
-          <span>🔍 Scroll = Zoom</span>
-          <span>👆 Click = Editar Pallet</span>
+          <span>🔍 Scroll / Pinch = Zoom</span>
+          <span>👆 Click / Tap = Editar Pallet</span>
         </div>
       </div>
 
@@ -598,13 +563,32 @@ export default function Warehouse3D({
         <OrbitControls
           ref={controlsRef}
           enablePan={true}
-          enableZoom={false}
+          enableZoom={true}
           enableRotate={true}
+          // Smooth zoom – low sensitivity
+          zoomSpeed={0.5}
+          // Distance bounds: can't zoom in past 2*S or out past 40*S
+          minDistance={2 * S}
+          maxDistance={40 * S}
+          // Polar angle: prevent going below the floor (min ~20°) or upside-down
+          minPolarAngle={0.15}
+          maxPolarAngle={Math.PI / 2.05}
+          // Pan settings
+          panSpeed={0.6}
+          // Smooth damping for a polished feel
+          enableDamping={true}
+          dampingFactor={0.12}
+          // Touch support (pinch zoom on iPad/tablet)
+          touches={{
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN,
+          }}
           target={[0, 1.5 * S, -1.5 * S]}
         />
-        <SmartZoom controlsRef={controlsRef} />
+        <CameraClamp controlsRef={controlsRef} />
         <WarehouseScene pallets={pallets} onSelect={onSelectPallet} />
       </Canvas>
     </div>
   )
 }
+
