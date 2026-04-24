@@ -31,8 +31,13 @@ interface Pallet {
   sku: string | null
   productName: string | null
   quantity: number | null
-  status: string
+  lotNumber: string | null
+  expirationDate: string | null
   palletHeightIn: number | null
+  status: string
+  notes: string | null
+  createdAt: string
+  updatedAt: string
   [key: string]: any
 }
 
