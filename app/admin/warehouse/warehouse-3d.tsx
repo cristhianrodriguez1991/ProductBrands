@@ -76,7 +76,7 @@ function Pallet3D({
       {/* Pallet base (wooden pallet look) */}
       <RoundedBox
         ref={meshRef}
-        args={[0.38, displayHeight, 0.45]}
+        args={[0.48, displayHeight, 0.55]}
         radius={0.02}
         smoothness={4}
         position={[0, displayHeight / 2, 0]}
@@ -150,7 +150,7 @@ function Cell3D({
     <group position={position}>
       {/* Cell platform */}
       <RoundedBox
-        args={[0.86, 0.04, 0.5]}
+        args={[1.15, 0.04, 0.6]}
         radius={0.01}
         smoothness={4}
         position={[0, -0.02, 0]}
@@ -171,11 +171,11 @@ function Cell3D({
 
       {/* Pallet 1 */}
       {pallets[0] && (
-        <Pallet3D position={[-0.22, 0, 0]} pallet={pallets[0]} onSelect={onSelect} />
+        <Pallet3D position={[-0.28, 0, 0]} pallet={pallets[0]} onSelect={onSelect} />
       )}
       {/* Pallet 2 */}
       {pallets[1] && (
-        <Pallet3D position={[0.22, 0, 0]} pallet={pallets[1]} onSelect={onSelect} />
+        <Pallet3D position={[0.28, 0, 0]} pallet={pallets[1]} onSelect={onSelect} />
       )}
     </group>
   )
@@ -201,8 +201,8 @@ function RackLevel3D({
   palletMap: Record<string, Pallet>
   onSelect: (p: Pallet) => void
 }) {
-  const totalWidth = cellCount * 0.95
-  const startX = -totalWidth / 2 + 0.475
+  const totalWidth = cellCount * 1.3
+  const startX = -totalWidth / 2 + 0.65
 
   return (
     <group position={position}>
@@ -254,7 +254,7 @@ function Rack3D({
   onSelect: (p: Pallet) => void
 }) {
   const rackColor = RACK_COLORS[rackName] || "#334155"
-  const totalWidth = cellCount * 0.95 + 0.2
+  const totalWidth = cellCount * 1.3 + 0.2
   const totalHeight = 3.6
 
   const levels = [
@@ -267,20 +267,20 @@ function Rack3D({
     <group position={position} rotation={rotation}>
       {/* Rack frame — vertical posts (between every cell) */}
       {Array.from({ length: cellCount + 1 }).map((_, i) => {
-        const x = -(totalWidth / 2) + i * 0.95
+        const x = -(cellCount * 1.3) / 2 + i * 1.3
         return (
           <group key={i}>
             <RoundedBox
               args={[0.08, totalHeight, 0.08]}
               radius={0.01}
-              position={[x, totalHeight / 2, -0.2]}
+              position={[x, totalHeight / 2, -0.3]}
             >
               <meshStandardMaterial color={rackColor} roughness={0.3} metalness={0.6} />
             </RoundedBox>
             <RoundedBox
               args={[0.08, totalHeight, 0.08]}
               radius={0.01}
-              position={[x, totalHeight / 2, 0.2]}
+              position={[x, totalHeight / 2, 0.3]}
             >
               <meshStandardMaterial color={rackColor} roughness={0.3} metalness={0.6} />
             </RoundedBox>
@@ -292,7 +292,7 @@ function Rack3D({
       {[0, 1.05, 2.2].map((y, i) => (
         <RoundedBox
           key={`beam${i}`}
-          args={[totalWidth + 0.2, 0.06, 0.5]}
+          args={[totalWidth + 0.2, 0.06, 0.6]}
           radius={0.01}
           position={[0, y, 0]}
         >
@@ -346,7 +346,7 @@ function Floor3D({
   palletMap: Record<string, Pallet>
   onSelect: (p: Pallet) => void
 }) {
-  const totalWidth = cellCount * 0.95
+  const totalWidth = cellCount * 1.3
 
   return (
     <group position={position} rotation={rotation}>
@@ -363,7 +363,7 @@ function Floor3D({
 
       {/* Floor surface */}
       <RoundedBox
-        args={[totalWidth + 0.4, 0.02, 0.7]}
+        args={[totalWidth + 0.4, 0.02, 0.8]}
         radius={0.005}
         position={[0, -0.01, 0]}
       >
@@ -375,11 +375,11 @@ function Floor3D({
         const cellStr = String(i + 1).padStart(2, "0")
         const p1Key = `FLOOR-${rackName}-${cellStr}-P1`
         const p2Key = `FLOOR-${rackName}-${cellStr}-P2`
-        const startX = -totalWidth / 2 + 0.475
+        const startX = -totalWidth / 2 + 0.65
         return (
           <Cell3D
             key={i}
-            position={[startX + i * 0.95, 0, 0]}
+            position={[startX + i * 1.3, 0, 0]}
             cellNum={i + 1}
             pallets={[palletMap[p1Key], palletMap[p2Key]]}
             onSelect={onSelect}
@@ -394,8 +394,8 @@ function Floor3D({
 function WarehouseFloor() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-0.1, -0.05, -2.5]} receiveShadow>
-      {/* Width 9.6, Depth 14.0 spans precisely around the walls and racks */}
-      <planeGeometry args={[9.6, 14.0]} />
+      {/* Width 12.0 spans precisely around the wider walls and racks */}
+      <planeGeometry args={[12.0, 14.0]} />
       <meshStandardMaterial color="#e3e8ed" roughness={0.95} />
     </mesh>
   )
@@ -431,14 +431,13 @@ function WarehouseScene({
 
       {/* Wall (Pared) at back */}
       <group position={[0, 2.5, -9]}>
-        {/* Back wall (length 8.0 to exactly match Rack A) */}
-        <RoundedBox args={[8.0, 5, 0.4]} radius={0.05} position={[0, 0, 0]}>
+        {/* Back wall (length 11.0 to exactly match wider Rack A) */}
+        <RoundedBox args={[11.0, 5, 0.4]} radius={0.05} position={[0, 0, 0]}>
           <meshStandardMaterial color="#cbd5e1" roughness={0.9} />
         </RoundedBox>
         
-        {/* L-Shape Side wall (flanking left side of racks at X = -4.0) */}
-        {/* Length = 13.5, roughly going from Z = -9 down to Z = +4.5 */}
-        <RoundedBox args={[0.4, 5, 13.5]} radius={0.05} position={[-4.2, 0, 6.75]}>
+        {/* L-Shape Side wall (flanking left side of racks at X = -5.5) */}
+        <RoundedBox args={[0.4, 5, 13.5]} radius={0.05} position={[-5.7, 0, 6.75]}>
           <meshStandardMaterial color="#cbd5e1" roughness={0.9} />
         </RoundedBox>
 
@@ -453,13 +452,13 @@ function WarehouseScene({
 
       {/* AISLE is from Z = -6 to Z = -2 */}
       
-      {/* RACK B (Flush left at X = -1.425, facing Rack A) */}
-      <Floor3D position={[-1.425, 0, -1.2]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
-      <Rack3D position={[-1.425, 0, 0]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+      {/* RACK B (Flush left at X = -2.25, facing Rack A) */}
+      <Floor3D position={[-2.25, 0, -1.2]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+      <Rack3D position={[-2.25, 0, 0]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
 
       {/* RACK C (Flush left, Back-to-back with Rack B) */}
-      <Rack3D position={[-1.425, 0, 0.6]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
-      <Floor3D position={[-1.425, 0, 1.8]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+      <Rack3D position={[-2.25, 0, 0.6]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+      <Floor3D position={[-2.25, 0, 1.8]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
     </>
   )
 }
@@ -503,10 +502,8 @@ export default function Warehouse3D({
           enablePan={true}
           enableZoom={true}
           enableRotate={true}
-          minPolarAngle={0.2}
-          maxPolarAngle={Math.PI / 2.2}
-          minDistance={3}
-          maxDistance={35}
+          minDistance={1}
+          maxDistance={50}
           target={[0, 1.5, -2.5]}
         />
         <WarehouseScene pallets={pallets} onSelect={onSelectPallet} />
