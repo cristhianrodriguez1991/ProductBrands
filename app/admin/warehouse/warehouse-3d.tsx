@@ -21,7 +21,7 @@ const RACK_COLORS: Record<string, string> = {
   C: "#5b21b6",
 }
 
-// Uniform scale – everything is bigger while keeping proportions
+// Uniform scale – everything is proportionally bigger
 const S = 3
 
 interface Pallet {
@@ -59,9 +59,9 @@ function Pallet3D({
   const occupied = pallet.status !== "AVAILABLE"
   const color = STATUS_COLORS[pallet.status] || "#94a3b8"
 
-  // Occupied pallets fill the cell slot; empty ones are flat
-  const displayHeight = occupied && pallet.palletHeightIn
-    ? Math.max(0.25, Math.min(0.85, pallet.palletHeightIn / 100))
+  // Occupied pallets get a visible box; empty ones are very thin
+  const displayHeight = occupied
+    ? (pallet.palletHeightIn ? Math.max(0.3, Math.min(0.85, pallet.palletHeightIn / 100)) : 0.4)
     : 0.06
 
   useFrame(() => {
@@ -105,7 +105,7 @@ function Pallet3D({
         />
       </RoundedBox>
 
-      {/* SKU label on top */}
+      {/* SKU label */}
       {occupied && pallet.sku && (
         <Text
           position={[0, (displayHeight + 0.1) * S, 0]}
@@ -119,7 +119,21 @@ function Pallet3D({
         </Text>
       )}
 
-      {/* Position label */}
+      {/* Product Name label (if occupied but no SKU) */}
+      {occupied && !pallet.sku && pallet.productName && (
+        <Text
+          position={[0, (displayHeight + 0.1) * S, 0]}
+          fontSize={0.06 * S}
+          color="#475569"
+          anchorX="center"
+          anchorY="bottom"
+          maxWidth={0.45 * S}
+        >
+          {pallet.productName}
+        </Text>
+      )}
+
+      {/* Position label for empty slots */}
       {!occupied && (
         <Text
           position={[0, 0.1 * S, 0]}
@@ -269,7 +283,7 @@ function Rack3D({
 
   return (
     <group position={position} rotation={rotation}>
-      {/* Rack frame — vertical posts between every cell */}
+      {/* Vertical posts between every cell */}
       {Array.from({ length: cellCount + 1 }).map((_, i) => {
         const x = -(cellCount * cellSpacing) / 2 + i * cellSpacing
         return (
@@ -292,7 +306,7 @@ function Rack3D({
         )
       })}
 
-      {/* Horizontal beams per level (no top beam — open top) */}
+      {/* Horizontal beams (no top beam — open top) */}
       {[0, 1.05 * S, 2.2 * S].map((y, i) => (
         <RoundedBox
           key={`beam${i}`}
@@ -422,37 +436,57 @@ function AisleLine() {
   )
 }
 
-// ── Zoom-to-Cursor: moves the OrbitControls target toward the mouse on scroll ──
-function ZoomToCursor({ controlsRef }: { controlsRef: React.RefObject<any> }) {
+// ── Google-Maps-style zoom controller ──
+// Zooms toward cursor position using raycasting
+function SmartZoom({ controlsRef }: { controlsRef: React.RefObject<any> }) {
   const { camera, gl, raycaster, scene } = useThree()
 
   useEffect(() => {
+    const el = gl.domElement
+
     const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+
       if (!controlsRef.current) return
+      const controls = controlsRef.current
+      const orbitTarget = controls.target as THREE.Vector3
 
-      // Compute mouse NDC
-      const rect = gl.domElement.getBoundingClientRect()
-      const mouse = new THREE.Vector2(
-        ((e.clientX - rect.left) / rect.width) * 2 - 1,
-        -((e.clientY - rect.top) / rect.height) * 2 + 1
-      )
+      // Get mouse position in NDC
+      const rect = el.getBoundingClientRect()
+      const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1
+      const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1
 
-      // Raycast to scene
-      raycaster.setFromCamera(mouse, camera)
-      const intersects = raycaster.intersectObjects(scene.children, true)
+      // Raycast from mouse
+      raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera)
+      const hits = raycaster.intersectObjects(scene.children, true)
 
-      if (intersects.length > 0) {
-        // Gradually shift OrbitControls target toward cursor point
-        const hitPoint = intersects[0].point
-        const controls = controlsRef.current
-        const target = controls.target as THREE.Vector3
-        target.lerp(hitPoint, 0.15)
-        controls.update()
+      // Smooth zoom factor like Google Maps
+      const zoomDir = e.deltaY > 0 ? 1 : -1
+      const factor = 1 + zoomDir * 0.15
+
+      if (hits.length > 0) {
+        // Zoom toward the hit point (Google Maps style)
+        const hitPoint = hits[0].point
+
+        // Move camera closer/further from hit point
+        const camToHit = new THREE.Vector3().subVectors(hitPoint, camera.position)
+        camera.position.addScaledVector(camToHit, 1 - factor)
+
+        // Also pull orbit target toward the hit
+        const targetToHit = new THREE.Vector3().subVectors(hitPoint, orbitTarget)
+        orbitTarget.addScaledVector(targetToHit, 1 - factor)
+      } else {
+        // Zoom toward orbit target if nothing under cursor
+        const camToTarget = new THREE.Vector3().subVectors(orbitTarget, camera.position)
+        camera.position.addScaledVector(camToTarget, 1 - factor)
       }
+
+      controls.update()
     }
 
-    gl.domElement.addEventListener("wheel", handleWheel, { passive: true })
-    return () => gl.domElement.removeEventListener("wheel", handleWheel)
+    el.addEventListener("wheel", handleWheel, { passive: false })
+    return () => el.removeEventListener("wheel", handleWheel)
   }, [camera, gl, raycaster, scene, controlsRef])
 
   return null
@@ -492,11 +526,9 @@ function WarehouseScene({
 
       {/* Wall (L-shape) */}
       <group position={[0, wallHeight / 2, -5 * S]}>
-        {/* Back wall */}
         <RoundedBox args={[wallWidth, wallHeight, 0.15 * S]} radius={0.03 * S}>
           <meshStandardMaterial color="#cbd5e1" roughness={0.9} />
         </RoundedBox>
-        {/* Side wall */}
         <RoundedBox
           args={[0.15 * S, wallHeight, sideWallLen]}
           radius={0.03 * S}
@@ -519,7 +551,7 @@ function WarehouseScene({
       <Floor3D position={[-1.4 * S, 0, -1.7 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
       <Rack3D position={[-1.4 * S, 0, -0.8 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
 
-      {/* RACK C (Back-to-back with B, facing forward) */}
+      {/* RACK C (Back-to-back with B) */}
       <Rack3D position={[-1.4 * S, 0, -0.2 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
       <Floor3D position={[-1.4 * S, 0, 0.7 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
     </>
@@ -542,7 +574,7 @@ export default function Warehouse3D({
       <div className="absolute bottom-4 left-4 z-10 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-slate-200">
         <div className="flex gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
           <span>🖱 Drag = Rotar</span>
-          <span>🔍 Scroll = Zoom al Cursor</span>
+          <span>🔍 Scroll = Zoom</span>
           <span>👆 Click = Editar Pallet</span>
         </div>
       </div>
@@ -566,14 +598,11 @@ export default function Warehouse3D({
         <OrbitControls
           ref={controlsRef}
           enablePan={true}
-          enableZoom={true}
+          enableZoom={false}
           enableRotate={true}
-          zoomSpeed={1.2}
-          minDistance={1}
-          maxDistance={120 * S}
           target={[0, 1.5 * S, -1.5 * S]}
         />
-        <ZoomToCursor controlsRef={controlsRef} />
+        <SmartZoom controlsRef={controlsRef} />
         <WarehouseScene pallets={pallets} onSelect={onSelectPallet} />
       </Canvas>
     </div>
