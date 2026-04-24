@@ -11,7 +11,7 @@ export async function GET() {
     }
 
     const setups = await prisma.machineSetup.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "asc" },
     })
 
     return NextResponse.json(setups)
