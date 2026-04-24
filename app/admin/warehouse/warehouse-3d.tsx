@@ -240,12 +240,14 @@ function RackLevel3D({
 // ── Full Rack (3 levels stacked) ──
 function Rack3D({
   position,
+  rotation = [0, 0, 0],
   rackName,
   cellCount,
   palletMap,
   onSelect,
 }: {
   position: [number, number, number]
+  rotation?: [number, number, number]
   rackName: string
   cellCount: number
   palletMap: Record<string, Pallet>
@@ -262,7 +264,7 @@ function Rack3D({
   ]
 
   return (
-    <group position={position}>
+    <group position={position} rotation={rotation}>
       {/* Rack frame — vertical posts */}
       {[-(totalWidth / 2) - 0.05, (totalWidth / 2) + 0.05].map((x, i) => (
         <RoundedBox
@@ -330,12 +332,14 @@ function Rack3D({
 // ── Floor Section ──
 function Floor3D({
   position,
+  rotation = [0, 0, 0],
   rackName,
   cellCount,
   palletMap,
   onSelect,
 }: {
   position: [number, number, number]
+  rotation?: [number, number, number]
   rackName: string
   cellCount: number
   palletMap: Record<string, Pallet>
@@ -344,7 +348,7 @@ function Floor3D({
   const totalWidth = cellCount * 0.95
 
   return (
-    <group position={position}>
+    <group position={position} rotation={rotation}>
       {/* Floor label */}
       <Text
         position={[0, 0.5, 0]}
@@ -409,8 +413,9 @@ function WarehouseScene({
     return map
   }, [pallets])
 
-  // Layout: Rack A center, B left, C right
-  // Floor sections in front of each rack
+  // Layout: Back to front
+  // Wall -> Rack A -> Floor A -> Aisle -> Floor B -> Rack B -> Rack C -> Floor C
+  
   return (
     <>
       {/* Lighting */}
@@ -422,15 +427,30 @@ function WarehouseScene({
       {/* Floor */}
       <WarehouseFloor />
 
-      {/* Racks */}
-      <Rack3D position={[0, 0, -2]} rackName="A" cellCount={8} palletMap={palletMap} onSelect={onSelect} />
-      <Rack3D position={[-5.5, 0, -2]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
-      <Rack3D position={[5.5, 0, -2]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+      {/* Wall (Pared) at back */}
+      <group position={[0, 2.5, -9]}>
+        <RoundedBox args={[20, 5, 0.4]} radius={0.05}>
+          <meshStandardMaterial color="#cbd5e1" roughness={0.9} />
+        </RoundedBox>
+        <Text position={[0, 0, 0.25]} fontSize={0.4} color="#94a3b8" fontWeight="bold">
+          PARED PRINCIPAL
+        </Text>
+      </group>
 
-      {/* Floor sections */}
-      <Floor3D position={[0, 0, 1.5]} rackName="A" cellCount={8} palletMap={palletMap} onSelect={onSelect} />
-      <Floor3D position={[-5.5, 0, 1.5]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
-      <Floor3D position={[5.5, 0, 1.5]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+      {/* RACK A (Back against wall) */}
+      <Rack3D position={[0, 0, -8]} rackName="A" cellCount={8} palletMap={palletMap} onSelect={onSelect} />
+      <Floor3D position={[0, 0, -6]} rackName="A" cellCount={8} palletMap={palletMap} onSelect={onSelect} />
+
+      {/* AISLE is from Z = -5 to Z = -2 */}
+      
+      {/* RACK B (Facing Rack A, meaning rotated 180 degrees) */}
+      <Floor3D position={[0, 0, -2]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+      <Rack3D position={[0, 0, 0]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+
+      {/* RACK C (Back-to-back with Rack B, facing away) */}
+      {/* Rack depth is about 0.6, so position 0.6 away from B's Z=0 ensures they touch */}
+      <Rack3D position={[0, 0, 0.6]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+      <Floor3D position={[0, 0, 2.6]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
     </>
   )
 }
@@ -477,8 +497,8 @@ export default function Warehouse3D({
           minPolarAngle={0.2}
           maxPolarAngle={Math.PI / 2.2}
           minDistance={3}
-          maxDistance={25}
-          target={[0, 1.5, 0]}
+          maxDistance={35}
+          target={[0, 1.5, -3]}
         />
         <WarehouseScene pallets={pallets} onSelect={onSelectPallet} />
       </Canvas>
