@@ -161,7 +161,8 @@ export default function MachineSetupPage() {
                       <TableHead className="w-[50px] border-r border-white/10"></TableHead>
                       <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[250px] border-r border-white/10">PRODUCTO</TableHead>
                       <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[120px] border-r border-white/10 text-center">PESO</TableHead>
-                      <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[550px] text-center border-r border-white/10">FOTOS DE REFERENCIA</TableHead>
+                      <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[150px] text-center border-r border-white/10">FOTO DEL PRODUCTO</TableHead>
+                      <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[400px] text-center border-r border-white/10">FOTOS DE REFERENCIA</TableHead>
                       <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[130px] text-center border-r border-white/10">BAG SIZE</TableHead>
                       <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-6 w-[200px] text-center border-r border-white/10">VELOCIDADES</TableHead>
                       <TableHead className="font-black text-[12px] uppercase tracking-widest text-white/90 py-10 px-8">DESCRIPCIÓN</TableHead>
@@ -179,7 +180,7 @@ export default function MachineSetupPage() {
                     ))}
                     {filteredSetups.length === 0 && !loading && (
                       <TableRow>
-                        <TableCell colSpan={7} className="py-20 text-center text-slate-300 font-black text-xl uppercase tracking-widest italic">
+                        <TableCell colSpan={8} className="py-20 text-center text-slate-300 font-black text-xl uppercase tracking-widest italic">
                           No hay registros
                         </TableCell>
                       </TableRow>
@@ -427,9 +428,14 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
         />
       </TableCell>
 
+      <TableCell className="py-10 px-6 border-r border-slate-200 bg-slate-50/20">
+        <div className="flex items-center justify-center">
+          <ImageInput field="productImageUrl" url={localSetup.productImageUrl} label="PROD" />
+        </div>
+      </TableCell>
+
       <TableCell className="py-10 px-6 border-r border-slate-200 bg-slate-50/10">
         <div className="flex gap-3 items-center justify-center">
-          <ImageInput field="productImageUrl" url={localSetup.productImageUrl} label="PROD" />
           <ImageInput field="weightingImageUrl" url={localSetup.weightingImageUrl} label="PESA" />
           <ImageInput field="packagingImageUrl" url={localSetup.packagingImageUrl} label="PACK" />
           <ImageInput field="parametersImageUrl" url={localSetup.parametersImageUrl} label="PARAM" />
