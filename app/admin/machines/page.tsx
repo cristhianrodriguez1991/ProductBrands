@@ -278,6 +278,7 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
       onPaste={(e) => {
         const items = e.clipboardData?.items;
         if (!items) return;
+        
         for (let i = 0; i < items.length; i++) {
           if (items[i].type.indexOf('image') !== -1) {
             const blob = items[i].getAsFile();
@@ -288,10 +289,21 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
             }
           }
         }
+        
+        const htmlData = e.clipboardData.getData('text/html');
+        if (htmlData) {
+           const imgMatch = htmlData.match(/<img[^>]+src="([^">]+)"/);
+           if (imgMatch && imgMatch[1]) {
+              e.preventDefault();
+              toast({ title: "Enlace detectado", description: "Procesando imagen...", duration: 2000 });
+              onUpdate(setup.id, field, imgMatch[1]);
+              return;
+           }
+        }
       }}
     >
       <div 
-        className="w-full h-full bg-slate-50 border-2 border-slate-200 rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer transition-all hover:border-blue-400 hover:ring-8 ring-blue-50 shadow-sm"
+        className="w-full h-full bg-slate-50 border-2 border-slate-200 rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer transition-all hover:border-blue-400 focus-within:border-blue-400 hover:ring-8 ring-blue-50 shadow-sm relative"
         onClick={() => {
           if (url) {
             onExpandImage(url);
@@ -309,61 +321,56 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
              <span className="text-[8px] font-black uppercase tracking-tight text-slate-900">{label}</span>
           </div>
         )}
-        
       </div>
       
-      {/* Floating Paste Button overlapping box */}
-      <div 
-        title="Pegar link o imagen (Ctrl+V)"
-        className="absolute -top-2 -left-2 bg-indigo-500 text-white p-2 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-all z-20 flex items-center justify-center overflow-hidden"
-      >
-        <Clipboard className="h-3 w-3" />
-        <input 
-          type="text"
-          className="absolute inset-0 w-full h-full opacity-0 cursor-copy"
-          onClick={(e) => e.stopPropagation()}
-          onPaste={(e) => {
-            const items = e.clipboardData?.items;
-            if (!items) return;
-            
-            for (let i = 0; i < items.length; i++) {
-              if (items[i].type.indexOf('image') !== -1) {
-                const blob = items[i].getAsFile();
-                if (blob) {
-                  e.preventDefault();
-                  uploadImageFile(blob, field);
+      {/* Floating Paste Button (Click-to-Paste) */}
+      <button 
+        type="button"
+        title="Pegar portapapeles"
+        onClick={async (e) => {
+          e.stopPropagation();
+          try {
+            const clipboardItems = await navigator.clipboard.read();
+            for (const item of clipboardItems) {
+              const imageType = item.types.find(t => t.startsWith('image/'));
+              if (imageType) {
+                const blob = await item.getType(imageType);
+                const file = new File([blob], 'pasted.png', { type: imageType });
+                uploadImageFile(file, field);
+                return;
+              }
+              if (item.types.includes('text/html')) {
+                const blob = await item.getType('text/html');
+                const text = await blob.text();
+                const imgMatch = text.match(/<img[^>]+src="([^">]+)"/);
+                if (imgMatch && imgMatch[1]) {
+                  toast({ title: "Enlace", description: "Procesando...", duration: 2000 });
+                  onUpdate(setup.id, field, imgMatch[1]);
                   return;
                 }
               }
+              if (item.types.includes('text/plain')) {
+                const blob = await item.getType('text/plain');
+                const text = await blob.text();
+                if (text.startsWith('http')) {
+                   onUpdate(setup.id, field, text.trim());
+                   return;
+                }
+              }
             }
-
-            const htmlData = e.clipboardData.getData('text/html');
-            if (htmlData) {
-               const imgMatch = htmlData.match(/<img[^>]+src="([^">]+)"/);
-               if (imgMatch && imgMatch[1]) {
-                  e.preventDefault();
-                  let extractedUrl = imgMatch[1];
-                  toast({ title: "Enlace detectado", description: "Procesando imagen desde Google Sheets...", duration: 2000 });
-                  onUpdate(setup.id, field, extractedUrl);
-                  return;
-               }
-            }
-          }}
-          onBlur={(e) => {
-            if (e.target.value.startsWith('http')) {
-              onUpdate(setup.id, field, e.target.value);
-              e.target.value = "";
-            }
-          }}
-          onKeyDown={(e) => {
-             if (e.key === "Enter") e.currentTarget.blur();
-          }}
-        />
-      </div>
+            toast({ title: "Aviso", description: "No hay imagen en portapapeles." });
+          } catch (err) {
+            toast({ title: "Permisos", description: "Se requiere permiso del navegador.", variant: "destructive" });
+          }
+        }}
+        className="absolute -top-2 -left-2 bg-indigo-500 text-white w-6 h-6 rounded-[8px] shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-20 cursor-pointer"
+      >
+        <Clipboard className="h-3 w-3" />
+      </button>
       
       <button 
         onClick={() => { setUploadType(field); fileInputRef.current?.click(); }}
-        className="absolute -top-2 -right-2 bg-blue-600 text-white p-2 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-all z-10"
+        className="absolute -top-2 -right-2 bg-blue-600 text-white w-6 h-6 rounded-[8px] flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-all z-10"
       >
         <Camera className="h-3 w-3" />
       </button>
@@ -371,7 +378,7 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
       {url && (
         <button 
           onClick={(e) => { e.stopPropagation(); onUpdate(setup.id, field, null); }}
-          className="absolute -bottom-2 -right-2 bg-red-500 text-white p-1.5 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-all z-10"
+          className="absolute -bottom-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-[8px] flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-all z-10"
         >
           <Trash className="h-3 w-3" />
         </button>
