@@ -126,13 +126,14 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
     notes: "",
   })
 
-  // Auto-seed if not fully populated (144 pallets total)
+  // Auto-seed if not fully populated (144 pallets total) or if using old formatting
   useEffect(() => {
-    if (pallets.length < 144 && !seeding) {
+    const hasOldFormat = pallets.some(p => p.locationCode.includes('-'))
+    if ((pallets.length < 144 || hasOldFormat) && !seeding) {
       seedWarehouse()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pallets.length, seeding])
+  }, [pallets, seeding])
 
   const seedWarehouse = async () => {
     setSeeding(true)
