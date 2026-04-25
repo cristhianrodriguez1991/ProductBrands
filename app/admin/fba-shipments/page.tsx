@@ -248,6 +248,32 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
   const handleFocus = useCallback(() => setFocusedItemId(item.id), [item.id, setFocusedItemId])
   const handleBlur = useCallback(() => setFocusedItemId(null), [setFocusedItemId])
   const expiring = item.expDate && new Date(item.expDate.replace(/(\d{2})(\d{2})(\d{2})/, '20$3-$1-$2')) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+  
+  const handleLookup = async (code: string) => {
+    if (!code || code.length < 5) return
+    try {
+      const res = await fetch(`/api/admin/inventory/lookup?code=${encodeURIComponent(code)}`)
+      const data = await res.json()
+      if (data.found && data.item) {
+        const found = data.item
+        // We use setImmediate or just call updateItem multiple times (React batches these)
+        updateItem(item.id, "name", found.amazonTitle || found.name)
+        if (found.fnsku) updateItem(item.id, "fnsku", found.fnsku)
+        if (found.upc) updateItem(item.id, "upc", found.upc)
+        if (found.sku) updateItem(item.id, "sku", found.sku)
+        if (found.asin) updateItem(item.id, "asin", found.asin)
+        if (!item.description) updateItem(item.id, "description", found.amazonTitle || found.name)
+        
+        const imgUrl = found.amazonImageUrl || found.imageUrl
+        if (imgUrl && (!item.imageUrls || !item.imageUrls.includes(imgUrl))) {
+          updateItem(item.id, "imageUrl", imgUrl)
+          updateItem(item.id, "imageUrls", [imgUrl, ...(item.imageUrls || [])])
+        }
+      }
+    } catch (e) {
+      console.error("Lookup error:", e)
+    }
+  }
 
   return (
     <Reorder.Item 
@@ -280,8 +306,8 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
       </td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={item.boxOrder || ""} onChange={e => updateItem(item.id, "boxOrder", e.target.value)} /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2 font-bold text-slate-800" value={item.name || ""} onChange={e => updateItem(item.id, "name", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.fnsku || ""} onChange={e => updateItem(item.id, "fnsku", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.upc || ""} onChange={e => updateItem(item.id, "upc", e.target.value)} placeholder="UPC" title="UPC" /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.fnsku || ""} onChange={e => { updateItem(item.id, "fnsku", e.target.value); handleLookup(e.target.value); }} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.upc || ""} onChange={e => { updateItem(item.id, "upc", e.target.value); handleLookup(e.target.value); }} placeholder="UPC" title="UPC" /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.sku || ""} onChange={e => updateItem(item.id, "sku", e.target.value)} /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.asin || ""} onChange={e => updateItem(item.id, "asin", e.target.value)} placeholder="ASIN" title="ASIN" /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center" value={item.qtyPerBox || ""} onChange={e => updateItem(item.id, "qtyPerBox", e.target.value)} /></td>

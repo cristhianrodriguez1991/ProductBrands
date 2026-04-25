@@ -40,6 +40,12 @@ export async function GET(req: Request) {
 
     if (!item) {
       item = await prisma.inventoryItem.findFirst({
+        where: { fnsku: code },
+      })
+    }
+
+    if (!item) {
+      item = await prisma.inventoryItem.findFirst({
         where: { ean: code },
       })
     }
