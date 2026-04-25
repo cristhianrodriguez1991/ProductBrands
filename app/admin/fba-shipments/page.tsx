@@ -305,7 +305,16 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
         />
       </td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={item.boxOrder || ""} onChange={e => updateItem(item.id, "boxOrder", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2 font-bold text-slate-800" value={item.name || ""} onChange={e => updateItem(item.id, "name", e.target.value)} /></td>
+      <td className="p-1 border-l align-top">
+        <textarea 
+          onFocus={handleFocus} 
+          onBlur={handleBlur} 
+          className="w-full text-[11px] border-0 bg-transparent rounded-none px-2 font-bold text-slate-800 resize-none focus:ring-0 min-h-[40px] leading-tight" 
+          value={item.name || ""} 
+          onChange={e => updateItem(item.id, "name", e.target.value)}
+          rows={2}
+        />
+      </td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.fnsku || ""} onChange={e => { updateItem(item.id, "fnsku", e.target.value); handleLookup(e.target.value); }} /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.upc || ""} onChange={e => { updateItem(item.id, "upc", e.target.value); handleLookup(e.target.value); }} placeholder="UPC" title="UPC" /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.sku || ""} onChange={e => updateItem(item.id, "sku", e.target.value)} /></td>
@@ -327,7 +336,16 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-8 text-[10px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={item.width || ""} onChange={e => updateItem(item.id, "width", e.target.value)} /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-8 text-[10px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={item.height || ""} onChange={e => updateItem(item.id, "height", e.target.value)} /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center font-semibold" value={item.boxWeight || ""} onChange={e => updateItem(item.id, "boxWeight", e.target.value)} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2 min-w-[150px]" value={item.description || ""} onChange={e => updateItem(item.id, "description", e.target.value)} /></td>
+      <td className="p-1 border-l align-top">
+        <textarea 
+          onFocus={handleFocus} 
+          onBlur={handleBlur} 
+          className="w-full text-[11px] border-0 bg-transparent rounded-none px-2 min-w-[200px] resize-none focus:ring-0 min-h-[40px] leading-tight" 
+          value={item.description || ""} 
+          onChange={e => updateItem(item.id, "description", e.target.value)}
+          rows={2}
+        />
+      </td>
       
       {/* PHOTO COLUMN */}
       <td className="p-1 border-l text-center min-w-[120px] no-print">
