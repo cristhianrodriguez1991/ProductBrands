@@ -8,11 +8,10 @@ import * as THREE from "three"
 // ── Constants ──
 const STATUS_COLORS: Record<string, string> = {
   AVAILABLE: "#10b981",
-  RESERVED: "#f59e0b",
   DAMAGED: "#dc2626",
-  HOLD: "#ef4444",
+  HOLD: "#f97316",
   INBOUND: "#8b5cf6",
-  OUTBOUND: "#7c3aed",
+  OUTBOUND: "#2563eb",
 }
 
 const RACK_COLORS: Record<string, string> = {
@@ -131,7 +130,7 @@ function Pallet3D({ pallet, position, onSelect, moveSourceId, onMoveClick }: {
   const meshRef = useRef<any>(null)
   const [hovered, setHovered] = useState(false)
 
-  const occupied = pallet.status !== "AVAILABLE"
+  const occupied = !!pallet.productName || !!pallet.sku
   const isSource = moveSourceId === pallet.id
   const isMoveTarget = moveSourceId !== null && !isSource && !occupied
   const color = isSource ? "#3b82f6" : STATUS_COLORS[pallet.status] || "#94a3b8"
@@ -673,7 +672,7 @@ export default function Warehouse3D({
       return
     }
     // If target is occupied, show error
-    if (target.status !== "AVAILABLE") {
+    if (!!target.productName || !!target.sku) {
       setMoveStatus(`❌ ${target.locationCode} está ocupado`)
       setTimeout(() => setMoveStatus(""), 2000)
       return

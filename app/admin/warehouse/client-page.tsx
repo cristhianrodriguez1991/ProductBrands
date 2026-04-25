@@ -41,12 +41,11 @@ const LEVELS = [
   { key: "L", label: "ABAJO", maxHeight: 40, order: 2 },
 ] as const
 
-const STATUSES = ["AVAILABLE", "RESERVED", "DAMAGED", "HOLD", "INBOUND", "OUTBOUND"] as const
+const STATUSES = ["AVAILABLE", "DAMAGED", "HOLD", "INBOUND", "OUTBOUND"] as const
 type PalletStatus = (typeof STATUSES)[number]
 
 const STATUS_COLORS: Record<string, string> = {
   AVAILABLE: "bg-emerald-500",
-  RESERVED: "bg-amber-500",
   DAMAGED: "bg-red-600",
   HOLD: "bg-orange-500",
   INBOUND: "bg-purple-500",
@@ -55,7 +54,6 @@ const STATUS_COLORS: Record<string, string> = {
 
 const STATUS_BG: Record<string, string> = {
   AVAILABLE: "bg-emerald-50 border-emerald-200",
-  RESERVED: "bg-amber-50 border-amber-200",
   DAMAGED: "bg-red-50 border-red-200",
   HOLD: "bg-orange-50 border-orange-200",
   INBOUND: "bg-purple-50 border-purple-200",
@@ -64,7 +62,6 @@ const STATUS_BG: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   AVAILABLE: "Disponible",
-  RESERVED: "Reservado",
   DAMAGED: "Dañado",
   HOLD: "En Espera",
   INBOUND: "Entrante",
@@ -93,7 +90,7 @@ interface Pallet {
 
 // ── Helpers ────────────────────────────────────────────────
 function isOccupied(p: Pallet) {
-  return p.status !== "AVAILABLE"
+  return !!p.productName || !!p.sku
 }
 
 // ── Main Component ─────────────────────────────────────────
@@ -248,7 +245,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
       lotNumber: pallet.lotNumber || "",
       expirationDate: pallet.expirationDate ? pallet.expirationDate.split("T")[0] : "",
       palletHeightIn: pallet.palletHeightIn?.toString() || "",
-      status: pallet.status === "AVAILABLE" ? "INBOUND" : pallet.status,
+      status: pallet.status || "AVAILABLE",
       notes: pallet.notes || "",
     })
     setFormOpen(true)
