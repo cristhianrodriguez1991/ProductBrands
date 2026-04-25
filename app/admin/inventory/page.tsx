@@ -241,31 +241,46 @@ export default function InventoryPage() {
       return true
     })
     .sort((a, b) => {
-      const aStock = (a.quantityOnHand || 0) + (a.quantityReserved || 0)
-      const bStock = (b.quantityOnHand || 0) + (b.quantityReserved || 0)
-
-      // Out of stock segregation
+      // 1. Stock Segregation (Highest Priority)
       if (pushOutofStockToBottom) {
-        if (aStock === 0 && bStock > 0) return 1
-        if (bStock === 0 && aStock > 0) return -1
+        const aTotal = (a.quantityOnHand || 0) + (a.quantityReserved || 0)
+        const bTotal = (b.quantityOnHand || 0) + (b.quantityReserved || 0)
+        const aHasStock = aTotal > 0
+        const bHasStock = bTotal > 0
+        
+        if (aHasStock && !bHasStock) return -1
+        if (!aHasStock && bHasStock) return 1
       }
 
-      // Selected Sort
-      if (sortBy === "NAME_ASC") return a.name.localeCompare(b.name)
-      if (sortBy === "NAME_DESC") return b.name.localeCompare(a.name)
-      if (sortBy === "STOCK_DESC") return bStock - aStock
-      if (sortBy === "STOCK_ASC") return aStock - bStock
-      if (sortBy === "CREATED_DESC") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      if (sortBy === "CREATED_ASC") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      
-      return 0
+      // 2. User Selected Sort
+      switch (sortBy) {
+        case "NAME_ASC":
+          return a.name.localeCompare(b.name)
+        case "NAME_DESC":
+          return b.name.localeCompare(a.name)
+        case "STOCK_DESC":
+          const aS = (a.quantityOnHand || 0) + (a.quantityReserved || 0)
+          const bS = (b.quantityOnHand || 0) + (b.quantityReserved || 0)
+          return bS - aS
+        case "STOCK_ASC":
+          const aS2 = (a.quantityOnHand || 0) + (a.quantityReserved || 0)
+          const bS2 = (b.quantityOnHand || 0) + (b.quantityReserved || 0)
+          return aS2 - bS2
+        case "CREATED_DESC":
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        case "CREATED_ASC":
+          return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+        default:
+          // Default: Newest first as baseline
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      }
     })
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans sm:pb-20">
       
       {/* HEADER - Amazon App Style */}
-      <div className="sticky top-0 z-30 bg-white border-b border-slate-200">
+      <div className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
         <div className="flex items-center justify-between px-2 h-14 bg-white">
           <Button variant="ghost" size="icon" className="text-slate-600 hover:bg-slate-100">
             <ChevronLeft className="h-6 w-6" />
@@ -299,7 +314,7 @@ export default function InventoryPage() {
         </div>
 
         {/* SEARCH BAR & COUNTERS */}
-        <div className="px-3 pb-3 pt-1">
+        <div className="px-3 pb-3 pt-1 border-t border-slate-100">
           {/* Stats Bar */}
           <div className="flex items-center space-x-4 mb-2 px-1 text-sm text-slate-600">
             <div className="font-semibold text-slate-800">
