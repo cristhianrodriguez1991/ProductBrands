@@ -91,8 +91,8 @@ const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: st
   }
 
   const handleRackChange = (newRack: string) => setTempLocation(`${newRack}${num || "1"}${level || "P"}`)
-  const handleLevelChange = (newLevel: string) => setTempLocation(`${rack || "A"}${num || "1"}${newLevel}`)
   const handleNumChange = (newNum: string) => setTempLocation(`${rack || "A"}${newNum}${level || "P"}`)
+  const handleLevelChange = (newLevel: string) => setTempLocation(`${rack || "A"}${num || "1"}${newLevel}`)
 
   return (
     <div className="flex flex-col gap-1.5 p-1">
@@ -126,24 +126,27 @@ const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: st
             value={rack || "A"} 
             onChange={e => handleRackChange(e.target.value)}
             className="bg-white px-1 py-0.5 rounded text-[10px] font-black text-blue-700 border border-slate-200 outline-none"
+            title="Rack"
           >
             {Object.keys(RACKS_CONFIG).map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+
+          <select 
+            value={num || "1"} 
+            onChange={e => handleNumChange(e.target.value)}
+            className="bg-white px-1 py-0.5 rounded text-[10px] font-black text-slate-700 border border-slate-200 outline-none"
+            title="Columna / Pallet #"
+          >
+            {Array.from({ length: 20 }, (_, i) => i + 1).map(n => <option key={n} value={n.toString()}>{n}</option>)}
           </select>
           
           <select 
             value={level || "P"} 
             onChange={e => handleLevelChange(e.target.value)}
             className="bg-white px-1 py-0.5 rounded text-[10px] font-black text-emerald-700 border border-slate-200 outline-none"
+            title="Nivel"
           >
             {LEVELS_CONFIG.map(l => <option key={l.key} value={l.key}>{l.key}</option>)}
-          </select>
-          
-          <select 
-            value={num || "1"} 
-            onChange={e => handleNumChange(e.target.value)}
-            className="bg-white px-1 py-0.5 rounded text-[10px] font-black text-slate-700 border border-slate-200 outline-none"
-          >
-            {Array.from({ length: 20 }, (_, i) => i + 1).map(n => <option key={n} value={n.toString()}>{n}</option>)}
           </select>
           
           <div className="flex items-center gap-1 ml-1">
