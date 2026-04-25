@@ -1388,6 +1388,7 @@ export default function FbaShipmentsPage() {
                             activeTabId={activeTabId}
                             copyItem={copyItem}
                             warehousePositions={warehousePositions}
+                            onOpenScanner={openScanner}
                           />
                         ))}
                       </Reorder.Group>
