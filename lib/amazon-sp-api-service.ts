@@ -39,9 +39,9 @@ function getClient(): any {
 }
 
 /**
- * Fetch ONLY active FBA listings using the Reports API.
- * Uses GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA which returns only 
- * active/unsuppressed FBA items (exactly what the user sees in Seller Central).
+ * Fetch ALL FBA listings using the Reports API.
+ * Uses GET_FBA_MYI_ALL_INVENTORY_DATA which returns ALL FBA items
+ * (active, inactive, out of stock), matching the "All" filter in Seller Central.
  * 
  * Flow: createReport → poll until DONE → download & parse TSV
  */
@@ -54,7 +54,7 @@ export async function getActiveListings(): Promise<any[]> {
     operation: "createReport",
     endpoint: "reports",
     body: {
-      reportType: "GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA",
+      reportType: "GET_FBA_MYI_ALL_INVENTORY_DATA",
       marketplaceIds: [usMarketplaceId],
     },
   })

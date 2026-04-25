@@ -58,7 +58,7 @@ export async function POST() {
     let updatedCount = 0
 
     for (const item of listings) {
-      // The GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA report headers are:
+      // The GET_FBA_MYI_ALL_INVENTORY_DATA report headers are:
       // sku, fnsku, asin, product-name, condition, your-price, mfn-listing-exists, 
       // mfn-fulfillable-quantity, afn-listing-exists, afn-fulfillable-quantity, 
       // afn-unsellable-quantity, afn-reserved-quantity, afn-total-quantity...
