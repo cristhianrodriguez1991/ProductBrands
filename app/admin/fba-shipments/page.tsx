@@ -36,7 +36,7 @@ type FbaItem = {
 }
 
 // Extracted to module scope to prevent React from unmounting inputs on every keystroke, keeping keyboard focus perfectly stable
-const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, switchItemStatus, removeImage, setSelectedIdForUpload, fileInputRef, uploadingId, setFocusedItemId, setExpandedImage, copyItem }: any) => {
+const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, switchItemStatus, removeImage, setSelectedIdForUpload, fileInputRef, uploadingId, setFocusedItemId, setExpandedImage, copyItem, warehousePositions }: any) => {
   const controls = useDragControls()
   const handleFocus = useCallback(() => setFocusedItemId(item.id), [item.id, setFocusedItemId])
   const handleBlur = useCallback(() => setFocusedItemId(null), [setFocusedItemId])
@@ -63,7 +63,45 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
            <GripVertical className="h-5 w-5" />
         </div>
       </td>
-      <td className="p-0"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={item.location || ""} onChange={e => updateItem(item.id, "location", e.target.value)} /></td>
+      <td className="p-0">
+        <select
+          className="h-8 text-[11px] border-0 bg-transparent rounded-none px-1 w-full cursor-pointer font-bold text-slate-700 focus:ring-2 focus:ring-blue-200 outline-none appearance-none"
+          value={item.location || ""}
+          onChange={e => updateItem(item.id, "location", e.target.value)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 4px center', backgroundSize: '10px', paddingRight: '16px' }}
+        >
+          <option value="">—</option>
+          {item.location && !warehousePositions?.find((p: any) => p.locationCode === item.location) && (
+            <option value={item.location}>{item.location} (manual)</option>
+          )}
+          {warehousePositions && (() => {
+            const racks = ['A', 'B', 'C']
+            return racks.map((rack: string) => {
+              const positions = warehousePositions.filter((p: any) => p.rack === rack || p.rack === `FLOOR-${rack}`)
+              if (positions.length === 0) return null
+              return (
+                <optgroup key={rack} label={`Rack ${rack}`}>
+                  {positions
+                    .sort((a: any, b: any) => a.locationCode.localeCompare(b.locationCode))
+                    .map((p: any) => {
+                      const occupied = p.status !== 'AVAILABLE'
+                      const label = occupied
+                        ? `${p.locationCode} ● ${p.productName || p.sku || 'Ocupado'}`
+                        : `${p.locationCode} ○ Libre`
+                      return (
+                        <option key={p.id} value={p.locationCode}>
+                          {label}
+                        </option>
+                      )
+                    })}
+                </optgroup>
+              )
+            })
+          })()}
+        </select>
+      </td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={item.boxOrder || ""} onChange={e => updateItem(item.id, "boxOrder", e.target.value)} /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2 font-bold text-slate-800" value={item.name || ""} onChange={e => updateItem(item.id, "name", e.target.value)} /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.fnsku || ""} onChange={e => updateItem(item.id, "fnsku", e.target.value)} /></td>
@@ -195,6 +233,7 @@ export default function FbaShipmentsPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
   const [globalPendingItems, setGlobalPendingItems] = useState<any[]>([])
   const [copiedItem, setCopiedItem] = useState<any | null>(null)
+  const [warehousePositions, setWarehousePositions] = useState<any[]>([])
 
   const fetchShipments = async () => {
     try {
@@ -226,6 +265,14 @@ export default function FbaShipmentsPage() {
   useEffect(() => {
     const init = async () => {
       await Promise.all([fetchShipments(), fetchPendingItems()])
+      // Fetch warehouse positions for location dropdown
+      try {
+        const res = await fetch("/api/admin/warehouse")
+        if (res.ok) {
+          const data = await res.json()
+          setWarehousePositions(data)
+        }
+      } catch {}
       setLoading(false)
     }
     init()
@@ -780,6 +827,7 @@ export default function FbaShipmentsPage() {
                           fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
                           setExpandedImage={setExpandedImage}
                           copyItem={copyItem}
+                          warehousePositions={warehousePositions}
                         />
                       ))}
                     </Reorder.Group>
