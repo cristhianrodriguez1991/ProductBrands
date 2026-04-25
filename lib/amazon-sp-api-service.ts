@@ -76,36 +76,35 @@ export async function getFbaInventory(): Promise<any[]> {
 }
 
 /**
- * Lookup detailed product information (Title, Images, Product Types) 
- * given a list of ASINs via the Catalog Items v2022-04-01 API
+ * Lookup detailed product information (Title, Images) 
+ * given a list of ASINs via the Catalog Items API.
+ * Uses individual getCatalogItem calls per ASIN for maximum compatibility.
  */
 export async function getCatalogItemsByAsins(asins: string[]): Promise<any[]> {
   if (asins.length === 0) return []
   const client: any = getClient()
   const usMarketplaceId = "ATVPDKIKX0DER"
 
-  // SP-API Catalog Items `searchCatalogItems` allows max 20 ASINs per request
-  const batches: string[][] = []
-  for (let i = 0; i < asins.length; i += 20) {
-    batches.push(asins.slice(i, i + 20))
-  }
-
   const results: any[] = []
 
-  for (const batch of batches) {
-    const res: any = await client.callAPI({
-      operation: "searchCatalogItems",
-      endpoint: "catalogItems",
-      query: {
-        identifiers: batch.join(","),
-        identifiersType: "ASIN",
-        marketplaceIds: usMarketplaceId,
-        includedData: ["images", "summaries", "productTypes"],
-      },
-    })
-    
-    if (res && res.items) {
-      results.push(...res.items)
+  for (const asin of asins) {
+    try {
+      const res: any = await client.callAPI({
+        operation: "getCatalogItem",
+        endpoint: "catalogItems",
+        path: { asin },
+        query: {
+          marketplaceIds: usMarketplaceId,
+          includedData: "images,summaries",
+        },
+      })
+
+      if (res) {
+        results.push(res)
+      }
+    } catch (e: any) {
+      // Skip individual failures — don't block the rest
+      console.warn(`Catalog lookup failed for ASIN ${asin}:`, e?.message)
     }
   }
 

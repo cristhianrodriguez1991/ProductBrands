@@ -36,14 +36,17 @@ export async function POST() {
       })
     }
 
-    // ── 2. Collect ASINs and fetch Catalog Data ──
+    // ── 2. Collect ASINs and try to fetch Catalog Data (non-blocking) ──
     const asinsInInventory = Array.from(new Set(inventory.map((item: any) => item.asin).filter(Boolean)))
-    const catalogData = await getCatalogItemsByAsins(asinsInInventory)
     
-    // Map catalog data by ASIN for easy lookup
     const catalogMap = new Map<string, any>()
-    for (const cat of catalogData) {
-      catalogMap.set(cat.asin, cat)
+    try {
+      const catalogData = await getCatalogItemsByAsins(asinsInInventory)
+      for (const cat of catalogData) {
+        catalogMap.set(cat.asin, cat)
+      }
+    } catch (catErr: any) {
+      console.warn("Catalog lookup failed (continuing with inventory only):", catErr?.message)
     }
 
     let syncedCount = 0
@@ -63,9 +66,9 @@ export async function POST() {
       const qtyOnHand = item.inventoryDetails?.fulfillableQuantity || 0
       const qtyReserved = item.inventoryDetails?.reservedQuantity?.totalReservedQuantity || 0
 
-      // Get catalog info (Title/Image)
+      // Get catalog info (Title/Image) — may be empty if catalog lookup failed
       const cData = catalogMap.get(asin)
-      const title = cData?.summaries?.[0]?.itemName || "Untitled Amazon Product"
+      const title = cData?.summaries?.[0]?.itemName || item.productName || `Amazon Product (${asin})`
       
       // Extract main image link
       let imageUrl = null
