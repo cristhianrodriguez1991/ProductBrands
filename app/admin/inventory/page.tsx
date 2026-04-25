@@ -308,6 +308,12 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
     status: "AVAILABLE",
     notes: "",
   })
+  const RACKS = {
+    A: { cells: 8, label: "Rack A" },
+    B: { cells: 5, label: "Rack B" },
+    C: { cells: 5, label: "Rack C" },
+  } as const
+
   const [saving, setSaving] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
@@ -583,33 +589,51 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5" /> Location
             </label>
-            <div className="grid grid-cols-4 gap-2 mt-2">
+            <div className="grid grid-cols-3 gap-2 mt-2">
               <div>
                 <label className="text-[9px] text-slate-400 font-bold">Rack</label>
-                <select value={form.rack} onChange={(e) => setForm(f => ({ ...f, rack: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5">
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
+                <select 
+                  value={form.rack} 
+                  onChange={(e) => setForm(f => ({ ...f, rack: e.target.value }))} 
+                  className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5 bg-white focus:ring-2 focus:ring-emerald-200 outline-none"
+                >
+                  {Object.entries(RACKS).map(([key, cfg]) => (
+                    <option key={key} value={key}>{cfg.label}</option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label className="text-[9px] text-slate-400 font-bold">Level</label>
-                <select value={form.level} onChange={(e) => setForm(f => ({ ...f, level: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5">
-                  <option value="TOP">Top</option>
-                  <option value="MID">Mid</option>
-                  <option value="BOT">Bot</option>
-                  <option value="FLOOR">Floor</option>
+                <label className="text-[9px] text-slate-400 font-bold">Posición</label>
+                <select 
+                  value={(parseInt(form.cellNumber) - 1) * 2 + parseInt(form.palletPosition)} 
+                  onChange={(e) => {
+                    const pos = parseInt(e.target.value)
+                    const cn = Math.ceil(pos / 2)
+                    const pp = pos % 2 === 0 ? 2 : 1
+                    setForm(f => ({ ...f, cellNumber: String(cn), palletPosition: String(pp) }))
+                  }} 
+                  className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5 bg-white focus:ring-2 focus:ring-emerald-200 outline-none"
+                >
+                  {(() => {
+                    const maxPos = (RACKS as any)[form.rack]?.cells * 2 || 16
+                    return Array.from({ length: maxPos }, (_, i) => {
+                      const num = i + 1
+                      return <option key={num} value={num}>{num}</option>
+                    })
+                  })()}
                 </select>
               </div>
               <div>
-                <label className="text-[9px] text-slate-400 font-bold">Cell #</label>
-                <Input type="number" min={1} max={8} value={form.cellNumber} onChange={(e) => setForm(f => ({ ...f, cellNumber: e.target.value }))} className="mt-0.5" />
-              </div>
-              <div>
-                <label className="text-[9px] text-slate-400 font-bold">Position</label>
-                <select value={form.palletPosition} onChange={(e) => setForm(f => ({ ...f, palletPosition: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5">
-                  <option value="1">1</option>
-                  <option value="2">2</option>
+                <label className="text-[9px] text-slate-400 font-bold">Nivel</label>
+                <select 
+                  value={form.level} 
+                  onChange={(e) => setForm(f => ({ ...f, level: e.target.value }))} 
+                  className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5 bg-white focus:ring-2 focus:ring-emerald-200 outline-none"
+                >
+                  <option value="TOP">ARRIBA (T)</option>
+                  <option value="MID">MEDIO (M)</option>
+                  <option value="BOT">ABAJO (L)</option>
+                  <option value="FLOOR">PISO (P)</option>
                 </select>
               </div>
             </div>
