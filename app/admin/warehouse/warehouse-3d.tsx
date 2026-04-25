@@ -214,16 +214,19 @@ function Pallet3D({ pallet, position, onSelect, moveSourceId, onMoveClick }: {
       {occupied && (pallet.productName || pallet.sku) && (
         <Text
           position={[0, (displayHeight + 0.1) * S, 0]}
-          fontSize={0.08 * S}
+          fontSize={0.07 * S}
           color="#1e293b"
           anchorX="center"
           anchorY="bottom"
           maxWidth={0.45 * S}
           fontWeight="bold"
+          lineHeight={1.1}
           outlineWidth={0.005 * S}
           outlineColor="#ffffff"
         >
-          {pallet.productName || pallet.sku}
+          {pallet.productName 
+            ? (pallet.productName.length > 15 ? pallet.productName.substring(0, 15) + "..." : pallet.productName)
+            : pallet.sku}
         </Text>
       )}
 
