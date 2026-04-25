@@ -95,63 +95,68 @@ const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: st
   const handleLevelChange = (newLevel: string) => setTempLocation(`${rack || "A"}${num || "1"}${newLevel}`)
 
   return (
-    <div className="flex flex-col gap-1.5 p-1">
-      <div className="flex flex-wrap gap-1">
+    <div className="flex flex-col gap-1.5 p-1 relative min-h-[40px] group/picker">
+      <div className="flex flex-wrap gap-1 pr-6">
+        {locations.length === 0 && !isAdding && (
+          <span className="text-[10px] text-slate-300 font-medium italic py-1">Sin ubicación</span>
+        )}
         {locations.map(loc => (
-          <div key={loc} className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-100 text-[10px] font-black group/loc relative pr-5">
+          <div key={loc} className="flex items-center gap-1 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 px-2 py-0.5 rounded border border-slate-200 hover:border-blue-200 text-[10px] font-black transition-all group/loc relative pr-5 shadow-sm">
             {loc}
             <button 
               onClick={() => handleRemove(loc)}
-              className="absolute right-1 hover:bg-red-100 hover:text-red-700 rounded-full p-0.5 transition-colors"
+              className="absolute right-0.5 hover:bg-red-100 hover:text-red-700 rounded p-0.5 transition-colors opacity-0 group-hover/loc:opacity-100"
             >
               <X className="h-2 w-2" />
             </button>
           </div>
         ))}
-        {!isAdding && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setIsAdding(true)}
-            className="h-6 px-2 text-[10px] font-bold text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-dashed border-slate-200"
-          >
-            <Plus className="h-3 w-3 mr-1" /> Añadir
-          </Button>
-        )}
       </div>
 
-      {isAdding && (
-        <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200 shadow-inner animate-in fade-in slide-in-from-top-1 duration-200">
-          <select 
-            value={rack || "A"} 
-            onChange={e => handleRackChange(e.target.value)}
-            className="bg-white px-1 py-0.5 rounded text-[10px] font-black text-blue-700 border border-slate-200 outline-none"
-            title="Rack"
-          >
-            {Object.keys(RACKS_CONFIG).map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
+      {!isAdding && (
+        <button
+          onClick={() => setIsAdding(true)}
+          className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-md bg-slate-50 border border-slate-200 text-slate-400 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm opacity-0 group-hover/picker:opacity-100 group-hover/row:opacity-100"
+          title="Añadir ubicación"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      )}
 
-          <select 
-            value={num || "1"} 
-            onChange={e => handleNumChange(e.target.value)}
-            className="bg-white px-1 py-0.5 rounded text-[10px] font-black text-slate-700 border border-slate-200 outline-none"
-            title="Columna / Pallet #"
-          >
-            {Array.from({ length: 20 }, (_, i) => i + 1).map(n => <option key={n} value={n.toString()}>{n}</option>)}
-          </select>
+      {isAdding && (
+        <div className="flex flex-col gap-1 bg-white p-1.5 rounded-lg border border-blue-200 shadow-lg animate-in zoom-in-95 duration-200 z-10">
+          <div className="flex items-center gap-1">
+            <select 
+              value={rack || "A"} 
+              onChange={e => handleRackChange(e.target.value)}
+              className="bg-slate-50 px-1 py-1 rounded text-[10px] font-black text-blue-700 border border-slate-200 outline-none hover:border-blue-400 transition-colors"
+              title="Rack"
+            >
+              {Object.keys(RACKS_CONFIG).map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+
+            <select 
+              value={num || "1"} 
+              onChange={e => handleNumChange(e.target.value)}
+              className="bg-slate-50 px-1 py-1 rounded text-[10px] font-black text-slate-700 border border-slate-200 outline-none hover:border-blue-400 transition-colors"
+              title="Columna / Pallet #"
+            >
+              {Array.from({ length: 20 }, (_, i) => i + 1).map(n => <option key={n} value={n.toString()}>{n}</option>)}
+            </select>
+            
+            <select 
+              value={level || "P"} 
+              onChange={e => handleLevelChange(e.target.value)}
+              className="bg-slate-50 px-1 py-1 rounded text-[10px] font-black text-emerald-700 border border-slate-200 outline-none hover:border-blue-400 transition-colors"
+              title="Nivel"
+            >
+              {LEVELS_CONFIG.map(l => <option key={l.key} value={l.key}>{l.key}</option>)}
+            </select>
+          </div>
           
-          <select 
-            value={level || "P"} 
-            onChange={e => handleLevelChange(e.target.value)}
-            className="bg-white px-1 py-0.5 rounded text-[10px] font-black text-emerald-700 border border-slate-200 outline-none"
-            title="Nivel"
-          >
-            {LEVELS_CONFIG.map(l => <option key={l.key} value={l.key}>{l.key}</option>)}
-          </select>
-          
-          <div className="flex items-center gap-1 ml-1">
-            <button onClick={handleAddField} className="bg-blue-600 text-white rounded p-1 hover:bg-blue-700 shadow-sm"><CheckCircle2 className="h-3 w-3"/></button>
-            <button onClick={() => setIsAdding(false)} className="bg-slate-200 text-slate-600 rounded p-1 hover:bg-slate-300"><X className="h-3 w-3"/></button>
+          <div className="flex items-center justify-between gap-1 mt-0.5">
+            <button onClick={() => setIsAdding(false)} className="px-2 py-1 text-[9px] font-bold text-slate-500 hover:bg-slate-100 rounded transition-colors uppercase">Cancelar</button>
+            <button onClick={handleAddField} className="px-3 py-1 bg-blue-600 text-white text-[9px] font-bold rounded shadow-sm hover:bg-blue-700 transition-all uppercase">Aceptar</button>
           </div>
         </div>
       )}
