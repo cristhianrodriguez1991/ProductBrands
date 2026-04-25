@@ -21,6 +21,8 @@ export async function PATCH(
 
     if (body.name !== undefined) data.name = body.name
     if (body.sku !== undefined) data.sku = body.sku || null
+    if (body.upc !== undefined) data.upc = body.upc || null
+    if (body.ean !== undefined) data.ean = body.ean || null
     if (body.description !== undefined) data.description = body.description || null
     if (body.imageUrl !== undefined) data.imageUrl = body.imageUrl || null
     if (body.category !== undefined) data.category = body.category || null
@@ -29,7 +31,6 @@ export async function PATCH(
     if (body.quantityReserved !== undefined) data.quantityReserved = parseInt(body.quantityReserved) || 0
     if (body.reorderPoint !== undefined) data.reorderPoint = parseInt(body.reorderPoint) || 0
     if (body.unitCost !== undefined) data.unitCost = body.unitCost ? parseFloat(body.unitCost) : null
-    if (body.unitPrice !== undefined) data.unitPrice = body.unitPrice ? parseFloat(body.unitPrice) : null
     if (body.notes !== undefined) data.notes = body.notes || null
     if (body.isActive !== undefined) data.isActive = body.isActive
 

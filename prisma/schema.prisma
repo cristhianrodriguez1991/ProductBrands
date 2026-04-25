@@ -893,10 +893,11 @@ model InventoryItem {
   asin            String?         @unique
   amazonTitle     String?
   amazonImageUrl  String?
-  amazonPrice     Float?
   amazonUrl       String?
-  amazonRating    Float?
-  amazonReviewCount Int?
+
+  // Barcode identifiers
+  upc             String?         // UPC barcode (12-digit)
+  ean             String?         // EAN / IAN barcode (13-digit)
 
   // Common fields
   name            String
@@ -911,7 +912,6 @@ model InventoryItem {
   quantityReserved Int            @default(0)
   reorderPoint    Int             @default(0)
   unitCost        Float?
-  unitPrice       Float?
 
   // Status
   isActive        Boolean         @default(true)
@@ -925,7 +925,10 @@ model InventoryItem {
   @@index([source])
   @@index([asin])
   @@index([sku])
+  @@index([upc])
+  @@index([ean])
   @@index([category])
   @@index([isActive])
   @@index([name])
 }
+
