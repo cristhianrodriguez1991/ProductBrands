@@ -108,7 +108,7 @@ const parseSyncDate = (val: string) => {
   return null
 }
 
-const LocationPicker = ({ value, onChange, setConfirm }: { value: string; onChange: (val: string) => void; setConfirm: any }) => {
+const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { value: string; onChange: (val: string) => void; setConfirm: any; warehousePositions: any[] }) => {
   const [isAdding, setIsAdding] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const locations = value ? value.split(' + ').filter(Boolean) : []
@@ -210,7 +210,14 @@ const LocationPicker = ({ value, onChange, setConfirm }: { value: string; onChan
               className="bg-slate-50 px-1 py-1 rounded text-[10px] font-black text-emerald-700 border border-slate-200 outline-none hover:border-blue-400 transition-colors"
               title="Nivel"
             >
-              {LEVELS_CONFIG.map(l => <option key={l.key} value={l.key}>{l.key}</option>)}
+              {LEVELS_CONFIG.map(l => {
+                const locCode = `${rack || "A"}${num || "1"}${l.key}`
+                const isOccupied = warehousePositions?.find(p => p.locationCode === locCode && p.status !== "AVAILABLE")
+                // Allow if it's one of the current locations of THIS picker
+                const isMine = locations.includes(locCode)
+                if (isOccupied && !isMine) return null
+                return <option key={l.key} value={l.key}>{l.key}</option>
+              })}
             </select>
           </div>
           
@@ -264,6 +271,7 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
           value={item.location || ""} 
           onChange={val => updateItem(item.id, "location", val)}
           setConfirm={setConfirmDialog}
+          warehousePositions={warehousePositions}
         />
       </td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={item.boxOrder || ""} onChange={e => updateItem(item.id, "boxOrder", e.target.value)} /></td>
