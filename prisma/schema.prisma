@@ -890,7 +890,7 @@ model InventoryItem {
   source          InventorySource @default(MANUAL)
 
   // Amazon fields
-  asin            String?         @unique
+  asin            String?
   amazonTitle     String?
   amazonImageUrl  String?
   amazonUrl       String?
