@@ -305,6 +305,51 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
         />
       </td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={item.boxOrder || ""} onChange={e => updateItem(item.id, "boxOrder", e.target.value)} /></td>
+      
+      {/* PHOTO COLUMN MOVED BEFORE PRODUCT */}
+      <td className="p-1 border-l text-center min-w-[120px] no-print">
+        <div className="flex flex-wrap items-center justify-center gap-1 min-w-0 max-w-[150px] mx-auto">
+          {item.imageUrls && item.imageUrls.length > 0 ? (
+            <>
+              {item.imageUrls.map((url: string, idx: number) => (
+                <div 
+                  key={idx}
+                  className="w-[28px] h-[28px] bg-slate-100/50 rounded-md border border-slate-300/80 cursor-pointer overflow-hidden relative group shrink-0"
+                >
+                  <img 
+                    src={url} 
+                    alt={`Product ${idx+1}`} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
+                    onClick={() => setExpandedImage(url)}
+                  />
+                  <button 
+                    onClick={() => removeImage(item.id, url)}
+                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                  >
+                    <X className="h-2 w-2" />
+                  </button>
+                </div>
+              ))}
+              <Button 
+                variant="ghost" size="icon" 
+                className="w-[28px] h-[28px] rounded-md border border-dashed border-slate-300 text-slate-400 hover:text-blue-500 hover:border-blue-300 shrink-0"
+                onClick={() => { setSelectedIdForUpload(item.id); fileInputRef.current?.click(); }}
+              >
+                {uploadingId === item.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+              </Button>
+            </>
+          ) : (
+            <Button 
+              variant="ghost" 
+              className="w-[100px] h-8 text-[10px] gap-1 font-bold border border-dashed border-slate-200 text-slate-400 hover:bg-slate-50 rounded-none shrink-0"
+              onClick={() => { setSelectedIdForUpload(item.id); fileInputRef.current?.click(); }}
+            >
+              <Camera className="h-3 w-3" /> {uploadingId === item.id ? "..." : "FOTO"}
+            </Button>
+          )}
+        </div>
+      </td>
+
       <td className="p-1 border-l align-top">
         <textarea 
           onFocus={handleFocus} 
@@ -347,74 +392,7 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
         />
       </td>
       
-      {/* PHOTO COLUMN */}
-      <td className="p-1 border-l text-center min-w-[120px] no-print">
-        <div className="flex flex-wrap items-center justify-center gap-1 min-w-0 max-w-[150px] mx-auto">
-          {item.imageUrls && item.imageUrls.length > 0 ? (
-            <>
-              {item.imageUrls.map((url: string, idx: number) => (
-                <div 
-                  key={idx}
-                  className="w-[28px] h-[28px] bg-slate-100/50 rounded-md border border-slate-300/80 cursor-pointer overflow-hidden relative group shrink-0"
-                >
-                  <img 
-                    src={url} 
-                    alt={`Product ${idx+1}`} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
-                    onClick={() => setExpandedImage(url)}
-                  />
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); if(confirm("¿Borrar esta foto?")) removeImage(item.id, url); }}
-                    className="absolute top-0 right-0 bg-red-600/90 text-white rounded-bl shadow-sm p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                    title="Eliminar"
-                  >
-                    <X className="h-2 w-2" />
-                  </button>
-                </div>
-              ))}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className={`h-7 w-7 shrink-0 rounded-md bg-slate-50 border border-dashed border-slate-300 ${uploadingId === item.id ? "animate-pulse bg-blue-50 border-blue-300 text-blue-500" : "text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-300"}`}
-                onClick={() => { setSelectedIdForUpload(item.id); fileInputRef.current?.click(); }}
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
-            </>
-          ) : item.imageUrl ? (
-            <>
-              <div 
-                className="w-[30px] h-[30px] bg-slate-100 rounded border border-slate-300 cursor-pointer overflow-hidden relative group shrink-0"
-              >
-                <img src={item.imageUrl} alt="Product" className="w-full h-full object-cover group-hover:scale-110 transition-transform" onClick={() => setExpandedImage(item.imageUrl!)} />
-                <button 
-                  onClick={(e) => { e.stopPropagation(); if(confirm("¿Borrar esta foto?")) removeImage(item.id, item.imageUrl!); }}
-                  className="absolute top-0 right-0 bg-red-600/90 text-white rounded-bl shadow-sm p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                >
-                  <X className="h-2 w-2" />
-                </button>
-              </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className={`h-7 w-7 shrink-0 rounded-md bg-slate-50 border border-dashed border-slate-300 hover:text-blue-600`}
-                onClick={() => { setSelectedIdForUpload(item.id); fileInputRef.current?.click(); }}
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
-            </>
-          ) : (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className={`h-8 w-14 rounded-md border border-slate-200/50 bg-slate-50 shadow-inner ${uploadingId === item.id ? "animate-pulse bg-blue-50 border-blue-200 text-blue-500" : "text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50"}`}
-              onClick={() => { setSelectedIdForUpload(item.id); fileInputRef.current?.click(); }}
-            >
-              <Camera className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </td>
+
 
       <td className="p-1 border-l no-print bg-slate-50/50 w-[80px]">
         <div className="flex items-center justify-center gap-1 opacity-40 hover:opacity-100 transition-opacity">
@@ -1222,6 +1200,7 @@ export default function FbaShipmentsPage() {
                         <th className="py-6 px-1 w-[35px] text-center bg-[#163a2d]"></th>
                         <th className="py-6 px-3 w-[110px] border-r border-white/5">Location</th>
                         <th className="py-6 px-3 w-[130px] border-r border-white/5">Orden Cajas</th>
+                        <th className="py-6 px-3 w-[130px] border-r border-white/5 text-center">Fotos</th>
                         <th className="py-6 px-5 min-w-[300px] border-r border-white/5">Producto</th>
                         <th className="py-6 px-3 w-[180px] border-r border-white/5 text-center whitespace-nowrap">FnSKU</th>
                         <th className="py-6 px-3 w-[180px] border-r border-white/5 text-center whitespace-nowrap">UPC</th>
@@ -1236,7 +1215,6 @@ export default function FbaShipmentsPage() {
                         <th className="py-6 px-2 w-[55px] border-r border-white/5 text-center">H</th>
                         <th className="py-6 px-4 w-[90px] border-r border-white/5 text-center">Peso</th>
                         <th className="py-6 px-6 w-[300px] border-r border-white/5">Descripción</th>
-                        <th className="py-6 px-3 w-[130px] border-r border-white/5 text-center">Fotos</th>
                         <th className="py-6 px-3 w-[70px] text-center bg-[#163a2d] no-print">Acc</th>
                       </tr>
                     </thead>
@@ -1285,6 +1263,7 @@ export default function FbaShipmentsPage() {
                           <th className="py-4 px-1 w-[30px] text-center"></th>
                           <th className="py-4 px-3 w-[110px]">Location</th>
                           <th className="py-4 px-3 w-[130px]">Orden</th>
+                          <th className="py-4 px-3 w-[150px] text-center">Foto</th>
                           <th className="py-4 min-w-[200px]">PRODUCTO PENDIENTE</th>
                           <th className="py-4 px-3 w-[180px] whitespace-nowrap">FnSKU</th>
                           <th className="py-4 px-3 w-[180px] whitespace-nowrap">UPC</th>
@@ -1299,7 +1278,6 @@ export default function FbaShipmentsPage() {
                           <th className="py-4 px-3 w-[60px] text-center">H</th>
                           <th className="py-4 px-3 w-[100px] text-center">Peso</th>
                           <th className="py-4 px-5 w-[250px]">Desc</th>
-                          <th className="py-4 px-3 w-[150px] text-center">Foto</th>
                           <th className="py-4 px-3 text-center no-print">Acc</th>
                         </tr>
                       </thead>
