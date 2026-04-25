@@ -100,7 +100,7 @@ const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: st
         onChange={e => handleLevelChange(e.target.value)}
         className="bg-slate-50 px-1.5 py-0.5 rounded text-[11px] font-black text-emerald-700 outline-none cursor-pointer hover:bg-emerald-50 transition-colors border-none appearance-none"
       >
-        {LEVEL_CONFIG.map(l => <option key={l.key} value={l.key}>{l.key}</option>)}
+        {LEVELS_CONFIG.map(l => <option key={l.key} value={l.key}>{l.key}</option>)}
       </select>
       
       <select 
