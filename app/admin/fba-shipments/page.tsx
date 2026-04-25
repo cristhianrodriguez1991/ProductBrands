@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { AlertTriangle, Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, MoveVertical, GripVertical, LayoutGrid, Maximize2, MousePointer2, Copy, ClipboardPaste, FileText, MoreVertical, Clock } from "lucide-react"
+import { AlertTriangle, Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, MoveVertical, GripVertical, LayoutGrid, Maximize2, MousePointer2, Copy, ClipboardPaste, FileText, MoreVertical, Clock, Send } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import Image from "next/image"
 import { compressImage } from "@/lib/image-compression"
@@ -414,6 +414,64 @@ export default function FbaShipmentsPage() {
   const [copiedItem, setCopiedItem] = useState<any | null>(null)
   const [warehousePositions, setWarehousePositions] = useState<any[]>([])
   const [isSyncing, setIsSyncing] = useState(false)
+
+  const handleMarkAsShipped = async (shId: string) => {
+    const tab = tabs.find(t => t.id === shId)
+    if (!tab) return
+
+    setConfirmDialog({
+      isOpen: true,
+      title: "¿Marcar como ENVIADO?",
+      message: "Esto liberará todas las posiciones del almacén (etiquetas azules) para este envío. Los artículos permanecerán en el documento, pero sin ubicación física. Los palets 'En Espera' no se tocarán.",
+      onConfirm: async () => {
+        setIsSyncing(true)
+        try {
+          const inShipmentItems = tab.items.filter((i: any) => i.status === "IN_SHIPMENT" && i.location)
+          const levelMap: any = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
+          
+          for (const item of inShipmentItems) {
+            const locs = item.location.split(' + ').filter(Boolean)
+            for (const loc of locs) {
+              const { rack, num, level } = parseLocationCode(loc)
+              if (rack && num && level) {
+                await fetch("/api/admin/warehouse", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    locationCode: loc,
+                    rack,
+                    level: levelMap[level] || "TOP",
+                    cellNumber: Math.ceil(parseInt(num) / 2),
+                    palletPosition: parseInt(num) % 2 === 0 ? 2 : 1,
+                    status: "AVAILABLE",
+                    productName: null,
+                    sku: null,
+                    quantity: null
+                  })
+                })
+              }
+            }
+            await fetch(`/api/admin/fba-shipments/items/${item.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ location: null })
+            })
+          }
+
+          const updatedRes = await fetch(`/api/admin/fba-shipments?id=${shId}`)
+          if (updatedRes.ok) {
+            const updatedData = await updatedRes.json()
+            setTabs(prev => prev.map(t => t.id === shId ? { ...t, items: updatedData.items } : t))
+          }
+          alert("✅ Envío marcado como ENVIADO. Posiciones liberadas.")
+        } catch(e) {
+          alert("❌ Error al procesar el envío.")
+        } finally {
+          setIsSyncing(false)
+        }
+      }
+    })
+  }
 
   const syncAllToWarehouse = async (shId: string) => {
     const tab = tabs.find(t => t.id === shId)
@@ -1091,6 +1149,13 @@ export default function FbaShipmentsPage() {
                     className="h-12 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 rounded-xl px-6 font-black gap-2"
                   >
                     <LayoutGrid className="h-5 w-5" /> {isSyncing ? "Sincronizando..." : "Sincronizar Mapa 🗺️"}
+                  </Button>
+                  <Button 
+                    onClick={() => handleMarkAsShipped(activeTab.id)} 
+                    disabled={isSyncing}
+                    className="h-12 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 rounded-xl px-8 font-black gap-2 uppercase tracking-widest text-[11px]"
+                  >
+                    <Send className="h-5 w-5" /> {isSyncing ? "Procesando..." : "MARCAR COMO ENVIADO"}
                   </Button>
                   <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white rounded-xl shadow-sm px-6 font-bold border-slate-200"><Printer className="h-5 w-5" /> Imprimir</Button>
                   <Button variant="outline" onClick={() => exportToExcelObject(activeTab, activeTab.items)} className="h-12 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 rounded-xl px-6 font-bold gap-2"><Download className="h-5 w-5" /> Exportar Excel</Button>
