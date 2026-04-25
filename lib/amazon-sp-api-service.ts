@@ -3,7 +3,6 @@ const SellingPartnerAPI = require("amazon-sp-api")
 
 /**
  * Initializes the Amazon Selling Partner API (SP-API) client.
- * SP-API requires these keys to be generated from a private Seller Central App.
  */
 function getClient(): any {
   const {
@@ -40,45 +39,113 @@ function getClient(): any {
 }
 
 /**
- * Request real-time FBA inventory summaries.
- * Note: Only applies to Fulfilled by Amazon (FBA) items.
+ * Fetch ALL active listings using the Reports API.
+ * Report type GET_MERCHANT_LISTINGS_DATA returns ONLY active listings
+ * (both FBA and FBM), which is exactly what the user needs.
+ * 
+ * Flow: createReport → poll until DONE → download & parse TSV
  */
-export async function getFbaInventory(): Promise<any[]> {
+export async function getActiveListings(): Promise<any[]> {
   const client: any = getClient()
-
-  // Make sure this is standard format (assuming US marketplace)
   const usMarketplaceId = "ATVPDKIKX0DER"
 
-  const allInventory: any[] = []
-  let nextToken: string | undefined = undefined
+  // Step 1: Request the report
+  const createRes: any = await client.callAPI({
+    operation: "createReport",
+    endpoint: "reports",
+    body: {
+      reportType: "GET_MERCHANT_LISTINGS_DATA",
+      marketplaceIds: [usMarketplaceId],
+    },
+  })
 
-  do {
-    const res: any = await client.callAPI({
-      operation: "getInventorySummaries",
-      endpoint: "fbaInventory",
-      query: {
-        details: false,
-        granularityType: "Marketplace",
-        granularityId: usMarketplaceId,
-        marketplaceIds: usMarketplaceId,
-        nextToken: nextToken,
-      },
+  const reportId: string = createRes?.reportId
+  if (!reportId) {
+    throw new Error("Failed to create report — no reportId returned")
+  }
+
+  // Step 2: Poll until report is DONE (max ~2 mins)
+  let reportStatus = "IN_QUEUE"
+  let reportDocumentId: string | null = null
+  let attempts = 0
+
+  while (reportStatus !== "DONE" && attempts < 24) {
+    await new Promise((r) => setTimeout(r, 5000)) // wait 5s between polls
+    attempts++
+
+    const statusRes: any = await client.callAPI({
+      operation: "getReport",
+      endpoint: "reports",
+      path: { reportId },
     })
 
-    if (res && res.inventorySummaries) {
-      allInventory.push(...res.inventorySummaries)
+    reportStatus = statusRes?.processingStatus
+    if (reportStatus === "DONE") {
+      reportDocumentId = statusRes?.reportDocumentId
+    } else if (reportStatus === "CANCELLED" || reportStatus === "FATAL") {
+      throw new Error(`Report generation failed with status: ${reportStatus}`)
     }
+  }
 
-    nextToken = res?.pagination?.nextToken
-  } while (nextToken)
+  if (!reportDocumentId) {
+    throw new Error("Report timed out after 2 minutes")
+  }
 
-  return allInventory
+  // Step 3: Download report document
+  const docRes: any = await client.callAPI({
+    operation: "getReportDocument",
+    endpoint: "reports",
+    path: { reportDocumentId },
+  })
+
+  // The library should auto-download and decompress the report
+  // docRes should be the raw text content (TSV format)
+  let tsvContent: string = ""
+  if (typeof docRes === "string") {
+    tsvContent = docRes
+  } else if (docRes?.document) {
+    tsvContent = docRes.document
+  } else {
+    // Try to fetch from URL if provided
+    const url = docRes?.url
+    if (url) {
+      const fetchRes = await fetch(url)
+      tsvContent = await fetchRes.text()
+    } else {
+      throw new Error("Could not retrieve report document content")
+    }
+  }
+
+  // Step 4: Parse TSV into structured data
+  return parseTSV(tsvContent)
+}
+
+/**
+ * Parse Amazon's tab-separated report into an array of objects.
+ * The first row is the header row with column names.
+ */
+function parseTSV(tsv: string): any[] {
+  const lines = tsv.split("\n").filter((l) => l.trim().length > 0)
+  if (lines.length < 2) return []
+
+  const headers = lines[0].split("\t").map((h) => h.trim())
+  const items: any[] = []
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split("\t")
+    const row: any = {}
+    headers.forEach((h, idx) => {
+      row[h] = cols[idx]?.trim() || ""
+    })
+    items.push(row)
+  }
+
+  return items
 }
 
 /**
  * Lookup detailed product information (Title, Images) 
  * given a list of ASINs via the Catalog Items API.
- * Uses individual getCatalogItem calls per ASIN for maximum compatibility.
  */
 export async function getCatalogItemsByAsins(asins: string[]): Promise<any[]> {
   if (asins.length === 0) return []
@@ -103,7 +170,6 @@ export async function getCatalogItemsByAsins(asins: string[]): Promise<any[]> {
         results.push(res)
       }
     } catch (e: any) {
-      // Skip individual failures — don't block the rest
       console.warn(`Catalog lookup failed for ASIN ${asin}:`, e?.message)
     }
   }

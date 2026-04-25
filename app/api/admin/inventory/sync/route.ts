@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server"
-import { getFbaInventory, getCatalogItemsByAsins } from "@/lib/amazon-sp-api-service"
+import { getActiveListings, getCatalogItemsByAsins } from "@/lib/amazon-sp-api-service"
 import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 
 /**
- * POST – Auto-sync ALL Amazon products from the Seller Central SP-API.
+ * POST – Sync ALL active Amazon listings via the Reports API.
  * 
- * Fetches real-time FBA inventory and quantities, then looks up 
- * catalog data (Images, Titles) directly from Amazon Seller API.
+ * Uses GET_MERCHANT_LISTINGS_DATA report which only returns
+ * currently active listings (both FBA and FBM), not old/deleted ones.
  */
 export async function POST() {
   const session = await getServerSession(authOptions)
@@ -16,7 +16,6 @@ export async function POST() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  // Check if keys are configured
   if (!process.env.AMAZON_SPAPI_CLIENT_ID) {
     return NextResponse.json({
       error: "SP-API credentials not configured in .env",
@@ -24,72 +23,76 @@ export async function POST() {
   }
 
   try {
-    // ── 1. Fetch live inventory from Seller Central SP-API ──
-    const inventory = await getFbaInventory()
+    // ── 1. Fetch active listings from Amazon Reports API ──
+    const listings = await getActiveListings()
     
-    if (!inventory || inventory.length === 0) {
+    if (!listings || listings.length === 0) {
       return NextResponse.json({
         success: true,
-        synced: 0,
         created: 0,
-        message: "No active inventory found in Amazon Seller Central.",
+        total: 0,
+        message: "No active listings found in Amazon Seller Central.",
       })
     }
 
-    // ── 2. Collect ASINs and try to fetch Catalog Data (non-blocking) ──
-    const asinsInInventory = Array.from(new Set(inventory.map((item: any) => item.asin).filter(Boolean)))
+    // ── 2. Collect ASINs for catalog image/title lookup (non-blocking) ──
+    const asinsInListings = Array.from(
+      new Set(listings.map((item: any) => item["asin1"] || item["ASIN"] || item["asin"]).filter(Boolean))
+    )
     
     const catalogMap = new Map<string, any>()
     try {
-      const catalogData = await getCatalogItemsByAsins(asinsInInventory)
+      const catalogData = await getCatalogItemsByAsins(asinsInListings.slice(0, 50)) // limit to avoid timeout
       for (const cat of catalogData) {
         catalogMap.set(cat.asin, cat)
       }
     } catch (catErr: any) {
-      console.warn("Catalog lookup failed (continuing with inventory only):", catErr?.message)
+      console.warn("Catalog lookup failed (continuing without images):", catErr?.message)
     }
 
-    let syncedCount = 0
-    let createdCount = 0
-
-    // Wipe old Amazon inventory to ensure we only show live Amazon data
+    // ── 3. Wipe old inventory and insert fresh from Amazon ──
     await prisma.inventoryItem.deleteMany({
       where: { source: "AMAZON" }
     })
 
-    // ── 3. Insert into database ──
-    for (const item of inventory) {
-      const asin = item.asin
-      const sku = item.sellerSku
-      
-      // Stock calculations mapping from FBA
-      const qtyOnHand = item.inventoryDetails?.fulfillableQuantity || 0
-      const qtyReserved = item.inventoryDetails?.reservedQuantity?.totalReservedQuantity || 0
+    let createdCount = 0
 
-      // Get catalog info (Title/Image) — may be empty if catalog lookup failed
+    for (const item of listings) {
+      // Amazon report columns (tab-separated):
+      // item-name, item-description, listing-id, seller-sku, price, quantity, 
+      // open-date, image-url, item-is-marketplace, product-id-type, 
+      // zshop-shipping-fee, item-note, item-condition, zshop-category1,
+      // zshop-browse-path, zshop-storefront-feature, asin1, ...
+      const asin = item["asin1"] || item["ASIN"] || item["asin"] || ""
+      const sku = item["seller-sku"] || item["sku"] || ""
+      const title = item["item-name"] || item["Title"] || ""
+      const quantity = parseInt(item["quantity"] || item["Quantity"] || "0", 10) || 0
+      const price = item["price"] || item["Price"] || ""
+      const imageUrl = item["image-url"] || item["Image Url"] || ""
+      const condition = item["item-condition"] || item["Condition"] || ""
+      const openDate = item["open-date"] || ""
+
+      // Get catalog image (richer quality) if available
       const cData = catalogMap.get(asin)
-      const title = cData?.summaries?.[0]?.itemName || item.productName || `Amazon Product (${asin})`
-      
-      // Extract main image link
-      let imageUrl = null
+      let catalogImage: string | null = null
       if (cData?.images && cData.images.length > 0) {
         const variants = cData.images[0].images || []
         const mainImage = variants.find((img: any) => img.variant === "MAIN")
-        imageUrl = mainImage?.link || variants[0]?.link || null
+        catalogImage = mainImage?.link || variants[0]?.link || null
       }
+      const catalogTitle = cData?.summaries?.[0]?.itemName || ""
 
-      // Create new item pulled from Seller Central
       await prisma.inventoryItem.create({
         data: {
           source: "AMAZON",
-          asin,
-          sku,
-          name: title,
-          amazonTitle: title,
-          amazonImageUrl: imageUrl,
-          amazonUrl: `https://www.amazon.com/dp/${asin}`,
-          quantityOnHand: qtyOnHand,
-          quantityReserved: qtyReserved,
+          asin: asin || null,
+          sku: sku || null,
+          name: catalogTitle || title || `Amazon Product (${asin})`,
+          amazonTitle: catalogTitle || title || null,
+          amazonImageUrl: catalogImage || imageUrl || null,
+          amazonUrl: asin ? `https://www.amazon.com/dp/${asin}` : null,
+          quantityOnHand: quantity,
+          quantityReserved: 0,
           isActive: true,
           lastSyncedAt: new Date(),
         },
@@ -99,20 +102,19 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
-      synced: syncedCount,
       created: createdCount,
-      total: inventory.length,
+      total: listings.length,
+      message: `Synced ${createdCount} active Amazon listings.`,
     })
   } catch (error: any) {
-    console.error("Seller Central SP-API Sync error:", error)
+    console.error("Seller Central Sync error:", error)
     return NextResponse.json(
       { 
         success: false, 
         error: "Seller Central Sync failed: " + (error?.message || "Unknown error"),
         details: JSON.stringify(error)
       },
-      { status: 200 } // Send 200 so Vercel/browser doesn't mask the JSON with an HTML error page!
+      { status: 200 }
     )
   }
 }
-
