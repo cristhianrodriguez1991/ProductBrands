@@ -12,6 +12,42 @@ import { compressImage } from "@/lib/image-compression"
 import { Reorder, useDragControls } from "framer-motion"
 import { memo, useCallback } from "react"
 
+// ── Confirmation Modal Component ──
+const ConfirmDeleteModal = ({ isOpen, onClose, onConfirm, title, message }: any) => (
+  <Dialog open={isOpen} onOpenChange={onClose}>
+    <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden border-0 shadow-2xl">
+      <div className="bg-white p-6 pt-8 text-center">
+        <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4 animate-bounce">
+          <AlertTriangle className="h-8 w-8 text-red-600" />
+        </div>
+        <DialogHeader className="p-0">
+          <DialogTitle className="text-xl font-black text-slate-900 text-center uppercase tracking-tight">
+            {title}
+          </DialogTitle>
+          <div className="mt-4 text-slate-500 font-medium text-sm leading-relaxed">
+            {message}
+          </div>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-3 mt-8">
+          <Button 
+            variant="ghost" 
+            onClick={onClose}
+            className="h-11 font-black uppercase tracking-widest text-[10px] text-slate-400 hover:bg-slate-50"
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={() => { onConfirm(); onClose(); }}
+            className="h-11 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-red-200"
+          >
+            Confirmar Borrado
+          </Button>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>
+)
+
 type FbaItem = {
   id: string
   shipmentId: string
