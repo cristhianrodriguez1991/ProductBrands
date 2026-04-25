@@ -191,19 +191,51 @@ export default function InventoryPage() {
   }
 
   // ── Rendering ──
-  const filteredItems = items.filter((item) => {
-    if (!searchQuery) return true
-    const q = searchQuery.toLowerCase()
-    return (
-      item.name?.toLowerCase().includes(q) ||
-      item.sku?.toLowerCase().includes(q) ||
-      item.asin?.toLowerCase().includes(q) ||
-      item.upc?.includes(q)
-    )
-  })
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
+  const [sortBy, setSortBy] = useState<"NAME_ASC" | "NAME_DESC" | "CREATED_DESC" | "CREATED_ASC" | "STOCK_DESC" | "STOCK_ASC" | "DEFAULT">("DEFAULT")
+  const [hideOutOfStock, setHideOutOfStock] = useState(false)
+  const [pushOutofStockToBottom, setPushOutofStockToBottom] = useState(true)
 
-  // Grouping by active status (just like the screenshot shows Out of Stock / Inactive explicitly)
-  // We'll keep them in their original sort order, but render the orange badge if inactive.
+  // ── Processing (Search, Filter, Sort) ──
+  const processedItems = [...items]
+    .filter((item) => {
+      // 1. Text Search
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase()
+        const matches = 
+          item.name?.toLowerCase().includes(q) ||
+          item.sku?.toLowerCase().includes(q) ||
+          item.asin?.toLowerCase().includes(q) ||
+          item.upc?.includes(q)
+        if (!matches) return false
+      }
+
+      // 2. Hide Out of stock filter
+      const totalStock = (item.quantityOnHand || 0) + (item.quantityReserved || 0)
+      if (hideOutOfStock && totalStock === 0) return false
+
+      return true
+    })
+    .sort((a, b) => {
+      const aStock = (a.quantityOnHand || 0) + (a.quantityReserved || 0)
+      const bStock = (b.quantityOnHand || 0) + (b.quantityReserved || 0)
+
+      // Out of stock segregation
+      if (pushOutofStockToBottom) {
+        if (aStock === 0 && bStock > 0) return 1
+        if (bStock === 0 && aStock > 0) return -1
+      }
+
+      // Selected Sort
+      if (sortBy === "NAME_ASC") return a.name.localeCompare(b.name)
+      if (sortBy === "NAME_DESC") return b.name.localeCompare(a.name)
+      if (sortBy === "STOCK_DESC") return bStock - aStock
+      if (sortBy === "STOCK_ASC") return aStock - bStock
+      if (sortBy === "CREATED_DESC") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      if (sortBy === "CREATED_ASC") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      
+      return 0
+    })
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans sm:pb-20">
@@ -269,16 +301,97 @@ export default function InventoryPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleScanSubmit()
               }}
-            />
-            {/* Scanner Button inside input */}
-            <button 
-              onClick={() => handleScanSubmit()}
-              className="px-3 py-2 text-slate-400 hover:bg-slate-100 border-l border-slate-200 h-full flex items-center justify-center transition-colors">
-              <ScanLine className="h-5 w-5 text-slate-500" />
-            </button>
+          <div className="flex gap-2">
+            <div className="relative flex-1 flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all shadow-sm">
+              <div className="pl-3 py-2 text-slate-400">
+                <Search className="h-5 w-5" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search Inventory or scan barcode..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent border-none focus:outline-none focus:ring-0 px-3 py-2.5 text-sm"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsScanning(true)}
+                className="h-full rounded-none px-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+              >
+                <ScanLine className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            <Button
+              variant="outline"
+              className="px-3 shrink-0"
+              onClick={() => setIsFilterModalOpen(true)}
+            >
+              <ArrowUpDown className="h-4 w-4 mr-2" />
+              Sort
+            </Button>
           </div>
         </div>
       </div>
+
+      {/* FILTER & SORT MODAL */}
+      <Dialog open={isFilterModalOpen} onOpenChange={setIsFilterModalOpen}>
+        <DialogContent className="max-w-sm rounded-lg">
+          <DialogHeader>
+            <DialogTitle>Sort & Filter</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col space-y-4 py-2">
+            {/* Sort Logic */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Sort By</label>
+              <select 
+                title="Sort By"
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="w-full border-slate-300 rounded-md text-sm p-2 bg-white border outline-none"
+              >
+                <option value="DEFAULT">Default</option>
+                <option value="NAME_ASC">Name (A-Z)</option>
+                <option value="NAME_DESC">Name (Z-A)</option>
+                <option value="STOCK_DESC">Stock (High to Low)</option>
+                <option value="STOCK_ASC">Stock (Low to High)</option>
+                <option value="CREATED_DESC">Newest First</option>
+                <option value="CREATED_ASC">Oldest First</option>
+              </select>
+            </div>
+
+            {/* Checkboxes */}
+            <div className="space-y-3 pt-2 border-t">
+              <label className="flex items-center space-x-2 text-sm cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  title="Push Out of Stock to Bottom"
+                  checked={pushOutofStockToBottom}
+                  onChange={(e) => setPushOutofStockToBottom(e.target.checked)}
+                  className="rounded border-slate-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                />
+                <span>Push "Out of Stock" to Bottom</span>
+              </label>
+
+              <label className="flex items-center space-x-2 text-sm cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  title="Hide Out of Stock completely"
+                  checked={hideOutOfStock}
+                  onChange={(e) => setHideOutOfStock(e.target.checked)}
+                  className="rounded border-slate-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                />
+                <span>Hide "Out of Stock" entirely</span>
+              </label>
+            </div>
+            
+            <Button onClick={() => setIsFilterModalOpen(false)} className="w-full mt-4">
+              Apply
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* LIST CONTAINER */}
       <div className="bg-white">
@@ -287,13 +400,13 @@ export default function InventoryPage() {
             <RefreshCw className="h-8 w-8 animate-spin mb-4" />
             Loading inventory...
           </div>
-        ) : filteredItems.length === 0 ? (
+        ) : processedItems.length === 0 ? (
           <div className="py-12 text-center text-slate-500">
             No items found.
           </div>
         ) : (
           <div className="flex flex-col">
-            {filteredItems.map((item) => {
+            {processedItems.map((item) => {
               const isExpanded = expandedItem === item.id
               const img = getItemImage(item)
               // We trigger the "Inactive" tag if it's explicitly inactive, or if qty is 0.
