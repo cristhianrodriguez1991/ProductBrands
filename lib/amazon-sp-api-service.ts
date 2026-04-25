@@ -1,4 +1,4 @@
-import SellingPartnerAPI from "amazon-sp-api"
+const SellingPartnerAPI = require("amazon-sp-api")
 
 /**
  * Initializes the Amazon Selling Partner API (SP-API) client.
