@@ -67,14 +67,29 @@ const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string)
 
       try {
         html5QrCode = new (window as any).Html5Qrcode("inventory-reader");
+        
+        // Define a scanning area that's good for mobile
+        const qrboxFunction = (viewfinderWidth: number, viewfinderHeight: number) => {
+            let minEdgePercentage = 0.7; // 70%
+            let minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+            let qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+            return {
+                width: qrboxSize,
+                height: Math.floor(qrboxSize * 0.7) // Slightly wider for long barcodes (UPC/EAN)
+            };
+        };
+
         await html5QrCode.start(
           { facingMode: "environment" },
           { 
-            fps: 15, 
-            qrbox: { width: 280, height: 280 },
-            aspectRatio: 1.0,
+            fps: 20, 
+            qrbox: qrboxFunction,
+            // Disable some processing if needed for speed, but usually not necessary
+            rememberLastUsedCamera: true,
+            supportedScanTypes: [0] // 0 = Html5QrcodeScanType.SCAN_TYPE_CAMERA
           },
           (decodedText: string) => {
+            // Give immediate feedback
             onScan(decodedText);
             html5QrCode.stop().catch(console.error);
           },
@@ -257,9 +272,12 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
     if (!code) return
     setIsScanning(true)
     setLookupSource(null)
+    
+    // Optimistically fill the barcode fields we have
+    const cleanCode = code.trim()
+    setForm(f => ({ ...f, upc: cleanCode }))
+
     try {
-      // Clean the code (remove whitespace)
-      const cleanCode = code.trim()
       const res = await fetch(`/api/admin/inventory/lookup?code=${encodeURIComponent(cleanCode)}`)
       const data = await res.json()
       
@@ -277,8 +295,6 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
         }))
       } else {
         setLookupSource(null)
-        // If it was a manual enter, maybe alert?
-        console.log("Product not found for code:", cleanCode)
       }
     } catch (e) {
       console.error("Lookup error:", e)

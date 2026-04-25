@@ -97,9 +97,10 @@ export async function GET(req: Request) {
     // Only query if it is purely numeric, since FNSKUs (X00...) are Amazon-specific
     // Strip non-digits for the universal logic
     const numericCode = code.replace(/\D/g, "");
-    const isEanUpc = /^\d{5,14}$/.test(numericCode);
-    if (isEanUpc) {
+    const isNumeric = /^\d{5,14}$/.test(numericCode);
+    if (isNumeric) {
       try {
+        // 1. Try UPCItemDB
         const upcRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${numericCode}`);
         let upcData = upcRes.ok ? await upcRes.json() : null;
 
@@ -122,6 +123,27 @@ export async function GET(req: Request) {
               amazonImageUrl: externalItem.images && externalItem.images.length > 0 ? externalItem.images[0] : null,
             }
           });
+        }
+
+        // 2. Fallback to OpenFoodFacts (good for international EANs)
+        const offRes = await fetch(`https://world.openfoodfacts.org/api/v0/product/${numericCode}.json`);
+        if (offRes.ok) {
+          const offData = await offRes.json();
+          if (offData.status === 1 && offData.product) {
+             const p = offData.product;
+             return NextResponse.json({
+               found: true,
+               source: "external",
+               item: {
+                 name: p.product_name || "",
+                 upc: numericCode,
+                 ean: numericCode,
+                 asin: "",
+                 description: p.generic_name || "",
+                 amazonImageUrl: p.image_url || null,
+               }
+             });
+          }
         }
       } catch (err) {
         console.error("External UPC lookup error:", err);
