@@ -354,17 +354,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
 
     return (
       <div
-        role="button"
-        tabIndex={0}
         onClick={() => openPalletForm(pallet)}
-        draggable={occupied}
-        onDragStart={(e) => {
-          if (!occupied) { e.preventDefault(); return }
-          setDragSourceId(pallet.id)
-          e.dataTransfer.setData("text/plain", locationCode)
-          e.dataTransfer.effectAllowed = "move"
-        }}
-        onDragEnd={() => setDragSourceId(null)}
         onDragOver={(e) => {
           if (dragSourceId && !occupied) {
             e.preventDefault()
@@ -379,9 +369,28 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
           }
           setDragSourceId(null)
         }}
-        className={`w-[58px] h-[48px] rounded-lg border-2 flex flex-col items-center justify-center gap-0 transition-all cursor-pointer hover:scale-110 hover:shadow-lg hover:z-10 relative select-none ${borderBg} ${isDragOver ? "ring-2 ring-blue-400 ring-offset-1 scale-110 !bg-blue-50 !border-blue-300" : ""} ${dragSourceId === pallet.id ? "opacity-40 scale-95" : ""}`}
+        className={`w-[58px] h-[48px] rounded-lg border-2 flex flex-col items-center justify-center gap-0 transition-all cursor-pointer hover:scale-105 hover:shadow-lg hover:z-10 relative select-none group ${borderBg} ${isDragOver ? "ring-2 ring-blue-400 ring-offset-1 scale-110 !bg-blue-50 !border-blue-300" : ""} ${dragSourceId === pallet.id ? "opacity-40 scale-95" : ""}`}
         title={`${locationCode}${occupied ? `\n${pallet.productName || pallet.sku || ""}` : "\nVacío — suelta un pallet aquí"}`}
       >
+        {/* Drag handle — only visible on hover for occupied pallets */}
+        {occupied && (
+          <div
+            draggable
+            onDragStart={(e) => {
+              e.stopPropagation()
+              setDragSourceId(pallet.id)
+              e.dataTransfer.setData("text/plain", locationCode)
+              e.dataTransfer.effectAllowed = "move"
+            }}
+            onDragEnd={() => setDragSourceId(null)}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute -top-2 -left-2 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-20 shadow-md hover:bg-blue-700 hover:scale-110"
+            title="Arrastra para mover"
+          >
+            <Move className="h-3 w-3 text-white" />
+          </div>
+        )}
+
         <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ${statusColor}`} />
         {occupied ? (
           <div className="flex flex-col items-center justify-center w-full px-[2px] overflow-hidden mt-1">
