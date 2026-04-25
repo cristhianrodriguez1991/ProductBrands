@@ -53,24 +53,29 @@ export async function POST() {
       console.warn("Catalog lookup failed (continuing without images):", catErr?.message)
     }
 
-    // ── 3. Parse and Insert/Upsert ──
+    // ── 3. Get REAL FBA warehouse quantities ──
+    // The report list gets ALL listings, but we must complement it with FBA inventory sums
+    let fbaQtyMap = new Map<string, { fulfillable: number; reserved: number }>()
+    try {
+      fbaQtyMap = await getFbaQuantities()
+    } catch (qtyErr: any) {
+      console.warn("FBA quantity lookup failed (quantities will show as 0):", qtyErr?.message)
+    }
+
+    // ── 4. Parse and Insert/Upsert ──
     let createdCount = 0
     let updatedCount = 0
 
     for (const item of listings) {
-      // The GET_FBA_MYI_ALL_INVENTORY_DATA report headers are:
-      // sku, fnsku, asin, product-name, condition, your-price, mfn-listing-exists, 
-      // mfn-fulfillable-quantity, afn-listing-exists, afn-fulfillable-quantity, 
-      // afn-unsellable-quantity, afn-reserved-quantity, afn-total-quantity...
-      
-      const asin = item["asin"] || item["ASIN"] || ""
-      const sku = item["sku"] || item["seller-sku"] || ""
-      const title = item["product-name"] || item["item-name"] || item["Title"] || ""
-      const condition = item["condition"] || item["item-condition"] || item["Condition"] || ""
+      const asin = item["asin1"] || item["ASIN"] || item["asin"] || ""
+      const sku = item["seller-sku"] || item["sku"] || ""
+      const title = item["item-name"] || item["product-name"] || item["Title"] || ""
+      const condition = item["item-condition"] || item["condition"] || item["Condition"] || ""
 
-      // Get REAL FBA quantities directly from the FBA report!
-      const quantityOnHand = parseInt(item["afn-fulfillable-quantity"] || item["quantity"] || "0", 10) || 0
-      const quantityReserved = parseInt(item["afn-reserved-quantity"] || "0", 10) || 0
+      // Extract quantities from FBA response
+      const fbaQty = fbaQtyMap.get(asin)
+      const quantityOnHand = fbaQty?.fulfillable || 0
+      const quantityReserved = fbaQty?.reserved || 0
 
       // Get catalog image (richer quality) and UPC if available
       const cData = catalogMap.get(asin)

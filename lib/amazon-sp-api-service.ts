@@ -39,9 +39,9 @@ function getClient(): any {
 }
 
 /**
- * Fetch ALL FBA listings using the Reports API.
- * Uses GET_FBA_MYI_ALL_INVENTORY_DATA which returns ALL FBA items
- * (active, inactive, out of stock), matching the "All" filter in Seller Central.
+ * Fetch ALL listings using the Reports API.
+ * Uses GET_MERCHANT_LISTINGS_ALL_DATA which returns ALL items
+ * (active, inactive, FBA, FBM), matching the "All" filter in Seller Central.
  * 
  * Flow: createReport → poll until DONE → download & parse TSV
  */
@@ -54,7 +54,7 @@ export async function getActiveListings(): Promise<any[]> {
     operation: "createReport",
     endpoint: "reports",
     body: {
-      reportType: "GET_FBA_MYI_ALL_INVENTORY_DATA",
+      reportType: "GET_MERCHANT_LISTINGS_ALL_DATA",
       marketplaceIds: [usMarketplaceId],
     },
   })
@@ -88,38 +88,23 @@ export async function getActiveListings(): Promise<any[]> {
   }
 
   if (!reportDocumentId) {
-    throw new Error("Report timed out after 2 minutes")
+    throw new Error("Report timed out or document ID not available")
   }
 
-  // Step 3: Download report document
+  // Step 3: Get document & download
   const docRes: any = await client.callAPI({
     operation: "getReportDocument",
     endpoint: "reports",
     path: { reportDocumentId },
   })
 
-  // The library should auto-download and decompress the report
-  // docRes should be the raw text content (TSV format)
-  let tsvContent: string = ""
-  if (typeof docRes === "string") {
-    tsvContent = docRes
-  } else if (docRes?.document) {
-    tsvContent = docRes.document
-  } else {
-    // Try to fetch from URL if provided
-    const url = docRes?.url
-    if (url) {
-      const fetchRes = await fetch(url)
-      tsvContent = await fetchRes.text()
-    } else {
-      throw new Error("Could not retrieve report document content")
-    }
-  }
+  const downloadRes = await fetch(docRes.url)
+  let tsvContent = await downloadRes.text()
 
   // Step 4: Parse TSV into structured data
   const allItems = parseTSV(tsvContent)
 
-  console.log(`FBA Report returned ${allItems.length} active inventory items.`)
+  console.log(`Report returned ${allItems.length} total inventory items.`)
   return allItems
 }
 
@@ -135,16 +120,20 @@ export async function getFbaQuantities(): Promise<Map<string, { fulfillable: num
   let nextToken: string | undefined = undefined
 
   do {
+    // Amazon SP-API requirement: If nextToken is provided, other query params MUST NOT be present
+    const queryParams = nextToken 
+      ? { nextToken }
+      : {
+          details: true,
+          granularityType: "Marketplace",
+          granularityId: usMarketplaceId,
+          marketplaceIds: usMarketplaceId,
+        }
+
     const res: any = await client.callAPI({
       operation: "getInventorySummaries",
       endpoint: "fbaInventory",
-      query: {
-        details: true,
-        granularityType: "Marketplace",
-        granularityId: usMarketplaceId,
-        marketplaceIds: usMarketplaceId,
-        ...(nextToken ? { nextToken } : {}),
-      },
+      query: queryParams,
     })
 
     if (res && res.inventorySummaries) {

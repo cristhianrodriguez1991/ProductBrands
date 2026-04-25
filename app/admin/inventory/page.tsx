@@ -106,14 +106,17 @@ export default function InventoryPage() {
     setIsSyncing(true)
     try {
       const res = await fetch("/api/admin/inventory/wipe", { method: "DELETE" })
+      const data = await res.json().catch(() => ({}))
+      
       if (res.ok) {
         await fetchItems()
         alert("🗑️ All inventory has been deleted.")
       } else {
-        alert("❌ Failed to wipe inventory.")
+        alert("❌ Failed to wipe inventory: " + (data.error || "Unknown server error"))
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e)
+      alert("❌ Wipe request failed: " + e.message)
     } finally {
       setIsSyncing(false)
     }
@@ -239,8 +242,20 @@ export default function InventoryPage() {
           </div>
         </div>
 
-        {/* SEARCH BAR */}
+        {/* SEARCH BAR & COUNTERS */}
         <div className="px-3 pb-3 pt-1">
+          {/* Stats Bar */}
+          <div className="flex items-center space-x-4 mb-2 px-1 text-sm text-slate-600">
+            <div className="font-semibold text-slate-800">
+              <span className="text-slate-500 font-normal mr-1">Total Listings:</span> 
+              {items.length}
+            </div>
+            <div className="font-semibold text-blue-600">
+              <span className="text-slate-500 font-normal mr-1">Total Items In Stock:</span>
+              {items.reduce((acc, curr) => acc + (curr.quantityOnHand || 0) + (curr.quantityReserved || 0), 0).toLocaleString()}
+            </div>
+          </div>
+          
           <div className="relative flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all shadow-sm">
             <div className="pl-3 py-2 text-slate-400">
               <Search className="h-5 w-5" />
