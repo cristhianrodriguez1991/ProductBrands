@@ -323,10 +323,11 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
 // ══════════════════════════════════════════════════
 // EDIT PALLET MODAL
 // ══════════════════════════════════════════════════
-function EditPalletModal({ open, onClose, pallet, onSaved }: {
+function EditPalletModal({ open, onClose, pallet, occupiedLocationCodes, onSaved }: {
   open: boolean
   onClose: () => void
   pallet: PalletLocation | null
+  occupiedLocationCodes: Set<string>
   onSaved: () => void
 }) {
   const [form, setForm] = useState({
@@ -345,15 +346,30 @@ function EditPalletModal({ open, onClose, pallet, onSaved }: {
   })
   const [saving, setSaving] = useState(false)
 
-  const levelMap: Record<string, string> = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
-  const levelKeys: Record<string, string> = { TOP: "T", MID: "M", BOT: "L", FLOOR: "P" }
+  const RACKS = {
+    A: { cells: 8 },
+    B: { cells: 5 },
+    C: { cells: 5 },
+  }
+  const LEVELS = [
+    { key: "T", label: "ARRIBA (T)" },
+    { key: "M", label: "MEDIO (M)" },
+    { key: "L", label: "ABAJO (L)" },
+  ]
 
-  const locationCode = useMemo(() => {
-    const cn = parseInt(form.cellNumber) || 1
-    const pp = parseInt(form.palletPosition) || 1
-    const globalNum = (cn - 1) * 2 + pp
-    return `${form.rack}${globalNum}${levelKeys[form.level] || "P"}`
-  }, [form.rack, form.level, form.cellNumber, form.palletPosition])
+  const [moveRack, setMoveRack] = useState<string>("")
+  const [moveLevel, setMoveLevel] = useState<string>("")
+  const [movePosition, setMovePosition] = useState<string>("")
+
+  const locationCode = moveRack && movePosition && moveLevel ? `${moveRack}${movePosition}${moveLevel}` : (pallet?.locationCode || "")
+
+  useEffect(() => {
+    if (!open) {
+      setMoveRack("")
+      setMoveLevel("")
+      setMovePosition("")
+    }
+  }, [open])
 
   useEffect(() => {
     if (pallet) {
@@ -367,6 +383,7 @@ function EditPalletModal({ open, onClose, pallet, onSaved }: {
         if (match) {
           initialRack = match[1]
           const globalNum = parseInt(match[2])
+          const levelMap: Record<string, string> = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
           initialLevel = levelMap[match[3]] || "FLOOR"
           initialCell = Math.ceil(globalNum / 2).toString()
           initialPos = (globalNum % 2 === 0 ? 2 : 1).toString()
@@ -417,17 +434,24 @@ function EditPalletModal({ open, onClose, pallet, onSaved }: {
       }
 
       // If location changed, do POST to move
-      if (locationCode !== pallet.locationCode) {
-        const cn = parseInt(form.cellNumber) || 1
-        const pp = parseInt(form.palletPosition) || 1
+      if (locationCode !== pallet.locationCode && locationCode.length > 2) {
+        let newLevel = "FLOOR"
+        if (moveLevel === "T") newLevel = "TOP"
+        else if (moveLevel === "M") newLevel = "MID"
+        else if (moveLevel === "L") newLevel = "BOT"
+        
+        const posInt = parseInt(movePosition) || 1
+        const cn = Math.ceil(posInt / 2)
+        const pp = posInt % 2 === 0 ? 2 : 1
+
         const moveRes = await fetch("/api/admin/inventory/warehouse/pallet", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             palletId: pallet.palletId,
             newLocationCode: locationCode,
-            newRack: form.rack,
-            newLevel: form.level,
+            newRack: moveRack,
+            newLevel: newLevel,
             newCellNumber: cn,
             newPalletPosition: pp,
           }),
@@ -462,50 +486,92 @@ function EditPalletModal({ open, onClose, pallet, onSaved }: {
           </button>
         </div>
         <div className="overflow-y-auto max-h-[75vh] p-4 space-y-4">
-          {/* Location Picker */}
-          <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-            <div className="flex justify-between items-center">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5" /> Location
-              </label>
-              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-md ${STATUS_COLORS[form.status] || "bg-slate-200"}`}>
-                {locationCode}
-              </span>
+          {/* Move Pallet Section Exact Match */}
+          <div className="pt-4 border-t border-dashed border-slate-200 space-y-3">
+            <div className="flex items-center gap-2">
+              <Move className="h-4 w-4 text-blue-600" />
+              <span className="text-[10px] font-black text-blue-700 uppercase tracking-widest">Mover a otra posición</span>
             </div>
+            <div className="grid grid-cols-3 gap-2">
+              {/* Step 1: Rack */}
+              <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">1. Rack</label>
+                <select
+                  value={moveRack}
+                  onChange={(e) => { setMoveRack(e.target.value); setMoveLevel(""); setMovePosition("") }}
+                  className="w-full mt-1 px-2 py-2 border rounded-lg text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                >
+                  <option value="">Rack...</option>
+                  <option value="A">Rack A</option>
+                  <option value="B">Rack B</option>
+                  <option value="C">Rack C</option>
+                </select>
+              </div>
+
+              {/* Step 2: Position */}
+              <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">2. Posición</label>
+                <select
+                  value={movePosition}
+                  onChange={(e) => { setMovePosition(e.target.value); setMoveLevel("") }}
+                  disabled={!moveRack}
+                  className="w-full mt-1 px-2 py-2 border rounded-lg text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none disabled:opacity-40"
+                >
+                  <option value="">Pos...</option>
+                  {moveRack && (() => {
+                    const maxPos = (RACKS as any)[moveRack]?.cells * 2 || 16
+                    return Array.from({ length: maxPos }, (_, i) => {
+                      const num = i + 1
+                      const levels = ["T", "M", "L", "P"]
+                      const hasFreeLevel = levels.some(lvl => {
+                         const loc = `${moveRack}${num}${lvl}`
+                         return !occupiedLocationCodes.has(loc)
+                      })
+                      if (!hasFreeLevel) return null
+                      return <option key={num} value={String(num)}>{num}</option>
+                    })
+                  })()}
+                </select>
+              </div>
+
+              {/* Step 3: Level */}
+              <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">3. Nivel</label>
+                <select
+                  value={moveLevel}
+                  onChange={(e) => setMoveLevel(e.target.value)}
+                  disabled={!moveRack || !movePosition}
+                  className="w-full mt-1 px-2 py-2 border rounded-lg text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none disabled:opacity-40"
+                >
+                  <option value="">Nivel...</option>
+                  {LEVELS.map((lvl) => {
+                    const locCode = `${moveRack}${movePosition}${lvl.key}`
+                    if (occupiedLocationCodes.has(locCode)) return null
+                    return <option key={lvl.key} value={lvl.key}>{lvl.label}</option>
+                  })}
+                  {(() => {
+                     const locCode = `${moveRack}${movePosition}P`
+                     if (occupiedLocationCodes.has(locCode)) return null
+                     return <option value="P">PISO (P)</option>
+                  })()}
+                </select>
+              </div>
+            </div>
+
+            {moveRack && moveLevel && movePosition && (
+              <div className="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2">
+                <span className="text-sm font-black text-blue-800">
+                  Destino Seleccionado: {moveRack}{movePosition}{moveLevel}
+                </span>
+              </div>
+            )}
             
-            <div className="grid grid-cols-4 gap-2 mt-2">
-              <div>
-                <label className="text-[9px] text-slate-400 font-bold">Rack</label>
-                <select value={form.rack} onChange={(e) => setForm(f => ({ ...f, rack: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5">
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[9px] text-slate-400 font-bold">Level</label>
-                <select value={form.level} onChange={(e) => setForm(f => ({ ...f, level: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5">
-                  <option value="TOP">Top</option>
-                  <option value="MID">Mid</option>
-                  <option value="BOT">Bot</option>
-                  <option value="FLOOR">Floor</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[9px] text-slate-400 font-bold">Cell #</label>
-                <Input type="number" min={1} max={8} value={form.cellNumber} onChange={(e) => setForm(f => ({ ...f, cellNumber: e.target.value }))} className="mt-0.5" />
-              </div>
-              <div>
-                <label className="text-[9px] text-slate-400 font-bold">Position</label>
-                <select value={form.palletPosition} onChange={(e) => setForm(f => ({ ...f, palletPosition: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5">
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                </select>
-              </div>
-            </div>
+            <p className="text-[10px] text-slate-400 italic">Esta posición será movida al guardar. La posición de destino no puede estar ocupada.</p>
           </div>
 
-          <div>
+          <hr className="border-slate-100 my-2" />
+
+          <div className="grid grid-cols-2 gap-3 mt-4">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Product Name</label>
             <Input value={form.productName} onChange={(e) => setForm(f => ({ ...f, productName: e.target.value }))} className="mt-1" />
           </div>
@@ -581,6 +647,14 @@ function WarehouseInventoryTab() {
   // Selection for bulk operations
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set())
   const [selectionMode, setSelectionMode] = useState(false)
+
+  const occupiedLocationCodes = useMemo(() => {
+    const set = new Set<string>()
+    products.forEach(p => p.locations.forEach(loc => {
+      set.add(loc.locationCode)
+    }))
+    return set
+  }, [products])
 
   const fetchWarehouseInventory = useCallback(async () => {
     try {
@@ -1191,6 +1265,7 @@ function WarehouseInventoryTab() {
         open={showEditModal} 
         onClose={() => { setShowEditModal(false); setEditPallet(null) }} 
         pallet={editPallet} 
+        occupiedLocationCodes={occupiedLocationCodes}
         onSaved={fetchWarehouseInventory} 
       />
       <ConfirmModal 
