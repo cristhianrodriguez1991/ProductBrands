@@ -44,31 +44,55 @@ interface Pallet {
   [key: string]: any
 }
 
-// ── Individual 3D Pallet ──
-function Pallet3D({
-  position,
-  pallet,
-  onSelect,
-}: {
-  position: [number, number, number]
-  pallet: Pallet
-  onSelect: (p: Pallet) => void
-}) {
-  const meshRef = useRef<THREE.Mesh>(null)
+// ── Realistic Wooden Pallet Base ──
+function RealisticPallet({ width, depth }: { width: number; depth: number }) {
+  const boardH = 0.012 * S
+  const stringerW = 0.035 * S
+  return (
+    <group position={[0, boardH, 0]}>
+      {/* 3 Stringers (lengthwise) */}
+      <RoundedBox args={[stringerW, boardH * 2, depth]} position={[-width / 2 + stringerW / 2, 0, 0]} radius={0.002 * S}>
+        <meshStandardMaterial color="#a07850" roughness={0.9} />
+      </RoundedBox>
+      <RoundedBox args={[stringerW, boardH * 2, depth]} position={[0, 0, 0]} radius={0.002 * S}>
+        <meshStandardMaterial color="#a07850" roughness={0.9} />
+      </RoundedBox>
+      <RoundedBox args={[stringerW, boardH * 2, depth]} position={[width / 2 - stringerW / 2, 0, 0]} radius={0.002 * S}>
+        <meshStandardMaterial color="#a07850" roughness={0.9} />
+      </RoundedBox>
+
+      {/* Top Deck Boards (widthwise) */}
+      {[0, 1, 2, 3, 4, 5].map((i) => {
+        const spacing = depth / 5
+        const z = -depth / 2 + spacing * i
+        return (
+          <RoundedBox key={i} args={[width, boardH * 0.8, 0.055 * S]} position={[0, boardH * 1.5, z]} radius={0.002 * S}>
+            <meshStandardMaterial color="#d1a575" roughness={0.8} />
+          </RoundedBox>
+        )
+      })}
+    </group>
+  )
+}
+
+// ── Single Pallet (3D Node) ──
+function Pallet3D({ pallet, position, onSelect }: { pallet: Pallet; position: [number, number, number]; onSelect: (p: Pallet) => void }) {
+  const meshRef = useRef<any>(null)
   const [hovered, setHovered] = useState(false)
+
   const occupied = pallet.status !== "AVAILABLE"
   const color = STATUS_COLORS[pallet.status] || "#94a3b8"
 
-  // Occupied pallets get a visible box; empty ones are very thin
+  // Occupied pallets get a visible block of products
   const displayHeight = occupied
     ? (pallet.palletHeightIn ? Math.max(0.3, Math.min(0.85, pallet.palletHeightIn / 100)) : 0.4)
-    : 0.06
+    : 0
 
   useFrame(() => {
     if (meshRef.current) {
       meshRef.current.scale.y = THREE.MathUtils.lerp(
         meshRef.current.scale.y,
-        hovered ? 1.12 : 1,
+        hovered ? 1.08 : 1,
         0.1
       )
     }
@@ -76,34 +100,34 @@ function Pallet3D({
 
   return (
     <group position={position}>
-      <RoundedBox
-        ref={meshRef}
-        args={[0.40 * S, displayHeight * S, 0.44 * S]}
-        radius={0.02 * S}
-        smoothness={4}
-        position={[0, (displayHeight * S) / 2, 0]}
-        onClick={(e: ThreeEvent<MouseEvent>) => {
-          e.stopPropagation()
-          onSelect(pallet)
-        }}
-        onPointerOver={(e: ThreeEvent<PointerEvent>) => {
-          e.stopPropagation()
-          setHovered(true)
-          document.body.style.cursor = "pointer"
-        }}
-        onPointerOut={() => {
-          setHovered(false)
-          document.body.style.cursor = "auto"
-        }}
+      {/* Invisible Interactive Hitbox */}
+      <mesh
+        position={[0, 0.2 * S, 0]}
+        onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); onSelect(pallet) }}
+        onPointerOver={(e: ThreeEvent<PointerEvent>) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer" }}
+        onPointerOut={(e: ThreeEvent<PointerEvent>) => { setHovered(false); document.body.style.cursor = "auto" }}
+        visible={false}
       >
-        <meshStandardMaterial
-          color={hovered ? "#60a5fa" : color}
-          roughness={0.35}
-          metalness={0.15}
-          transparent={!occupied}
-          opacity={occupied ? 1 : 0.2}
-        />
-      </RoundedBox>
+        <boxGeometry args={[0.42 * S, 0.5 * S, 0.46 * S]} />
+      </mesh>
+
+      <group ref={meshRef}>
+        <RealisticPallet width={0.40 * S} depth={0.44 * S} />
+        
+        {occupied && (
+          <RoundedBox
+            args={[0.38 * S, displayHeight * S, 0.42 * S]}
+            radius={0.01 * S}
+            smoothness={4}
+            position={[0, (displayHeight * S) / 2 + 0.04 * S, 0]}
+          >
+            <meshStandardMaterial
+              color={hovered ? "#60a5fa" : color}
+              roughness={0.65}
+            />
+          </RoundedBox>
+        )}
+      </group>
 
       {/* SKU label */}
       {occupied && pallet.sku && (
@@ -139,21 +163,7 @@ function Pallet3D({
         </Text>
       )}
 
-      {/* Position label for empty slots */}
-      {!occupied && (
-        <Text
-          position={[0, 0.1 * S, 0]}
-          fontSize={0.12 * S}
-          color="#1e293b"
-          anchorX="center"
-          anchorY="middle"
-          fontWeight="black"
-          outlineWidth={0.01 * S}
-          outlineColor="#ffffff"
-        >
-          {pallet.locationCode}
-        </Text>
-      )}
+      {/* Position label for empty slots (removed to prefer floor text) */}
     </group>
   )
 }
@@ -161,14 +171,14 @@ function Pallet3D({
 // ── Cell (2 pallets side by side) ──
 function Cell3D({
   position,
-  p1Num,
-  p2Num,
+  p1Loc,
+  p2Loc,
   pallets,
   onSelect,
 }: {
   position: [number, number, number]
-  p1Num: number
-  p2Num: number
+  p1Loc: string
+  p2Loc: string
   pallets: [Pallet | undefined, Pallet | undefined]
   onSelect: (p: Pallet) => void
 }) {
@@ -185,11 +195,11 @@ function Cell3D({
       </RoundedBox>
 
       {/* Platform labels for each Pallet */}
-      <Text position={[0.22 * S, -0.05 * S, 0.3 * S]} fontSize={0.055 * S} color="#64748b" anchorX="center" anchorY="top" fontWeight="bold">
-        {p1Num}
+      <Text position={[0.22 * S, -0.05 * S, 0.3 * S]} fontSize={0.06 * S} color="#475569" anchorX="center" anchorY="top" fontWeight="black" outlineWidth={0.005 * S} outlineColor="#e2e8f0">
+        {p1Loc}
       </Text>
-      <Text position={[-0.22 * S, -0.05 * S, 0.3 * S]} fontSize={0.055 * S} color="#64748b" anchorX="center" anchorY="top" fontWeight="bold">
-        {p2Num}
+      <Text position={[-0.22 * S, -0.05 * S, 0.3 * S]} fontSize={0.06 * S} color="#475569" anchorX="center" anchorY="top" fontWeight="black" outlineWidth={0.005 * S} outlineColor="#e2e8f0">
+        {p2Loc}
       </Text>
 
       {/* Pallet 1 (Right pallet) */}
@@ -253,8 +263,8 @@ function RackLevel3D({
           <Cell3D
             key={i}
             position={[startX - i * cellSpacing, 0, 0]} // Negative step towards left
-            p1Num={globalP1}
-            p2Num={globalP2}
+            p1Loc={p1Key}
+            p2Loc={p2Key}
             pallets={[palletMap[p1Key], palletMap[p2Key]]}
             onSelect={onSelect}
           />
@@ -412,8 +422,8 @@ function Floor3D({
           <Cell3D
             key={i}
             position={[startX - i * cellSpacing, 0, 0]} // Step left
-            p1Num={globalP1}
-            p2Num={globalP2}
+            p1Loc={p1Key}
+            p2Loc={p2Key}
             pallets={[palletMap[p1Key], palletMap[p2Key]]}
             onSelect={onSelect}
           />
