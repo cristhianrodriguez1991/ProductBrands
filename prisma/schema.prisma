@@ -891,6 +891,7 @@ model InventoryItem {
 
   // Amazon fields
   asin            String?
+  fnsku           String?         // Fulfillment Network SKU
   amazonTitle     String?
   amazonImageUrl  String?
   amazonUrl       String?

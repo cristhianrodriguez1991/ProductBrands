@@ -55,7 +55,7 @@ export async function POST() {
 
     // ── 3. Get REAL FBA warehouse quantities ──
     // The report list gets ALL listings, but we must complement it with FBA inventory sums
-    let fbaQtyMap = new Map<string, { fulfillable: number; reserved: number }>()
+    let fbaQtyMap = new Map<string, { fulfillable: number; reserved: number; fnsku: string | null }>()
     try {
       fbaQtyMap = await getFbaQuantities()
     } catch (qtyErr: any) {
@@ -72,10 +72,11 @@ export async function POST() {
       const title = item["item-name"] || item["product-name"] || item["Title"] || ""
       const condition = item["item-condition"] || item["condition"] || item["Condition"] || ""
 
-      // Extract quantities from FBA response
-      const fbaQty = fbaQtyMap.get(asin)
+      // Extract quantities AND fnsku from FBA response (using SKU as primary key for FBA)
+      const fbaQty = fbaQtyMap.get(sku)
       const quantityOnHand = fbaQty?.fulfillable || 0
       const quantityReserved = fbaQty?.reserved || 0
+      const fnsku = fbaQty?.fnsku || item["fnsku"] || null
 
       // Get catalog image (richer quality) and UPC if available
       const cData = catalogMap.get(asin)
@@ -107,6 +108,7 @@ export async function POST() {
       const itemData = {
         source: "AMAZON" as const,
         asin: asin || null,
+        fnsku: fnsku || null,
         upc: upc || null,
         name: catalogTitle || title || `Amazon Product (${asin})`,
         amazonTitle: catalogTitle || title || null,

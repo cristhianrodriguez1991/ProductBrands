@@ -110,12 +110,12 @@ export async function getActiveListings(): Promise<any[]> {
 
 /**
  * Get real-time FBA inventory quantities.
- * Returns a Map of ASIN → { fulfillable, reserved } for quick lookup.
+ * Returns a Map of SKU → { fulfillable, reserved, fnsku } for quick lookup.
  */
-export async function getFbaQuantities(): Promise<Map<string, { fulfillable: number; reserved: number }>> {
+export async function getFbaQuantities(): Promise<Map<string, { fulfillable: number; reserved: number; fnsku: string | null }>> {
   const client: any = getClient()
   const usMarketplaceId = "ATVPDKIKX0DER"
-  const quantityMap = new Map<string, { fulfillable: number; reserved: number }>()
+  const quantityMap = new Map<string, { fulfillable: number; reserved: number; fnsku: string | null }>()
 
   let nextToken: string | undefined = undefined
 
@@ -138,19 +138,21 @@ export async function getFbaQuantities(): Promise<Map<string, { fulfillable: num
 
     if (res && res.inventorySummaries) {
       for (const inv of res.inventorySummaries) {
-        const asin = inv.asin
+        const sku = inv.sellerSku
+        const fnsku = inv.fnSku || null
         const fulfillable = inv.inventoryDetails?.fulfillableQuantity || 0
         const reserved = inv.inventoryDetails?.reservedQuantity?.totalReservedQuantity || 0
         
-        // Accumulate if same ASIN appears multiple times (different SKUs)
-        const existing = quantityMap.get(asin)
+        // Amazon may chunk SKUs, accumulation isn't strictly necessary but safe
+        const existing = quantityMap.get(sku)
         if (existing) {
-          quantityMap.set(asin, {
+          quantityMap.set(sku, {
             fulfillable: existing.fulfillable + fulfillable,
             reserved: existing.reserved + reserved,
+            fnsku: fnsku || existing.fnsku
           })
         } else {
-          quantityMap.set(asin, { fulfillable, reserved })
+          quantityMap.set(sku, { fulfillable, reserved, fnsku })
         }
       }
     }
