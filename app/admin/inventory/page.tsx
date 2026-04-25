@@ -28,6 +28,7 @@ type InventoryItem = {
   id: string
   source: "AMAZON" | "MANUAL"
   asin: string | null
+  fnsku: string | null
   amazonTitle: string | null
   amazonImageUrl: string | null
   amazonUrl: string | null
@@ -294,7 +295,7 @@ export default function InventoryPage() {
   }, [items])
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans sm:pb-20 -mx-4 -mt-4 md:-mx-8 md:-mt-8">
+    <div className="min-h-screen bg-slate-50 font-sans sm:pb-20">
       
       {/* HEADER - Sticky and Opaque */}
       <div className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-md">
@@ -443,6 +444,7 @@ export default function InventoryPage() {
                           {item.sku && <div className="truncate max-w-[180px]">SKU: {item.sku}</div>}
                           {item.asin && <div>ASIN: {item.asin}</div>}
                           {item.upc && <div>UPC: {item.upc}</div>}
+                          {item.fnsku && <div>FNSKU: {item.fnsku}</div>}
                         </div>
                       </div>
                       <ChevronRight className={`h-5 w-5 text-slate-400 self-center transition-transform ${isExpanded ? "rotate-90" : ""}`} />
@@ -465,6 +467,7 @@ export default function InventoryPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-[12px]">
                         <div><label className="font-bold text-slate-500 uppercase text-[10px]">UPC</label><Input className="h-8 text-[13px]" value={item.upc||""} onChange={(e)=>updateItem(item.id, "upc", e.target.value)} /></div>
+                        <div><label className="font-bold text-slate-500 uppercase text-[10px]">FNSKU</label><Input className="h-8 text-[13px]" value={item.fnsku||""} onChange={(e)=>updateItem(item.id, "fnsku", e.target.value)} /></div>
                         <div><label className="font-bold text-slate-500 uppercase text-[10px]">SKU</label><Input className="h-8 text-[13px]" value={item.sku||""} onChange={(e)=>updateItem(item.id, "sku", e.target.value)} /></div>
                       </div>
                     </div>
