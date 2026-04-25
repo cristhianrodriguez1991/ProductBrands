@@ -115,8 +115,10 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
   // Collapsed rack sections
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
 
-  // Move pallet
-  const [moveTarget, setMoveTarget] = useState<string>("")
+  // Move pallet — cascading
+  const [moveRack, setMoveRack] = useState<string>("")
+  const [moveLevel, setMoveLevel] = useState<string>("")
+  const [movePosition, setMovePosition] = useState<string>("")
   const [moving, setMoving] = useState(false)
 
   // Drag-and-drop
@@ -267,8 +269,9 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
   }
 
   // ── Move pallet ──
-  const movePallet = async (targetLocCode: string) => {
-    if (!selectedPallet) return
+  const movePallet = async () => {
+    if (!selectedPallet || !moveRack || !moveLevel || !movePosition) return
+    const targetLocCode = `${moveRack}${movePosition}${moveLevel}`
     const targetPallet = palletsByLocation[targetLocCode]
     if (!targetPallet) {
       toast({ title: "Error", description: "Posición destino no encontrada.", variant: "destructive" })
@@ -289,7 +292,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
           return p
         }))
         setFormOpen(false)
-        setMoveTarget("")
+        setMoveRack(""); setMoveLevel(""); setMovePosition("")
         toast({ title: "Movido", description: `${selectedPallet.locationCode} → ${targetLocCode}` })
       } else {
         const errText = await res.text()
@@ -350,11 +353,13 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
     const isDragOver = dragSourceId !== null && dragSourceId !== pallet.id && !occupied
 
     return (
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => openPalletForm(pallet)}
         draggable={occupied}
         onDragStart={(e) => {
-          if (!occupied) return
+          if (!occupied) { e.preventDefault(); return }
           setDragSourceId(pallet.id)
           e.dataTransfer.setData("text/plain", locationCode)
           e.dataTransfer.effectAllowed = "move"
@@ -374,7 +379,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
           }
           setDragSourceId(null)
         }}
-        className={`w-[58px] h-[48px] rounded-lg border-2 flex flex-col items-center justify-center gap-0 transition-all cursor-pointer hover:scale-110 hover:shadow-lg hover:z-10 relative ${borderBg} ${isDragOver ? "ring-2 ring-blue-400 ring-offset-1 scale-110 bg-blue-50" : ""} ${dragSourceId === pallet.id ? "opacity-40 scale-95" : ""}`}
+        className={`w-[58px] h-[48px] rounded-lg border-2 flex flex-col items-center justify-center gap-0 transition-all cursor-pointer hover:scale-110 hover:shadow-lg hover:z-10 relative select-none ${borderBg} ${isDragOver ? "ring-2 ring-blue-400 ring-offset-1 scale-110 !bg-blue-50 !border-blue-300" : ""} ${dragSourceId === pallet.id ? "opacity-40 scale-95" : ""}`}
         title={`${locationCode}${occupied ? `\n${pallet.productName || pallet.sku || ""}` : "\nVacío — suelta un pallet aquí"}`}
       >
         <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ${statusColor}`} />
@@ -395,7 +400,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
         ) : (
           <span className="text-[8px] text-slate-400 font-bold">{locationCode}</span>
         )}
-      </button>
+      </div>
     )
   }
 
@@ -741,31 +746,82 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
                   <Move className="h-4 w-4 text-blue-600" />
                   <span className="text-[10px] font-black text-blue-700 uppercase tracking-widest">Mover a otra posición</span>
                 </div>
-                <div className="flex gap-2">
-                  <select
-                    value={moveTarget}
-                    onChange={(e) => setMoveTarget(e.target.value)}
-                    className="flex-1 px-3 py-2 border rounded-lg text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
-                  >
-                    <option value="">Seleccionar posición disponible...</option>
-                    {pallets
-                      .filter((p) => p.status === "AVAILABLE" && p.id !== selectedPallet.id)
-                      .sort((a, b) => a.locationCode.localeCompare(b.locationCode))
-                      .map((p) => (
-                        <option key={p.id} value={p.locationCode}>
-                          {p.locationCode}
-                        </option>
+                <div className="grid grid-cols-3 gap-2">
+                  {/* Step 1: Rack */}
+                  <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">1. Rack</label>
+                    <select
+                      value={moveRack}
+                      onChange={(e) => { setMoveRack(e.target.value); setMoveLevel(""); setMovePosition("") }}
+                      className="w-full mt-1 px-2 py-2 border rounded-lg text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                    >
+                      <option value="">Rack...</option>
+                      {Object.entries(RACKS).map(([key, cfg]) => (
+                        <option key={key} value={key}>{cfg.label}</option>
                       ))}
-                  </select>
-                  <Button
-                    onClick={() => moveTarget && movePallet(moveTarget)}
-                    disabled={!moveTarget || moving}
-                    className="gap-2 bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Move className="h-4 w-4" />
-                    {moving ? "Moviendo..." : "Mover"}
-                  </Button>
+                    </select>
+                  </div>
+
+                  {/* Step 2: Level */}
+                  <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">2. Nivel</label>
+                    <select
+                      value={moveLevel}
+                      onChange={(e) => { setMoveLevel(e.target.value); setMovePosition("") }}
+                      disabled={!moveRack}
+                      className="w-full mt-1 px-2 py-2 border rounded-lg text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none disabled:opacity-40"
+                    >
+                      <option value="">Nivel...</option>
+                      {LEVELS.map((lvl) => (
+                        <option key={lvl.key} value={lvl.key}>{lvl.label} ({lvl.key})</option>
+                      ))}
+                      <option value="P">PISO (P)</option>
+                    </select>
+                  </div>
+
+                  {/* Step 3: Position */}
+                  <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">3. Posición</label>
+                    <select
+                      value={movePosition}
+                      onChange={(e) => setMovePosition(e.target.value)}
+                      disabled={!moveRack || !moveLevel}
+                      className="w-full mt-1 px-2 py-2 border rounded-lg text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none disabled:opacity-40"
+                    >
+                      <option value="">Pos...</option>
+                      {moveRack && moveLevel && (() => {
+                        const maxPos = (RACKS as any)[moveRack]?.cells * 2 || 16
+                        return Array.from({ length: maxPos }, (_, i) => {
+                          const num = i + 1
+                          const locCode = `${moveRack}${num}${moveLevel}`
+                          const p = palletsByLocation[locCode]
+                          const available = p && p.status === "AVAILABLE"
+                          return available ? (
+                            <option key={num} value={String(num)}>{num}</option>
+                          ) : null
+                        })
+                      })()}
+                    </select>
+                  </div>
                 </div>
+
+                {moveRack && moveLevel && movePosition && (
+                  <div className="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2">
+                    <span className="text-sm font-black text-blue-800">
+                      Destino: {moveRack}{movePosition}{moveLevel}
+                    </span>
+                    <Button
+                      onClick={movePallet}
+                      disabled={moving}
+                      size="sm"
+                      className="gap-2 bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Move className="h-4 w-4" />
+                      {moving ? "Moviendo..." : "Mover"}
+                    </Button>
+                  </div>
+                )}
+
                 <p className="text-[10px] text-slate-400 italic">También puedes arrastrar pallets directamente en la vista 2D.</p>
               </div>
             )}
