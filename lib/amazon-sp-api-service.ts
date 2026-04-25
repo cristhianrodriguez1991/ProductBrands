@@ -17,15 +17,23 @@ function getClient(): any {
     throw new Error("Missing SP-API credentials in .env")
   }
 
-  return new SellingPartnerAPI({
-    region: AMAZON_SPAPI_REGION,
-    refresh_token: AMAZON_SPAPI_REFRESH_TOKEN,
-    credentials: {
-      SELLING_PARTNER_APP_CLIENT_ID: AMAZON_SPAPI_CLIENT_ID,
-      SELLING_PARTNER_APP_CLIENT_SECRET: AMAZON_SPAPI_CLIENT_SECRET,
-    },
-    use_sandbox: false,
-  })
+  try {
+    return new SellingPartnerAPI({
+      region: AMAZON_SPAPI_REGION,
+      refresh_token: AMAZON_SPAPI_REFRESH_TOKEN,
+      options: {
+        auto_request_tokens: true,
+      },
+      credentials: {
+        SELLING_PARTNER_APP_CLIENT_ID: AMAZON_SPAPI_CLIENT_ID,
+        SELLING_PARTNER_APP_CLIENT_SECRET: AMAZON_SPAPI_CLIENT_SECRET,
+      },
+      use_sandbox: false,
+    })
+  } catch (e: any) {
+    console.error("SP-API Init Error:", e)
+    throw new Error(`Failed to initialize Amazon SP-API Client: ${e?.message}`)
+  }
 }
 
 /**
