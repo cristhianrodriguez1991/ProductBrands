@@ -825,7 +825,7 @@ export default function Warehouse3D({
               <div key={status} className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
                 <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">
-                  {status === "AVAILABLE" ? "Disponible" : status === "RESERVED" ? "Reservado" : status === "DAMAGED" ? "Dañado" : status === "HOLD" ? "En Espera" : status === "INBOUND" ? "Entrante" : "Saliente"}
+                  {status === "AVAILABLE" ? "Disponible" : status === "DAMAGED" ? "Dañado" : status === "HOLD" ? "En Espera" : status === "INBOUND" ? "Shipping Supply" : "Saliente"}
                 </span>
               </div>
             ))}
