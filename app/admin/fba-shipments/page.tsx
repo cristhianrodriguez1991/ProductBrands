@@ -1007,7 +1007,7 @@ export default function FbaShipmentsPage() {
             <div 
               key={tab.id}
               onClick={() => setActiveTabId(tab.id)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-t-2xl cursor-pointer transition-all font-bold min-w-[220px] border-x border-t relative group ${activeTabId === tab.id ? "bg-[#f8fafc] text-slate-900 border-slate-200 -mb-[1px]" : "bg-white text-slate-400 border-transparent hover:bg-slate-50"}`}
+              className={`flex items-center gap-2 px-6 py-3 rounded-t-none cursor-pointer transition-all font-bold min-w-[220px] border-x border-t relative group ${activeTabId === tab.id ? "bg-[#f8fafc] text-slate-900 border-slate-200 -mb-[1px]" : "bg-white text-slate-400 border-transparent hover:bg-slate-50"}`}
             >
               <ImageIcon className="h-3.5 w-3.5 text-blue-400" />
               <span className="truncate max-w-[150px]">{tab.name}</span>
@@ -1166,7 +1166,7 @@ export default function FbaShipmentsPage() {
               </div>
 
               {/* MAIN TABLE */}
-              <Card className="w-full border-0 shadow-2xl rounded-3xl overflow-hidden bg-white mb-10 border border-slate-100">
+              <Card className="w-full border-0 shadow-2xl rounded-none overflow-hidden bg-white mb-10 border border-slate-100">
                 <div className="overflow-x-auto custom-scrollbar">
                   <table className="w-full text-left border-collapse min-w-[1500px]">
                     <thead>
@@ -1210,11 +1210,11 @@ export default function FbaShipmentsPage() {
                   </table>
                 </div>
                 <div className="bg-[#f8fafc]/50 p-8 border-t no-print flex gap-4">
-                  <Button variant="ghost" onClick={() => handleAddRow(activeTab.id)} className="flex-1 h-20 text-slate-400 font-bold gap-4 border-4 border-dashed border-slate-100 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-[1.5rem] group">
+                  <Button variant="ghost" onClick={() => handleAddRow(activeTab.id)} className="flex-1 h-20 text-slate-400 font-bold gap-4 border-4 border-dashed border-slate-100 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all rounded-none group">
                     <Plus className="h-6 w-6 group-hover:scale-125 transition-transform" /> AGREGAR ARTÍCULO AL DOCUMENTO
                   </Button>
                   {copiedItem && (
-                    <Button variant="ghost" onClick={() => pasteItem(activeTab.id)} className="flex-1 h-20 text-blue-400 font-bold gap-4 border-4 border-dashed border-blue-100 hover:border-green-400 hover:bg-green-50 hover:text-green-600 transition-all rounded-[1.5rem] group">
+                    <Button variant="ghost" onClick={() => pasteItem(activeTab.id)} className="flex-1 h-20 text-blue-400 font-bold gap-4 border-4 border-dashed border-blue-100 hover:border-green-400 hover:bg-green-50 hover:text-green-600 transition-all rounded-none group">
                       <ClipboardPaste className="h-6 w-6 group-hover:scale-125 transition-transform" /> PEGAR "{copiedItem.name || "Fila"}"
                     </Button>
                   )}
@@ -1228,7 +1228,7 @@ export default function FbaShipmentsPage() {
                     <MousePointer2 className="h-6 w-6" /> Palets en Espera (Global)
                     <span className="text-[10px] font-black bg-amber-600 text-white px-3 py-1 rounded-full uppercase tracking-tighter">Disponible para este envío</span>
                   </h2>
-                  <div className="overflow-x-auto rounded-[2rem] border border-amber-200 bg-white shadow-xl">
+                  <div className="overflow-x-auto rounded-none border border-amber-200 bg-white shadow-xl">
                     <table className="w-full text-left min-w-[1300px]">
                       <thead>
                         <tr className="bg-amber-800 text-white text-[10px] uppercase font-black tracking-widest">
