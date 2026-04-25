@@ -19,6 +19,7 @@ import {
   Box,
   LayoutGrid,
   ChevronUp,
+  Move,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -113,6 +114,13 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
 
   // Collapsed rack sections
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
+
+  // Move pallet
+  const [moveTarget, setMoveTarget] = useState<string>("")
+  const [moving, setMoving] = useState(false)
+
+  // Drag-and-drop
+  const [dragSourceId, setDragSourceId] = useState<string | null>(null)
 
   // Form state
   const [form, setForm] = useState({
@@ -258,6 +266,75 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
     }
   }
 
+  // ── Move pallet ──
+  const movePallet = async (targetLocCode: string) => {
+    if (!selectedPallet) return
+    const targetPallet = palletsByLocation[targetLocCode]
+    if (!targetPallet) {
+      toast({ title: "Error", description: "Posición destino no encontrada.", variant: "destructive" })
+      return
+    }
+    setMoving(true)
+    try {
+      const res = await fetch("/api/admin/warehouse/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceId: selectedPallet.id, targetId: targetPallet.id }),
+      })
+      if (res.ok) {
+        const [emptiedSource, filledTarget] = await res.json()
+        setPallets((prev) => prev.map((p) => {
+          if (p.id === emptiedSource.id) return { ...p, ...emptiedSource }
+          if (p.id === filledTarget.id) return { ...p, ...filledTarget }
+          return p
+        }))
+        setFormOpen(false)
+        setMoveTarget("")
+        toast({ title: "Movido", description: `${selectedPallet.locationCode} → ${targetLocCode}` })
+      } else {
+        const errText = await res.text()
+        toast({ title: "Error", description: errText, variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Error", description: "No se pudo mover.", variant: "destructive" })
+    } finally {
+      setMoving(false)
+    }
+  }
+
+  // ── Drag-and-drop handlers ──
+  const handleDragMovePallet = async (sourceLocCode: string, targetLocCode: string) => {
+    const sourcePallet = palletsByLocation[sourceLocCode]
+    const targetPallet = palletsByLocation[targetLocCode]
+    if (!sourcePallet || !targetPallet) return
+    if (!isOccupied(sourcePallet)) return
+    if (isOccupied(targetPallet)) {
+      toast({ title: "Posición ocupada", description: `${targetLocCode} ya tiene carga.`, variant: "destructive" })
+      return
+    }
+    try {
+      const res = await fetch("/api/admin/warehouse/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceId: sourcePallet.id, targetId: targetPallet.id }),
+      })
+      if (res.ok) {
+        const [emptiedSource, filledTarget] = await res.json()
+        setPallets((prev) => prev.map((p) => {
+          if (p.id === emptiedSource.id) return { ...p, ...emptiedSource }
+          if (p.id === filledTarget.id) return { ...p, ...filledTarget }
+          return p
+        }))
+        toast({ title: "Movido", description: `${sourceLocCode} → ${targetLocCode}` })
+      } else {
+        const errText = await res.text()
+        toast({ title: "Error", description: errText, variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Error", description: "No se pudo mover.", variant: "destructive" })
+    }
+  }
+
   const toggleSection = (key: string) => {
     setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }))
   }
@@ -270,12 +347,35 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
     const occupied = isOccupied(pallet)
     const statusColor = STATUS_COLORS[pallet.status] || "bg-slate-400"
     const borderBg = STATUS_BG[pallet.status] || "bg-slate-50 border-slate-200"
+    const isDragOver = dragSourceId !== null && dragSourceId !== pallet.id && !occupied
 
     return (
       <button
         onClick={() => openPalletForm(pallet)}
-        className={`w-[58px] h-[48px] rounded-lg border-2 flex flex-col items-center justify-center gap-0 transition-all cursor-pointer hover:scale-110 hover:shadow-lg hover:z-10 relative ${borderBg}`}
-        title={`${locationCode}${occupied ? `\n${pallet.productName || pallet.sku || ""}` : "\nVacío"}`}
+        draggable={occupied}
+        onDragStart={(e) => {
+          if (!occupied) return
+          setDragSourceId(pallet.id)
+          e.dataTransfer.setData("text/plain", locationCode)
+          e.dataTransfer.effectAllowed = "move"
+        }}
+        onDragEnd={() => setDragSourceId(null)}
+        onDragOver={(e) => {
+          if (dragSourceId && !occupied) {
+            e.preventDefault()
+            e.dataTransfer.dropEffect = "move"
+          }
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          const sourceCode = e.dataTransfer.getData("text/plain")
+          if (sourceCode && sourceCode !== locationCode) {
+            handleDragMovePallet(sourceCode, locationCode)
+          }
+          setDragSourceId(null)
+        }}
+        className={`w-[58px] h-[48px] rounded-lg border-2 flex flex-col items-center justify-center gap-0 transition-all cursor-pointer hover:scale-110 hover:shadow-lg hover:z-10 relative ${borderBg} ${isDragOver ? "ring-2 ring-blue-400 ring-offset-1 scale-110 bg-blue-50" : ""} ${dragSourceId === pallet.id ? "opacity-40 scale-95" : ""}`}
+        title={`${locationCode}${occupied ? `\n${pallet.productName || pallet.sku || ""}` : "\nVacío — suelta un pallet aquí"}`}
       >
         <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ${statusColor}`} />
         {occupied ? (
@@ -633,6 +733,42 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
                 <Save className="h-4 w-4" /> {saving ? "Guardando..." : "Guardar"}
               </Button>
             </div>
+
+            {/* Move Pallet Section */}
+            {selectedPallet && isOccupied(selectedPallet) && (
+              <div className="pt-4 border-t border-dashed border-slate-200 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Move className="h-4 w-4 text-blue-600" />
+                  <span className="text-[10px] font-black text-blue-700 uppercase tracking-widest">Mover a otra posición</span>
+                </div>
+                <div className="flex gap-2">
+                  <select
+                    value={moveTarget}
+                    onChange={(e) => setMoveTarget(e.target.value)}
+                    className="flex-1 px-3 py-2 border rounded-lg text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                  >
+                    <option value="">Seleccionar posición disponible...</option>
+                    {pallets
+                      .filter((p) => p.status === "AVAILABLE" && p.id !== selectedPallet.id)
+                      .sort((a, b) => a.locationCode.localeCompare(b.locationCode))
+                      .map((p) => (
+                        <option key={p.id} value={p.locationCode}>
+                          {p.locationCode}
+                        </option>
+                      ))}
+                  </select>
+                  <Button
+                    onClick={() => moveTarget && movePallet(moveTarget)}
+                    disabled={!moveTarget || moving}
+                    className="gap-2 bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Move className="h-4 w-4" />
+                    {moving ? "Moviendo..." : "Mover"}
+                  </Button>
+                </div>
+                <p className="text-[10px] text-slate-400 italic">También puedes arrastrar pallets directamente en la vista 2D.</p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
