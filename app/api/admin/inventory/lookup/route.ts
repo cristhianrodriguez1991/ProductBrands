@@ -95,17 +95,16 @@ export async function GET(req: Request) {
 
     // Fallback: Universal UPC Database (UPCItemDB)
     // Only query if it is purely numeric, since FNSKUs (X00...) are Amazon-specific
-    const isEanUpc = /^\d{5,14}$/.test(code);
+    // Strip non-digits for the universal logic
+    const numericCode = code.replace(/\D/g, "");
+    const isEanUpc = /^\d{5,14}$/.test(numericCode);
     if (isEanUpc) {
       try {
-        // Many systems miss a leading check digit, UPCItemDB strictly uses standard lengths.
-        // We can try exactly as scanned first.
-        const upcRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${code}`);
+        const upcRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${numericCode}`);
         let upcData = upcRes.ok ? await upcRes.json() : null;
 
-        // If not found and it's 11 or 12 digits, try padding with a zero (as EAN-13)
-        if ((!upcData || !upcData.items || upcData.items.length === 0) && (code.length === 11 || code.length === 12)) {
-           const paddedRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=0${code}`);
+        if ((!upcData || !upcData.items || upcData.items.length === 0) && (numericCode.length === 11 || numericCode.length === 12)) {
+           const paddedRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=0${numericCode}`);
            if (paddedRes.ok) upcData = await paddedRes.json();
         }
 
@@ -116,7 +115,7 @@ export async function GET(req: Request) {
             source: "external",
             item: {
               name: externalItem.title || "",
-              upc: externalItem.upc || code,
+              upc: externalItem.upc || numericCode,
               ean: externalItem.ean || "",
               asin: externalItem.asin || "",
               description: externalItem.description || "",

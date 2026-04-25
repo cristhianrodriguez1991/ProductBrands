@@ -38,26 +38,55 @@ const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string)
     let html5QrCode: any = null;
     let isMounted = true;
 
+    const startScanner = async () => {
+      // 1. Wait for script to be available globally
+      let retries = 0;
+      while (!(window as any).Html5Qrcode && retries < 10) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        retries++;
+      }
+
+      if (!isMounted || !open) return;
+      
+      if (!(window as any).Html5Qrcode) {
+        console.error("Html5Qrcode library failed to load after 5s");
+        return;
+      }
+
+      // 2. Wait for DOM element to be definitely ready
+      let domRetries = 0;
+      while (!document.getElementById("inventory-reader") && domRetries < 5) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        domRetries++;
+      }
+
+      if (!document.getElementById("inventory-reader")) {
+        console.error("inventory-reader element not found in DOM");
+        return;
+      }
+
+      try {
+        html5QrCode = new (window as any).Html5Qrcode("inventory-reader");
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { 
+            fps: 15, 
+            qrbox: { width: 280, height: 280 },
+            aspectRatio: 1.0,
+          },
+          (decodedText: string) => {
+            onScan(decodedText);
+            html5QrCode.stop().catch(console.error);
+          },
+          (error: any) => {}
+        );
+      } catch (err) {
+        console.error("Scanner start error:", err);
+      }
+    };
+
     if (open) {
-      const checkReady = setInterval(() => {
-        if ((window as any).Html5Qrcode) {
-          clearInterval(checkReady);
-          if (!isMounted) return;
-          
-          html5QrCode = new (window as any).Html5Qrcode("reader");
-          html5QrCode.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            (decodedText: string) => {
-              onScan(decodedText);
-              html5QrCode.stop().catch(console.error);
-            },
-            (error: any) => {}
-          ).catch((err: any) => {
-            console.error("Scanner start error:", err);
-          });
-        }
-      }, 500);
+      startScanner();
     }
 
     return () => {
@@ -227,16 +256,20 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
   const handleLookup = async (code: string) => {
     if (!code) return
     setIsScanning(true)
+    setLookupSource(null)
     try {
-      const res = await fetch(`/api/admin/inventory/lookup?code=${encodeURIComponent(code)}`)
+      // Clean the code (remove whitespace)
+      const cleanCode = code.trim()
+      const res = await fetch(`/api/admin/inventory/lookup?code=${encodeURIComponent(cleanCode)}`)
       const data = await res.json()
+      
       if (data.found && data.item) {
         setLookupSource(data.source) // "amazon" or "external"
         setForm(f => ({
           ...f,
           productName: data.item.amazonTitle || data.item.name || f.productName,
           sku: data.item.sku || f.sku,
-          upc: data.item.upc || f.upc,
+          upc: data.item.upc || cleanCode,
           fnsku: data.item.fnsku || f.fnsku,
           asin: data.item.asin || f.asin,
           imageUrl: data.item.amazonImageUrl || data.item.imageUrl || f.imageUrl,
@@ -244,9 +277,11 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
         }))
       } else {
         setLookupSource(null)
+        // If it was a manual enter, maybe alert?
+        console.log("Product not found for code:", cleanCode)
       }
     } catch (e) {
-      console.error(e)
+      console.error("Lookup error:", e)
     } finally {
       setIsScanning(false)
       setScannerOpen(false)
@@ -377,7 +412,7 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
                     <h3 className="font-black uppercase tracking-widest text-slate-900">Escanear Barcode</h3>
                     <Button size="icon" variant="ghost" onClick={() => setScannerOpen(false)}><X className="h-4 w-4" /></Button>
                   </div>
-                  <div id="reader" className="w-full overflow-hidden rounded-xl bg-slate-100 aspect-square"></div>
+                  <div id="inventory-reader" className="w-full overflow-hidden rounded-xl bg-slate-100 aspect-square"></div>
                   <ScannerEffect open={scannerOpen} onScan={(code) => handleLookup(code)} />
                 </div>
               </div>
