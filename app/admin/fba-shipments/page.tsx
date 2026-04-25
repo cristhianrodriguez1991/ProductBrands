@@ -35,6 +35,75 @@ type FbaItem = {
   status: "IN_SHIPMENT" | "PENDING"
 }
 
+const RACKS_CONFIG = {
+  A: { cells: 8, positions: 16 },
+  B: { cells: 5, positions: 10 },
+  C: { cells: 5, positions: 10 },
+}
+
+const LEVELS_CONFIG = [
+  { key: "T", label: "ARRIBA (T)" },
+  { key: "M", label: "MEDIO (M)" },
+  { key: "L", label: "ABAJO (L)" },
+  { key: "P", label: "PISO (P)" },
+]
+
+const parseLocationCode = (code: string) => {
+  if (!code || code.length < 2) return { rack: "", num: "", level: "" }
+  const rack = code[0].toUpperCase()
+  const level = code[code.length - 1].toUpperCase()
+  const num = code.slice(1, -1)
+  return { rack, num, level }
+}
+
+const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: string) => void }) => {
+  const { rack, num, level } = parseLocationCode(value)
+
+  const handleRackChange = (newRack: string) => {
+    // Reset num and level if rack changes or just pick first
+    onChange(`${newRack}${num || "1"}${level || "P"}`)
+  }
+  const handleLevelChange = (newLevel: string) => {
+    onChange(`${rack || "A"}${num || "1"}${newLevel}`)
+  }
+  const handleNumChange = (newNum: string) => {
+    onChange(`${rack || "A"}${newNum}${level || "P"}`)
+  }
+
+  const maxPos = rack && (RACKS_CONFIG as any)[rack] ? (RACKS_CONFIG as any)[rack].positions : 16
+
+  return (
+    <div className="flex items-center gap-0.5 bg-slate-50/50 p-0.5 rounded border border-slate-100 group-hover/row:border-blue-200 transition-colors">
+      <select 
+        value={rack || ""} 
+        onChange={e => handleRackChange(e.target.value)}
+        className="bg-transparent text-[10px] font-black text-blue-600 outline-none cursor-pointer hover:text-blue-800"
+      >
+        <option value="">R</option>
+        {Object.keys(RACKS_CONFIG).map(r => <option key={r} value={r}>{r}</option>)}
+      </select>
+      <span className="text-slate-300">|</span>
+      <select 
+        value={level || ""} 
+        onChange={e => handleLevelChange(e.target.value)}
+        className="bg-transparent text-[10px] font-black text-emerald-600 outline-none cursor-pointer hover:text-emerald-800"
+      >
+        <option value="">L</option>
+        {LEVELS_CONFIG.map(l => <option key={l.key} value={l.key}>{l.key}</option>)}
+      </select>
+      <span className="text-slate-300">|</span>
+      <select 
+        value={num || ""} 
+        onChange={e => handleNumChange(e.target.value)}
+        className="bg-transparent text-[10px] font-black text-slate-700 outline-none cursor-pointer hover:text-slate-900"
+      >
+        <option value="">#</option>
+        {Array.from({ length: maxPos }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
+      </select>
+    </div>
+  )
+}
+
 // Extracted to module scope to prevent React from unmounting inputs on every keystroke, keeping keyboard focus perfectly stable
 const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, switchItemStatus, removeImage, setSelectedIdForUpload, fileInputRef, uploadingId, setFocusedItemId, setExpandedImage, copyItem, warehousePositions }: any) => {
   const controls = useDragControls()
@@ -63,44 +132,11 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
            <GripVertical className="h-5 w-5" />
         </div>
       </td>
-      <td className="p-0">
-        <select
-          className="h-8 text-[11px] border-0 bg-transparent rounded-none px-1 w-full cursor-pointer font-bold text-slate-700 focus:ring-2 focus:ring-blue-200 outline-none appearance-none"
-          value={item.location || ""}
-          onChange={e => updateItem(item.id, "location", e.target.value)}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 4px center', backgroundSize: '10px', paddingRight: '16px' }}
-        >
-          <option value="">—</option>
-          {item.location && !warehousePositions?.find((p: any) => p.locationCode === item.location) && (
-            <option value={item.location}>{item.location} (manual)</option>
-          )}
-          {warehousePositions && (() => {
-            const racks = ['A', 'B', 'C']
-            return racks.map((rack: string) => {
-              const positions = warehousePositions.filter((p: any) => p.rack === rack || p.rack === `FLOOR-${rack}`)
-              if (positions.length === 0) return null
-              return (
-                <optgroup key={rack} label={`Rack ${rack}`}>
-                  {positions
-                    .sort((a: any, b: any) => a.locationCode.localeCompare(b.locationCode))
-                    .map((p: any) => {
-                      const occupied = p.status !== 'AVAILABLE'
-                      const label = occupied
-                        ? `${p.locationCode} ● ${p.productName || p.sku || 'Ocupado'}`
-                        : `${p.locationCode} ○ Libre`
-                      return (
-                        <option key={p.id} value={p.locationCode}>
-                          {label}
-                        </option>
-                      )
-                    })}
-                </optgroup>
-              )
-            })
-          })()}
-        </select>
+      <td className="p-1 px-2 border-r min-w-[100px]">
+        <LocationPicker 
+          value={item.location || ""} 
+          onChange={val => updateItem(item.id, "location", val)}
+        />
       </td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={item.boxOrder || ""} onChange={e => updateItem(item.id, "boxOrder", e.target.value)} /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2 font-bold text-slate-800" value={item.name || ""} onChange={e => updateItem(item.id, "name", e.target.value)} /></td>
@@ -234,7 +270,53 @@ export default function FbaShipmentsPage() {
   const [globalPendingItems, setGlobalPendingItems] = useState<any[]>([])
   const [copiedItem, setCopiedItem] = useState<any | null>(null)
   const [warehousePositions, setWarehousePositions] = useState<any[]>([])
+  const [isSyncing, setIsSyncing] = useState(false)
 
+  const syncAllToWarehouse = async (shId: string) => {
+    const tab = tabs.find(t => t.id === shId)
+    if (!tab) return
+    
+    setIsSyncing(true)
+    setSaveStatus("saving")
+    
+    try {
+      const itemsToSync = tab.items.filter((i: any) => i.location && i.status === "IN_SHIPMENT")
+      const levelMap: any = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
+      
+      // Perform batch-like sequential updates
+      for (const item of itemsToSync) {
+        const { rack, num, level } = parseLocationCode(item.location)
+        if (rack && num && level) {
+          const numInt = parseInt(num)
+          const warehousePayload = {
+            locationCode: item.location,
+            rack,
+            level: levelMap[level] || "TOP",
+            cellNumber: Math.ceil(numInt / 2),
+            palletPosition: numInt % 2 === 0 ? 2 : 1,
+            sku: item.sku,
+            productName: item.name,
+            quantity: parseInt(item.totalUnits as any) || 0,
+            expirationDate: item.expDate ? new Date(item.expDate.replace(/(\d{2})(\d{2})(\d{2})/, '20$3-$1-$2')) : null,
+            status: "IN_SHIPMENT"
+          }
+          
+          await fetch("/api/admin/warehouse", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(warehousePayload)
+          })
+        }
+      }
+      setSaveStatus("saved")
+      setTimeout(() => setSaveStatus("idle"), 2000)
+      alert("✅ Sincronización con el almacén completada!")
+    } catch (err) {
+      alert("❌ Error al sincronizar")
+    } finally {
+      setIsSyncing(false)
+    }
+  }
   const fetchShipments = async () => {
     try {
       // Fetch everything to unify into one single list
@@ -402,6 +484,55 @@ export default function FbaShipmentsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       })
+
+      // ── Synchronization with Warehouse Map ──
+      const updatedItem = { ...itemBefore, ...payload, [field]: finalValue }
+      if (updatedItem.location) {
+        const { rack, num, level } = parseLocationCode(updatedItem.location)
+        if (rack && num && level) {
+          const numInt = parseInt(num)
+          const levelMap: any = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
+          const warehousePayload = {
+            locationCode: updatedItem.location,
+            rack,
+            level: levelMap[level] || "TOP",
+            cellNumber: Math.ceil(numInt / 2),
+            palletPosition: numInt % 2 === 0 ? 2 : 1,
+            sku: updatedItem.sku,
+            productName: updatedItem.name,
+            quantity: parseInt(updatedItem.totalUnits as any) || 0,
+            expirationDate: updatedItem.expDate ? new Date(updatedItem.expDate.replace(/(\d{2})(\d{2})(\d{2})/, '20$3-$1-$2')) : null,
+            status: "IN_SHIPMENT"
+          }
+
+          // If location changed, clear the old one
+          if (field === "location" && itemBefore.location && itemBefore.location !== finalValue) {
+            await fetch("/api/admin/warehouse", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                locationCode: itemBefore.location,
+                rack: parseLocationCode(itemBefore.location).rack,
+                level: levelMap[parseLocationCode(itemBefore.location).level] || "TOP",
+                cellNumber: Math.ceil(parseInt(parseLocationCode(itemBefore.location).num) / 2),
+                palletPosition: parseInt(parseLocationCode(itemBefore.location).num) % 2 === 0 ? 2 : 1,
+                status: "AVAILABLE",
+                productName: null,
+                sku: null,
+                quantity: null
+              })
+            })
+          }
+
+          // Update current location in warehouse
+          await fetch("/api/admin/warehouse", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(warehousePayload)
+          })
+        }
+      }
+
       setSaveStatus("saved")
       setTimeout(() => setSaveStatus("idle"), 2000)
     } catch(e) {
@@ -786,6 +917,14 @@ export default function FbaShipmentsPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => syncAllToWarehouse(activeTab.id)} 
+                    disabled={isSyncing}
+                    className="h-12 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 rounded-xl px-6 font-black gap-2"
+                  >
+                    <LayoutGrid className="h-5 w-5" /> {isSyncing ? "Sincronizando..." : "Sincronizar Mapa 🗺️"}
+                  </Button>
                   <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white rounded-xl shadow-sm px-6 font-bold border-slate-200"><Printer className="h-5 w-5" /> Imprimir</Button>
                   <Button variant="outline" onClick={() => exportToExcelObject(activeTab, activeTab.items)} className="h-12 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 rounded-xl px-6 font-bold gap-2"><Download className="h-5 w-5" /> Exportar Excel</Button>
                   <Button variant="ghost" onClick={() => closeTab(activeTab.id)} className="h-12 rounded-xl px-6 font-bold text-slate-500 hover:bg-slate-200">Cerrar Pestaña</Button>
