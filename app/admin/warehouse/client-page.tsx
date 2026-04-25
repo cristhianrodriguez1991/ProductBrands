@@ -840,9 +840,18 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
                       <option value="">Pos...</option>
                       {moveRack && (() => {
                         const maxPos = (RACKS as any)[moveRack]?.cells * 2 || 16
-                        return Array.from({ length: maxPos }, (_, i) => (
-                           <option key={i+1} value={String(i+1)}>{i+1}</option>
-                        ))
+                        return Array.from({ length: maxPos }, (_, i) => {
+                          const num = i + 1
+                          // A position is only "available" to show if at least one of its levels is free
+                          const levels = [...LEVELS.map(l => l.key), "P"]
+                          const hasFreeLevel = levels.some(lvl => {
+                             const loc = `${moveRack}${num}${lvl}`
+                             const p = pallets.find(p => p.locationCode === loc)
+                             return !p || p.status === "AVAILABLE"
+                          })
+                          if (!hasFreeLevel) return null
+                          return <option key={num} value={String(num)}>{num}</option>
+                        })
                       })()}
                     </select>
                   </div>
@@ -857,10 +866,18 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
                       className="w-full mt-1 px-2 py-2 border rounded-lg text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none disabled:opacity-40"
                     >
                       <option value="">Nivel...</option>
-                      {LEVELS.map((lvl) => (
-                        <option key={lvl.key} value={lvl.key}>{lvl.label} ({lvl.key})</option>
-                      ))}
-                      <option value="P">PISO (P)</option>
+                      {LEVELS.map((lvl) => {
+                        const locCode = `${moveRack}${movePosition}${lvl.key}`
+                        const isTaken = pallets.find(p => p.locationCode === locCode && p.status !== "AVAILABLE")
+                        if (isTaken) return null
+                        return <option key={lvl.key} value={lvl.key}>{lvl.label} ({lvl.key})</option>
+                      })}
+                      {(() => {
+                         const locCode = `${moveRack}${movePosition}P`
+                         const isTaken = pallets.find(p => p.locationCode === locCode && p.status !== "AVAILABLE")
+                         if (isTaken) return null
+                         return <option value="P">PISO (P)</option>
+                      })()}
                     </select>
                   </div>
                 </div>
