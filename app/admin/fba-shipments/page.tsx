@@ -74,16 +74,30 @@ const parseSyncDate = (val: string) => {
 
 const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: string) => void }) => {
   const [isAdding, setIsAdding] = useState(false)
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const locations = value ? value.split(' + ').filter(Boolean) : []
   const [tempLocation, setTempLocation] = useState("A1P")
 
   const { rack, num, level } = parseLocationCode(tempLocation)
 
   const handleAddField = () => {
-    if (!locations.includes(tempLocation)) {
-      onChange([...locations, tempLocation].join(' + '))
+    if (editingIndex !== null) {
+      const newLocs = [...locations]
+      newLocs[editingIndex] = tempLocation
+      onChange(newLocs.join(' + '))
+    } else {
+      if (!locations.includes(tempLocation)) {
+        onChange([...locations, tempLocation].join(' + '))
+      }
     }
     setIsAdding(false)
+    setEditingIndex(null)
+  }
+
+  const handleStartEdit = (loc: string, idx: number) => {
+    setTempLocation(loc)
+    setEditingIndex(idx)
+    setIsAdding(true)
   }
 
   const handleRemove = (loc: string) => {
@@ -100,9 +114,12 @@ const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: st
         {locations.length === 0 && !isAdding && (
           <span className="text-[10px] text-slate-300 font-medium italic py-1">Sin ubicación</span>
         )}
-        {locations.map(loc => (
-          <div key={loc} className="flex items-center gap-1 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 px-2 py-0.5 rounded border border-slate-200 hover:border-blue-200 text-[10px] font-black transition-all group/loc relative pr-5 shadow-sm">
-            {loc}
+        {locations.map((loc, idx) => (
+          <div 
+            key={`${loc}-${idx}`} 
+            onClick={() => handleStartEdit(loc, idx)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-black transition-all group/loc relative pr-5 shadow-sm cursor-pointer ${editingIndex === idx ? "bg-blue-600 text-white border-blue-700" : "bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200 hover:border-blue-200"}`}
+          >
             <button 
               onClick={() => handleRemove(loc)}
               className="absolute right-0.5 hover:bg-red-100 hover:text-red-700 rounded p-0.5 transition-colors opacity-0 group-hover/loc:opacity-100"
@@ -155,8 +172,15 @@ const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: st
           </div>
           
           <div className="flex items-center justify-between gap-1 mt-0.5">
-            <button onClick={() => setIsAdding(false)} className="px-2 py-1 text-[9px] font-bold text-slate-500 hover:bg-slate-100 rounded transition-colors uppercase">Cancelar</button>
-            <button onClick={handleAddField} className="px-3 py-1 bg-blue-600 text-white text-[9px] font-bold rounded shadow-sm hover:bg-blue-700 transition-all uppercase">Aceptar</button>
+            <button 
+              onClick={() => { setIsAdding(false); setEditingIndex(null) }} 
+              className="px-2 py-1 text-[9px] font-bold text-slate-500 hover:bg-slate-100 rounded transition-colors uppercase"
+            >
+              Cancelar
+            </button>
+            <button onClick={handleAddField} className="px-3 py-1 bg-blue-600 text-white text-[9px] font-bold rounded shadow-sm hover:bg-blue-700 transition-all uppercase">
+              {editingIndex !== null ? "Guardar" : "Aceptar"}
+            </button>
           </div>
         </div>
       )}
