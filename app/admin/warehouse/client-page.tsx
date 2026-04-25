@@ -126,12 +126,13 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
     notes: "",
   })
 
-  // Auto-seed if no pallets exist
+  // Auto-seed if not fully populated (144 pallets total)
   useEffect(() => {
-    if (pallets.length === 0 && !seeding) {
+    if (pallets.length < 144 && !seeding) {
       seedWarehouse()
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pallets.length, seeding])
 
   const seedWarehouse = async () => {
     setSeeding(true)

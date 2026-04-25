@@ -184,13 +184,13 @@ function Cell3D({
         {String(cellNum).padStart(2, "0")}
       </Text>
 
-      {/* Pallet 1 */}
+      {/* Pallet 1 (Right pallet) */}
       {pallets[0] && (
-        <Pallet3D position={[-0.22 * S, 0, 0]} pallet={pallets[0]} onSelect={onSelect} />
+        <Pallet3D position={[0.22 * S, 0, 0]} pallet={pallets[0]} onSelect={onSelect} />
       )}
-      {/* Pallet 2 */}
+      {/* Pallet 2 (Left pallet) */}
       {pallets[1] && (
-        <Pallet3D position={[0.22 * S, 0, 0]} pallet={pallets[1]} onSelect={onSelect} />
+        <Pallet3D position={[-0.22 * S, 0, 0]} pallet={pallets[1]} onSelect={onSelect} />
       )}
     </group>
   )
@@ -218,7 +218,7 @@ function RackLevel3D({
 }) {
   const cellSpacing = 0.95 * S
   const totalWidth = cellCount * cellSpacing
-  const startX = -totalWidth / 2 + cellSpacing / 2
+  const startX = totalWidth / 2 - cellSpacing / 2 // Start drawing from the right side
 
   return (
     <group position={position}>
@@ -234,17 +234,18 @@ function RackLevel3D({
         {`${levelLabel} (${maxHeight}")`}
       </Text>
 
-      {/* Cells */}
+      {/* Cells (drawn Right to Left) */}
       {Array.from({ length: cellCount }, (_, i) => {
-        const globalP1 = i * 2 + 1
-        const globalP2 = i * 2 + 2
+        const cellNum = i + 1
+        const globalP1 = (cellNum - 1) * 2 + 1
+        const globalP2 = (cellNum - 1) * 2 + 2
         const p1Key = `${rackName}${globalP1}${levelKey}`
         const p2Key = `${rackName}${globalP2}${levelKey}`
         return (
           <Cell3D
             key={i}
-            position={[startX + i * cellSpacing, 0, 0]}
-            cellNum={i + 1}
+            position={[startX - i * cellSpacing, 0, 0]} // Negative step towards left
+            cellNum={cellNum}
             pallets={[palletMap[p1Key], palletMap[p2Key]]}
             onSelect={onSelect}
           />
@@ -390,18 +391,19 @@ function Floor3D({
         <meshStandardMaterial color="#f1f5f9" roughness={0.9} transparent opacity={0.8} />
       </RoundedBox>
 
-      {/* Cells */}
+      {/* Cells (drawn Right to Left) */}
       {Array.from({ length: cellCount }, (_, i) => {
-        const globalP1 = i * 2 + 1
-        const globalP2 = i * 2 + 2
+        const cellNum = i + 1
+        const globalP1 = (cellNum - 1) * 2 + 1
+        const globalP2 = (cellNum - 1) * 2 + 2
         const p1Key = `${rackName}${globalP1}P`
         const p2Key = `${rackName}${globalP2}P`
-        const startX = -totalWidth / 2 + cellSpacing / 2
+        const startX = totalWidth / 2 - cellSpacing / 2 // Start right
         return (
           <Cell3D
             key={i}
-            position={[startX + i * cellSpacing, 0, 0]}
-            cellNum={i + 1}
+            position={[startX - i * cellSpacing, 0, 0]} // Step left
+            cellNum={cellNum}
             pallets={[palletMap[p1Key], palletMap[p2Key]]}
             onSelect={onSelect}
           />
