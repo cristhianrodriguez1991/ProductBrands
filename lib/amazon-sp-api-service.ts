@@ -146,7 +146,9 @@ export async function getFbaQuantities(): Promise<Map<string, { fulfillable: num
     })
     reportStatus = statusRes?.processingStatus
     if (reportStatus === "DONE") docId = statusRes?.reportDocumentId
-    if (reportStatus === "CANCELLED" || reportStatus === "FATAL") break
+    if (reportStatus === "CANCELLED" || reportStatus === "FATAL") {
+      throw new Error(`Amazon API returned ${reportStatus} for the FBA Inventory Report. This usually means the API was requested too frequently.`)
+    }
   }
 
   if (docId) {

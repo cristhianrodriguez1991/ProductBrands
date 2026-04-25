@@ -55,11 +55,12 @@ export async function POST() {
 
     // ── 3. Get REAL FBA warehouse quantities ──
     // The report list gets ALL listings, but we must complement it with FBA inventory sums
-    let fbaQtyMap = new Map<string, { fulfillable: number; reserved: number; fnsku: string | null }>()
-    try {
-      fbaQtyMap = await getFbaQuantities()
-    } catch (qtyErr: any) {
-      console.warn("FBA quantity lookup failed (quantities will show as 0):", qtyErr?.message)
+    const fbaQtyMap = await getFbaQuantities()
+    
+    // Safety check: if for some reason the FBA report was cancelled (Amazon throttles frequent requests)
+    // and returns 0 items, we MUST abort the sync so we don't accidentally set 24k items to 0 stock.
+    if (fbaQtyMap.size === 0 && listings.length > 10) { // If they have > 10 listings but 0 FBA items returned, it's 99% a throttle/error
+      throw new Error("Amazon FBA Inventory API throttled the request (CANCELLED). Please wait about 30 minutes before trying a manual sync again to allow Amazon's API limits to reset.")
     }
 
     // ── 4. Parse and Insert/Upsert ──
