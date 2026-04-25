@@ -94,6 +94,9 @@ const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string)
         html5QrCode = new Html5Qrcode("inventory-reader", {
           formatsToSupport,
           verbose: false,
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true // Use native hardware scanning if available (much faster for 1D)
+          }
         });
         
         // Scanning box optimized for 1D barcodes: wide and thin
@@ -107,7 +110,11 @@ const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string)
         };
 
         await html5QrCode.start(
-          { facingMode: "environment" },
+          { 
+            facingMode: "environment",
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 }
+          },
           { 
             fps: 15, 
             qrbox: qrboxFunction,
