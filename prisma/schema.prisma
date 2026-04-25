@@ -937,3 +937,42 @@ model InventoryItem {
   @@index([name])
 }
 
+// ─────────────────────────────────────────────────────────────
+// SHIPMENT LOG (History of items shipped from warehouse → Amazon)
+// ─────────────────────────────────────────────────────────────
+
+model ShipmentLog {
+  id              String   @id @default(cuid())
+  
+  // Reference to the FBA shipment
+  shipmentId      String
+  shipmentName    String
+  
+  // Product info snapshot at time of shipment
+  productName     String
+  sku             String?
+  asin            String?
+  fnsku           String?
+  upc             String?
+  
+  // Quantities shipped
+  totalUnits      Int      @default(0)
+  totalBoxes      Int?
+  qtyPerBox       Int?
+  
+  // Warehouse location the product was shipped FROM
+  locationCode    String?    // e.g. "A3T + A4T"
+  
+  // Status
+  action          String     @default("SHIPPED") // SHIPPED, RETURNED, etc.
+  notes           String?    @db.Text
+  
+  shippedAt       DateTime   @default(now())
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([shipmentId])
+  @@index([sku])
+  @@index([shippedAt])
+  @@index([productName])
+}

@@ -110,6 +110,9 @@ function WarehouseInventoryTab() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [expandedItem, setExpandedItem] = useState<string | null>(null)
+  const [showHistory, setShowHistory] = useState(false)
+  const [shipmentLogs, setShipmentLogs] = useState<any[]>([])
+  const [logsLoading, setLogsLoading] = useState(false)
 
   const fetchWarehouseInventory = useCallback(async () => {
     try {
@@ -125,9 +128,30 @@ function WarehouseInventoryTab() {
     }
   }, [])
 
+  const fetchShipmentLogs = useCallback(async () => {
+    setLogsLoading(true)
+    try {
+      const res = await fetch("/api/admin/shipment-logs")
+      if (res.ok) {
+        const data = await res.json()
+        setShipmentLogs(data)
+      }
+    } catch (e) {
+      console.error("Failed to fetch shipment logs:", e)
+    } finally {
+      setLogsLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     fetchWarehouseInventory()
   }, [fetchWarehouseInventory])
+
+  useEffect(() => {
+    if (showHistory && shipmentLogs.length === 0) {
+      fetchShipmentLogs()
+    }
+  }, [showHistory, shipmentLogs.length, fetchShipmentLogs])
 
   const filteredProducts = useMemo(() => {
     if (!searchQuery) return products
@@ -142,6 +166,18 @@ function WarehouseInventoryTab() {
     )
   }, [products, searchQuery])
 
+  const filteredLogs = useMemo(() => {
+    if (!searchQuery) return shipmentLogs
+    const q = searchQuery.toLowerCase()
+    return shipmentLogs.filter(
+      (log: any) =>
+        log.productName?.toLowerCase().includes(q) ||
+        log.sku?.toLowerCase().includes(q) ||
+        log.shipmentName?.toLowerCase().includes(q) ||
+        log.locationCode?.toLowerCase().includes(q)
+    )
+  }, [shipmentLogs, searchQuery])
+
   // Stats
   const totalPallets = products.reduce((a, p) => a + p.palletCount, 0)
   const totalUnits = products.reduce((a, p) => a + p.totalQuantity, 0)
@@ -150,6 +186,12 @@ function WarehouseInventoryTab() {
     if (!iso) return "—"
     const d = new Date(iso)
     return `${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getDate().toString().padStart(2, "0")}/${d.getFullYear()}`
+  }
+
+  const formatDateTime = (iso: string | null) => {
+    if (!iso) return "—"
+    const d = new Date(iso)
+    return `${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getDate().toString().padStart(2, "0")}/${d.getFullYear()} ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`
   }
 
   return (
@@ -183,177 +225,277 @@ function WarehouseInventoryTab() {
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* Sub-tabs: Current / History */}
+        <div className="flex mt-3 bg-slate-100 rounded-lg p-0.5 gap-0.5">
+          <button
+            onClick={() => setShowHistory(false)}
+            className={`flex-1 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${
+              !showHistory ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            <Package className="h-3.5 w-3.5" />
+            Current Stock
+          </button>
+          <button
+            onClick={() => setShowHistory(true)}
+            className={`flex-1 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${
+              showHistory ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+            Shipment History
+          </button>
+        </div>
       </div>
 
-      {/* List */}
-      <div className="bg-white">
-        {loading ? (
-          <div className="py-12 flex justify-center items-center flex-col text-slate-500">
-            <RefreshCw className="h-8 w-8 animate-spin mb-4" /> Loading warehouse inventory...
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="py-12 text-center text-slate-500">
-            {products.length === 0
-              ? "No products in warehouse. Assign products to pallets in the Warehouse Map."
-              : "No items match your search."}
-          </div>
-        ) : (
-          <div className="flex flex-col">
-            {filteredProducts.map((product) => {
-              const isExpanded = expandedItem === product.id
-              return (
-                <div key={product.id} className="border-b border-slate-200 bg-white">
-                  {/* Collapsed Row */}
-                  <div
-                    className="p-4 cursor-pointer hover:bg-slate-50 flex flex-col"
-                    onClick={() => setExpandedItem(isExpanded ? null : product.id)}
-                  >
-                    <h3 className="font-bold text-[14px] text-slate-900 leading-snug line-clamp-2 mb-3 pr-4">
-                      {product.amazonTitle || product.productName}
-                    </h3>
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-4 flex-1">
-                        <div className="w-[72px] h-[72px] bg-white border border-slate-200 rounded shrink-0 flex items-center justify-center overflow-hidden">
-                          {product.imageUrl ? (
-                            <img src={product.imageUrl} alt="" className="max-w-full max-h-full object-contain p-1" />
-                          ) : (
-                            <Package className="h-6 w-6 text-slate-200" />
-                          )}
-                        </div>
-                        <div className="flex flex-col text-[13px] text-slate-600 gap-[2px] leading-tight">
-                          <div>
-                            Quantity: <span className="font-bold text-slate-900">{product.totalQuantity.toLocaleString()}</span>
-                          </div>
-                          <div>
-                            Pallets: <span className="font-bold text-blue-600">{product.palletCount}</span>
-                          </div>
-                          {product.sku && (
-                            <div className="group flex items-center gap-1.5 w-max">
-                              <span>SKU: {product.sku}</span>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(product.sku || "") }}
-                                className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95"
-                                title="Copy"
-                              >
-                                <Copy className="h-3 w-3" />
-                              </button>
-                            </div>
-                          )}
-                          {product.asin && (
-                            <div className="group flex items-center gap-1.5 w-max">
-                              <span>ASIN: {product.asin}</span>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(product.asin || "") }}
-                                className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95"
-                                title="Copy"
-                              >
-                                <Copy className="h-3 w-3" />
-                              </button>
-                            </div>
-                          )}
-                          {/* Location summary */}
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {product.locations.slice(0, 4).map((loc) => (
-                              <span
-                                key={loc.locationCode}
-                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${STATUS_COLORS[loc.status] || "bg-slate-100 text-slate-600"}`}
-                              >
-                                <MapPin className="inline h-2.5 w-2.5 mr-0.5 -mt-[1px]" />
-                                {loc.locationCode}
-                              </span>
-                            ))}
-                            {product.locations.length > 4 && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
-                                +{product.locations.length - 4} more
-                              </span>
+      {/* ── CURRENT STOCK VIEW ── */}
+      {!showHistory && (
+        <div className="bg-white">
+          {loading ? (
+            <div className="py-12 flex justify-center items-center flex-col text-slate-500">
+              <RefreshCw className="h-8 w-8 animate-spin mb-4" /> Loading warehouse inventory...
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="py-12 text-center text-slate-500">
+              {products.length === 0
+                ? "No products in warehouse. Assign products to pallets in the Warehouse Map."
+                : "No items match your search."}
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              {filteredProducts.map((product) => {
+                const isExpanded = expandedItem === product.id
+                return (
+                  <div key={product.id} className="border-b border-slate-200 bg-white">
+                    {/* Collapsed Row */}
+                    <div
+                      className="p-4 cursor-pointer hover:bg-slate-50 flex flex-col"
+                      onClick={() => setExpandedItem(isExpanded ? null : product.id)}
+                    >
+                      <h3 className="font-bold text-[14px] text-slate-900 leading-snug line-clamp-2 mb-3 pr-4">
+                        {product.amazonTitle || product.productName}
+                      </h3>
+                      <div className="flex items-start justify-between">
+                        <div className="flex gap-4 flex-1">
+                          <div className="w-[72px] h-[72px] bg-white border border-slate-200 rounded shrink-0 flex items-center justify-center overflow-hidden">
+                            {product.imageUrl ? (
+                              <img src={product.imageUrl} alt="" className="max-w-full max-h-full object-contain p-1" />
+                            ) : (
+                              <Package className="h-6 w-6 text-slate-200" />
                             )}
                           </div>
-                        </div>
-                      </div>
-                      <ChevronRight className={`h-5 w-5 text-slate-400 self-center transition-transform ${isExpanded ? "rotate-90" : ""}`} />
-                    </div>
-                  </div>
-
-                  {/* Expanded Details */}
-                  {isExpanded && (
-                    <div className="bg-slate-50 border-t p-4 space-y-3 animate-in slide-in-from-top-2">
-                      {/* Identifiers */}
-                      <div className="grid grid-cols-2 gap-2 text-[12px]">
-                        {product.upc && (
-                          <div className="group flex items-center gap-1.5">
-                            <span className="font-bold text-slate-500">UPC:</span> {product.upc}
-                            <button
-                              onClick={() => navigator.clipboard.writeText(product.upc || "")}
-                              className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all"
-                            >
-                              <Copy className="h-3 w-3" />
-                            </button>
-                          </div>
-                        )}
-                        {product.fnsku && (
-                          <div className="group flex items-center gap-1.5">
-                            <span className="font-bold text-slate-500">FNSKU:</span> {product.fnsku}
-                            <button
-                              onClick={() => navigator.clipboard.writeText(product.fnsku || "")}
-                              className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all"
-                            >
-                              <Copy className="h-3 w-3" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      {product.earliestExpiration && (
-                        <div className="text-[12px]">
-                          <span className="font-bold text-slate-500">Earliest Exp:</span>{" "}
-                          <span className="font-bold text-orange-600">{formatDate(product.earliestExpiration)}</span>
-                        </div>
-                      )}
-
-                      {/* Pallet Details Table */}
-                      <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
-                        <div className="bg-slate-100 px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                          <MapPin className="h-3.5 w-3.5" /> Pallet Locations ({product.palletCount})
-                        </div>
-                        <div className="divide-y divide-slate-100">
-                          {product.locations.map((loc) => (
-                            <div key={loc.locationCode} className="px-3 py-2.5 flex items-center justify-between text-[12px]">
-                              <div className="flex items-center gap-3">
-                                <span
-                                  className={`text-[11px] font-black px-2 py-1 rounded ${STATUS_COLORS[loc.status] || "bg-slate-100 text-slate-600"}`}
+                          <div className="flex flex-col text-[13px] text-slate-600 gap-[2px] leading-tight">
+                            <div>
+                              Quantity: <span className="font-bold text-slate-900">{product.totalQuantity.toLocaleString()}</span>
+                            </div>
+                            <div>
+                              Pallets: <span className="font-bold text-blue-600">{product.palletCount}</span>
+                            </div>
+                            {product.sku && (
+                              <div className="group flex items-center gap-1.5 w-max">
+                                <span>SKU: {product.sku}</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(product.sku || "") }}
+                                  className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95"
+                                  title="Copy"
                                 >
+                                  <Copy className="h-3 w-3" />
+                                </button>
+                              </div>
+                            )}
+                            {product.asin && (
+                              <div className="group flex items-center gap-1.5 w-max">
+                                <span>ASIN: {product.asin}</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(product.asin || "") }}
+                                  className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95"
+                                  title="Copy"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </button>
+                              </div>
+                            )}
+                            {/* Location summary */}
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {product.locations.slice(0, 4).map((loc) => (
+                                <span
+                                  key={loc.locationCode}
+                                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${STATUS_COLORS[loc.status] || "bg-slate-100 text-slate-600"}`}
+                                >
+                                  <MapPin className="inline h-2.5 w-2.5 mr-0.5 -mt-[1px]" />
                                   {loc.locationCode}
                                 </span>
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="text-slate-700 font-medium">
-                                    QTY: <span className="font-bold text-slate-900">{loc.quantity || 0}</span>
-                                  </span>
-                                  <span className="text-[10px] text-slate-400">
-                                    {STATUS_LABELS[loc.status] || loc.status}
-                                    {loc.expirationDate && ` • Exp: ${formatDate(loc.expirationDate)}`}
-                                    {loc.lotNumber && ` • Lot: ${loc.lotNumber}`}
-                                  </span>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => navigator.clipboard.writeText(loc.locationCode)}
-                                className="p-1 text-slate-300 hover:text-blue-500 transition-colors"
-                                title="Copy location"
-                              >
-                                <Copy className="h-3.5 w-3.5" />
-                              </button>
+                              ))}
+                              {product.locations.length > 4 && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
+                                  +{product.locations.length - 4} more
+                                </span>
+                              )}
                             </div>
-                          ))}
+                          </div>
                         </div>
+                        <ChevronRight className={`h-5 w-5 text-slate-400 self-center transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                       </div>
                     </div>
-                  )}
+
+                    {/* Expanded Details */}
+                    {isExpanded && (
+                      <div className="bg-slate-50 border-t p-4 space-y-3 animate-in slide-in-from-top-2">
+                        {/* Identifiers */}
+                        <div className="grid grid-cols-2 gap-2 text-[12px]">
+                          {product.upc && (
+                            <div className="group flex items-center gap-1.5">
+                              <span className="font-bold text-slate-500">UPC:</span> {product.upc}
+                              <button
+                                onClick={() => navigator.clipboard.writeText(product.upc || "")}
+                                className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
+                          {product.fnsku && (
+                            <div className="group flex items-center gap-1.5">
+                              <span className="font-bold text-slate-500">FNSKU:</span> {product.fnsku}
+                              <button
+                                onClick={() => navigator.clipboard.writeText(product.fnsku || "")}
+                                className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {product.earliestExpiration && (
+                          <div className="text-[12px]">
+                            <span className="font-bold text-slate-500">Earliest Exp:</span>{" "}
+                            <span className="font-bold text-orange-600">{formatDate(product.earliestExpiration)}</span>
+                          </div>
+                        )}
+
+                        {/* Pallet Details Table */}
+                        <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
+                          <div className="bg-slate-100 px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <MapPin className="h-3.5 w-3.5" /> Pallet Locations ({product.palletCount})
+                          </div>
+                          <div className="divide-y divide-slate-100">
+                            {product.locations.map((loc) => (
+                              <div key={loc.locationCode} className="px-3 py-2.5 flex items-center justify-between text-[12px]">
+                                <div className="flex items-center gap-3">
+                                  <span
+                                    className={`text-[11px] font-black px-2 py-1 rounded ${STATUS_COLORS[loc.status] || "bg-slate-100 text-slate-600"}`}
+                                  >
+                                    {loc.locationCode}
+                                  </span>
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-slate-700 font-medium">
+                                      QTY: <span className="font-bold text-slate-900">{loc.quantity || 0}</span>
+                                    </span>
+                                    <span className="text-[10px] text-slate-400">
+                                      {STATUS_LABELS[loc.status] || loc.status}
+                                      {loc.expirationDate && ` • Exp: ${formatDate(loc.expirationDate)}`}
+                                      {loc.lotNumber && ` • Lot: ${loc.lotNumber}`}
+                                    </span>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(loc.locationCode)}
+                                  className="p-1 text-slate-300 hover:text-blue-500 transition-colors"
+                                  title="Copy location"
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── SHIPMENT HISTORY VIEW ── */}
+      {showHistory && (
+        <div className="bg-white">
+          {logsLoading ? (
+            <div className="py-12 flex justify-center items-center flex-col text-slate-500">
+              <RefreshCw className="h-8 w-8 animate-spin mb-4" /> Loading shipment history...
+            </div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="py-12 text-center text-slate-500">
+              {shipmentLogs.length === 0
+                ? "No shipment history yet. History is created when you mark an FBA shipment as shipped."
+                : "No logs match your search."}
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              {filteredLogs.map((log: any) => (
+                <div key={log.id} className="border-b border-slate-200 bg-white p-4">
+                  <div className="flex items-start gap-3">
+                    {/* Icon */}
+                    <div className="w-10 h-10 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0 mt-0.5">
+                      <Package className="h-5 w-5 text-blue-600" />
+                    </div>
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-[13px] font-bold text-slate-900 line-clamp-2 leading-snug">
+                        {log.productName}
+                      </h4>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-slate-500">
+                        <span className="font-bold text-blue-600">
+                          {log.totalUnits.toLocaleString()} units
+                        </span>
+                        {log.totalBoxes && (
+                          <span>{log.totalBoxes} boxes</span>
+                        )}
+                        {log.sku && (
+                          <span className="group flex items-center gap-1">
+                            SKU: {log.sku}
+                            <button
+                              onClick={() => navigator.clipboard.writeText(log.sku)}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all"
+                            >
+                              <Copy className="h-2.5 w-2.5" />
+                            </button>
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] text-slate-400">
+                        {log.locationCode && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            From: <span className="font-bold text-slate-600">{log.locationCode}</span>
+                          </span>
+                        )}
+                        <span>→</span>
+                        <span className="font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px]">
+                          {log.shipmentName}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-1.5">
+                        {formatDateTime(log.shippedAt)}
+                      </div>
+                    </div>
+                    {/* Action badge */}
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded shrink-0 ${
+                      log.action === "SHIPPED" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
+                    }`}>
+                      {log.action === "SHIPPED" ? "Enviado" : log.action}
+                    </span>
+                  </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </>
   )
 }

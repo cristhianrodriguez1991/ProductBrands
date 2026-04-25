@@ -539,58 +539,126 @@ export default function FbaShipmentsPage() {
     const tab = tabs.find(t => t.id === shId)
     if (!tab) return
 
-    setConfirmDialog({
-      isOpen: true,
-      title: "¿Marcar como ENVIADO?",
-      message: "Esto liberará todas las posiciones del almacén (etiquetas azules) para este envío. Los artículos permanecerán en el documento, pero sin ubicación física. Los palets 'En Espera' no se tocarán.",
-      onConfirm: async () => {
-        setIsSyncing(true)
-        try {
-          const inShipmentItems = tab.items.filter((i: any) => i.status === "IN_SHIPMENT" && i.location)
-          const levelMap: any = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
-          
-          for (const item of inShipmentItems) {
-            const locs = item.location.split(' + ').filter(Boolean)
-            for (const loc of locs) {
-              const { rack, num, level } = parseLocationCode(loc)
-              if (rack && num && level) {
-                await fetch("/api/admin/warehouse", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    locationCode: loc,
-                    rack,
-                    level: levelMap[level] || "TOP",
-                    cellNumber: Math.ceil(parseInt(num) / 2),
-                    palletPosition: parseInt(num) % 2 === 0 ? 2 : 1,
-                    status: "AVAILABLE",
-                    productName: null,
-                    sku: null,
-                    quantity: null
-                  })
-                })
-              }
-            }
-            await fetch(`/api/admin/fba-shipments/items/${item.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ location: "ENVIADO" })
-            })
-          }
+    // ── Step 1: Validate against warehouse before shipping ──
+    const inShipmentItems = tab.items.filter((i: any) => i.status === "IN_SHIPMENT" && i.location && i.location !== "ENVIADO")
+    
+    if (inShipmentItems.length === 0) {
+      alert("⚠️ No hay artículos con ubicación para enviar.")
+      return
+    }
 
-          const updatedRes = await fetch(`/api/admin/fba-shipments?id=${shId}`)
-          if (updatedRes.ok) {
-            const updatedData = await updatedRes.json()
-            setTabs(prev => prev.map(t => t.id === shId ? { ...t, items: updatedData.items } : t))
-          }
-          alert("✅ Envío marcado como ENVIADO. Posiciones liberadas.")
-        } catch(e) {
-          alert("❌ Error al procesar el envío.")
-        } finally {
-          setIsSyncing(false)
+    setIsSyncing(true)
+    try {
+      const validateRes = await fetch("/api/admin/fba-shipments/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: inShipmentItems })
+      })
+      const validation = await validateRes.json()
+
+      let confirmMsg = `¿Marcar ${inShipmentItems.length} artículos como ENVIADO?\n\n`
+      confirmMsg += `✅ ${validation.validCount || 0} de ${validation.totalItems || 0} ubicaciones verificadas.\n`
+
+      if (validation.warnings?.length > 0) {
+        confirmMsg += `\n⚠️ ADVERTENCIAS (${validation.warnings.length}):\n`
+        validation.warnings.slice(0, 5).forEach((w: string) => {
+          confirmMsg += `  • ${w}\n`
+        })
+        if (validation.warnings.length > 5) {
+          confirmMsg += `  ... y ${validation.warnings.length - 5} más\n`
         }
       }
-    })
+
+      if (validation.errors?.length > 0) {
+        confirmMsg += `\n❌ ERRORES (${validation.errors.length}):\n`
+        validation.errors.slice(0, 5).forEach((e: string) => {
+          confirmMsg += `  • ${e}\n`
+        })
+        confirmMsg += `\n¿Continuar de todos modos?`
+      }
+
+      setIsSyncing(false)
+
+      // Show confirmation with validation results
+      setConfirmDialog({
+        isOpen: true,
+        title: "¿Marcar como ENVIADO?",
+        message: confirmMsg,
+        onConfirm: async () => {
+          setIsSyncing(true)
+          try {
+            const levelMap: any = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
+            
+            // ── Step 2: Clear warehouse positions ──
+            for (const item of inShipmentItems) {
+              const locs = item.location.split(' + ').filter(Boolean)
+              for (const loc of locs) {
+                const { rack, num, level } = parseLocationCode(loc)
+                if (rack && num && level) {
+                  await fetch("/api/admin/warehouse", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      locationCode: loc,
+                      rack,
+                      level: levelMap[level] || "TOP",
+                      cellNumber: Math.ceil(parseInt(num) / 2),
+                      palletPosition: parseInt(num) % 2 === 0 ? 2 : 1,
+                      status: "AVAILABLE",
+                      productName: null,
+                      sku: null,
+                      quantity: null
+                    })
+                  })
+                }
+              }
+              await fetch(`/api/admin/fba-shipments/items/${item.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ location: "ENVIADO" })
+              })
+            }
+
+            // ── Step 3: Create shipment history log ──
+            const logEntries = inShipmentItems.map((item: any) => ({
+              shipmentId: shId,
+              shipmentName: tab.name || "Unknown Shipment",
+              productName: item.name || "Unknown",
+              sku: item.sku || null,
+              asin: item.asin || null,
+              fnsku: item.fnsku || null,
+              upc: item.upc || null,
+              totalUnits: item.totalUnits || 0,
+              totalBoxes: item.totalBoxes || null,
+              qtyPerBox: item.qtyPerBox || null,
+              locationCode: item.location || null,
+              action: "SHIPPED",
+            }))
+
+            await fetch("/api/admin/shipment-logs", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ entries: logEntries })
+            })
+
+            // ── Step 4: Refresh UI ──
+            const updatedRes = await fetch(`/api/admin/fba-shipments?id=${shId}`)
+            if (updatedRes.ok) {
+              const updatedData = await updatedRes.json()
+              setTabs(prev => prev.map(t => t.id === shId ? { ...t, items: updatedData.items } : t))
+            }
+            alert("✅ Envío marcado como ENVIADO. Posiciones liberadas y historial registrado.")
+          } catch(e) {
+            alert("❌ Error al procesar el envío.")
+          } finally {
+            setIsSyncing(false)
+          }
+        }
+      })
+    } catch(e) {
+      setIsSyncing(false)
+      alert("❌ Error al validar el envío.")
+    }
   }
 
   const syncAllToWarehouse = async (shId: string) => {
