@@ -229,17 +229,17 @@ function Cell3D({
       </RoundedBox>
 
       {/* Platform labels on metal plaques for each Pallet */}
-      <RoundedBox args={[0.36 * S, 0.08 * S, 0.02 * S]} position={[0.22 * S, -0.015 * S, 0.26 * S]} radius={0.005 * S}>
+      <RoundedBox args={[0.36 * S, 0.08 * S, 0.02 * S]} position={[0.22 * S, 0.02 * S, 0.26 * S]} radius={0.005 * S}>
          <meshStandardMaterial color="#0f172a" roughness={0.4} metalness={0.6} />
       </RoundedBox>
-      <Text position={[0.22 * S, -0.015 * S, 0.275 * S]} fontSize={0.055 * S} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="black">
+      <Text position={[0.22 * S, 0.02 * S, 0.275 * S]} fontSize={0.055 * S} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="black">
         {p1Loc}
       </Text>
 
-      <RoundedBox args={[0.36 * S, 0.08 * S, 0.02 * S]} position={[-0.22 * S, -0.015 * S, 0.26 * S]} radius={0.005 * S}>
+      <RoundedBox args={[0.36 * S, 0.08 * S, 0.02 * S]} position={[-0.22 * S, 0.02 * S, 0.26 * S]} radius={0.005 * S}>
          <meshStandardMaterial color="#0f172a" roughness={0.4} metalness={0.6} />
       </RoundedBox>
-      <Text position={[-0.22 * S, -0.015 * S, 0.275 * S]} fontSize={0.055 * S} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="black">
+      <Text position={[-0.22 * S, 0.02 * S, 0.275 * S]} fontSize={0.055 * S} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="black">
         {p2Loc}
       </Text>
 
