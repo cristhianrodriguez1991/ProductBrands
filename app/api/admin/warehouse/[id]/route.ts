@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 
-// PATCH update a pallet
+// PATCH update a pallet with full two-way sync
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions)
@@ -59,7 +59,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         data: updateData,
       })
 
-      // Sync content changes with FBA shipments pointing to this location
+      // Two-way sync: Update FBA shipment items referencing this location
       if (updateData.sku !== undefined || updateData.productName !== undefined || updateData.quantity !== undefined) {
         const itemsToUpdate = await tx.fbaShipmentItem.findMany({
           where: {
@@ -71,14 +71,35 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
           const updateItemData: any = {}
           if (updateData.sku !== undefined) updateItemData.sku = updateData.sku
           if (updateData.productName !== undefined) updateItemData.name = updateData.productName
-          // If qty changed in one pallet of a multi-location item, it's tricky, but let's update if it's the only one
-          // Actually, if we update the name/sku, it's always correct to sync
-          await tx.fbaShipmentItem.update({
-            where: { id: item.id },
-            data: updateItemData
-          })
+          if (Object.keys(updateItemData).length > 0) {
+            await tx.fbaShipmentItem.update({
+              where: { id: item.id },
+              data: updateItemData
+            })
+          }
         }
       }
+
+      // Two-way sync: Update InventoryItem if SKU matches
+      const skuToSync = updateData.sku !== undefined ? updateData.sku : existing.sku
+      if (skuToSync) {
+        const invItem = await tx.inventoryItem.findFirst({
+          where: { sku: skuToSync }
+        })
+        if (invItem) {
+          const invUpdate: any = {}
+          if (updateData.productName !== undefined && !invItem.amazonTitle) {
+            invUpdate.name = updateData.productName
+          }
+          if (Object.keys(invUpdate).length > 0) {
+            await tx.inventoryItem.update({
+              where: { id: invItem.id },
+              data: invUpdate
+            })
+          }
+        }
+      }
+
       return pallet
     })
 
@@ -89,7 +110,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
-// DELETE clear a pallet (reset to empty)
+// DELETE clear a pallet (reset to empty) with two-way sync
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions)
@@ -115,7 +136,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
         },
       })
 
-      // Sync removal with FBA shipments
+      // Two-way sync: Update FBA shipments referencing this location
       const itemsToUpdate = await tx.fbaShipmentItem.findMany({
         where: {
           location: { contains: existing.locationCode }

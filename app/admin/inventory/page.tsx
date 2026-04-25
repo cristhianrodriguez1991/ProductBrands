@@ -27,6 +27,9 @@ import {
   Warehouse,
   ChevronDown,
   ChevronUp,
+  Pencil,
+  AlertTriangle,
+  Move,
 } from "lucide-react"
 
 // ── Types ──
@@ -57,23 +60,26 @@ type InventoryItem = {
   updatedAt: string
 }
 
+type PalletLocation = {
+  palletId: string
+  locationCode: string
+  quantity: number | null
+  status: string
+  level: string
+  rack: string
+  expirationDate: string | null
+  palletHeightIn: number | null
+  notes: string | null
+  lotNumber: string | null
+}
+
 type WarehouseProduct = {
   id: string
   productName: string
   sku: string | null
   totalQuantity: number
   palletCount: number
-  locations: {
-    locationCode: string
-    quantity: number | null
-    status: string
-    level: string
-    rack: string
-    expirationDate: string | null
-    palletHeightIn: number | null
-    notes: string | null
-    lotNumber: string | null
-  }[]
+  locations: PalletLocation[]
   statuses: string[]
   earliestExpiration: string | null
   asin: string | null
@@ -102,6 +108,352 @@ const STATUS_LABELS: Record<string, string> = {
   OUTBOUND: "Saliente",
 }
 
+const STATUS_OPTIONS = ["AVAILABLE", "DAMAGED", "HOLD", "INBOUND", "OUTBOUND"]
+
+// ── Confirmation Modal ──
+function ConfirmModal({ open, onClose, onConfirm, title, message }: {
+  open: boolean
+  onClose: () => void
+  onConfirm: () => void
+  title: string
+  message: string
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm p-0 overflow-hidden border-0 shadow-2xl">
+        <div className="bg-white p-6 pt-8 text-center">
+          <div className="mx-auto w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-4">
+            <AlertTriangle className="h-7 w-7 text-red-600" />
+          </div>
+          <DialogHeader className="p-0">
+            <DialogTitle className="text-lg font-black text-slate-900 text-center uppercase tracking-tight">
+              {title}
+            </DialogTitle>
+            <p className="mt-3 text-slate-500 text-sm leading-relaxed">{message}</p>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 mt-6">
+            <Button variant="ghost" onClick={onClose} className="h-10 font-bold uppercase tracking-widest text-[10px] text-slate-400">
+              Cancelar
+            </Button>
+            <Button onClick={() => { onConfirm(); onClose() }} className="h-10 bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-widest text-[10px]">
+              Confirmar
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ══════════════════════════════════════════════════
+// ADD PRODUCT MODAL
+// ══════════════════════════════════════════════════
+function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: () => void; onAdded: () => void }) {
+  const [form, setForm] = useState({
+    productName: "",
+    sku: "",
+    quantity: "",
+    locationCode: "",
+    rack: "A",
+    level: "FLOOR",
+    cellNumber: "1",
+    palletPosition: "1",
+    lotNumber: "",
+    expirationDate: "",
+    palletHeightIn: "",
+    status: "AVAILABLE",
+    notes: "",
+  })
+  const [saving, setSaving] = useState(false)
+
+  const levelMap: Record<string, string> = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
+  const levelKeys: Record<string, string> = { TOP: "T", MID: "M", BOT: "L", FLOOR: "P" }
+
+  // Auto-generate locationCode
+  const locationCode = useMemo(() => {
+    const cn = parseInt(form.cellNumber) || 1
+    const pp = parseInt(form.palletPosition) || 1
+    const globalNum = (cn - 1) * 2 + pp
+    return `${form.rack}${globalNum}${levelKeys[form.level] || "P"}`
+  }, [form.rack, form.level, form.cellNumber, form.palletPosition])
+
+  const handleSave = async () => {
+    if (!form.productName.trim()) return alert("Product name is required")
+    setSaving(true)
+    try {
+      const cn = parseInt(form.cellNumber) || 1
+      const pp = parseInt(form.palletPosition) || 1
+      const res = await fetch("/api/admin/inventory/warehouse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          locationCode,
+          cellNumber: cn,
+          palletPosition: pp,
+          level: form.level,
+        }),
+      })
+      if (res.ok) {
+        onAdded()
+        onClose()
+        setForm({
+          productName: "", sku: "", quantity: "", locationCode: "",
+          rack: "A", level: "FLOOR", cellNumber: "1", palletPosition: "1",
+          lotNumber: "", expirationDate: "", palletHeightIn: "",
+          status: "AVAILABLE", notes: "",
+        })
+      } else {
+        const err = await res.json()
+        alert("❌ " + (err.error || "Failed to add"))
+      }
+    } catch (e: any) {
+      alert("❌ " + e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md p-0 overflow-hidden bg-white sm:rounded-xl max-h-[90vh]">
+        <div className="flex items-center justify-between px-4 h-14 border-b bg-emerald-50">
+          <button onClick={onClose} className="text-slate-500 text-sm font-medium">Cancel</button>
+          <h2 className="font-black text-slate-800 uppercase tracking-wider text-[12px]">
+            <Plus className="inline h-4 w-4 mr-1 -mt-0.5" /> Add Product to Warehouse
+          </h2>
+          <button onClick={handleSave} disabled={saving} className="text-emerald-600 text-sm font-bold">
+            {saving ? "..." : "Save"}
+          </button>
+        </div>
+        <div className="overflow-y-auto max-h-[75vh] p-4 space-y-4">
+          {/* Product Name */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Product Name *</label>
+            <Input value={form.productName} onChange={(e) => setForm(f => ({ ...f, productName: e.target.value }))} placeholder="e.g. Bubble Wrap, Tape, Product XYZ..." className="mt-1" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">SKU</label>
+              <Input value={form.sku} onChange={(e) => setForm(f => ({ ...f, sku: e.target.value }))} placeholder="Optional" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Quantity</label>
+              <Input type="number" value={form.quantity} onChange={(e) => setForm(f => ({ ...f, quantity: e.target.value }))} placeholder="0" className="mt-1" />
+            </div>
+          </div>
+
+          {/* Location Picker */}
+          <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5" /> Location
+            </label>
+            <div className="grid grid-cols-4 gap-2 mt-2">
+              <div>
+                <label className="text-[9px] text-slate-400 font-bold">Rack</label>
+                <select value={form.rack} onChange={(e) => setForm(f => ({ ...f, rack: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5">
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[9px] text-slate-400 font-bold">Level</label>
+                <select value={form.level} onChange={(e) => setForm(f => ({ ...f, level: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5">
+                  <option value="TOP">Top</option>
+                  <option value="MID">Mid</option>
+                  <option value="BOT">Bot</option>
+                  <option value="FLOOR">Floor</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[9px] text-slate-400 font-bold">Cell #</label>
+                <Input type="number" min={1} max={8} value={form.cellNumber} onChange={(e) => setForm(f => ({ ...f, cellNumber: e.target.value }))} className="mt-0.5" />
+              </div>
+              <div>
+                <label className="text-[9px] text-slate-400 font-bold">Position</label>
+                <select value={form.palletPosition} onChange={(e) => setForm(f => ({ ...f, palletPosition: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                </select>
+              </div>
+            </div>
+            <div className="mt-2 text-center">
+              <span className="bg-slate-800 text-white font-black text-xs px-3 py-1 rounded">
+                {locationCode}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</label>
+              <select value={form.status} onChange={(e) => setForm(f => ({ ...f, status: e.target.value }))} className="w-full border rounded px-2 py-2 text-sm mt-1">
+                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Height (in)</label>
+              <Input type="number" value={form.palletHeightIn} onChange={(e) => setForm(f => ({ ...f, palletHeightIn: e.target.value }))} placeholder="Optional" className="mt-1" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Lot Number</label>
+              <Input value={form.lotNumber} onChange={(e) => setForm(f => ({ ...f, lotNumber: e.target.value }))} placeholder="Optional" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Expiration</label>
+              <Input type="date" value={form.expirationDate} onChange={(e) => setForm(f => ({ ...f, expirationDate: e.target.value }))} className="mt-1" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Notes</label>
+            <textarea value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional notes..." className="w-full border rounded px-3 py-2 text-sm mt-1 min-h-[60px] resize-none" />
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ══════════════════════════════════════════════════
+// EDIT PALLET MODAL
+// ══════════════════════════════════════════════════
+function EditPalletModal({ open, onClose, pallet, onSaved }: {
+  open: boolean
+  onClose: () => void
+  pallet: PalletLocation | null
+  onSaved: () => void
+}) {
+  const [form, setForm] = useState({
+    productName: "",
+    sku: "",
+    quantity: "",
+    lotNumber: "",
+    expirationDate: "",
+    palletHeightIn: "",
+    status: "AVAILABLE",
+    notes: "",
+  })
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (pallet) {
+      setForm({
+        productName: (pallet as any).productName || "",
+        sku: (pallet as any).sku || "",
+        quantity: pallet.quantity?.toString() || "",
+        lotNumber: pallet.lotNumber || "",
+        expirationDate: pallet.expirationDate ? pallet.expirationDate.split("T")[0] : "",
+        palletHeightIn: pallet.palletHeightIn?.toString() || "",
+        status: pallet.status || "AVAILABLE",
+        notes: pallet.notes || "",
+      })
+    }
+  }, [pallet])
+
+  const handleSave = async () => {
+    if (!pallet?.palletId) return
+    setSaving(true)
+    try {
+      const res = await fetch("/api/admin/inventory/warehouse/pallet", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          palletId: pallet.palletId,
+          ...form,
+          expirationDate: form.expirationDate || null,
+        }),
+      })
+      if (res.ok) {
+        onSaved()
+        onClose()
+      } else {
+        const err = await res.json()
+        alert("❌ " + (err.error || "Failed to update"))
+      }
+    } catch (e: any) {
+      alert("❌ " + e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!pallet) return null
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md p-0 overflow-hidden bg-white sm:rounded-xl max-h-[90vh]">
+        <div className="flex items-center justify-between px-4 h-14 border-b bg-blue-50">
+          <button onClick={onClose} className="text-slate-500 text-sm font-medium">Cancel</button>
+          <h2 className="font-black text-slate-800 uppercase tracking-wider text-[12px]">
+            <Pencil className="inline h-4 w-4 mr-1 -mt-0.5" /> Edit {pallet.locationCode}
+          </h2>
+          <button onClick={handleSave} disabled={saving} className="text-blue-600 text-sm font-bold">
+            {saving ? "..." : "Save"}
+          </button>
+        </div>
+        <div className="overflow-y-auto max-h-[75vh] p-4 space-y-4">
+          <div className="text-center mb-2">
+            <span className={`text-xs font-black px-3 py-1.5 rounded-lg ${STATUS_COLORS[pallet.status] || "bg-slate-100"}`}>
+              <MapPin className="inline h-3 w-3 mr-1 -mt-0.5" />
+              {pallet.locationCode}
+            </span>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Product Name</label>
+            <Input value={form.productName} onChange={(e) => setForm(f => ({ ...f, productName: e.target.value }))} className="mt-1" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">SKU</label>
+              <Input value={form.sku} onChange={(e) => setForm(f => ({ ...f, sku: e.target.value }))} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Quantity</label>
+              <Input type="number" value={form.quantity} onChange={(e) => setForm(f => ({ ...f, quantity: e.target.value }))} className="mt-1" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</label>
+            <select value={form.status} onChange={(e) => setForm(f => ({ ...f, status: e.target.value }))} className="w-full border rounded px-2 py-2 text-sm mt-1">
+              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Height (in)</label>
+              <Input type="number" value={form.palletHeightIn} onChange={(e) => setForm(f => ({ ...f, palletHeightIn: e.target.value }))} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Lot Number</label>
+              <Input value={form.lotNumber} onChange={(e) => setForm(f => ({ ...f, lotNumber: e.target.value }))} className="mt-1" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Expiration Date</label>
+            <Input type="date" value={form.expirationDate} onChange={(e) => setForm(f => ({ ...f, expirationDate: e.target.value }))} className="mt-1" />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Notes</label>
+            <textarea value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm mt-1 min-h-[60px] resize-none" />
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ══════════════════════════════════════════════════
 // WAREHOUSE INVENTORY TAB
 // ══════════════════════════════════════════════════
@@ -113,6 +465,22 @@ function WarehouseInventoryTab() {
   const [showHistory, setShowHistory] = useState(false)
   const [shipmentLogs, setShipmentLogs] = useState<any[]>([])
   const [logsLoading, setLogsLoading] = useState(false)
+
+  // Add product modal
+  const [showAddModal, setShowAddModal] = useState(false)
+  
+  // Edit pallet modal
+  const [editPallet, setEditPallet] = useState<(PalletLocation & { productName?: string; sku?: string }) | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+
+  // Delete confirmation
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({
+    open: false, title: "", message: "", onConfirm: () => {},
+  })
+
+  // Selection for bulk operations
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set())
+  const [selectionMode, setSelectionMode] = useState(false)
 
   const fetchWarehouseInventory = useCallback(async () => {
     try {
@@ -194,19 +562,145 @@ function WarehouseInventoryTab() {
     return `${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getDate().toString().padStart(2, "0")}/${d.getFullYear()} ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`
   }
 
+  // Delete single pallet
+  const deletePallet = async (palletId: string, locationCode: string) => {
+    setConfirmDelete({
+      open: true,
+      title: "¿Eliminar Pallet?",
+      message: `¿Estás seguro de que deseas vaciar la posición ${locationCode}? El producto será removido de esta ubicación.`,
+      onConfirm: async () => {
+        try {
+          await fetch("/api/admin/inventory/warehouse", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ palletIds: [palletId] }),
+          })
+          fetchWarehouseInventory()
+        } catch (e) {
+          console.error(e)
+        }
+      },
+    })
+  }
+
+  // Delete entire product (all pallets)
+  const deleteProduct = async (product: WarehouseProduct) => {
+    setConfirmDelete({
+      open: true,
+      title: "¿Eliminar Producto Completo?",
+      message: `¿Estás seguro de que deseas eliminar "${product.productName}" de TODAS las ubicaciones (${product.palletCount} pallets)?`,
+      onConfirm: async () => {
+        try {
+          const palletIds = product.locations.map(l => l.palletId)
+          await fetch("/api/admin/inventory/warehouse", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ palletIds }),
+          })
+          fetchWarehouseInventory()
+        } catch (e) {
+          console.error(e)
+        }
+      },
+    })
+  }
+
+  // Delete all warehouse inventory
+  const deleteAllWarehouse = () => {
+    setConfirmDelete({
+      open: true,
+      title: "⚠️ Eliminar TODO el Inventario",
+      message: `¿Estás seguro de que deseas eliminar TODOS los ${totalPallets} pallets del inventario del almacén? Esta acción NO se puede deshacer.`,
+      onConfirm: async () => {
+        try {
+          await fetch("/api/admin/inventory/warehouse", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          })
+          fetchWarehouseInventory()
+        } catch (e) {
+          console.error(e)
+        }
+      },
+    })
+  }
+
+  // Bulk delete selected
+  const deleteSelected = () => {
+    if (selectedProducts.size === 0) return
+    const selectedNames = products.filter(p => selectedProducts.has(p.id)).map(p => p.productName)
+    setConfirmDelete({
+      open: true,
+      title: `¿Eliminar ${selectedProducts.size} Productos?`,
+      message: `¿Eliminar ${selectedNames.join(", ")}? Todos sus pallets serán vaciados.`,
+      onConfirm: async () => {
+        try {
+          const selectedProds = products.filter(p => selectedProducts.has(p.id))
+          const allPalletIds = selectedProds.flatMap(p => p.locations.map(l => l.palletId))
+          await fetch("/api/admin/inventory/warehouse", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ palletIds: allPalletIds }),
+          })
+          setSelectedProducts(new Set())
+          setSelectionMode(false)
+          fetchWarehouseInventory()
+        } catch (e) {
+          console.error(e)
+        }
+      },
+    })
+  }
+
+  // Open edit modal for a specific pallet
+  const openEditPallet = (loc: PalletLocation, product: WarehouseProduct) => {
+    setEditPallet({
+      ...loc,
+      productName: product.productName,
+      sku: product.sku || "",
+    })
+    setShowEditModal(true)
+  }
+
+  const toggleSelection = (id: string) => {
+    setSelectedProducts(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   return (
     <>
-      {/* Search + Stats */}
+      {/* Search + Stats + Actions */}
       <div className="relative z-10 px-3 pb-3 pt-1 border-t border-slate-100 bg-white">
-        <div className="flex items-center space-x-4 mb-2 px-1 text-sm text-slate-600">
-          <div className="font-semibold text-slate-800">
-            <span className="text-slate-500 font-normal mr-1">Products:</span> {products.length}
+        <div className="flex items-center justify-between mb-2 px-1">
+          <div className="flex items-center space-x-4 text-sm text-slate-600">
+            <div className="font-semibold text-slate-800">
+              <span className="text-slate-500 font-normal mr-1">Products:</span> {products.length}
+            </div>
+            <div className="font-semibold text-emerald-600">
+              <span className="text-slate-500 font-normal mr-1">Total Pallets:</span> {totalPallets}
+            </div>
+            <div className="font-semibold text-blue-600">
+              <span className="text-slate-500 font-normal mr-1">Total Units:</span> {totalUnits.toLocaleString()}
+            </div>
           </div>
-          <div className="font-semibold text-emerald-600">
-            <span className="text-slate-500 font-normal mr-1">Total Pallets:</span> {totalPallets}
-          </div>
-          <div className="font-semibold text-blue-600">
-            <span className="text-slate-500 font-normal mr-1">Total Units:</span> {totalUnits.toLocaleString()}
+          <div className="flex items-center gap-1">
+            {selectionMode && selectedProducts.size > 0 && (
+              <Button variant="ghost" size="sm" onClick={deleteSelected} className="text-red-500 hover:bg-red-50 text-[10px] h-7 px-2 font-bold">
+                <Trash2 className="h-3 w-3 mr-1" /> Delete ({selectedProducts.size})
+              </Button>
+            )}
+            <Button 
+              variant="ghost" size="sm" 
+              onClick={() => { setSelectionMode(!selectionMode); setSelectedProducts(new Set()) }} 
+              className={`text-[10px] h-7 px-2 font-bold ${selectionMode ? "text-blue-600 bg-blue-50" : "text-slate-400"}`}
+            >
+              <Check className="h-3 w-3 mr-1" /> Select
+            </Button>
           </div>
         </div>
 
@@ -221,9 +715,17 @@ function WarehouseInventoryTab() {
               className="w-full bg-transparent border-none focus:outline-none px-3 py-2.5 text-sm"
             />
           </div>
+          <Button variant="outline" className="px-3 shrink-0 text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => setShowAddModal(true)}>
+            <Plus className="h-4 w-4" />
+          </Button>
           <Button variant="outline" className="px-3 shrink-0" onClick={fetchWarehouseInventory}>
             <RefreshCw className="h-4 w-4" />
           </Button>
+          {products.length > 0 && (
+            <Button variant="outline" className="px-3 shrink-0 text-red-500 border-red-200 hover:bg-red-50" onClick={deleteAllWarehouse}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         {/* Sub-tabs: Current / History */}
@@ -258,84 +760,117 @@ function WarehouseInventoryTab() {
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="py-12 text-center text-slate-500">
-              {products.length === 0
-                ? "No products in warehouse. Assign products to pallets in the Warehouse Map."
-                : "No items match your search."}
+              {products.length === 0 ? (
+                <div className="space-y-3">
+                  <Package className="h-12 w-12 mx-auto text-slate-200" />
+                  <p>No products in warehouse.</p>
+                  <Button variant="outline" onClick={() => setShowAddModal(true)} className="text-emerald-600 border-emerald-200">
+                    <Plus className="h-4 w-4 mr-2" /> Add Your First Product
+                  </Button>
+                </div>
+              ) : "No items match your search."}
             </div>
           ) : (
             <div className="flex flex-col">
               {filteredProducts.map((product) => {
                 const isExpanded = expandedItem === product.id
+                const isSelected = selectedProducts.has(product.id)
                 return (
-                  <div key={product.id} className="border-b border-slate-200 bg-white">
+                  <div key={product.id} className={`border-b border-slate-200 bg-white ${isSelected ? "ring-2 ring-blue-300 ring-inset" : ""}`}>
                     {/* Collapsed Row */}
                     <div
                       className="p-4 cursor-pointer hover:bg-slate-50 flex flex-col"
-                      onClick={() => setExpandedItem(isExpanded ? null : product.id)}
+                      onClick={() => {
+                        if (selectionMode) {
+                          toggleSelection(product.id)
+                        } else {
+                          setExpandedItem(isExpanded ? null : product.id)
+                        }
+                      }}
                     >
-                      <h3 className="font-bold text-[14px] text-slate-900 leading-snug line-clamp-2 mb-3 pr-4">
-                        {product.amazonTitle || product.productName}
-                      </h3>
-                      <div className="flex items-start justify-between">
-                        <div className="flex gap-4 flex-1">
-                          <div className="w-[72px] h-[72px] bg-white border border-slate-200 rounded shrink-0 flex items-center justify-center overflow-hidden">
-                            {product.imageUrl ? (
-                              <img src={product.imageUrl} alt="" className="max-w-full max-h-full object-contain p-1" />
-                            ) : (
-                              <Package className="h-6 w-6 text-slate-200" />
-                            )}
+                      <div className="flex items-start gap-3">
+                        {selectionMode && (
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-1 transition-all ${isSelected ? "bg-blue-600 border-blue-600" : "border-slate-300"}`}>
+                            {isSelected && <Check className="h-3 w-3 text-white" />}
                           </div>
-                          <div className="flex flex-col text-[13px] text-slate-600 gap-[2px] leading-tight">
-                            <div>
-                              Quantity: <span className="font-bold text-slate-900">{product.totalQuantity.toLocaleString()}</span>
-                            </div>
-                            <div>
-                              Pallets: <span className="font-bold text-blue-600">{product.palletCount}</span>
-                            </div>
-                            {product.sku && (
-                              <div className="group flex items-center gap-1.5 w-max">
-                                <span>SKU: {product.sku}</span>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(product.sku || "") }}
-                                  className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95"
-                                  title="Copy"
-                                >
-                                  <Copy className="h-3 w-3" />
-                                </button>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-[14px] text-slate-900 leading-snug line-clamp-2 mb-3 pr-4">
+                            {product.amazonTitle || product.productName}
+                          </h3>
+                          <div className="flex items-start justify-between">
+                            <div className="flex gap-4 flex-1">
+                              <div className="w-[72px] h-[72px] bg-white border border-slate-200 rounded shrink-0 flex items-center justify-center overflow-hidden">
+                                {product.imageUrl ? (
+                                  <img src={product.imageUrl} alt="" className="max-w-full max-h-full object-contain p-1" />
+                                ) : (
+                                  <Package className="h-6 w-6 text-slate-200" />
+                                )}
                               </div>
-                            )}
-                            {product.asin && (
-                              <div className="group flex items-center gap-1.5 w-max">
-                                <span>ASIN: {product.asin}</span>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(product.asin || "") }}
-                                  className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95"
-                                  title="Copy"
-                                >
-                                  <Copy className="h-3 w-3" />
-                                </button>
+                              <div className="flex flex-col text-[13px] text-slate-600 gap-[2px] leading-tight">
+                                <div>
+                                  Quantity: <span className="font-bold text-slate-900">{product.totalQuantity.toLocaleString()}</span>
+                                </div>
+                                <div>
+                                  Pallets: <span className="font-bold text-blue-600">{product.palletCount}</span>
+                                </div>
+                                {product.sku && (
+                                  <div className="group flex items-center gap-1.5 w-max">
+                                    <span>SKU: {product.sku}</span>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(product.sku || "") }}
+                                      className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95"
+                                      title="Copy"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                                {product.asin && (
+                                  <div className="group flex items-center gap-1.5 w-max">
+                                    <span>ASIN: {product.asin}</span>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(product.asin || "") }}
+                                      className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95"
+                                      title="Copy"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                                {/* Location summary */}
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {product.locations.slice(0, 4).map((loc) => (
+                                    <span
+                                      key={loc.locationCode}
+                                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${STATUS_COLORS[loc.status] || "bg-slate-100 text-slate-600"}`}
+                                    >
+                                      <MapPin className="inline h-2.5 w-2.5 mr-0.5 -mt-[1px]" />
+                                      {loc.locationCode}
+                                    </span>
+                                  ))}
+                                  {product.locations.length > 4 && (
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
+                                      +{product.locations.length - 4} more
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            )}
-                            {/* Location summary */}
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {product.locations.slice(0, 4).map((loc) => (
-                                <span
-                                  key={loc.locationCode}
-                                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${STATUS_COLORS[loc.status] || "bg-slate-100 text-slate-600"}`}
+                            </div>
+                            <div className="flex items-center gap-1 self-center">
+                              {!selectionMode && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); deleteProduct(product) }}
+                                  className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                  title="Delete product"
                                 >
-                                  <MapPin className="inline h-2.5 w-2.5 mr-0.5 -mt-[1px]" />
-                                  {loc.locationCode}
-                                </span>
-                              ))}
-                              {product.locations.length > 4 && (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
-                                  +{product.locations.length - 4} more
-                                </span>
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
                               )}
+                              <ChevronRight className={`h-5 w-5 text-slate-400 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                             </div>
                           </div>
                         </div>
-                        <ChevronRight className={`h-5 w-5 text-slate-400 self-center transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                       </div>
                     </div>
 
@@ -377,12 +912,19 @@ function WarehouseInventoryTab() {
 
                         {/* Pallet Details Table */}
                         <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
-                          <div className="bg-slate-100 px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                            <MapPin className="h-3.5 w-3.5" /> Pallet Locations ({product.palletCount})
+                          <div className="bg-slate-100 px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-3.5 w-3.5" /> Pallet Locations ({product.palletCount})
+                            </div>
+                            <span className="text-[9px] text-slate-400">Tap to edit</span>
                           </div>
                           <div className="divide-y divide-slate-100">
                             {product.locations.map((loc) => (
-                              <div key={loc.locationCode} className="px-3 py-2.5 flex items-center justify-between text-[12px]">
+                              <div
+                                key={loc.locationCode}
+                                className="px-3 py-2.5 flex items-center justify-between text-[12px] hover:bg-blue-50 cursor-pointer transition-colors group"
+                                onClick={() => openEditPallet(loc, product)}
+                              >
                                 <div className="flex items-center gap-3">
                                   <span
                                     className={`text-[11px] font-black px-2 py-1 rounded ${STATUS_COLORS[loc.status] || "bg-slate-100 text-slate-600"}`}
@@ -400,13 +942,29 @@ function WarehouseInventoryTab() {
                                     </span>
                                   </div>
                                 </div>
-                                <button
-                                  onClick={() => navigator.clipboard.writeText(loc.locationCode)}
-                                  className="p-1 text-slate-300 hover:text-blue-500 transition-colors"
-                                  title="Copy location"
-                                >
-                                  <Copy className="h-3.5 w-3.5" />
-                                </button>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); openEditPallet(loc, product) }}
+                                    className="p-1 text-slate-300 group-hover:text-blue-500 transition-colors"
+                                    title="Edit pallet"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); deletePallet(loc.palletId, loc.locationCode) }}
+                                    className="p-1 text-slate-300 group-hover:text-red-500 transition-colors"
+                                    title="Remove from location"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(loc.locationCode) }}
+                                    className="p-1 text-slate-300 hover:text-blue-500 transition-colors"
+                                    title="Copy location"
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -496,6 +1054,22 @@ function WarehouseInventoryTab() {
           )}
         </div>
       )}
+
+      {/* Modals */}
+      <AddProductModal open={showAddModal} onClose={() => setShowAddModal(false)} onAdded={fetchWarehouseInventory} />
+      <EditPalletModal 
+        open={showEditModal} 
+        onClose={() => { setShowEditModal(false); setEditPallet(null) }} 
+        pallet={editPallet} 
+        onSaved={fetchWarehouseInventory} 
+      />
+      <ConfirmModal 
+        open={confirmDelete.open} 
+        onClose={() => setConfirmDelete(d => ({ ...d, open: false }))} 
+        onConfirm={confirmDelete.onConfirm} 
+        title={confirmDelete.title} 
+        message={confirmDelete.message} 
+      />
     </>
   )
 }
@@ -520,6 +1094,11 @@ export default function InventoryPage() {
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   
   const scannerRef = useRef<HTMLInputElement>(null)
+
+  // Delete/confirm state
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void }>({
+    open: false, title: "", message: "", onConfirm: () => {},
+  })
 
   const fetchItems = useCallback(async () => {
     try {
@@ -559,26 +1138,53 @@ export default function InventoryPage() {
   }, [fetchItems])
 
   const wipeInventory = useCallback(async () => {
-    if (!confirm("Are you sure you want to DELETE ALL inventory items? This cannot be undone.")) return
-    
-    setIsSyncing(true)
-    try {
-      const res = await fetch("/api/admin/inventory/wipe", { method: "DELETE" })
-      const data = await res.json().catch(() => ({}))
-      
-      if (res.ok) {
-        await fetchItems()
-        alert("🗑️ All inventory has been deleted.")
-      } else {
-        alert("❌ Failed to wipe inventory: " + (data.error || "Unknown server error"))
-      }
-    } catch (e: any) {
-      console.error(e)
-      alert("❌ Wipe request failed: " + e.message)
-    } finally {
-      setIsSyncing(false)
-    }
+    setConfirmDelete({
+      open: true,
+      title: "⚠️ Delete ALL Amazon Inventory",
+      message: "Are you sure you want to DELETE ALL inventory items? This cannot be undone.",
+      onConfirm: async () => {
+        setIsSyncing(true)
+        try {
+          const res = await fetch("/api/admin/inventory/wipe", { method: "DELETE" })
+          const data = await res.json().catch(() => ({}))
+          
+          if (res.ok) {
+            await fetchItems()
+            alert("🗑️ All inventory has been deleted.")
+          } else {
+            alert("❌ Failed to wipe inventory: " + (data.error || "Unknown server error"))
+          }
+        } catch (e: any) {
+          console.error(e)
+          alert("❌ Wipe request failed: " + e.message)
+        } finally {
+          setIsSyncing(false)
+        }
+      },
+    })
   }, [fetchItems])
+
+  // Delete single Amazon inventory item
+  const deleteItem = useCallback(async (item: InventoryItem) => {
+    setConfirmDelete({
+      open: true,
+      title: "Delete Item",
+      message: `Are you sure you want to delete "${item.name}"?`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/inventory/${item.id}`, { method: "DELETE" })
+          if (res.ok) {
+            setItems(prev => prev.filter(i => i.id !== item.id))
+          } else {
+            alert("❌ Failed to delete item")
+          }
+        } catch (e) {
+          console.error(e)
+          alert("❌ Error deleting item")
+        }
+      },
+    })
+  }, [])
 
   useEffect(() => {
     fetchItems().then((fetchedItems: InventoryItem[]) => {
@@ -759,7 +1365,7 @@ export default function InventoryPage() {
           <div className="flex items-center space-x-1">
             {activeTab === "amazon" && (
               <>
-                <Button variant="ghost" size="icon" onClick={() => wipeInventory()} disabled={isSyncing} className="text-red-500 hover:bg-red-50" title="Wipe">
+                <Button variant="ghost" size="icon" onClick={() => wipeInventory()} disabled={isSyncing} className="text-red-500 hover:bg-red-50" title="Wipe All">
                    <Trash2 className="h-5 w-5" />
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => syncInventory(true)} disabled={isSyncing} className="text-slate-500 hover:bg-slate-100">
@@ -951,7 +1557,16 @@ export default function InventoryPage() {
                               {item.fnsku && <div className="group flex items-center gap-1.5 w-max"><span>FNSKU: {item.fnsku}</span><button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(item.fnsku||"");}} className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95" title="Copy"><Copy className="h-3 w-3" /></button></div>}
                             </div>
                           </div>
-                          <ChevronRight className={`h-5 w-5 text-slate-400 self-center transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                          <div className="flex items-center gap-1 self-center">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); deleteItem(item) }}
+                              className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                              title="Delete item"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                            <ChevronRight className={`h-5 w-5 text-slate-400 self-center transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                          </div>
                         </div>
                       </div>
 
@@ -998,6 +1613,15 @@ export default function InventoryPage() {
           <span className="text-[10px]">Filter</span>
         </button>
       </div>
+
+      {/* Confirm Modal */}
+      <ConfirmModal 
+        open={confirmDelete.open} 
+        onClose={() => setConfirmDelete(d => ({ ...d, open: false }))} 
+        onConfirm={confirmDelete.onConfirm} 
+        title={confirmDelete.title} 
+        message={confirmDelete.message} 
+      />
 
     </div>
   )
