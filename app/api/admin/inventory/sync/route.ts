@@ -58,10 +58,8 @@ export async function POST() {
       console.warn("FBA quantity lookup failed (quantities will show as 0):", qtyErr?.message)
     }
 
-    // ── 4. Wipe old inventory and insert fresh from Amazon ──
-    await prisma.inventoryItem.deleteMany({
-      where: { source: "AMAZON" }
-    })
+    // ── 4. Wipe ALL old inventory for a clean slate ──
+    await prisma.inventoryItem.deleteMany({})
 
     let createdCount = 0
 
