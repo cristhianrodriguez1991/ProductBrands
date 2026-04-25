@@ -109,56 +109,70 @@ export async function getActiveListings(): Promise<any[]> {
 }
 
 /**
- * Get real-time FBA inventory quantities.
- * Returns a Map of SKU → { fulfillable, reserved, fnsku } for quick lookup.
+ * Get real-time FBA inventory quantities and FNSKUs.
+ * Since the FBA Inventory API's pagination is flaky and drops items,
+ * we use the ultra-reliable GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA report.
+ * Returns a Map of SKU → { fulfillable, reserved, fnsku }
  */
 export async function getFbaQuantities(): Promise<Map<string, { fulfillable: number; reserved: number; fnsku: string | null }>> {
   const client: any = getClient()
   const usMarketplaceId = "ATVPDKIKX0DER"
   const quantityMap = new Map<string, { fulfillable: number; reserved: number; fnsku: string | null }>()
 
-  let nextToken: string | undefined = undefined
+  // Request the unsuppressed FBA report which contains perfect quantities and fnsku
+  const createRes: any = await client.callAPI({
+    operation: "createReport",
+    endpoint: "reports",
+    body: {
+      reportType: "GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA",
+      marketplaceIds: [usMarketplaceId],
+    },
+  })
 
-  do {
-    // Amazon SP-API requirement: If nextToken is provided, other query params MUST NOT be present
-    const queryParams = nextToken 
-      ? { nextToken }
-      : {
-          details: true,
-          granularityType: "Marketplace",
-          granularityId: usMarketplaceId,
-          marketplaceIds: usMarketplaceId,
-        }
+  const reportId = createRes?.reportId
+  if (!reportId) return quantityMap
 
-    const res: any = await client.callAPI({
-      operation: "getInventorySummaries",
-      endpoint: "fbaInventory",
-      query: queryParams,
+  let reportStatus = "IN_QUEUE"
+  let docId: string | null = null
+  let attempts = 0
+
+  while (reportStatus !== "DONE" && attempts < 24) {
+    await new Promise((r) => setTimeout(r, 5000))
+    attempts++
+    const statusRes: any = await client.callAPI({
+      operation: "getReport",
+      endpoint: "reports",
+      path: { reportId },
     })
+    reportStatus = statusRes?.processingStatus
+    if (reportStatus === "DONE") docId = statusRes?.reportDocumentId
+    if (reportStatus === "CANCELLED" || reportStatus === "FATAL") break
+  }
 
-    if (res && res.inventorySummaries) {
-      for (const inv of res.inventorySummaries) {
-        const sku = inv.sellerSku
-        const fnsku = inv.fnSku || null
-        const fulfillable = inv.inventoryDetails?.fulfillableQuantity || 0
-        const reserved = inv.inventoryDetails?.reservedQuantity?.totalReservedQuantity || 0
-        
-        // Amazon may chunk SKUs, accumulation isn't strictly necessary but safe
-        const existing = quantityMap.get(sku)
-        if (existing) {
-          quantityMap.set(sku, {
-            fulfillable: existing.fulfillable + fulfillable,
-            reserved: existing.reserved + reserved,
-            fnsku: fnsku || existing.fnsku
-          })
-        } else {
-          quantityMap.set(sku, { fulfillable, reserved, fnsku })
-        }
-      }
+  if (docId) {
+    const docRes: any = await client.callAPI({
+      operation: "getReportDocument",
+      endpoint: "reports",
+      path: { reportDocumentId: docId },
+    })
+    const downloadRes = await fetch(docRes.url)
+    const tsvContent = await downloadRes.text()
+    
+    // Parse the TSV items
+    const fbaItems = parseTSV(tsvContent)
+    
+    for (const inv of fbaItems) {
+      const sku = inv["sku"] || inv["seller-sku"]
+      if (!sku) continue
+      
+      const fnsku = inv["fnsku"] || null
+      const fulfillable = parseInt(inv["afn-fulfillable-quantity"] || "0", 10) || 0
+      const reserved = parseInt(inv["afn-reserved-quantity"] || "0", 10) || 0
+
+      quantityMap.set(sku, { fulfillable, reserved, fnsku })
     }
-
-    nextToken = res?.pagination?.nextToken
-  } while (nextToken)
+    console.log(`FBA Quantities mapped properly from Unsuppressed Report: ${quantityMap.size} valid FBA items attached.`)
+  }
 
   return quantityMap
 }

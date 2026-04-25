@@ -468,6 +468,8 @@ export default function InventoryPage() {
                           {item.unitCost && <div>Price: ${item.unitCost.toFixed(2)}</div>}
                           {item.sku && <div className="truncate max-w-[200px]">SKU: {item.sku}</div>}
                           {item.asin && <div>ASIN: {item.asin}</div>}
+                          {/* We added any so Typescript won't complain if Prisma client hasn't generated locally yet: */}
+                          {(item as any).fnsku && <div>FNSKU: {(item as any).fnsku}</div>}
                           {item.upc && <div>UPC: {item.upc}</div>}
                           <div>Condition: New</div>
                         </div>
