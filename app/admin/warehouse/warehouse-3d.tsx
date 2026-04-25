@@ -821,19 +821,6 @@ export default function Warehouse3D({
           </div>
         )}
 
-        {/* Legend */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-xl px-4 py-3 shadow-lg border border-slate-200">
-          <div className="space-y-1.5">
-            {Object.entries(STATUS_COLORS).map(([status, color]) => (
-              <div key={status} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">
-                  {status === "AVAILABLE" ? "Disponible" : status === "DAMAGED" ? "Dañado" : status === "HOLD" ? "En Espera" : status === "INBOUND" ? "Shipping Supply" : "Saliente"}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       <Canvas shadows>
