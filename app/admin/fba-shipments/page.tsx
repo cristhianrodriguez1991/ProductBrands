@@ -407,7 +407,7 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
             onChange={e => { updateItem(item.id, "fnsku", e.target.value); handleLookup(e.target.value); }} 
           />
           <button 
-            onClick={() => onOpenScanner((code) => { updateItem(item.id, "fnsku", code); handleLookup(code); })}
+            onClick={() => onOpenScanner((code: string) => { updateItem(item.id, "fnsku", code); handleLookup(code); })}
             className="absolute right-1 text-slate-300 hover:text-blue-600 transition-colors bg-white/50 rounded p-0.5"
           >
             <QrCode className="h-3.5 w-3.5" />
@@ -424,7 +424,7 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
             placeholder="UPC" title="UPC" 
           />
           <button 
-            onClick={() => onOpenScanner((code) => { updateItem(item.id, "upc", code); handleLookup(code); })}
+            onClick={() => onOpenScanner((code: string) => { updateItem(item.id, "upc", code); handleLookup(code); })}
             className="absolute right-1 text-slate-300 hover:text-blue-600 transition-colors bg-white/50 rounded p-0.5"
           >
             <QrCode className="h-3.5 w-3.5" />
