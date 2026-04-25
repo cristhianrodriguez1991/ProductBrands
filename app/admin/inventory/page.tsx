@@ -66,35 +66,30 @@ const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string)
       }
 
       try {
-        html5QrCode = new (window as any).Html5Qrcode("inventory-reader");
+        html5QrCode = new (window as any).Html5Qrcode("inventory-reader", { 
+           verbose: false,
+           // Use native browser barcode detector if available (major speed boost)
+           experimentalFeatures: { useBarCodeDetectorIfSupported: true } 
+        });
         
-        // Define a scanning area that's good for mobile
         const qrboxFunction = (viewfinderWidth: number, viewfinderHeight: number) => {
-            let minEdgePercentage = 0.7; // 70%
-            let minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
-            let qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
-            return {
-                width: qrboxSize,
-                height: Math.floor(qrboxSize * 0.7) // Slightly wider for long barcodes (UPC/EAN)
-            };
+            const width = Math.floor(viewfinderWidth * 0.8);
+            const height = Math.floor(width * 0.6);
+            return { width, height };
         };
 
         await html5QrCode.start(
           { facingMode: "environment" },
           { 
-            fps: 20, 
+            fps: 25, 
             qrbox: qrboxFunction,
-            rememberLastUsedCamera: true,
             aspectRatio: 1.0,
-            // Explicitly support common formats
-            formatsToSupport: [
-               (window as any).Html5QrcodeSupportedFormats.EAN_13,
-               (window as any).Html5QrcodeSupportedFormats.EAN_8,
-               (window as any).Html5QrcodeSupportedFormats.UPC_A,
-               (window as any).Html5QrcodeSupportedFormats.UPC_E,
-               (window as any).Html5QrcodeSupportedFormats.CODE_128,
-               (window as any).Html5QrcodeSupportedFormats.QR_CODE
-            ]
+            // Requesting higher resolution for clearer barcode lines
+            videoConstraints: {
+              width: { min: 640, ideal: 1280, max: 1920 },
+              height: { min: 480, ideal: 720, max: 1080 },
+              facingMode: "environment"
+            }
           },
           (decodedText: string) => {
             onScan(decodedText);
