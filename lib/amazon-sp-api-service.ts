@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any */
 const SellingPartnerAPI = require("amazon-sp-api")
 
 /**
  * Initializes the Amazon Selling Partner API (SP-API) client.
  * SP-API requires these keys to be generated from a private Seller Central App.
  */
-function getClient() {
+function getClient(): any {
   const {
     AMAZON_SPAPI_REGION = "na",
     AMAZON_SPAPI_CLIENT_ID,
@@ -31,17 +32,17 @@ function getClient() {
  * Request real-time FBA inventory summaries.
  * Note: Only applies to Fulfilled by Amazon (FBA) items.
  */
-export async function getFbaInventory() {
-  const client = getClient()
+export async function getFbaInventory(): Promise<any[]> {
+  const client: any = getClient()
 
   // Make sure this is standard format (assuming US marketplace)
   const usMarketplaceId = "ATVPDKIKX0DER"
 
-  let allInventory: any[] = []
+  const allInventory: any[] = []
   let nextToken: string | undefined = undefined
 
   do {
-    const res = await client.callAPI({
+    const res: any = await client.callAPI({
       operation: "getInventorySummaries",
       endpoint: "fbaInventory",
       query: {
@@ -67,9 +68,9 @@ export async function getFbaInventory() {
  * Lookup detailed product information (Title, Images, Product Types) 
  * given a list of ASINs via the Catalog Items v2022-04-01 API
  */
-export async function getCatalogItemsByAsins(asins: string[]) {
+export async function getCatalogItemsByAsins(asins: string[]): Promise<any[]> {
   if (asins.length === 0) return []
-  const client = getClient()
+  const client: any = getClient()
   const usMarketplaceId = "ATVPDKIKX0DER"
 
   // SP-API Catalog Items `searchCatalogItems` allows max 20 ASINs per request
@@ -81,7 +82,7 @@ export async function getCatalogItemsByAsins(asins: string[]) {
   const results: any[] = []
 
   for (const batch of batches) {
-    const res = await client.callAPI({
+    const res: any = await client.callAPI({
       operation: "searchCatalogItems",
       endpoint: "catalogItems",
       query: {
