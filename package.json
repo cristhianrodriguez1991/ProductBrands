@@ -40,6 +40,7 @@
     "@tanstack/react-table": "^8.11.0",
     "@types/three": "^0.184.0",
     "@vercel/blob": "^0.23.0",
+    "amazon-sp-api": "^1.2.1",
     "autoprefixer": "^10.4.16",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
