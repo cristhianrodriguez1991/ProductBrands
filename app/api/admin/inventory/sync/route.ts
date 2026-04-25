@@ -45,7 +45,7 @@ export async function POST() {
     
     const catalogMap = new Map<string, any>()
     try {
-      const catalogData = await getCatalogItemsByAsins(asinsInListings.slice(0, 50)) // limit to avoid timeout
+      const catalogData = await getCatalogItemsByAsins(asinsInListings) // Look up all ASINs (batched in 20s)
       for (const cat of catalogData) {
         catalogMap.set(cat.asin, cat)
       }
@@ -72,19 +72,37 @@ export async function POST() {
       const quantityOnHand = parseInt(item["afn-fulfillable-quantity"] || item["quantity"] || "0", 10) || 0
       const quantityReserved = parseInt(item["afn-reserved-quantity"] || "0", 10) || 0
 
-      // Get catalog image (richer quality) if available
+      // Get catalog image (richer quality) and UPC if available
       const cData = catalogMap.get(asin)
       let catalogImage: string | null = null
-      if (cData?.images && cData.images.length > 0) {
-        const variants = cData.images[0].images || []
-        const mainImage = variants.find((img: any) => img.variant === "MAIN")
-        catalogImage = mainImage?.link || variants[0]?.link || null
+      let upc: string | null = null
+
+      if (cData) {
+        // Image extraction
+        if (cData.images && cData.images.length > 0) {
+          const variants = cData.images[0].images || []
+          const mainImage = variants.find((img: any) => img.variant === "MAIN")
+          catalogImage = mainImage?.link || variants[0]?.link || null
+        }
+        
+        // UPC extraction
+        if (cData.identifiers && cData.identifiers.length > 0) {
+          const identifiersList = cData.identifiers[0].identifiers || []
+          const upcObj = identifiersList.find((id: any) => 
+            id.identifierType === "UPC" || 
+            id.identifierType === "EAN" || 
+            id.identifierType === "GTIN"
+          )
+          if (upcObj) upc = upcObj.identifier
+        }
       }
+      
       const catalogTitle = cData?.summaries?.[0]?.itemName || ""
       
       const itemData = {
         source: "AMAZON" as const,
         asin: asin || null,
+        upc: upc || null,
         name: catalogTitle || title || `Amazon Product (${asin})`,
         amazonTitle: catalogTitle || title || null,
         amazonImageUrl: catalogImage || null,

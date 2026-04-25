@@ -195,35 +195,39 @@ function parseTSV(tsv: string): any[] {
   return items
 }
 
-/**
- * Lookup detailed product information (Title, Images) 
- * given a list of ASINs via the Catalog Items API.
- */
 export async function getCatalogItemsByAsins(asins: string[]): Promise<any[]> {
   if (asins.length === 0) return []
   const client: any = getClient()
   const usMarketplaceId = "ATVPDKIKX0DER"
 
   const results: any[] = []
-
-  for (const asin of asins) {
-    try {
-      const res: any = await client.callAPI({
-        operation: "getCatalogItem",
-        endpoint: "catalogItems",
-        path: { asin },
-        query: {
-          marketplaceIds: usMarketplaceId,
-          includedData: "images,summaries",
-        },
-      })
-
-      if (res) {
-        results.push(res)
+  
+  // Process in chunks of 20 to avoid rate limits while remaining fast
+  const chunkSize = 20;
+  for (let i = 0; i < asins.length; i += chunkSize) {
+    const chunk = asins.slice(i, i + chunkSize);
+    
+    // Execute catalog lookups for this chunk in parallel
+    const chunkPromises = chunk.map(async (asin) => {
+      try {
+        const res: any = await client.callAPI({
+          operation: "getCatalogItem",
+          endpoint: "catalogItems",
+          path: { asin },
+          query: {
+            marketplaceIds: usMarketplaceId,
+            includedData: "images,summaries,productTypes,identifiers", // ADDED IDENTIFIERS for UPC/EAN
+          },
+        })
+        return res
+      } catch (e: any) {
+        console.warn(`Catalog lookup failed for ASIN ${asin}:`, e?.message)
+        return null
       }
-    } catch (e: any) {
-      console.warn(`Catalog lookup failed for ASIN ${asin}:`, e?.message)
-    }
+    })
+
+    const chunkResults = await Promise.all(chunkPromises)
+    results.push(...chunkResults.filter(Boolean))
   }
 
   return results
