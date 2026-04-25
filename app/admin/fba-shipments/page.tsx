@@ -56,11 +56,26 @@ const parseLocationCode = (code: string) => {
   return { rack, num, level }
 }
 
+const parseSyncDate = (val: string) => {
+  if (!val) return null
+  if (val.includes('/')) {
+    const parts = val.split('/')
+    if (parts.length === 3) {
+      let [m, d, y] = parts
+      if (y.length === 2) y = "20" + y
+      return new Date(`${y}-${m}-${d}`)
+    }
+  }
+  if (val.length === 6) {
+    return new Date(val.replace(/(\d{2})(\d{2})(\d{2})/, '20$3-$1-$2'))
+  }
+  return null
+}
+
 const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: string) => void }) => {
   const { rack, num, level } = parseLocationCode(value)
 
   const handleRackChange = (newRack: string) => {
-    // Reset num and level if rack changes or just pick first
     onChange(`${newRack}${num || "1"}${level || "P"}`)
   }
   const handleLevelChange = (newLevel: string) => {
@@ -70,35 +85,30 @@ const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: st
     onChange(`${rack || "A"}${newNum}${level || "P"}`)
   }
 
-  const maxPos = rack && (RACKS_CONFIG as any)[rack] ? (RACKS_CONFIG as any)[rack].positions : 16
-
   return (
-    <div className="flex items-center gap-0.5 bg-slate-50/50 p-0.5 rounded border border-slate-100 group-hover/row:border-blue-200 transition-colors">
+    <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shadow-sm group-hover/row:border-blue-300 transition-all">
       <select 
-        value={rack || ""} 
+        value={rack || "A"} 
         onChange={e => handleRackChange(e.target.value)}
-        className="bg-transparent text-[10px] font-black text-blue-600 outline-none cursor-pointer hover:text-blue-800"
+        className="bg-slate-50 px-1.5 py-0.5 rounded text-[11px] font-black text-blue-700 outline-none cursor-pointer hover:bg-blue-50 transition-colors border-none appearance-none"
       >
-        <option value="">R</option>
         {Object.keys(RACKS_CONFIG).map(r => <option key={r} value={r}>{r}</option>)}
       </select>
-      <span className="text-slate-300">|</span>
+      
       <select 
-        value={level || ""} 
+        value={level || "P"} 
         onChange={e => handleLevelChange(e.target.value)}
-        className="bg-transparent text-[10px] font-black text-emerald-600 outline-none cursor-pointer hover:text-emerald-800"
+        className="bg-slate-50 px-1.5 py-0.5 rounded text-[11px] font-black text-emerald-700 outline-none cursor-pointer hover:bg-emerald-50 transition-colors border-none appearance-none"
       >
-        <option value="">L</option>
-        {LEVELS_CONFIG.map(l => <option key={l.key} value={l.key}>{l.key}</option>)}
+        {LEVEL_CONFIG.map(l => <option key={l.key} value={l.key}>{l.key}</option>)}
       </select>
-      <span className="text-slate-300">|</span>
+      
       <select 
-        value={num || ""} 
+        value={num || "1"} 
         onChange={e => handleNumChange(e.target.value)}
-        className="bg-transparent text-[10px] font-black text-slate-700 outline-none cursor-pointer hover:text-slate-900"
+        className="bg-slate-50 px-1.5 py-0.5 rounded text-[11px] font-black text-slate-700 outline-none cursor-pointer hover:bg-slate-100 transition-colors border-none appearance-none"
       >
-        <option value="">#</option>
-        {Array.from({ length: maxPos }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
+        {Array.from({ length: 20 }, (_, i) => i + 1).map(n => <option key={n} value={n.toString()}>{n}</option>)}
       </select>
     </div>
   )
@@ -297,8 +307,8 @@ export default function FbaShipmentsPage() {
             sku: item.sku,
             productName: item.name,
             quantity: parseInt(item.totalUnits as any) || 0,
-            expirationDate: item.expDate ? new Date(item.expDate.replace(/(\d{2})(\d{2})(\d{2})/, '20$3-$1-$2')) : null,
-            status: "IN_SHIPMENT"
+            expirationDate: parseSyncDate(item.expDate || ""),
+            status: "RESERVED"
           }
           
           await fetch("/api/admin/warehouse", {
@@ -501,8 +511,8 @@ export default function FbaShipmentsPage() {
             sku: updatedItem.sku,
             productName: updatedItem.name,
             quantity: parseInt(updatedItem.totalUnits as any) || 0,
-            expirationDate: updatedItem.expDate ? new Date(updatedItem.expDate.replace(/(\d{2})(\d{2})(\d{2})/, '20$3-$1-$2')) : null,
-            status: "IN_SHIPMENT"
+            expirationDate: parseSyncDate(updatedItem.expDate || ""),
+            status: "RESERVED"
           }
 
           // If location changed, clear the old one
