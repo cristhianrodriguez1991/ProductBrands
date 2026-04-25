@@ -875,3 +875,57 @@ model WarehousePallet {
   @@index([sku])
   @@index([locationCode])
 }
+
+// ─────────────────────────────────────────────────────────────
+// INVENTORY (Amazon-synced + manual warehouse items)
+// ─────────────────────────────────────────────────────────────
+
+enum InventorySource {
+  AMAZON
+  MANUAL
+}
+
+model InventoryItem {
+  id              String          @id @default(cuid())
+  source          InventorySource @default(MANUAL)
+
+  // Amazon fields
+  asin            String?         @unique
+  amazonTitle     String?
+  amazonImageUrl  String?
+  amazonPrice     Float?
+  amazonUrl       String?
+  amazonRating    Float?
+  amazonReviewCount Int?
+
+  // Common fields
+  name            String
+  sku             String?
+  description     String?         @db.Text
+  imageUrl        String?         // Manual image or override
+  category        String?
+  location        String?         // Warehouse location code
+
+  // Inventory quantities
+  quantityOnHand  Int             @default(0)
+  quantityReserved Int            @default(0)
+  reorderPoint    Int             @default(0)
+  unitCost        Float?
+  unitPrice       Float?
+
+  // Status
+  isActive        Boolean         @default(true)
+  notes           String?         @db.Text
+
+  // Sync metadata
+  lastSyncedAt    DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([source])
+  @@index([asin])
+  @@index([sku])
+  @@index([category])
+  @@index([isActive])
+  @@index([name])
+}

@@ -23,7 +23,7 @@ import {
   Cpu,
   ClipboardCheck,
   MapPin,
-
+  Boxes,
 } from "lucide-react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
@@ -36,6 +36,7 @@ const NAV_ITEMS = [
   { href: "/admin/fba-shipments", label: "FBA Shipments", icon: Ship },
   { href: "/admin/machines", label: "Machine Setup", icon: Cpu },
   { href: "/admin/warehouse", label: "Warehouse Map", icon: MapPin },
+  { href: "/admin/inventory", label: "Inventory", icon: Boxes },
   { href: "/admin/cleaning-logs", label: "Clean Logs", icon: ClipboardCheck },
 
   { href: "/admin/listings", label: "Listings", icon: Package },
