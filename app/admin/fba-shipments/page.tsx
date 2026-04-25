@@ -56,6 +56,7 @@ type FbaItem = {
   name: string
   fnsku: string
   sku: string
+  upc?: string
   qtyPerBox: number | ""
   totalBoxes: number | ""
   totalUnits: number | ""
@@ -279,6 +280,7 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={item.boxOrder || ""} onChange={e => updateItem(item.id, "boxOrder", e.target.value)} /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2 font-bold text-slate-800" value={item.name || ""} onChange={e => updateItem(item.id, "name", e.target.value)} /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.fnsku || ""} onChange={e => updateItem(item.id, "fnsku", e.target.value)} /></td>
+      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.upc || ""} onChange={e => updateItem(item.id, "upc", e.target.value)} title="UPC" /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.sku || ""} onChange={e => updateItem(item.id, "sku", e.target.value)} /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center" value={item.qtyPerBox || ""} onChange={e => updateItem(item.id, "qtyPerBox", e.target.value)} /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center" value={item.totalBoxes || ""} onChange={e => updateItem(item.id, "totalBoxes", e.target.value)} /></td>
@@ -1176,6 +1178,7 @@ export default function FbaShipmentsPage() {
                         <th className="py-6 px-3 w-[130px] border-r border-white/5">Orden Cajas</th>
                         <th className="py-6 px-5 min-w-[300px] border-r border-white/5">Producto</th>
                         <th className="py-6 px-3 w-[160px] border-r border-white/5 text-center">FnSKU</th>
+                        <th className="py-6 px-3 w-[140px] border-r border-white/5 text-center">UPC</th>
                         <th className="py-6 px-3 w-[130px] border-r border-white/5 text-center">SKU</th>
                         <th className="py-6 px-3 w-[85px] border-r border-white/5 text-center">U/C</th>
                         <th className="py-6 px-3 w-[105px] border-r border-white/5 text-center bg-[#245d48]">Cajas ({activeTab.items.filter((i: any) => i.status === "IN_SHIPMENT").reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</th>
@@ -1237,6 +1240,7 @@ export default function FbaShipmentsPage() {
                           <th className="py-4 px-3 w-[130px]">Orden</th>
                           <th className="py-4 min-w-[200px]">PRODUCTO PENDIENTE</th>
                           <th className="py-4 px-3 w-[150px]">FnSKU</th>
+                          <th className="py-4 px-3 w-[140px]">UPC</th>
                           <th className="py-4 px-3 w-[120px]">SKU</th>
                           <th className="py-4 px-3 w-[90px] text-center">U/C</th>
                           <th className="py-4 px-3 w-[90px] text-center leading-tight">Cajas<br/><span className="text-[9px] text-amber-200">({globalPendingItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</span></th>

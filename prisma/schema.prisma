@@ -777,6 +777,7 @@ model FbaShipmentItem {
   name        String?
   fnsku       String?
   sku         String?
+  upc         String?
   qtyPerBox   Int?
   totalBoxes  Int?
   totalUnits  Int?
