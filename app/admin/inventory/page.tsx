@@ -80,7 +80,7 @@ export default function InventoryPage() {
   }, [])
 
   // ── Fetch ──
-  const autoSync = useCallback(async () => {
+  const syncInventory = useCallback(async (showAlert = true) => {
     setIsSyncing(true)
     try {
       const res = await fetch("/api/admin/inventory/sync", { method: "POST" })
@@ -88,21 +88,40 @@ export default function InventoryPage() {
       
       if (res.ok && data.success !== false) {
         await fetchItems()
-        alert(`✅ Sync response:\nCreated: ${data.created || 0}\nUpdated: ${data.synced || 0}\nMessage: ${data.message || "Done"}`)
+        if (showAlert) alert(`✅ Sync response:\nCreated: ${data.created || 0}\nUpdated: ${data.updated || 0}\nMessage: ${data.message || "Done"}`)
       } else {
-        alert("❌ Amazon API Error:\n" + (data.error || "Unknown") + "\nDetails: " + (data.details || ""))
+        if (showAlert) alert("❌ Amazon API Error:\n" + (data.error || "Unknown") + "\nDetails: " + (data.details || ""))
       }
     } catch (e) {
       console.error("Auto-sync failed:", e)
-      alert("❌ Sync request failed to connect to Vercel API.")
+      if (showAlert) alert("❌ Sync request failed to connect to API.")
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [fetchItems])
+
+  const wipeInventory = useCallback(async () => {
+    if (!confirm("Are you sure you want to DELETE ALL inventory items? This cannot be undone.")) return
+    
+    setIsSyncing(true)
+    try {
+      const res = await fetch("/api/admin/inventory/wipe", { method: "DELETE" })
+      if (res.ok) {
+        await fetchItems()
+        alert("🗑️ All inventory has been deleted.")
+      } else {
+        alert("❌ Failed to wipe inventory.")
+      }
+    } catch (e) {
+      console.error(e)
     } finally {
       setIsSyncing(false)
     }
   }, [fetchItems])
 
   useEffect(() => {
-    fetchItems().then(() => autoSync())
-  }, [fetchItems, autoSync])
+    fetchItems().then(() => syncInventory(false)) // Sync silently in the background
+  }, [fetchItems, syncInventory])
 
   // ── Scanner Lookup ──
   const handleScanSubmit = async (codeOverride?: string) => {
@@ -195,10 +214,29 @@ export default function InventoryPage() {
           <h1 className="text-lg font-bold text-slate-800 absolute left-1/2 -translate-x-1/2">
             Manage Inventory
           </h1>
-          {/* Sync Button */}
-          <Button variant="ghost" size="icon" onClick={() => autoSync()} disabled={isSyncing} className="text-slate-500">
-            <RefreshCw className={`h-5 w-5 ${isSyncing ? "animate-spin text-blue-600" : ""}`} />
-          </Button>
+          {/* Header Buttons */}
+          <div className="flex items-center space-x-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => wipeInventory()}
+              disabled={isSyncing}
+              className="text-red-500 hover:bg-red-50"
+              title="Wipe All Inventory"
+            >
+               <Trash2 className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => syncInventory(true)} 
+              disabled={isSyncing} 
+              className="text-slate-500 hover:bg-slate-100"
+              title="Manual Sync"
+            >
+              <RefreshCw className={`h-5 w-5 ${isSyncing ? "animate-spin text-blue-600" : ""}`} />
+            </Button>
+          </div>
         </div>
 
         {/* SEARCH BAR */}

@@ -58,17 +58,14 @@ export async function POST() {
       console.warn("FBA quantity lookup failed (quantities will show as 0):", qtyErr?.message)
     }
 
-    // ── 4. Wipe ALL old inventory for a clean slate ──
-    await prisma.inventoryItem.deleteMany({})
-
     let createdCount = 0
+    let updatedCount = 0
 
     for (const item of listings) {
       const asin = item["asin1"] || item["ASIN"] || item["asin"] || ""
       const sku = item["seller-sku"] || item["sku"] || ""
       const title = item["item-name"] || item["Title"] || ""
       const imageUrl = item["image-url"] || item["Image Url"] || ""
-      const condition = item["item-condition"] || item["Condition"] || ""
 
       // Get REAL FBA quantities from warehouse data
       const fbaQty = fbaQtyMap.get(asin)
@@ -84,30 +81,50 @@ export async function POST() {
         catalogImage = mainImage?.link || variants[0]?.link || null
       }
       const catalogTitle = cData?.summaries?.[0]?.itemName || ""
+      
+      const itemData = {
+        source: "AMAZON" as const,
+        asin: asin || null,
+        name: catalogTitle || title || `Amazon Product (${asin})`,
+        amazonTitle: catalogTitle || title || null,
+        amazonImageUrl: catalogImage || imageUrl || null,
+        amazonUrl: asin ? `https://www.amazon.com/dp/${asin}` : null,
+        quantityOnHand,
+        quantityReserved,
+        isActive: true,
+        lastSyncedAt: new Date(),
+      }
 
-      await prisma.inventoryItem.create({
-        data: {
-          source: "AMAZON",
-          asin: asin || null,
-          sku: sku || null,
-          name: catalogTitle || title || `Amazon Product (${asin})`,
-          amazonTitle: catalogTitle || title || null,
-          amazonImageUrl: catalogImage || imageUrl || null,
-          amazonUrl: asin ? `https://www.amazon.com/dp/${asin}` : null,
-          quantityOnHand,
-          quantityReserved,
-          isActive: true,
-          lastSyncedAt: new Date(),
-        },
-      })
-      createdCount++
+      // UPSERT LOGIC based on SKU to preserve manual items and update existing Amazon items
+      if (sku) {
+        const existingItem = await prisma.inventoryItem.findFirst({
+          where: { sku }
+        })
+
+        if (existingItem) {
+          await prisma.inventoryItem.update({
+            where: { id: existingItem.id },
+            data: itemData,
+          })
+          updatedCount++
+        } else {
+          await prisma.inventoryItem.create({
+            data: {
+               ...itemData,
+               sku,
+            },
+          })
+          createdCount++
+        }
+      }
     }
 
     return NextResponse.json({
       success: true,
       created: createdCount,
+      updated: updatedCount,
       total: listings.length,
-      message: `Synced ${createdCount} active Amazon listings.`,
+      message: `Synced ${createdCount} new and updated ${updatedCount} Amazon listings.`,
     })
   } catch (error: any) {
     console.error("Seller Central Sync error:", error)
