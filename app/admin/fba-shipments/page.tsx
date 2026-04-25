@@ -5,12 +5,51 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { AlertTriangle, Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, MoveVertical, GripVertical, LayoutGrid, Maximize2, MousePointer2, Copy, ClipboardPaste, FileText, MoreVertical, Clock, Send } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { AlertTriangle, Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, MoveVertical, GripVertical, LayoutGrid, Maximize2, MousePointer2, Copy, ClipboardPaste, FileText, MoreVertical, Clock, Send, QrCode, Scan } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import Image from "next/image"
 import { compressImage } from "@/lib/image-compression"
 import { Reorder, useDragControls } from "framer-motion"
-import { memo, useCallback } from "react"
+import { memo, useCallback, useEffect } from "react"
+
+// ── Scanner Effect Component ──
+const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string) => void }) => {
+  useEffect(() => {
+    let html5QrCode: any = null;
+    let isMounted = true;
+
+    if (open) {
+      const checkReady = setInterval(() => {
+        if ((window as any).Html5Qrcode) {
+          clearInterval(checkReady);
+          if (!isMounted) return;
+          
+          html5QrCode = new (window as any).Html5Qrcode("reader");
+          html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText: string) => {
+              onScan(decodedText);
+              html5QrCode.stop().catch(console.error);
+            },
+            (error: any) => {}
+          ).catch((err: any) => {
+            console.error("Scanner start error:", err);
+          });
+        }
+      }, 500);
+    }
+
+    return () => {
+      isMounted = false;
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(console.error);
+      }
+    };
+  }, [open, onScan]);
+
+  return null;
+};
 
 // ── Confirmation Modal Component ──
 const ConfirmDeleteModal = ({ isOpen, onClose, onConfirm, title, message }: any) => (
@@ -243,7 +282,7 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
 }
 
 // Extracted to module scope to prevent React from unmounting inputs on every keystroke, keeping keyboard focus perfectly stable
-const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, setConfirmDialog, switchItemStatus, removeImage, setSelectedIdForUpload, fileInputRef, uploadingId, setFocusedItemId, setExpandedImage, copyItem, warehousePositions }: any) => {
+const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, setConfirmDialog, switchItemStatus, removeImage, setSelectedIdForUpload, fileInputRef, uploadingId, setFocusedItemId, setExpandedImage, copyItem, warehousePositions, onOpenScanner }: any) => {
   const controls = useDragControls()
   const handleFocus = useCallback(() => setFocusedItemId(item.id), [item.id, setFocusedItemId])
   const handleBlur = useCallback(() => setFocusedItemId(null), [setFocusedItemId])
@@ -360,8 +399,39 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
           rows={2}
         />
       </td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.fnsku || ""} onChange={e => { updateItem(item.id, "fnsku", e.target.value); handleLookup(e.target.value); }} /></td>
-      <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.upc || ""} onChange={e => { updateItem(item.id, "upc", e.target.value); handleLookup(e.target.value); }} placeholder="UPC" title="UPC" /></td>
+      <td className="p-0 border-l">
+        <div className="relative group/input flex items-center">
+          <Input 
+            onFocus={handleFocus} onBlur={handleBlur} 
+            className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2 pr-7 w-full focus:bg-white shadow-none" 
+            value={item.fnsku || ""} 
+            onChange={e => { updateItem(item.id, "fnsku", e.target.value); handleLookup(e.target.value); }} 
+          />
+          <button 
+            onClick={() => onOpenScanner((code) => { updateItem(item.id, "fnsku", code); handleLookup(code); })}
+            className="absolute right-1 text-slate-300 hover:text-blue-600 transition-colors bg-white/50 rounded p-0.5"
+          >
+            <QrCode className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </td>
+      <td className="p-0 border-l">
+        <div className="relative group/input flex items-center">
+          <Input 
+            onFocus={handleFocus} onBlur={handleBlur} 
+            className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2 pr-7 w-full focus:bg-white shadow-none" 
+            value={item.upc || ""} 
+            onChange={e => { updateItem(item.id, "upc", e.target.value); handleLookup(e.target.value); }} 
+            placeholder="UPC" title="UPC" 
+          />
+          <button 
+            onClick={() => onOpenScanner((code) => { updateItem(item.id, "upc", code); handleLookup(code); })}
+            className="absolute right-1 text-slate-300 hover:text-blue-600 transition-colors bg-white/50 rounded p-0.5"
+          >
+            <QrCode className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.sku || ""} onChange={e => updateItem(item.id, "sku", e.target.value)} /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.asin || ""} onChange={e => updateItem(item.id, "asin", e.target.value)} placeholder="ASIN" title="ASIN" /></td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center" value={item.qtyPerBox || ""} onChange={e => updateItem(item.id, "qtyPerBox", e.target.value)} /></td>
@@ -421,6 +491,29 @@ export default function FbaShipmentsPage() {
   const [tabs, setTabs] = useState<any[]>([]) 
   const [activeTabId, setActiveTabId] = useState<string>("dashboard")
   const [loading, setLoading] = useState(true)
+
+  // Scanner State
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [scannerCallback, setScannerCallback] = useState<(code: string) => void>(() => {})
+
+  useEffect(() => {
+    // Load html5-qrcode from CDN
+    const script = document.createElement("script")
+    script.src = "https://unpkg.com/html5-qrcode"
+    script.async = true
+    document.body.appendChild(script)
+    return () => { document.body.removeChild(script) }
+  }, [])
+
+  const openScanner = (cb: (code: string) => void) => {
+    setScannerCallback(() => cb)
+    setScannerOpen(true)
+  }
+
+  const handleScanResult = (code: string) => {
+    scannerCallback(code)
+    setScannerOpen(false)
+  }
   const [allShipments, setAllShipments] = useState<any[]>([])
   const [newShipmentName, setNewShipmentName] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
@@ -1232,6 +1325,7 @@ export default function FbaShipmentsPage() {
                           setExpandedImage={setExpandedImage}
                           copyItem={copyItem}
                           warehousePositions={warehousePositions}
+                          onOpenScanner={openScanner}
                         />
                       ))}
                     </Reorder.Group>
@@ -1342,6 +1436,48 @@ export default function FbaShipmentsPage() {
         message={confirmDialog.message}
         onConfirm={confirmDialog.onConfirm}
       />
+
+      {/* SCANNER MODAL */}
+      <Dialog open={scannerOpen} onOpenChange={setScannerOpen}>
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-black text-white border-0">
+          <div className="relative aspect-video sm:aspect-square bg-slate-900 flex items-center justify-center">
+            <div id="reader" className="w-full h-full"></div>
+            <div className="absolute inset-0 border-2 border-dashed border-white/20 pointer-events-none flex items-center justify-center">
+                <div className="w-64 h-64 border-2 border-blue-500 rounded-lg shadow-[0_0_50px_rgba(59,130,246,0.5)]"></div>
+            </div>
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2">
+                <Scan className="h-4 w-4 animate-pulse text-blue-400" /> ESCANEANDO...
+            </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="absolute top-4 right-4 text-white hover:bg-white/20 z-50" 
+              onClick={() => setScannerOpen(false)}
+            >
+              <X className="h-6 w-6" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <ScannerEffect open={scannerOpen} onScan={handleScanResult} />
+
+      <style jsx global>{`
+        #reader video {
+          object-fit: cover !important;
+        }
+        #reader__dashboard_section_csr button {
+          background: #3b82f6 !important;
+          color: white !important;
+          padding: 8px 16px !important;
+          border-radius: 8px !important;
+          font-weight: bold !important;
+          border: none !important;
+        }
+        #reader__status_span {
+          display: none !important;
+        }
+      `}</style>
     </>
   )
 }
