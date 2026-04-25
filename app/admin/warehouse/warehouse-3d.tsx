@@ -616,8 +616,8 @@ function WarehouseScene({
       {/* RACK A (Back line) */}
       {visibleRacks.A && (
         <group>
-          <Rack3D position={[0, 0, -4.2 * S]} rackName="A" cellCount={8} palletMap={palletMap} onSelect={onSelect} />
-          <Floor3D position={[0, 0, -3.3 * S]} rackName="A" cellCount={8} palletMap={palletMap} onSelect={onSelect} />
+          <Rack3D position={[0, 0, -4.2 * S]} rackName="A" cellCount={8} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
+          <Floor3D position={[0, 0, -3.3 * S]} rackName="A" cellCount={8} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
         </group>
       )}
 
@@ -626,16 +626,16 @@ function WarehouseScene({
       {/* RACK B (Facing Rack A, rotated 180°, pushed back to widen aisle) */}
       {visibleRacks.B && (
         <group>
-          <Floor3D position={[-1.4 * S, 0, -0.1 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
-          <Rack3D position={[-1.4 * S, 0, 0.8 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+          <Floor3D position={[-1.4 * S, 0, -0.1 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
+          <Rack3D position={[-1.4 * S, 0, 0.8 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
         </group>
       )}
 
       {/* RACK C (Back-to-back with B) */}
       {visibleRacks.C && (
         <group>
-          <Rack3D position={[-1.4 * S, 0, 1.4 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
-          <Floor3D position={[-1.4 * S, 0, 2.3 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+          <Rack3D position={[-1.4 * S, 0, 1.4 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
+          <Floor3D position={[-1.4 * S, 0, 2.3 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
         </group>
       )}
     </>
