@@ -109,11 +109,14 @@ function Pallet3D({
       {occupied && pallet.sku && (
         <Text
           position={[0, (displayHeight + 0.1) * S, 0]}
-          fontSize={0.07 * S}
+          fontSize={0.09 * S}
           color="#1e293b"
           anchorX="center"
           anchorY="bottom"
           maxWidth={0.45 * S}
+          fontWeight="bold"
+          outlineWidth={0.005 * S}
+          outlineColor="#ffffff"
         >
           {pallet.sku}
         </Text>
@@ -123,11 +126,14 @@ function Pallet3D({
       {occupied && !pallet.sku && pallet.productName && (
         <Text
           position={[0, (displayHeight + 0.1) * S, 0]}
-          fontSize={0.06 * S}
-          color="#475569"
+          fontSize={0.08 * S}
+          color="#334155"
           anchorX="center"
           anchorY="bottom"
           maxWidth={0.45 * S}
+          fontWeight="bold"
+          outlineWidth={0.005 * S}
+          outlineColor="#ffffff"
         >
           {pallet.productName}
         </Text>
@@ -137,10 +143,13 @@ function Pallet3D({
       {!occupied && (
         <Text
           position={[0, 0.1 * S, 0]}
-          fontSize={0.05 * S}
-          color="#94a3b8"
+          fontSize={0.12 * S}
+          color="#1e293b"
           anchorX="center"
           anchorY="middle"
+          fontWeight="black"
+          outlineWidth={0.01 * S}
+          outlineColor="#ffffff"
         >
           {pallet.locationCode}
         </Text>
@@ -274,7 +283,7 @@ function Rack3D({
   const rackColor = RACK_COLORS[rackName] || "#334155"
   const cellSpacing = 0.95 * S
   const totalWidth = cellCount * cellSpacing + 0.2 * S
-  const totalHeight = 3.6 * S
+  const totalHeight = 2.5 * S // Lowered to clip excess pole length above Top level
   const rackDepth = 0.5 * S
 
   const levels = [

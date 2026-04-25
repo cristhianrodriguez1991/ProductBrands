@@ -196,7 +196,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
       lotNumber: pallet.lotNumber || "",
       expirationDate: pallet.expirationDate ? pallet.expirationDate.split("T")[0] : "",
       palletHeightIn: pallet.palletHeightIn?.toString() || "",
-      status: pallet.status,
+      status: pallet.status === "AVAILABLE" ? "INBOUND" : pallet.status,
       notes: pallet.notes || "",
     })
     setFormOpen(true)
