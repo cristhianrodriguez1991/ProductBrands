@@ -75,6 +75,51 @@ function RealisticPallet({ width, depth }: { width: number; depth: number }) {
   )
 }
 
+// ── Stack of Shrink-Wrapped Boxes ──
+function WrappedBoxes({ width, depth, height, color, hovered }: { width: number; depth: number; height: number; color: string; hovered: boolean }) {
+  const boxW = (width - 0.04 * S) / 2
+  const boxD = (depth - 0.04 * S) / 2
+  
+  const layerH = 0.15 * S 
+  const numLayers = Math.max(1, Math.floor(height / layerH))
+  const actualBoxH = height / numLayers
+
+  return (
+    <group position={[0, height / 2 + 0.04 * S, 0]}>
+      {/* Outer shrink wrap */}
+      <RoundedBox args={[width, height, depth]} radius={0.01 * S}>
+        <meshPhysicalMaterial 
+          color="#ffffff"
+          transparent
+          opacity={0.35}
+          roughness={0.2}
+          metalness={0.1}
+          clearcoat={1.0}
+          clearcoatRoughness={0.1}
+        />
+      </RoundedBox>
+
+      {/* Inner boxes */}
+      {Array.from({ length: numLayers }).map((_, l) => (
+        <group key={l} position={[0, -height / 2 + l * actualBoxH + actualBoxH / 2, 0]}>
+          {[-1, 1].map(x => (
+            [-1, 1].map(z => (
+              <RoundedBox 
+                key={`${x}-${z}`} 
+                args={[boxW, actualBoxH - 0.01 * S, boxD]} 
+                radius={0.01 * S} 
+                position={[x * (boxW / 2 + 0.005 * S), 0, z * (boxD / 2 + 0.005 * S)]}
+              >
+                <meshStandardMaterial color={hovered ? "#60a5fa" : color} roughness={0.7} />
+              </RoundedBox>
+            ))
+          ))}
+        </group>
+      ))}
+    </group>
+  )
+}
+
 // ── Single Pallet (3D Node) ──
 function Pallet3D({ pallet, position, onSelect }: { pallet: Pallet; position: [number, number, number]; onSelect: (p: Pallet) => void }) {
   const meshRef = useRef<any>(null)
@@ -112,19 +157,25 @@ function Pallet3D({ pallet, position, onSelect }: { pallet: Pallet; position: [n
       </mesh>
 
       <group ref={meshRef}>
-        <RealisticPallet width={0.40 * S} depth={0.44 * S} />
-        
-        {occupied && (
+        {occupied ? (
+          <>
+            <RealisticPallet width={0.40 * S} depth={0.44 * S} />
+            <WrappedBoxes 
+              width={0.36 * S} 
+              depth={0.40 * S} 
+              height={displayHeight * S} 
+              color={color} 
+              hovered={hovered} 
+            />
+          </>
+        ) : (
           <RoundedBox
-            args={[0.38 * S, displayHeight * S, 0.42 * S]}
+            args={[0.38 * S, 0.06 * S, 0.42 * S]}
             radius={0.01 * S}
             smoothness={4}
-            position={[0, (displayHeight * S) / 2 + 0.04 * S, 0]}
+            position={[0, 0.03 * S, 0]}
           >
-            <meshStandardMaterial
-              color={hovered ? "#60a5fa" : color}
-              roughness={0.65}
-            />
+            <meshStandardMaterial color={hovered ? "#60a5fa" : "#34d399"} transparent opacity={0.2} depthWrite={false} />
           </RoundedBox>
         )}
       </group>
