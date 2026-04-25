@@ -465,9 +465,11 @@ function CameraClamp({ controlsRef }: { controlsRef: React.RefObject<any> }) {
 function WarehouseScene({
   pallets,
   onSelect,
+  visibleRacks,
 }: {
   pallets: Pallet[]
   onSelect: (p: Pallet) => void
+  visibleRacks: Record<string, boolean>
 }) {
   const palletMap = useMemo(() => {
     const map: Record<string, Pallet> = {}
@@ -494,18 +496,30 @@ function WarehouseScene({
       <AisleLine />
 
       {/* RACK A (Back line) */}
-      <Rack3D position={[0, 0, -4.2 * S]} rackName="A" cellCount={8} palletMap={palletMap} onSelect={onSelect} />
-      <Floor3D position={[0, 0, -3.3 * S]} rackName="A" cellCount={8} palletMap={palletMap} onSelect={onSelect} />
+      {visibleRacks.A && (
+        <group>
+          <Rack3D position={[0, 0, -4.2 * S]} rackName="A" cellCount={8} palletMap={palletMap} onSelect={onSelect} />
+          <Floor3D position={[0, 0, -3.3 * S]} rackName="A" cellCount={8} palletMap={palletMap} onSelect={onSelect} />
+        </group>
+      )}
 
       {/* ── WIDE AISLE ── */}
 
       {/* RACK B (Facing Rack A, rotated 180°, pushed back to widen aisle) */}
-      <Floor3D position={[-1.4 * S, 0, -0.1 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
-      <Rack3D position={[-1.4 * S, 0, 0.8 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+      {visibleRacks.B && (
+        <group>
+          <Floor3D position={[-1.4 * S, 0, -0.1 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+          <Rack3D position={[-1.4 * S, 0, 0.8 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+        </group>
+      )}
 
       {/* RACK C (Back-to-back with B) */}
-      <Rack3D position={[-1.4 * S, 0, 1.4 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
-      <Floor3D position={[-1.4 * S, 0, 2.3 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+      {visibleRacks.C && (
+        <group>
+          <Rack3D position={[-1.4 * S, 0, 1.4 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+          <Floor3D position={[-1.4 * S, 0, 2.3 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+        </group>
+      )}
     </>
   )
 }
@@ -519,6 +533,11 @@ export default function Warehouse3D({
   onSelectPallet: (p: Pallet) => void
 }) {
   const controlsRef = useRef<any>(null)
+  const [visibleRacks, setVisibleRacks] = useState<Record<string, boolean>>({
+    A: true,
+    B: true,
+    C: true,
+  })
 
   return (
     <div className="w-full h-[700px] rounded-2xl overflow-hidden border-2 border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100 shadow-xl relative">
@@ -531,17 +550,39 @@ export default function Warehouse3D({
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-3 shadow-lg border border-slate-200">
-        <div className="space-y-1.5">
-          {Object.entries(STATUS_COLORS).map(([status, color]) => (
-            <div key={status} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-              <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">
-                {status === "AVAILABLE" ? "Disponible" : status === "RESERVED" ? "Reservado" : status === "DAMAGED" ? "Dañado" : status === "HOLD" ? "En Espera" : status === "INBOUND" ? "Entrante" : "Saliente"}
-              </span>
-            </div>
+      {/* Legend & Layout Controls */}
+      <div className="absolute top-4 right-4 z-10 flex flex-col gap-3 items-end">
+        
+        {/* Toggle Panel */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-slate-200 flex items-center gap-2">
+          <span className="text-[9px] font-black tracking-widest uppercase text-slate-500 mr-1">Racks</span>
+          {["A", "B", "C"].map((r) => (
+            <button
+              key={r}
+              onClick={() => setVisibleRacks(prev => ({ ...prev, [r]: !prev[r] }))}
+              className={`w-6 h-6 flex justify-center items-center rounded-full border-2 text-[10px] font-black transition-all ${
+                visibleRacks[r] 
+                  ? "bg-slate-800 border-slate-900 text-white shadow-md scale-100" 
+                  : "bg-slate-100 border-slate-200 text-slate-400 scale-95 opacity-50 hover:opacity-80"
+              }`}
+            >
+              {r}
+            </button>
           ))}
+        </div>
+
+        {/* Legend */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-xl px-4 py-3 shadow-lg border border-slate-200">
+          <div className="space-y-1.5">
+            {Object.entries(STATUS_COLORS).map(([status, color]) => (
+              <div key={status} className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">
+                  {status === "AVAILABLE" ? "Disponible" : status === "RESERVED" ? "Reservado" : status === "DAMAGED" ? "Dañado" : status === "HOLD" ? "En Espera" : status === "INBOUND" ? "Entrante" : "Saliente"}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -573,7 +614,7 @@ export default function Warehouse3D({
           target={[0, 1.5 * S, -1.5 * S]}
         />
         <CameraClamp controlsRef={controlsRef} />
-        <WarehouseScene pallets={pallets} onSelect={onSelectPallet} />
+        <WarehouseScene pallets={pallets} onSelect={onSelectPallet} visibleRacks={visibleRacks} />
       </Canvas>
     </div>
   )
