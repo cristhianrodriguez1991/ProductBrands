@@ -298,7 +298,7 @@ export default function InventoryPage() {
     <div className="min-h-screen bg-slate-50 font-sans sm:pb-20">
       
       {/* HEADER - Sticky and Opaque */}
-      <div className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-md">
+      <div className="sticky top-0 z-[100] bg-white border-b border-slate-200 shadow-md relative isolate">
         <div className="flex items-center justify-between px-2 h-14 bg-white">
           <Button variant="ghost" size="icon" className="text-slate-600 hover:bg-slate-100">
             <ChevronLeft className="h-6 w-6" />
@@ -316,7 +316,7 @@ export default function InventoryPage() {
           </div>
         </div>
 
-        <div className="px-3 pb-3 pt-1 border-t border-slate-100">
+        <div className="relative z-10 px-3 pb-3 pt-1 border-t border-slate-100 bg-white">
           <div className="flex items-center space-x-4 mb-2 px-1 text-sm text-slate-600">
             <div className="font-semibold text-slate-800">
               <span className="text-slate-500 font-normal mr-1">Total Listings:</span> {items.length}
