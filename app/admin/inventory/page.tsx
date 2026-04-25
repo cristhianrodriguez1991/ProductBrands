@@ -71,12 +71,17 @@ export default function InventoryPage() {
   const fetchItems = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/inventory")
-      if (res.ok) setItems(await res.json())
+      if (res.ok) {
+        const data = await res.json()
+        setItems(data)
+        return data
+      }
     } catch (e) {
       console.error("Fetch failed:", e)
     } finally {
       setLoading(false)
     }
+    return []
   }, [])
 
   // ── Fetch ──
@@ -123,7 +128,26 @@ export default function InventoryPage() {
   }, [fetchItems])
 
   useEffect(() => {
-    fetchItems().then(() => syncInventory(false)) // Sync silently in the background
+    fetchItems().then((fetchedItems: InventoryItem[]) => {
+      // Auto-sync protection logic (every 12 hours max) to prevent Amazon API blocks
+      if (fetchedItems && fetchedItems.length > 0) {
+        const latestSync = fetchedItems.reduce((latest, item) => {
+          if (!item.lastSyncedAt) return latest
+          const current = new Date(item.lastSyncedAt).getTime()
+          return current > latest ? current : latest
+        }, 0)
+
+        // 12 hours in milliseconds = 12 * 60 * 60 * 1000 = 43200000
+        const twelveHoursAgo = Date.now() - 43200000
+        
+        if (latestSync === 0 || latestSync < twelveHoursAgo) {
+          syncInventory(false) // Auto-sync in background
+        }
+      } else {
+        // If DB is empty, sync immediately
+        syncInventory(false)
+      }
+    })
   }, [fetchItems, syncInventory])
 
   // ── Scanner Lookup ──
