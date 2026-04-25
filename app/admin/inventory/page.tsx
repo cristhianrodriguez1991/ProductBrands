@@ -21,7 +21,12 @@ import {
   Filter,
   Check,
   X,
-  Copy
+  Copy,
+  MapPin,
+  Package,
+  Warehouse,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 
 // ── Types ──
@@ -52,10 +57,312 @@ type InventoryItem = {
   updatedAt: string
 }
 
-// ── Helper ──
+type WarehouseProduct = {
+  id: string
+  productName: string
+  sku: string | null
+  totalQuantity: number
+  palletCount: number
+  locations: {
+    locationCode: string
+    quantity: number | null
+    status: string
+    level: string
+    rack: string
+    expirationDate: string | null
+    palletHeightIn: number | null
+    notes: string | null
+    lotNumber: string | null
+  }[]
+  statuses: string[]
+  earliestExpiration: string | null
+  asin: string | null
+  fnsku: string | null
+  upc: string | null
+  imageUrl: string | null
+  amazonTitle: string | null
+}
+
+// ── Helpers ──
 const getItemImage = (item: InventoryItem) => item.imageUrl || item.amazonImageUrl || null
 
+const STATUS_COLORS: Record<string, string> = {
+  AVAILABLE: "bg-emerald-100 text-emerald-700",
+  DAMAGED: "bg-red-100 text-red-700",
+  HOLD: "bg-orange-100 text-orange-700",
+  INBOUND: "bg-purple-100 text-purple-700",
+  OUTBOUND: "bg-blue-100 text-blue-700",
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  AVAILABLE: "Disponible",
+  DAMAGED: "Dañado",
+  HOLD: "En Espera",
+  INBOUND: "Shipping Supply",
+  OUTBOUND: "Saliente",
+}
+
+// ══════════════════════════════════════════════════
+// WAREHOUSE INVENTORY TAB
+// ══════════════════════════════════════════════════
+function WarehouseInventoryTab() {
+  const [products, setProducts] = useState<WarehouseProduct[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [expandedItem, setExpandedItem] = useState<string | null>(null)
+
+  const fetchWarehouseInventory = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/inventory/warehouse")
+      if (res.ok) {
+        const data = await res.json()
+        setProducts(data)
+      }
+    } catch (e) {
+      console.error("Failed to fetch warehouse inventory:", e)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchWarehouseInventory()
+  }, [fetchWarehouseInventory])
+
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery) return products
+    const q = searchQuery.toLowerCase()
+    return products.filter(
+      (p) =>
+        p.productName?.toLowerCase().includes(q) ||
+        p.sku?.toLowerCase().includes(q) ||
+        p.asin?.toLowerCase().includes(q) ||
+        p.upc?.toLowerCase().includes(q) ||
+        p.locations.some((loc) => loc.locationCode.toLowerCase().includes(q))
+    )
+  }, [products, searchQuery])
+
+  // Stats
+  const totalPallets = products.reduce((a, p) => a + p.palletCount, 0)
+  const totalUnits = products.reduce((a, p) => a + p.totalQuantity, 0)
+
+  const formatDate = (iso: string | null) => {
+    if (!iso) return "—"
+    const d = new Date(iso)
+    return `${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getDate().toString().padStart(2, "0")}/${d.getFullYear()}`
+  }
+
+  return (
+    <>
+      {/* Search + Stats */}
+      <div className="relative z-10 px-3 pb-3 pt-1 border-t border-slate-100 bg-white">
+        <div className="flex items-center space-x-4 mb-2 px-1 text-sm text-slate-600">
+          <div className="font-semibold text-slate-800">
+            <span className="text-slate-500 font-normal mr-1">Products:</span> {products.length}
+          </div>
+          <div className="font-semibold text-emerald-600">
+            <span className="text-slate-500 font-normal mr-1">Total Pallets:</span> {totalPallets}
+          </div>
+          <div className="font-semibold text-blue-600">
+            <span className="text-slate-500 font-normal mr-1">Total Units:</span> {totalUnits.toLocaleString()}
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <div className="relative flex-1 flex items-center bg-white border border-slate-300 rounded-lg focus-within:ring-2 focus-within:ring-emerald-500 shadow-sm">
+            <div className="pl-3 py-2 text-slate-400"><Search className="h-5 w-5" /></div>
+            <input
+              type="text"
+              placeholder="Search product, SKU, or location..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-transparent border-none focus:outline-none px-3 py-2.5 text-sm"
+            />
+          </div>
+          <Button variant="outline" className="px-3 shrink-0" onClick={fetchWarehouseInventory}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="bg-white">
+        {loading ? (
+          <div className="py-12 flex justify-center items-center flex-col text-slate-500">
+            <RefreshCw className="h-8 w-8 animate-spin mb-4" /> Loading warehouse inventory...
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="py-12 text-center text-slate-500">
+            {products.length === 0
+              ? "No products in warehouse. Assign products to pallets in the Warehouse Map."
+              : "No items match your search."}
+          </div>
+        ) : (
+          <div className="flex flex-col">
+            {filteredProducts.map((product) => {
+              const isExpanded = expandedItem === product.id
+              return (
+                <div key={product.id} className="border-b border-slate-200 bg-white">
+                  {/* Collapsed Row */}
+                  <div
+                    className="p-4 cursor-pointer hover:bg-slate-50 flex flex-col"
+                    onClick={() => setExpandedItem(isExpanded ? null : product.id)}
+                  >
+                    <h3 className="font-bold text-[14px] text-slate-900 leading-snug line-clamp-2 mb-3 pr-4">
+                      {product.amazonTitle || product.productName}
+                    </h3>
+                    <div className="flex items-start justify-between">
+                      <div className="flex gap-4 flex-1">
+                        <div className="w-[72px] h-[72px] bg-white border border-slate-200 rounded shrink-0 flex items-center justify-center overflow-hidden">
+                          {product.imageUrl ? (
+                            <img src={product.imageUrl} alt="" className="max-w-full max-h-full object-contain p-1" />
+                          ) : (
+                            <Package className="h-6 w-6 text-slate-200" />
+                          )}
+                        </div>
+                        <div className="flex flex-col text-[13px] text-slate-600 gap-[2px] leading-tight">
+                          <div>
+                            Quantity: <span className="font-bold text-slate-900">{product.totalQuantity.toLocaleString()}</span>
+                          </div>
+                          <div>
+                            Pallets: <span className="font-bold text-blue-600">{product.palletCount}</span>
+                          </div>
+                          {product.sku && (
+                            <div className="group flex items-center gap-1.5 w-max">
+                              <span>SKU: {product.sku}</span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(product.sku || "") }}
+                                className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95"
+                                title="Copy"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
+                          {product.asin && (
+                            <div className="group flex items-center gap-1.5 w-max">
+                              <span>ASIN: {product.asin}</span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(product.asin || "") }}
+                                className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95"
+                                title="Copy"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
+                          {/* Location summary */}
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {product.locations.slice(0, 4).map((loc) => (
+                              <span
+                                key={loc.locationCode}
+                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${STATUS_COLORS[loc.status] || "bg-slate-100 text-slate-600"}`}
+                              >
+                                <MapPin className="inline h-2.5 w-2.5 mr-0.5 -mt-[1px]" />
+                                {loc.locationCode}
+                              </span>
+                            ))}
+                            {product.locations.length > 4 && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
+                                +{product.locations.length - 4} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <ChevronRight className={`h-5 w-5 text-slate-400 self-center transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                    </div>
+                  </div>
+
+                  {/* Expanded Details */}
+                  {isExpanded && (
+                    <div className="bg-slate-50 border-t p-4 space-y-3 animate-in slide-in-from-top-2">
+                      {/* Identifiers */}
+                      <div className="grid grid-cols-2 gap-2 text-[12px]">
+                        {product.upc && (
+                          <div className="group flex items-center gap-1.5">
+                            <span className="font-bold text-slate-500">UPC:</span> {product.upc}
+                            <button
+                              onClick={() => navigator.clipboard.writeText(product.upc || "")}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
+                        {product.fnsku && (
+                          <div className="group flex items-center gap-1.5">
+                            <span className="font-bold text-slate-500">FNSKU:</span> {product.fnsku}
+                            <button
+                              onClick={() => navigator.clipboard.writeText(product.fnsku || "")}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {product.earliestExpiration && (
+                        <div className="text-[12px]">
+                          <span className="font-bold text-slate-500">Earliest Exp:</span>{" "}
+                          <span className="font-bold text-orange-600">{formatDate(product.earliestExpiration)}</span>
+                        </div>
+                      )}
+
+                      {/* Pallet Details Table */}
+                      <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
+                        <div className="bg-slate-100 px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                          <MapPin className="h-3.5 w-3.5" /> Pallet Locations ({product.palletCount})
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                          {product.locations.map((loc) => (
+                            <div key={loc.locationCode} className="px-3 py-2.5 flex items-center justify-between text-[12px]">
+                              <div className="flex items-center gap-3">
+                                <span
+                                  className={`text-[11px] font-black px-2 py-1 rounded ${STATUS_COLORS[loc.status] || "bg-slate-100 text-slate-600"}`}
+                                >
+                                  {loc.locationCode}
+                                </span>
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-slate-700 font-medium">
+                                    QTY: <span className="font-bold text-slate-900">{loc.quantity || 0}</span>
+                                  </span>
+                                  <span className="text-[10px] text-slate-400">
+                                    {STATUS_LABELS[loc.status] || loc.status}
+                                    {loc.expirationDate && ` • Exp: ${formatDate(loc.expirationDate)}`}
+                                    {loc.lotNumber && ` • Lot: ${loc.lotNumber}`}
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => navigator.clipboard.writeText(loc.locationCode)}
+                                className="p-1 text-slate-300 hover:text-blue-500 transition-colors"
+                                title="Copy location"
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ══════════════════════════════════════════════════
+// MAIN PAGE
+// ══════════════════════════════════════════════════
 export default function InventoryPage() {
+  const [activeTab, setActiveTab] = useState<"amazon" | "warehouse">("amazon")
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -308,190 +615,233 @@ export default function InventoryPage() {
             Manage Inventory
           </h1>
           <div className="flex items-center space-x-1">
-            <Button variant="ghost" size="icon" onClick={() => wipeInventory()} disabled={isSyncing} className="text-red-500 hover:bg-red-50" title="Wipe">
-               <Trash2 className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => syncInventory(true)} disabled={isSyncing} className="text-slate-500 hover:bg-slate-100">
-              <RefreshCw className={`h-5 w-5 ${isSyncing ? "animate-spin text-blue-600" : ""}`} />
-            </Button>
+            {activeTab === "amazon" && (
+              <>
+                <Button variant="ghost" size="icon" onClick={() => wipeInventory()} disabled={isSyncing} className="text-red-500 hover:bg-red-50" title="Wipe">
+                   <Trash2 className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => syncInventory(true)} disabled={isSyncing} className="text-slate-500 hover:bg-slate-100">
+                  <RefreshCw className={`h-5 w-5 ${isSyncing ? "animate-spin text-blue-600" : ""}`} />
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="relative z-10 px-3 pb-3 pt-1 border-t border-slate-100 bg-white">
-          <div className="flex items-center space-x-4 mb-2 px-1 text-sm text-slate-600">
-            <div className="font-semibold text-slate-800">
-              <span className="text-slate-500 font-normal mr-1">Total Listings:</span> {items.length}
-            </div>
-            <div className="font-semibold text-blue-600">
-              <span className="text-slate-500 font-normal mr-1">Total Items:</span>
-              {items.reduce((acc, curr) => acc + (curr.quantityOnHand || 0) + (curr.quantityReserved || 0), 0).toLocaleString()}
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <div className="relative flex-1 flex items-center bg-white border border-slate-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 shadow-sm">
-              <div className="pl-3 py-2 text-slate-400"><Search className="h-5 w-5" /></div>
-              <input
-                type="text"
-                placeholder="Search or scan..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent border-none focus:outline-none px-3 py-2.5 text-sm"
-              />
-              <Button variant="ghost" size="icon" onClick={() => setIsScanning(true)} className="h-full rounded-none px-3 text-slate-400">
-                <ScanLine className="h-5 w-5" />
-              </Button>
-            </div>
-            <Button variant="outline" className="px-3 shrink-0" onClick={() => setIsFilterModalOpen(true)}>
-              <ArrowUpDown className="h-4 w-4 mr-2" /> Sort
-            </Button>
+        {/* ── TAB TOGGLE ── */}
+        <div className="px-3 pt-1 pb-2 bg-white">
+          <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
+            <button
+              onClick={() => setActiveTab("amazon")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider transition-all ${
+                activeTab === "amazon"
+                  ? "bg-white text-slate-900 shadow-md"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              <Package className="h-4 w-4" />
+              Amazon Inventory
+            </button>
+            <button
+              onClick={() => setActiveTab("warehouse")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider transition-all ${
+                activeTab === "warehouse"
+                  ? "bg-white text-slate-900 shadow-md"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              <Warehouse className="h-4 w-4" />
+              Warehouse Inventory
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* FILTER DIALOG */}
-      <Dialog open={isFilterModalOpen} onOpenChange={setIsFilterModalOpen}>
-        <DialogContent className="max-w-md p-0 overflow-hidden bg-white sm:rounded-xl">
-          <div className="flex items-center justify-between px-4 h-14 border-b">
-             <button onClick={() => setIsFilterModalOpen(false)} className="text-blue-600 text-sm font-medium">Cancel</button>
-             <h2 className="font-bold text-slate-800">Filter</h2>
-             <button onClick={() => setIsFilterModalOpen(false)} className="text-blue-600 text-sm font-bold">Apply</button>
-          </div>
-          <div className="max-h-[80vh] overflow-y-auto">
-            <div className="px-4 py-2 bg-slate-50 text-[11px] font-bold text-slate-500 uppercase border-b">Status</div>
-            {[
-              { id: "ALL", label: "All", count: filterCounts.all },
-              { id: "ACTIVE", label: "Active", count: filterCounts.active },
-              { id: "INACTIVE", label: "Inactive", count: filterCounts.inactive },
-              { id: "OUT_OF_STOCK", label: "Out of stock", count: filterCounts.outOfStock },
-              { id: "INCOMPLETE", label: "Incomplete", count: 0 },
-            ].map((opt) => (
-              <button key={opt.id} onClick={() => setStatusFilter(opt.id)} className="w-full flex items-center justify-between px-4 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className={`text-[15px] ${statusFilter === opt.id ? "font-bold text-slate-900" : "text-slate-700"}`}>{opt.label}</span>
-                  <span className="text-[12px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">{opt.count}</span>
-                </div>
-                {statusFilter === opt.id && <Check className="h-4 w-4 text-orange-500" />}
-              </button>
-            ))}
-            <div className="px-4 py-2 bg-slate-50 text-[11px] font-bold text-slate-500 uppercase border-b mt-2">Fulfilled By</div>
-            {[
-              { id: "ALL", label: "All", count: filterCounts.all },
-              { id: "AMAZON", label: "Amazon", count: filterCounts.amazon },
-              { id: "MERCHANT", label: "Merchant", count: filterCounts.merchant },
-            ].map((opt) => (
-              <button key={opt.id} onClick={() => setFulfillmentFilter(opt.id)} className="w-full flex items-center justify-between px-4 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className={`text-[15px] ${fulfillmentFilter === opt.id ? "font-bold text-slate-900" : "text-slate-700"}`}>{opt.label}</span>
-                  <span className="text-[12px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">{opt.count}</span>
-                </div>
-                {fulfillmentFilter === opt.id && <Check className="h-4 w-4 text-orange-500" />}
-              </button>
-            ))}
-            <div className="px-4 py-2 bg-slate-50 text-[11px] font-bold text-slate-500 uppercase border-b mt-2">Sort Options</div>
-            <div className="p-4">
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="w-full border-slate-300 rounded-lg text-sm p-3 bg-white border outline-none shadow-sm h-12">
-                <option value="DEFAULT">Default (Newest First)</option>
-                <option value="NAME_ASC">Name (A-Z)</option>
-                <option value="NAME_DESC">Name (Z-A)</option>
-                <option value="STOCK_DESC">Stock (High to Low)</option>
-                <option value="STOCK_ASC">Stock (Low to High)</option>
-                <option value="CREATED_DESC">Creation (Newest First)</option>
-                <option value="CREATED_ASC">Creation (Oldest First)</option>
-              </select>
-              <div className="mt-4">
-                <label className="flex items-center justify-between group cursor-pointer">
-                  <span className="text-sm text-slate-700">Push "Out of Stock" to Bottom</span>
-                  <input type="checkbox" checked={pushOutofStockToBottom} onChange={(e) => setPushOutofStockToBottom(e.target.checked)} className="h-5 w-5 rounded border-slate-300 text-blue-600" />
-                </label>
+        {/* Amazon Search Bar — only for Amazon tab */}
+        {activeTab === "amazon" && (
+          <div className="relative z-10 px-3 pb-3 pt-1 border-t border-slate-100 bg-white">
+            <div className="flex items-center space-x-4 mb-2 px-1 text-sm text-slate-600">
+              <div className="font-semibold text-slate-800">
+                <span className="text-slate-500 font-normal mr-1">Total Listings:</span> {items.length}
+              </div>
+              <div className="font-semibold text-blue-600">
+                <span className="text-slate-500 font-normal mr-1">Total Items:</span>
+                {items.reduce((acc, curr) => acc + (curr.quantityOnHand || 0) + (curr.quantityReserved || 0), 0).toLocaleString()}
               </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
-      {/* LIST CONTAINER */}
-      <div className="bg-white">
-        {loading ? (
-          <div className="py-12 flex justify-center items-center flex-col text-slate-500">
-            <RefreshCw className="h-8 w-8 animate-spin mb-4" /> Loading inventory...
-          </div>
-        ) : processedItems.length === 0 ? (
-          <div className="py-12 text-center text-slate-500">No items found.</div>
-        ) : (
-          <div className="flex flex-col">
-            {processedItems.map((item) => {
-              const isExpanded = expandedItem === item.id
-              const img = getItemImage(item)
-              const showInactiveBadge = !item.isActive || item.quantityOnHand <= 0
-              return (
-                <div key={item.id} id={`item-` + item.id} className="border-b border-slate-200 bg-white">
-                  <div className="p-4 cursor-pointer hover:bg-slate-50 flex flex-col" onClick={() => setExpandedItem(isExpanded ? null : item.id)}>
-                    {showInactiveBadge && (
-                      <div className="mb-2">
-                        <span className="bg-orange-500 text-white text-[11px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">
-                          {!item.isActive ? "Inactive" : "Out of Stock"}
-                        </span>
-                      </div>
-                    )}
-                    <h3 
-                      className="font-bold text-[14px] text-slate-900 leading-snug line-clamp-2 mb-3 pr-4 hover:text-blue-600 transition-colors cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (item.asin) {
-                          window.open(`https://www.amazon.com/dp/${item.asin}`, '_blank')
-                        } else {
-                          window.open(`https://www.amazon.com/s?k=${encodeURIComponent(item.name || "")}`, '_blank')
-                        }
-                      }}
-                      title="View on Amazon"
-                    >
-                      {item.name}
-                    </h3>
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-4 flex-1">
-                        <div className="w-[72px] h-[72px] bg-white border border-slate-200 rounded shrink-0 flex items-center justify-center overflow-hidden">
-                          {img ? <img src={img} alt="" className="max-w-full max-h-full object-contain p-1" /> : <ImageIcon className="h-6 w-6 text-slate-200" />}
-                        </div>
-                        <div className="flex flex-col text-[13px] text-slate-600 gap-[2px] leading-tight">
-                          <div>Available: <span className="font-bold text-slate-900">{item.quantityOnHand}</span></div>
-                          {item.sku && <div className="group flex items-center gap-1.5 w-max"><span>SKU: {item.sku}</span><button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(item.sku||"");}} className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95" title="Copy"><Copy className="h-3 w-3" /></button></div>}
-                          {item.asin && <div className="group flex items-center gap-1.5 w-max"><span>ASIN: {item.asin}</span><button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(item.asin||"");}} className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95" title="Copy"><Copy className="h-3 w-3" /></button></div>}
-                          {item.upc && <div className="group flex items-center gap-1.5 w-max"><span>UPC: {item.upc}</span><button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(item.upc||"");}} className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95" title="Copy"><Copy className="h-3 w-3" /></button></div>}
-                          {item.fnsku && <div className="group flex items-center gap-1.5 w-max"><span>FNSKU: {item.fnsku}</span><button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(item.fnsku||"");}} className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95" title="Copy"><Copy className="h-3 w-3" /></button></div>}
-                        </div>
-                      </div>
-                      <ChevronRight className={`h-5 w-5 text-slate-400 self-center transition-transform ${isExpanded ? "rotate-90" : ""}`} />
-                    </div>
-                  </div>
-
-                  {isExpanded && (
-                    <div className="bg-slate-50 border-t p-4 space-y-4 animate-in slide-in-from-top-2">
-                      <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
-                        <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => updateItem(item.id, "isActive", !item.isActive)}>
-                          {item.isActive ? "Deactivate" : "Activate"}
-                        </Button>
-                        <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
-                          const val = prompt("New quantity:", String(item.quantityOnHand))
-                          if (val !== null) updateItem(item.id, "quantityOnHand", parseInt(val) || 0)
-                        }}> <Zap className="h-3 w-3 mr-1" /> Qty </Button>
-                        <Button variant="outline" size="sm" className="text-xs h-8 ml-auto" onClick={() => fileInputRef.current?.click()}>
-                          {uploadingId === item.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 text-[12px]">
-                        <div><label className="font-bold text-slate-500 uppercase text-[10px]">UPC</label><Input className="h-8 text-[13px]" value={item.upc||""} onChange={(e)=>updateItem(item.id, "upc", e.target.value)} /></div>
-                        <div><label className="font-bold text-slate-500 uppercase text-[10px]">FNSKU</label><Input className="h-8 text-[13px]" value={item.fnsku||""} onChange={(e)=>updateItem(item.id, "fnsku", e.target.value)} /></div>
-                        <div><label className="font-bold text-slate-500 uppercase text-[10px]">SKU</label><Input className="h-8 text-[13px]" value={item.sku||""} onChange={(e)=>updateItem(item.id, "sku", e.target.value)} /></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+            <div className="flex gap-2">
+              <div className="relative flex-1 flex items-center bg-white border border-slate-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 shadow-sm">
+                <div className="pl-3 py-2 text-slate-400"><Search className="h-5 w-5" /></div>
+                <input
+                  type="text"
+                  placeholder="Search or scan..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-transparent border-none focus:outline-none px-3 py-2.5 text-sm"
+                />
+                <Button variant="ghost" size="icon" onClick={() => setIsScanning(true)} className="h-full rounded-none px-3 text-slate-400">
+                  <ScanLine className="h-5 w-5" />
+                </Button>
+              </div>
+              <Button variant="outline" className="px-3 shrink-0" onClick={() => setIsFilterModalOpen(true)}>
+                <ArrowUpDown className="h-4 w-4 mr-2" /> Sort
+              </Button>
+            </div>
           </div>
         )}
       </div>
+
+      {/* ── WAREHOUSE TAB CONTENT ── */}
+      {activeTab === "warehouse" && <WarehouseInventoryTab />}
+
+      {/* ── AMAZON TAB CONTENT ── */}
+      {activeTab === "amazon" && (
+        <>
+          {/* FILTER DIALOG */}
+          <Dialog open={isFilterModalOpen} onOpenChange={setIsFilterModalOpen}>
+            <DialogContent className="max-w-md p-0 overflow-hidden bg-white sm:rounded-xl">
+              <div className="flex items-center justify-between px-4 h-14 border-b">
+                 <button onClick={() => setIsFilterModalOpen(false)} className="text-blue-600 text-sm font-medium">Cancel</button>
+                 <h2 className="font-bold text-slate-800">Filter</h2>
+                 <button onClick={() => setIsFilterModalOpen(false)} className="text-blue-600 text-sm font-bold">Apply</button>
+              </div>
+              <div className="max-h-[80vh] overflow-y-auto">
+                <div className="px-4 py-2 bg-slate-50 text-[11px] font-bold text-slate-500 uppercase border-b">Status</div>
+                {[
+                  { id: "ALL", label: "All", count: filterCounts.all },
+                  { id: "ACTIVE", label: "Active", count: filterCounts.active },
+                  { id: "INACTIVE", label: "Inactive", count: filterCounts.inactive },
+                  { id: "OUT_OF_STOCK", label: "Out of stock", count: filterCounts.outOfStock },
+                  { id: "INCOMPLETE", label: "Incomplete", count: 0 },
+                ].map((opt) => (
+                  <button key={opt.id} onClick={() => setStatusFilter(opt.id)} className="w-full flex items-center justify-between px-4 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[15px] ${statusFilter === opt.id ? "font-bold text-slate-900" : "text-slate-700"}`}>{opt.label}</span>
+                      <span className="text-[12px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">{opt.count}</span>
+                    </div>
+                    {statusFilter === opt.id && <Check className="h-4 w-4 text-orange-500" />}
+                  </button>
+                ))}
+                <div className="px-4 py-2 bg-slate-50 text-[11px] font-bold text-slate-500 uppercase border-b mt-2">Fulfilled By</div>
+                {[
+                  { id: "ALL", label: "All", count: filterCounts.all },
+                  { id: "AMAZON", label: "Amazon", count: filterCounts.amazon },
+                  { id: "MERCHANT", label: "Merchant", count: filterCounts.merchant },
+                ].map((opt) => (
+                  <button key={opt.id} onClick={() => setFulfillmentFilter(opt.id)} className="w-full flex items-center justify-between px-4 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[15px] ${fulfillmentFilter === opt.id ? "font-bold text-slate-900" : "text-slate-700"}`}>{opt.label}</span>
+                      <span className="text-[12px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">{opt.count}</span>
+                    </div>
+                    {fulfillmentFilter === opt.id && <Check className="h-4 w-4 text-orange-500" />}
+                  </button>
+                ))}
+                <div className="px-4 py-2 bg-slate-50 text-[11px] font-bold text-slate-500 uppercase border-b mt-2">Sort Options</div>
+                <div className="p-4">
+                  <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="w-full border-slate-300 rounded-lg text-sm p-3 bg-white border outline-none shadow-sm h-12">
+                    <option value="DEFAULT">Default (Newest First)</option>
+                    <option value="NAME_ASC">Name (A-Z)</option>
+                    <option value="NAME_DESC">Name (Z-A)</option>
+                    <option value="STOCK_DESC">Stock (High to Low)</option>
+                    <option value="STOCK_ASC">Stock (Low to High)</option>
+                    <option value="CREATED_DESC">Creation (Newest First)</option>
+                    <option value="CREATED_ASC">Creation (Oldest First)</option>
+                  </select>
+                  <div className="mt-4">
+                    <label className="flex items-center justify-between group cursor-pointer">
+                      <span className="text-sm text-slate-700">Push "Out of Stock" to Bottom</span>
+                      <input type="checkbox" checked={pushOutofStockToBottom} onChange={(e) => setPushOutofStockToBottom(e.target.checked)} className="h-5 w-5 rounded border-slate-300 text-blue-600" />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* LIST CONTAINER */}
+          <div className="bg-white">
+            {loading ? (
+              <div className="py-12 flex justify-center items-center flex-col text-slate-500">
+                <RefreshCw className="h-8 w-8 animate-spin mb-4" /> Loading inventory...
+              </div>
+            ) : processedItems.length === 0 ? (
+              <div className="py-12 text-center text-slate-500">No items found.</div>
+            ) : (
+              <div className="flex flex-col">
+                {processedItems.map((item) => {
+                  const isExpanded = expandedItem === item.id
+                  const img = getItemImage(item)
+                  const showInactiveBadge = !item.isActive || item.quantityOnHand <= 0
+                  return (
+                    <div key={item.id} id={`item-` + item.id} className="border-b border-slate-200 bg-white">
+                      <div className="p-4 cursor-pointer hover:bg-slate-50 flex flex-col" onClick={() => setExpandedItem(isExpanded ? null : item.id)}>
+                        {showInactiveBadge && (
+                          <div className="mb-2">
+                            <span className="bg-orange-500 text-white text-[11px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">
+                              {!item.isActive ? "Inactive" : "Out of Stock"}
+                            </span>
+                          </div>
+                        )}
+                        <h3 
+                          className="font-bold text-[14px] text-slate-900 leading-snug line-clamp-2 mb-3 pr-4 hover:text-blue-600 transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (item.asin) {
+                              window.open(`https://www.amazon.com/dp/${item.asin}`, '_blank')
+                            } else {
+                              window.open(`https://www.amazon.com/s?k=${encodeURIComponent(item.name || "")}`, '_blank')
+                            }
+                          }}
+                          title="View on Amazon"
+                        >
+                          {item.name}
+                        </h3>
+                        <div className="flex items-start justify-between">
+                          <div className="flex gap-4 flex-1">
+                            <div className="w-[72px] h-[72px] bg-white border border-slate-200 rounded shrink-0 flex items-center justify-center overflow-hidden">
+                              {img ? <img src={img} alt="" className="max-w-full max-h-full object-contain p-1" /> : <ImageIcon className="h-6 w-6 text-slate-200" />}
+                            </div>
+                            <div className="flex flex-col text-[13px] text-slate-600 gap-[2px] leading-tight">
+                              <div>Available: <span className="font-bold text-slate-900">{item.quantityOnHand}</span></div>
+                              {item.sku && <div className="group flex items-center gap-1.5 w-max"><span>SKU: {item.sku}</span><button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(item.sku||"");}} className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95" title="Copy"><Copy className="h-3 w-3" /></button></div>}
+                              {item.asin && <div className="group flex items-center gap-1.5 w-max"><span>ASIN: {item.asin}</span><button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(item.asin||"");}} className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95" title="Copy"><Copy className="h-3 w-3" /></button></div>}
+                              {item.upc && <div className="group flex items-center gap-1.5 w-max"><span>UPC: {item.upc}</span><button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(item.upc||"");}} className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95" title="Copy"><Copy className="h-3 w-3" /></button></div>}
+                              {item.fnsku && <div className="group flex items-center gap-1.5 w-max"><span>FNSKU: {item.fnsku}</span><button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(item.fnsku||"");}} className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95" title="Copy"><Copy className="h-3 w-3" /></button></div>}
+                            </div>
+                          </div>
+                          <ChevronRight className={`h-5 w-5 text-slate-400 self-center transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="bg-slate-50 border-t p-4 space-y-4 animate-in slide-in-from-top-2">
+                          <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
+                            <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => updateItem(item.id, "isActive", !item.isActive)}>
+                              {item.isActive ? "Deactivate" : "Activate"}
+                            </Button>
+                            <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
+                              const val = prompt("New quantity:", String(item.quantityOnHand))
+                              if (val !== null) updateItem(item.id, "quantityOnHand", parseInt(val) || 0)
+                            }}> <Zap className="h-3 w-3 mr-1" /> Qty </Button>
+                            <Button variant="outline" size="sm" className="text-xs h-8 ml-auto" onClick={() => fileInputRef.current?.click()}>
+                              {uploadingId === item.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 text-[12px]">
+                            <div><label className="font-bold text-slate-500 uppercase text-[10px]">UPC</label><Input className="h-8 text-[13px]" value={item.upc||""} onChange={(e)=>updateItem(item.id, "upc", e.target.value)} /></div>
+                            <div><label className="font-bold text-slate-500 uppercase text-[10px]">FNSKU</label><Input className="h-8 text-[13px]" value={item.fnsku||""} onChange={(e)=>updateItem(item.id, "fnsku", e.target.value)} /></div>
+                            <div><label className="font-bold text-slate-500 uppercase text-[10px]">SKU</label><Input className="h-8 text-[13px]" value={item.sku||""} onChange={(e)=>updateItem(item.id, "sku", e.target.value)} /></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
 
