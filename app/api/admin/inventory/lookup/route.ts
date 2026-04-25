@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { searchItems } from "@/lib/amazon-service"
 
 /**
  * GET /api/admin/inventory/lookup?code=XXXXX
@@ -91,6 +92,29 @@ export async function GET(req: Request) {
           updatedAt: item.updatedAt.toISOString(),
         },
       })
+    }
+
+    // New Tier: Live Amazon Marketplace Search (Even if not in local inventory)
+    try {
+       const amazonItems = await searchItems(code);
+       if (amazonItems && amazonItems.length > 0) {
+         const amz = amazonItems[0];
+         return NextResponse.json({
+           found: true,
+           source: "amazon", // Treat live marketplace as Amazon source
+           item: {
+             name: amz.ItemInfo?.Title?.DisplayValue || "",
+             upc: code,
+             sku: "",
+             ean: "",
+             asin: amz.ASIN || "",
+             description: amz.ItemInfo?.Features?.DisplayValues?.join(". ") || "",
+             amazonImageUrl: amz.Images?.Primary?.Large?.URL || null,
+           }
+         });
+       }
+    } catch (err) {
+       console.error("Live Amazon lookup error:", err);
     }
 
     // Fallback: Universal UPC Database (UPCItemDB)

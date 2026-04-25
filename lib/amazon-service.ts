@@ -91,4 +91,70 @@ export async function getItems(asins: string[]): Promise<PaapiItem[]> {
   return res.data.ItemsResult?.Items ?? []
 }
 
+export async function searchItems(keyword: string): Promise<PaapiItem[]> {
+  if (
+    !AMAZON_PAAPI_ACCESS_KEY ||
+    !AMAZON_PAAPI_SECRET_KEY ||
+    !AMAZON_PAAPI_PARTNER_TAG ||
+    !AMAZON_PAAPI_REGION ||
+    !AMAZON_MARKETPLACE
+  ) {
+    throw new Error("Amazon PA-API environment variables are not fully configured")
+  }
+
+  const payload = {
+    Keywords: keyword,
+    SearchIndex: "All",
+    ItemCount: 1,
+    Resources: [
+      "Images.Primary.Large",
+      "ItemInfo.Title",
+      "ItemInfo.Features",
+      "Offers.Listings.Price",
+    ],
+    PartnerTag: AMAZON_PAAPI_PARTNER_TAG,
+    PartnerType: "Associates",
+    Marketplace: AMAZON_MARKETPLACE,
+  }
+
+  const body = JSON.stringify(payload)
+  const host = "webservices.amazon.com"
+  const uri = "/paapi5/searchitems"
+  const time = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "")
+  const date = time.slice(0, 8)
+
+  const canonicalHeaders =
+    `content-encoding:amz-1.0\n` +
+    `content-type:application/json; charset=utf-8\n` +
+    `host:${host}\n` +
+    `x-amz-date:${time}\n`
+
+  const signedHeaders = "content-encoding;content-type;host;x-amz-date"
+  const hashedPayload = crypto.createHash("sha256").update(body).digest("hex")
+  const canonicalRequest = `POST\n${uri}\n\n${canonicalHeaders}\n${signedHeaders}\n${hashedPayload}`
+  const stringToSign =
+    `AWS4-HMAC-SHA256\n${time}\n${date}/${AMAZON_PAAPI_REGION}/ProductAdvertisingAPI/aws4_request\n` +
+    crypto.createHash("sha256").update(canonicalRequest).digest("hex")
+
+  const signingKey = getSignatureKey(
+    AMAZON_PAAPI_SECRET_KEY,
+    date,
+    AMAZON_PAAPI_REGION,
+    "ProductAdvertisingAPI"
+  )
+  const signature = crypto.createHmac("sha256", signingKey).update(stringToSign).digest("hex")
+  const authorization = `AWS4-HMAC-SHA256 Credential=${AMAZON_PAAPI_ACCESS_KEY}/${date}/${AMAZON_PAAPI_REGION}/ProductAdvertisingAPI/aws4_request, SignedHeaders=${signedHeaders}, Signature=${signature}`
+
+  const res = await axios.post(`https://${host}${uri}`, body, {
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Encoding": "amz-1.0",
+      "X-Amz-Date": time,
+      Authorization: authorization,
+    },
+  })
+
+  return res.data.SearchResult?.Items ?? []
+}
+
 
