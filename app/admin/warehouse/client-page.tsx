@@ -657,7 +657,15 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
           Inicializando warehouse...
         </div>
       ) : viewMode === "3d" ? (
-        <Warehouse3D pallets={pallets} onSelectPallet={openPalletForm} />
+        <Warehouse3D pallets={pallets} onSelectPallet={openPalletForm} onPalletsChanged={async () => {
+          try {
+            const res = await fetch("/api/admin/warehouse")
+            if (res.ok) {
+              const data = await res.json()
+              setPallets(data)
+            }
+          } catch {}
+        }} />
       ) : (
         <div className="space-y-6">
           {Object.entries(RACKS).map(([rackName, config]) => (

@@ -121,12 +121,20 @@ function WrappedBoxes({ width, depth, height, color, hovered }: { width: number;
 }
 
 // ── Single Pallet (3D Node) ──
-function Pallet3D({ pallet, position, onSelect }: { pallet: Pallet; position: [number, number, number]; onSelect: (p: Pallet) => void }) {
+function Pallet3D({ pallet, position, onSelect, moveSourceId, onMoveClick }: {
+  pallet: Pallet;
+  position: [number, number, number];
+  onSelect: (p: Pallet) => void;
+  moveSourceId: string | null;
+  onMoveClick: (p: Pallet) => void;
+}) {
   const meshRef = useRef<any>(null)
   const [hovered, setHovered] = useState(false)
 
   const occupied = pallet.status !== "AVAILABLE"
-  const color = STATUS_COLORS[pallet.status] || "#94a3b8"
+  const isSource = moveSourceId === pallet.id
+  const isMoveTarget = moveSourceId !== null && !isSource && !occupied
+  const color = isSource ? "#3b82f6" : STATUS_COLORS[pallet.status] || "#94a3b8"
 
   // Occupied pallets get a visible block of products
   const displayHeight = occupied
@@ -148,8 +156,15 @@ function Pallet3D({ pallet, position, onSelect }: { pallet: Pallet; position: [n
       {/* Invisible Interactive Hitbox */}
       <mesh
         position={[0, 0.2 * S, 0]}
-        onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); onSelect(pallet) }}
-        onPointerOver={(e: ThreeEvent<PointerEvent>) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer" }}
+        onClick={(e: ThreeEvent<MouseEvent>) => {
+          e.stopPropagation()
+          if (moveSourceId) {
+            onMoveClick(pallet)
+          } else {
+            onSelect(pallet)
+          }
+        }}
+        onPointerOver={(e: ThreeEvent<PointerEvent>) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = moveSourceId ? (isMoveTarget ? "copy" : "not-allowed") : "pointer" }}
         onPointerOut={(e: ThreeEvent<PointerEvent>) => { setHovered(false); document.body.style.cursor = "auto" }}
         visible={false}
       >
@@ -175,10 +190,26 @@ function Pallet3D({ pallet, position, onSelect }: { pallet: Pallet; position: [n
             smoothness={4}
             position={[0, 0.03 * S, 0]}
           >
-            <meshStandardMaterial color={hovered ? "#60a5fa" : "#34d399"} transparent opacity={0.2} depthWrite={false} />
+            <meshStandardMaterial color={hovered ? "#60a5fa" : (isMoveTarget ? "#60a5fa" : "#34d399")} transparent opacity={isMoveTarget && hovered ? 0.5 : 0.2} depthWrite={false} />
           </RoundedBox>
         )}
       </group>
+
+      {/* Move source glow ring */}
+      {isSource && (
+        <mesh position={[0, 0.01 * S, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.22 * S, 0.26 * S, 32]} />
+          <meshBasicMaterial color="#3b82f6" transparent opacity={0.8} />
+        </mesh>
+      )}
+
+      {/* Drop target indicator */}
+      {isMoveTarget && hovered && (
+        <mesh position={[0, 0.01 * S, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.22 * S, 0.26 * S, 32]} />
+          <meshBasicMaterial color="#22c55e" transparent opacity={0.7} />
+        </mesh>
+      )}
 
       {/* Product Name or SKU label */}
       {occupied && (pallet.productName || pallet.sku) && (
@@ -209,12 +240,16 @@ function Cell3D({
   p2Loc,
   pallets,
   onSelect,
+  moveSourceId,
+  onMoveClick,
 }: {
   position: [number, number, number]
   p1Loc: string
   p2Loc: string
   pallets: [Pallet | undefined, Pallet | undefined]
   onSelect: (p: Pallet) => void
+  moveSourceId: string | null
+  onMoveClick: (p: Pallet) => void
 }) {
   return (
     <group position={position}>
@@ -245,11 +280,11 @@ function Cell3D({
 
       {/* Pallet 1 (Right pallet) */}
       {pallets[0] && (
-        <Pallet3D position={[0.22 * S, 0, 0]} pallet={pallets[0]} onSelect={onSelect} />
+        <Pallet3D position={[0.22 * S, 0, 0]} pallet={pallets[0]} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
       )}
       {/* Pallet 2 (Left pallet) */}
       {pallets[1] && (
-        <Pallet3D position={[-0.22 * S, 0, 0]} pallet={pallets[1]} onSelect={onSelect} />
+        <Pallet3D position={[-0.22 * S, 0, 0]} pallet={pallets[1]} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
       )}
     </group>
   )
@@ -265,6 +300,8 @@ function RackLevel3D({
   cellCount,
   palletMap,
   onSelect,
+  moveSourceId,
+  onMoveClick,
 }: {
   position: [number, number, number]
   rackName: string
@@ -274,6 +311,8 @@ function RackLevel3D({
   cellCount: number
   palletMap: Record<string, Pallet>
   onSelect: (p: Pallet) => void
+  moveSourceId: string | null
+  onMoveClick: (p: Pallet) => void
 }) {
   const cellSpacing = 0.95 * S
   const totalWidth = cellCount * cellSpacing
@@ -303,11 +342,13 @@ function RackLevel3D({
         return (
           <Cell3D
             key={i}
-            position={[startX - i * cellSpacing, 0, 0]} // Negative step towards left
+            position={[startX - i * cellSpacing, 0, 0]}
             p1Loc={p1Key}
             p2Loc={p2Key}
             pallets={[palletMap[p1Key], palletMap[p2Key]]}
             onSelect={onSelect}
+            moveSourceId={moveSourceId}
+            onMoveClick={onMoveClick}
           />
         )
       })}
@@ -323,6 +364,8 @@ function Rack3D({
   cellCount,
   palletMap,
   onSelect,
+  moveSourceId,
+  onMoveClick,
 }: {
   position: [number, number, number]
   rotation?: [number, number, number]
@@ -330,6 +373,8 @@ function Rack3D({
   cellCount: number
   palletMap: Record<string, Pallet>
   onSelect: (p: Pallet) => void
+  moveSourceId: string | null
+  onMoveClick: (p: Pallet) => void
 }) {
   const rackColor = RACK_COLORS[rackName] || "#334155"
   const cellSpacing = 0.95 * S
@@ -404,6 +449,8 @@ function Rack3D({
           cellCount={cellCount}
           palletMap={palletMap}
           onSelect={onSelect}
+          moveSourceId={moveSourceId}
+          onMoveClick={onMoveClick}
         />
       ))}
     </group>
@@ -418,6 +465,8 @@ function Floor3D({
   cellCount,
   palletMap,
   onSelect,
+  moveSourceId,
+  onMoveClick,
 }: {
   position: [number, number, number]
   rotation?: [number, number, number]
@@ -425,6 +474,8 @@ function Floor3D({
   cellCount: number
   palletMap: Record<string, Pallet>
   onSelect: (p: Pallet) => void
+  moveSourceId: string | null
+  onMoveClick: (p: Pallet) => void
 }) {
   const cellSpacing = 0.95 * S
   const totalWidth = cellCount * cellSpacing
@@ -462,11 +513,13 @@ function Floor3D({
         return (
           <Cell3D
             key={i}
-            position={[startX - i * cellSpacing, 0, 0]} // Step left
+            position={[startX - i * cellSpacing, 0, 0]}
             p1Loc={p1Key}
             p2Loc={p2Key}
             pallets={[palletMap[p1Key], palletMap[p2Key]]}
             onSelect={onSelect}
+            moveSourceId={moveSourceId}
+            onMoveClick={onMoveClick}
           />
         )
       })}
@@ -527,10 +580,14 @@ function WarehouseScene({
   pallets,
   onSelect,
   visibleRacks,
+  moveSourceId,
+  onMoveClick,
 }: {
   pallets: Pallet[]
   onSelect: (p: Pallet) => void
   visibleRacks: Record<string, boolean>
+  moveSourceId: string | null
+  onMoveClick: (p: Pallet) => void
 }) {
   const palletMap = useMemo(() => {
     const map: Record<string, Pallet> = {}
@@ -589,9 +646,11 @@ function WarehouseScene({
 export default function Warehouse3D({
   pallets,
   onSelectPallet,
+  onPalletsChanged,
 }: {
   pallets: Pallet[]
   onSelectPallet: (p: Pallet) => void
+  onPalletsChanged?: () => void
 }) {
   const controlsRef = useRef<any>(null)
   const [visibleRacks, setVisibleRacks] = useState<Record<string, boolean>>({
@@ -599,15 +658,131 @@ export default function Warehouse3D({
     B: true,
     C: true,
   })
+  const [moveSourceId, setMoveSourceId] = useState<string | null>(null)
+  const [moveSourceLoc, setMoveSourceLoc] = useState<string>("")
+  const [moveStatus, setMoveStatus] = useState<string>("")
+
+  // Handle move clicks in 3D
+  const handleMoveClick = async (target: Pallet) => {
+    if (!moveSourceId) return
+    // If clicking the same pallet, cancel
+    if (target.id === moveSourceId) {
+      setMoveSourceId(null)
+      setMoveSourceLoc("")
+      setMoveStatus("")
+      return
+    }
+    // If target is occupied, show error
+    if (target.status !== "AVAILABLE") {
+      setMoveStatus(`❌ ${target.locationCode} está ocupado`)
+      setTimeout(() => setMoveStatus(""), 2000)
+      return
+    }
+    // Execute move
+    setMoveStatus("Moviendo...")
+    try {
+      const res = await fetch("/api/admin/warehouse/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceId: moveSourceId, targetId: target.id }),
+      })
+      if (res.ok) {
+        setMoveStatus(`✅ Movido a ${target.locationCode}`)
+        setMoveSourceId(null)
+        setMoveSourceLoc("")
+        // Notify parent to refresh pallets
+        if (onPalletsChanged) onPalletsChanged()
+        setTimeout(() => setMoveStatus(""), 2000)
+      } else {
+        const errText = await res.text()
+        setMoveStatus(`❌ ${errText}`)
+        setTimeout(() => setMoveStatus(""), 3000)
+      }
+    } catch {
+      setMoveStatus("❌ Error de red")
+      setTimeout(() => setMoveStatus(""), 3000)
+    }
+  }
+
+  // Handle selecting a pallet — context depends on move mode
+  const handlePalletClick = (p: Pallet) => {
+    if (moveSourceId) {
+      // Already have a source selected — this click is the destination
+      handleMoveClick(p)
+    } else if (moveMode) {
+      // Move mode is on but no source yet — select this occupied pallet as source
+      if (p.status !== "AVAILABLE") {
+        startMove(p)
+      } else {
+        setMoveStatus("⚠️ Selecciona un pallet ocupado primero")
+        setTimeout(() => setMoveStatus(""), 2000)
+      }
+    } else {
+      // Normal mode — open edit dialog
+      onSelectPallet(p)
+    }
+  }
+
+  // Move mode toggle
+  const [moveMode, setMoveMode] = useState(false)
+
+  // Start move mode
+  const startMove = (p: Pallet) => {
+    setMoveSourceId(p.id)
+    setMoveSourceLoc(p.locationCode)
+    setMoveStatus("")
+  }
+
+  const cancelMove = () => {
+    setMoveSourceId(null)
+    setMoveSourceLoc("")
+    setMoveStatus("")
+    setMoveMode(false)
+  }
+
+  // ESC key to cancel move mode
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && (moveSourceId || moveMode)) cancelMove()
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [moveSourceId, moveMode])
 
   return (
     <div className="w-full h-[700px] rounded-2xl overflow-hidden border-2 border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100 shadow-xl relative">
+      {/* Move Mode Banner */}
+      {(moveMode || moveSourceId) && (
+        <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-20 ${moveSourceId ? "bg-blue-600 border-blue-400" : "bg-amber-600 border-amber-400"} text-white rounded-xl px-6 py-3 shadow-2xl border-2 flex items-center gap-4`}>
+          <div className="flex flex-col">
+            <span className="text-xs font-black uppercase tracking-widest">
+              {moveSourceId ? "Modo Mover Activo" : "Selecciona un Pallet"}
+            </span>
+            <span className="text-sm font-bold">
+              {moveSourceId
+                ? `Moviendo ${moveSourceLoc} — haz click en una posición vacía`
+                : "Haz click en un pallet ocupado para moverlo"}
+            </span>
+          </div>
+          <button onClick={cancelMove} className="bg-white/20 hover:bg-white/30 rounded-lg px-3 py-1 text-xs font-black uppercase tracking-widest transition-all">
+            Cancelar (ESC)
+          </button>
+        </div>
+      )}
+
+      {/* Move Status Toast */}
+      {moveStatus && !moveSourceId && !moveMode && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-slate-900 text-white rounded-xl px-6 py-3 shadow-2xl text-sm font-bold">
+          {moveStatus}
+        </div>
+      )}
+
       {/* Controls hint */}
       <div className="absolute bottom-4 left-4 z-10 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-slate-200">
         <div className="flex gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
           <span>🖱 Drag = Rotar</span>
           <span>🔍 Scroll / Pinch = Zoom</span>
-          <span>👆 Click / Tap = Editar Pallet</span>
+          <span>👆 Click = Editar Pallet</span>
         </div>
       </div>
 
@@ -631,6 +806,18 @@ export default function Warehouse3D({
             </button>
           ))}
         </div>
+
+        {/* Move button */}
+        {!moveSourceId && !moveMode && (
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-slate-200">
+            <button
+              onClick={() => setMoveMode(true)}
+              className="text-[9px] font-black tracking-widest uppercase text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              ↔️ Mover Pallet
+            </button>
+          </div>
+        )}
 
         {/* Legend */}
         <div className="bg-white/90 backdrop-blur-sm rounded-xl px-4 py-3 shadow-lg border border-slate-200">
@@ -675,7 +862,7 @@ export default function Warehouse3D({
           target={[0, 1.5 * S, -1.5 * S]}
         />
         <CameraClamp controlsRef={controlsRef} />
-        <WarehouseScene pallets={pallets} onSelect={onSelectPallet} visibleRacks={visibleRacks} />
+        <WarehouseScene pallets={pallets} onSelect={handlePalletClick} visibleRacks={visibleRacks} moveSourceId={moveSourceId} onMoveClick={handleMoveClick} />
       </Canvas>
     </div>
   )
