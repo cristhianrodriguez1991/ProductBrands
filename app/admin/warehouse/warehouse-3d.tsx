@@ -137,12 +137,12 @@ function Pallet3D({
       {!occupied && (
         <Text
           position={[0, 0.1 * S, 0]}
-          fontSize={0.055 * S}
+          fontSize={0.05 * S}
           color="#94a3b8"
           anchorX="center"
           anchorY="middle"
         >
-          {`P${pallet.palletPosition}`}
+          {pallet.locationCode}
         </Text>
       )}
     </group>
@@ -236,9 +236,10 @@ function RackLevel3D({
 
       {/* Cells */}
       {Array.from({ length: cellCount }, (_, i) => {
-        const cellStr = String(i + 1).padStart(2, "0")
-        const p1Key = `${rackName}-${levelKey}-${cellStr}-P1`
-        const p2Key = `${rackName}-${levelKey}-${cellStr}-P2`
+        const globalP1 = i * 2 + 1
+        const globalP2 = i * 2 + 2
+        const p1Key = `${rackName}${globalP1}${levelKey}`
+        const p2Key = `${rackName}${globalP2}${levelKey}`
         return (
           <Cell3D
             key={i}
@@ -276,9 +277,9 @@ function Rack3D({
   const rackDepth = 0.5 * S
 
   const levels = [
-    { key: "BOT", label: "ABAJO", maxH: 40, y: 0.15 * S },
-    { key: "MID", label: "MEDIO", maxH: 56, y: 1.2 * S },
-    { key: "TOP", label: "ARRIBA", maxH: 80, y: 2.35 * S },
+    { key: "L", label: "ABAJO", maxH: 40, y: 0.15 * S },
+    { key: "M", label: "MEDIO", maxH: 56, y: 1.2 * S },
+    { key: "T", label: "ARRIBA", maxH: 80, y: 2.35 * S },
   ]
 
   return (
@@ -391,9 +392,10 @@ function Floor3D({
 
       {/* Cells */}
       {Array.from({ length: cellCount }, (_, i) => {
-        const cellStr = String(i + 1).padStart(2, "0")
-        const p1Key = `FLOOR-${rackName}-${cellStr}-P1`
-        const p2Key = `FLOOR-${rackName}-${cellStr}-P2`
+        const globalP1 = i * 2 + 1
+        const globalP2 = i * 2 + 2
+        const p1Key = `${rackName}${globalP1}P`
+        const p2Key = `${rackName}${globalP2}P`
         const startX = -totalWidth / 2 + cellSpacing / 2
         return (
           <Cell3D
@@ -412,10 +414,10 @@ function Floor3D({
 // ── Warehouse Floor Grid ──
 function WarehouseFloor() {
   const rackAWidth = 8 * 0.95 * S
-  const floorWidth = rackAWidth + 2 * S
-  const floorDepth = 8 * S
+  const floorWidth = rackAWidth + 3 * S
+  const floorDepth = 12 * S
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.06, -1.5 * S]} receiveShadow>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.06, -0.5 * S]} receiveShadow>
       <planeGeometry args={[floorWidth, floorDepth]} />
       <meshStandardMaterial color="#e8ecf1" roughness={0.95} />
     </mesh>
@@ -429,7 +431,7 @@ function AisleLine() {
     <RoundedBox
       args={[rackAWidth + 1 * S, 0.02 * S, 0.12 * S]}
       radius={0.005 * S}
-      position={[0, -0.04, -2.55 * S]}
+      position={[0, -0.04, -1.6 * S]}
     >
       <meshStandardMaterial color="#fbbf24" roughness={0.4} />
     </RoundedBox>
@@ -441,8 +443,8 @@ function CameraClamp({ controlsRef }: { controlsRef: React.RefObject<any> }) {
   // Warehouse bounds (approximate)
   const minX = -14 * S
   const maxX = 14 * S
-  const minZ = -5.5 * S
-  const maxZ = 2 * S
+  const minZ = -6.5 * S
+  const maxZ = 7 * S
 
   useFrame(() => {
     if (!controlsRef.current) return
@@ -489,36 +491,19 @@ function WarehouseScene({
       {/* Continuous aisle stripe */}
       <AisleLine />
 
-      {/* Wall (L-shape) */}
-      <group position={[0, wallHeight / 2, -5 * S]}>
-        <RoundedBox args={[wallWidth, wallHeight, 0.15 * S]} radius={0.03 * S}>
-          <meshStandardMaterial color="#cbd5e1" roughness={0.9} />
-        </RoundedBox>
-        <RoundedBox
-          args={[0.15 * S, wallHeight, sideWallLen]}
-          radius={0.03 * S}
-          position={[-(wallWidth / 2), 0, sideWallLen / 2]}
-        >
-          <meshStandardMaterial color="#cbd5e1" roughness={0.9} />
-        </RoundedBox>
-        <Text position={[0, 0.5 * S, 0.1 * S]} fontSize={0.3 * S} color="#94a3b8" fontWeight="bold">
-          PARED
-        </Text>
-      </group>
-
-      {/* RACK A (Back against wall) */}
+      {/* RACK A (Back line) */}
       <Rack3D position={[0, 0, -4.2 * S]} rackName="A" cellCount={8} palletMap={palletMap} onSelect={onSelect} />
       <Floor3D position={[0, 0, -3.3 * S]} rackName="A" cellCount={8} palletMap={palletMap} onSelect={onSelect} />
 
-      {/* ── AISLE ── */}
+      {/* ── WIDE AISLE ── */}
 
-      {/* RACK B (Facing Rack A, rotated 180°) */}
-      <Floor3D position={[-1.4 * S, 0, -1.7 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
-      <Rack3D position={[-1.4 * S, 0, -0.8 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+      {/* RACK B (Facing Rack A, rotated 180°, pushed back to widen aisle) */}
+      <Floor3D position={[-1.4 * S, 0, -0.1 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+      <Rack3D position={[-1.4 * S, 0, 0.8 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
 
       {/* RACK C (Back-to-back with B) */}
-      <Rack3D position={[-1.4 * S, 0, -0.2 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
-      <Floor3D position={[-1.4 * S, 0, 0.7 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+      <Rack3D position={[-1.4 * S, 0, 1.4 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
+      <Floor3D position={[-1.4 * S, 0, 2.3 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} />
     </>
   )
 }
