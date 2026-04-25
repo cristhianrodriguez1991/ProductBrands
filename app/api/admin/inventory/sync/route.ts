@@ -49,7 +49,12 @@ export async function POST() {
     let syncedCount = 0
     let createdCount = 0
 
-    // ── 3. Upsert into database ──
+    // Wipe old Amazon inventory to ensure we only show live Amazon data
+    await prisma.inventoryItem.deleteMany({
+      where: { source: "AMAZON" }
+    })
+
+    // ── 3. Insert into database ──
     for (const item of inventory) {
       const asin = item.asin
       const sku = item.sellerSku
@@ -70,51 +75,23 @@ export async function POST() {
         imageUrl = mainImage?.link || variants[0]?.link || null
       }
 
-      const existing = await prisma.inventoryItem.findFirst({
-        where: {
-          OR: [
-            { asin },
-            { sku }
-          ]
-        }
+      // Create new item pulled from Seller Central
+      await prisma.inventoryItem.create({
+        data: {
+          source: "AMAZON",
+          asin,
+          sku,
+          name: title,
+          amazonTitle: title,
+          amazonImageUrl: imageUrl,
+          amazonUrl: `https://www.amazon.com/dp/${asin}`,
+          quantityOnHand: qtyOnHand,
+          quantityReserved: qtyReserved,
+          isActive: true,
+          lastSyncedAt: new Date(),
+        },
       })
-
-      if (existing) {
-        // Update existing item with LIVE quantities and metadata
-        await prisma.inventoryItem.update({
-          where: { id: existing.id },
-          data: {
-            asin,
-            sku,
-            amazonTitle: title,
-            amazonImageUrl: imageUrl,
-            amazonUrl: `https://www.amazon.com/dp/${asin}`,
-            quantityOnHand: qtyOnHand,
-            quantityReserved: qtyReserved,
-            name: existing.name === "Untitled Amazon Product" ? title : existing.name,
-            lastSyncedAt: new Date(),
-          },
-        })
-        syncedCount++
-      } else {
-        // Create new item pulled from Seller Central
-        await prisma.inventoryItem.create({
-          data: {
-            source: "AMAZON",
-            asin,
-            sku,
-            name: title,
-            amazonTitle: title,
-            amazonImageUrl: imageUrl,
-            amazonUrl: `https://www.amazon.com/dp/${asin}`,
-            quantityOnHand: qtyOnHand,
-            quantityReserved: qtyReserved,
-            isActive: true,
-            lastSyncedAt: new Date(),
-          },
-        })
-        createdCount++
-      }
+      createdCount++
     }
 
     return NextResponse.json({
