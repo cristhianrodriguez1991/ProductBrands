@@ -779,13 +779,32 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
                     </select>
                   </div>
 
-                  {/* Step 2: Level */}
+                  {/* Step 2: Position */}
                   <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">2. Nivel</label>
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">2. Posición</label>
+                    <select
+                      value={movePosition}
+                      onChange={(e) => { setMovePosition(e.target.value); setMoveLevel("") }}
+                      disabled={!moveRack}
+                      className="w-full mt-1 px-2 py-2 border rounded-lg text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none disabled:opacity-40"
+                    >
+                      <option value="">Pos...</option>
+                      {moveRack && (() => {
+                        const maxPos = (RACKS as any)[moveRack]?.cells * 2 || 16
+                        return Array.from({ length: maxPos }, (_, i) => (
+                           <option key={i+1} value={String(i+1)}>{i+1}</option>
+                        ))
+                      })()}
+                    </select>
+                  </div>
+
+                  {/* Step 3: Level */}
+                  <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">3. Nivel</label>
                     <select
                       value={moveLevel}
-                      onChange={(e) => { setMoveLevel(e.target.value); setMovePosition("") }}
-                      disabled={!moveRack}
+                      onChange={(e) => setMoveLevel(e.target.value)}
+                      disabled={!moveRack || !movePosition}
                       className="w-full mt-1 px-2 py-2 border rounded-lg text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none disabled:opacity-40"
                     >
                       <option value="">Nivel...</option>
@@ -793,31 +812,6 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
                         <option key={lvl.key} value={lvl.key}>{lvl.label} ({lvl.key})</option>
                       ))}
                       <option value="P">PISO (P)</option>
-                    </select>
-                  </div>
-
-                  {/* Step 3: Position */}
-                  <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">3. Posición</label>
-                    <select
-                      value={movePosition}
-                      onChange={(e) => setMovePosition(e.target.value)}
-                      disabled={!moveRack || !moveLevel}
-                      className="w-full mt-1 px-2 py-2 border rounded-lg text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none disabled:opacity-40"
-                    >
-                      <option value="">Pos...</option>
-                      {moveRack && moveLevel && (() => {
-                        const maxPos = (RACKS as any)[moveRack]?.cells * 2 || 16
-                        return Array.from({ length: maxPos }, (_, i) => {
-                          const num = i + 1
-                          const locCode = `${moveRack}${num}${moveLevel}`
-                          const p = palletsByLocation[locCode]
-                          const available = p && p.status === "AVAILABLE"
-                          return available ? (
-                            <option key={num} value={String(num)}>{num}</option>
-                          ) : null
-                        })
-                      })()}
                     </select>
                   </div>
                 </div>
