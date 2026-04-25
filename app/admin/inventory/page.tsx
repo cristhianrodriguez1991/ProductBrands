@@ -295,7 +295,7 @@ export default function InventoryPage() {
   }, [items])
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans sm:pb-20">
+    <div className="min-h-screen bg-slate-50 font-sans sm:pb-20 -mt-4 md:-mt-8 -mx-4 md:-mx-8">
       
       {/* HEADER - Sticky and Opaque */}
       <div className="sticky top-0 z-[100] bg-white border-b border-slate-200 shadow-md relative isolate">
@@ -433,7 +433,20 @@ export default function InventoryPage() {
                         </span>
                       </div>
                     )}
-                    <h3 className="font-bold text-[14px] text-slate-900 leading-snug line-clamp-2 mb-3 pr-4">{item.name}</h3>
+                    <h3 
+                      className="font-bold text-[14px] text-slate-900 leading-snug line-clamp-2 mb-3 pr-4 hover:text-blue-600 transition-colors cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (item.asin) {
+                          window.open(`https://www.amazon.com/dp/${item.asin}`, '_blank')
+                        } else {
+                          window.open(`https://www.amazon.com/s?k=${encodeURIComponent(item.name || "")}`, '_blank')
+                        }
+                      }}
+                      title="View on Amazon"
+                    >
+                      {item.name}
+                    </h3>
                     <div className="flex items-start justify-between">
                       <div className="flex gap-4 flex-1">
                         <div className="w-[72px] h-[72px] bg-white border border-slate-200 rounded shrink-0 flex items-center justify-center overflow-hidden">
@@ -441,10 +454,10 @@ export default function InventoryPage() {
                         </div>
                         <div className="flex flex-col text-[13px] text-slate-600 gap-[2px] leading-tight">
                           <div>Available: <span className="font-bold text-slate-900">{item.quantityOnHand}</span></div>
-                          {item.sku && <div className="truncate max-w-[180px]">SKU: {item.sku}</div>}
-                          {item.asin && <div>ASIN: {item.asin}</div>}
-                          {item.upc && <div>UPC: {item.upc}</div>}
-                          {item.fnsku && <div>FNSKU: {item.fnsku}</div>}
+                          {item.sku && <div className="group flex items-center gap-1.5 w-max"><span>SKU: {item.sku}</span><button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(item.sku||"");}} className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95" title="Copy"><Copy className="h-3 w-3" /></button></div>}
+                          {item.asin && <div className="group flex items-center gap-1.5 w-max"><span>ASIN: {item.asin}</span><button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(item.asin||"");}} className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95" title="Copy"><Copy className="h-3 w-3" /></button></div>}
+                          {item.upc && <div className="group flex items-center gap-1.5 w-max"><span>UPC: {item.upc}</span><button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(item.upc||"");}} className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95" title="Copy"><Copy className="h-3 w-3" /></button></div>}
+                          {item.fnsku && <div className="group flex items-center gap-1.5 w-max"><span>FNSKU: {item.fnsku}</span><button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(item.fnsku||"");}} className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95" title="Copy"><Copy className="h-3 w-3" /></button></div>}
                         </div>
                       </div>
                       <ChevronRight className={`h-5 w-5 text-slate-400 self-center transition-transform ${isExpanded ? "rotate-90" : ""}`} />
