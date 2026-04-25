@@ -20,7 +20,8 @@ import {
   ArrowUpDown,
   Filter,
   Check,
-  X
+  X,
+  Copy
 } from "lucide-react"
 
 // ── Types ──
