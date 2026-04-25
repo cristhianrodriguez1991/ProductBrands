@@ -84,12 +84,19 @@ const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string)
           { 
             fps: 20, 
             qrbox: qrboxFunction,
-            // Disable some processing if needed for speed, but usually not necessary
             rememberLastUsedCamera: true,
-            supportedScanTypes: [0] // 0 = Html5QrcodeScanType.SCAN_TYPE_CAMERA
+            aspectRatio: 1.0,
+            // Explicitly support common formats
+            formatsToSupport: [
+               (window as any).Html5QrcodeSupportedFormats.EAN_13,
+               (window as any).Html5QrcodeSupportedFormats.EAN_8,
+               (window as any).Html5QrcodeSupportedFormats.UPC_A,
+               (window as any).Html5QrcodeSupportedFormats.UPC_E,
+               (window as any).Html5QrcodeSupportedFormats.CODE_128,
+               (window as any).Html5QrcodeSupportedFormats.QR_CODE
+            ]
           },
           (decodedText: string) => {
-            // Give immediate feedback
             onScan(decodedText);
             html5QrCode.stop().catch(console.error);
           },
@@ -402,7 +409,6 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
                 onChange={(e) => {
                   const val = e.target.value
                   setForm(f => ({ ...f, upc: val }))
-                  if (val.length >= 8) handleLookup(val)
                 }}
                 onKeyDown={e => {
                   if (e.key === 'Enter') {
@@ -411,9 +417,21 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
                   }
                 }}
                 placeholder="Escanea o ingresa código" 
-                className="pl-9"
+                className="pl-9 pr-20"
               />
               <ScanLine className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              
+              <div className="absolute right-12 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-7 px-2 text-[10px] font-black text-blue-600 hover:bg-blue-50"
+                  onClick={() => handleLookup(form.upc || form.fnsku || "")}
+                >
+                  {isScanning ? <RefreshCw className="h-3 w-3 animate-spin" /> : "BUSCAR"}
+                </Button>
+              </div>
+
               <Button size="icon" variant="outline" className="shrink-0" onClick={() => setScannerOpen(true)}>
                 <Camera className="h-4 w-4" />
               </Button>
