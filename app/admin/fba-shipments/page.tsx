@@ -443,7 +443,7 @@ export default function FbaShipmentsPage() {
               productName: item.name,
               quantity: Math.floor((parseInt(item.totalUnits as any) || 0) / locations.length), // Distribute qty
               expirationDate: parseSyncDate(item.expDate || ""),
-              status: "RESERVED"
+              status: item.status === "PENDING" ? "HOLD" : "OUTBOUND"
             }
             
             await fetch("/api/admin/warehouse", {
@@ -681,7 +681,7 @@ export default function FbaShipmentsPage() {
               productName: updatedItem.name,
               quantity: Math.floor((parseInt(updatedItem.totalUnits as any) || 0) / newLocs.length),
               expirationDate: parseSyncDate(updatedItem.expDate || ""),
-              status: "RESERVED"
+              status: updatedItem.status === "PENDING" ? "HOLD" : "OUTBOUND"
             }
             await fetch("/api/admin/warehouse", {
               method: "POST",

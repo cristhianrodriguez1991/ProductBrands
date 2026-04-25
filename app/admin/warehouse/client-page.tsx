@@ -48,18 +48,18 @@ const STATUS_COLORS: Record<string, string> = {
   AVAILABLE: "bg-emerald-500",
   RESERVED: "bg-amber-500",
   DAMAGED: "bg-red-600",
-  HOLD: "bg-red-500",
+  HOLD: "bg-orange-500",
   INBOUND: "bg-purple-500",
-  OUTBOUND: "bg-purple-600",
+  OUTBOUND: "bg-blue-600",
 }
 
 const STATUS_BG: Record<string, string> = {
   AVAILABLE: "bg-emerald-50 border-emerald-200",
   RESERVED: "bg-amber-50 border-amber-200",
   DAMAGED: "bg-red-50 border-red-200",
-  HOLD: "bg-red-50 border-red-200",
+  HOLD: "bg-orange-50 border-orange-200",
   INBOUND: "bg-purple-50 border-purple-200",
-  OUTBOUND: "bg-purple-50 border-purple-200",
+  OUTBOUND: "bg-blue-50 border-blue-200",
 }
 
 const STATUS_LABELS: Record<string, string> = {
