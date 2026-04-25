@@ -97,8 +97,50 @@ function isOccupied(p: Pallet) {
 }
 
 // ── Main Component ─────────────────────────────────────────
+// ── Confirmation Modal Component ──
+const ConfirmDeleteModal = ({ isOpen, onClose, onConfirm, title, message }: any) => (
+  <Dialog open={isOpen} onOpenChange={onClose}>
+    <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden border-0 shadow-2xl">
+      <div className="bg-white p-6 pt-8 text-center">
+        <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4 animate-bounce">
+          <AlertTriangle className="h-8 w-8 text-red-600" />
+        </div>
+        <DialogHeader className="p-0">
+          <DialogTitle className="text-xl font-black text-slate-900 text-center uppercase tracking-tight">
+            {title}
+          </DialogTitle>
+          <div className="mt-4 text-slate-500 font-medium text-sm leading-relaxed">
+            {message}
+          </div>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-3 mt-8">
+          <Button 
+            variant="ghost" 
+            onClick={onClose}
+            className="h-11 font-black uppercase tracking-widest text-[10px] text-slate-400 hover:bg-slate-50"
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={() => { onConfirm(); onClose(); }}
+            className="h-11 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-red-200"
+          >
+            Confirmar Borrado
+          </Button>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>
+)
+
 export default function WarehouseClient({ initialPallets }: { initialPallets: Pallet[] }) {
   const [pallets, setPallets] = useState<Pallet[]>(initialPallets)
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  })
   const [selectedPallet, setSelectedPallet] = useState<Pallet | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -254,18 +296,25 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
 
   // ── Clear pallet ──
   const clearPallet = async () => {
-    if (!selectedPallet || !confirm(`¿Vaciar posición ${selectedPallet.locationCode}?`)) return
-    try {
-      const res = await fetch(`/api/admin/warehouse/${selectedPallet.id}`, { method: "DELETE" })
-      if (res.ok) {
-        const updated = await res.json()
-        setPallets((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated, expirationDate: null, createdAt: updated.createdAt, updatedAt: updated.updatedAt } : p)))
-        setFormOpen(false)
-        toast({ title: "Vaciado", description: `Posición ${selectedPallet.locationCode} limpiada.` })
+    if (!selectedPallet) return
+    setConfirmDialog({
+      isOpen: true,
+      title: "¿Vaciar Posición?",
+      message: `¿Estás seguro de que deseas limpiar la posición ${selectedPallet.locationCode}? Se borrarán el producto, el SKU y las unidades de forma permanente.`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/warehouse/${selectedPallet.id}`, { method: "DELETE" })
+          if (res.ok) {
+            const updated = await res.json()
+            setPallets((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated, expirationDate: null, createdAt: updated.createdAt, updatedAt: updated.updatedAt } : p)))
+            setFormOpen(false)
+            toast({ title: "Vaciado", description: `Posición ${selectedPallet.locationCode} limpiada.` })
+          }
+        } catch {
+          toast({ title: "Error", variant: "destructive" })
+        }
       }
-    } catch {
-      toast({ title: "Error", variant: "destructive" })
-    }
+    })
   }
 
   // ── Move pallet ──
@@ -839,6 +888,15 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Confirmación Global */}
+      <ConfirmDeleteModal 
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog(p => ({ ...p, isOpen: false }))}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   )
 }

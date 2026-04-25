@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, MoveVertical, GripVertical, LayoutGrid, Maximize2, MousePointer2, Copy, ClipboardPaste, FileText, MoreVertical, Clock } from "lucide-react"
+import { AlertTriangle, Plus, Download, ArrowDown, ArrowUp, Save, Trash2, CheckCircle2, Camera, X, ImageIcon, AlertCircle, Printer, MoveVertical, GripVertical, LayoutGrid, Maximize2, MousePointer2, Copy, ClipboardPaste, FileText, MoreVertical, Clock } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import Image from "next/image"
 import { compressImage } from "@/lib/image-compression"
@@ -72,7 +72,7 @@ const parseSyncDate = (val: string) => {
   return null
 }
 
-const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: string) => void }) => {
+const LocationPicker = ({ value, onChange, setConfirm }: { value: string; onChange: (val: string) => void; setConfirm: any }) => {
   const [isAdding, setIsAdding] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const locations = value ? value.split(' + ').filter(Boolean) : []
@@ -100,8 +100,14 @@ const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: st
     setIsAdding(true)
   }
 
-  const handleRemove = (loc: string) => {
-    onChange(locations.filter(l => l !== loc).join(' + '))
+  const handleRemoveClick = (e: React.MouseEvent, loc: string) => {
+    e.stopPropagation()
+    setConfirm({
+      isOpen: true,
+      title: "¿Eliminar ubicación?",
+      message: `¿Estás seguro de que deseas eliminar la ubicación ${loc}? Esto también la liberará en el mapa del almacén.`,
+      onConfirm: () => onChange(locations.filter(l => l !== loc).join(' + '))
+    })
   }
 
   const handleRackChange = (newRack: string) => setTempLocation(`${newRack}${num || "1"}${level || "P"}`)
@@ -120,8 +126,9 @@ const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: st
             onClick={() => handleStartEdit(loc, idx)}
             className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-black transition-all group/loc relative pr-5 shadow-sm cursor-pointer ${editingIndex === idx ? "bg-blue-600 text-white border-blue-700" : "bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200 hover:border-blue-200"}`}
           >
+            {loc}
             <button 
-              onClick={() => handleRemove(loc)}
+              onClick={(e) => handleRemoveClick(e, loc)}
               className="absolute right-0.5 hover:bg-red-100 hover:text-red-700 rounded p-0.5 transition-colors opacity-0 group-hover/loc:opacity-100"
             >
               <X className="h-2 w-2" />
@@ -184,12 +191,20 @@ const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: st
           </div>
         </div>
       )}
+      {/* Modal de Confirmación Global */}
+      <ConfirmDeleteModal 
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog(p => ({ ...p, isOpen: false }))}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   )
 }
 
 // Extracted to module scope to prevent React from unmounting inputs on every keystroke, keeping keyboard focus perfectly stable
-const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, switchItemStatus, removeImage, setSelectedIdForUpload, fileInputRef, uploadingId, setFocusedItemId, setExpandedImage, copyItem, warehousePositions }: any) => {
+const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, setConfirmDialog, switchItemStatus, removeImage, setSelectedIdForUpload, fileInputRef, uploadingId, setFocusedItemId, setExpandedImage, copyItem, warehousePositions }: any) => {
   const controls = useDragControls()
   const handleFocus = useCallback(() => setFocusedItemId(item.id), [item.id, setFocusedItemId])
   const handleBlur = useCallback(() => setFocusedItemId(null), [setFocusedItemId])
@@ -220,6 +235,7 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, sw
         <LocationPicker 
           value={item.location || ""} 
           onChange={val => updateItem(item.id, "location", val)}
+          setConfirm={setConfirmDialog}
         />
       </td>
       <td className="p-0 border-l"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={item.boxOrder || ""} onChange={e => updateItem(item.id, "boxOrder", e.target.value)} /></td>
@@ -344,6 +360,13 @@ export default function FbaShipmentsPage() {
   const [allShipments, setAllShipments] = useState<any[]>([])
   const [newShipmentName, setNewShipmentName] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
+  
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  })
   
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
@@ -521,14 +544,20 @@ export default function FbaShipmentsPage() {
   }
 
   const deleteShipment = async (shId: string) => {
-    if (!confirm("¿Seguro que quieres eliminar este envío permanentemente? No se puede deshacer.")) return
-    try {
-      const res = await fetch(`/api/admin/fba-shipments/${shId}`, { method: "DELETE" })
-      if (res.ok) {
-        closeTab(shId)
-        await fetchShipments()
+    setConfirmDialog({
+      isOpen: true,
+      title: "¿Eliminar Envío?",
+      message: "Estás a punto de borrar este envío permanentemente. Todos los datos asociados se perderán y no se podrá deshacer esta acción.",
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/fba-shipments/${shId}`, { method: "DELETE" })
+          if (res.ok) {
+            closeTab(shId)
+            await fetchShipments()
+          }
+        } catch(e) {}
       }
-    } catch(e) {}
+    })
   }
 
   const updateItem = async (itemId: string, field: string, value: any) => {
@@ -740,13 +769,21 @@ export default function FbaShipmentsPage() {
     })
   }
 
-  const deleteItem = async (shId: string, itemId: string) => {
-    if (!confirm("¿Borrar este artículo?")) return
-    setTabs(prev => prev.map((t: any) => {
-      if (t.id !== shId) return t
-      return { ...t, items: t.items.filter((i: any) => i.id !== itemId) }
-    }))
-    await fetch(`/api/admin/fba-shipments/items/${itemId}`, { method: "DELETE" })
+  const deleteItem = async (itemId: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: "¿Eliminar Artículo?",
+      message: "¿Seguro que deseas eliminar este producto del envío? También se liberarán las posiciones en el almacén.",
+      onConfirm: async () => {
+        try {
+          await fetch(`/api/admin/fba-shipments/items/${itemId}`, { method: "DELETE" })
+          setTabs(prev => prev.map((t: any) => ({
+            ...t,
+            items: t.items.filter((i: any) => i.id !== itemId)
+          })))
+        } catch(e) {}
+      }
+    })
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1055,7 +1092,10 @@ export default function FbaShipmentsPage() {
                       {activeTab.items.filter((i: any) => i.status === "IN_SHIPMENT").map((item: any, index: number) => (
                         <StandaloneRow 
                           key={item.id} item={item} index={index} isPending={false}
-                          updateItem={updateItem} deleteItem={() => deleteItem(activeTab.id, item.id)} switchItemStatus={switchItemStatus}
+                          updateItem={updateItem} 
+                          deleteItem={() => deleteItem(activeTab.id, item.id)} 
+                          setConfirmDialog={setConfirmDialog} // Pass the global setter
+                          switchItemStatus={switchItemStatus}
                           removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
                           fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
                           setExpandedImage={setExpandedImage}
@@ -1112,12 +1152,16 @@ export default function FbaShipmentsPage() {
                         {globalPendingItems.map((item: any, index: number) => (
                           <StandaloneRow 
                             key={item.id} item={item} index={index} isPending={true}
-                            updateItem={updateItem} deleteItem={() => deleteItem(activeTab.id, item.id)} switchItemStatus={switchItemStatus}
+                            updateItem={updateItem} 
+                            deleteItem={() => deleteItem(activeTab.id, item.id)} 
+                            setConfirmDialog={setConfirmDialog}
+                            switchItemStatus={switchItemStatus}
                             removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
                             fileInputRef={fileInputRef} uploadingId={uploadingId} setFocusedItemId={setFocusedItemId}
                             setExpandedImage={setExpandedImage}
                             activeTabId={activeTabId}
                             copyItem={copyItem}
+                            warehousePositions={warehousePositions}
                           />
                         ))}
                       </Reorder.Group>
