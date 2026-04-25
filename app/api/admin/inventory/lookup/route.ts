@@ -33,9 +33,20 @@ export async function GET(req: Request) {
   }
 
   try {
-    // Try exact matches in priority order
+    // Generate variations of the code to handle missing/extra leading zeros
+    const strippedCode = code.replace(/^0+/, "") || code;
+    const codeVariations = [
+      code,
+      strippedCode,
+      "0" + strippedCode,
+      "00" + strippedCode,
+      "000" + strippedCode,
+      "0000" + strippedCode
+    ];
+
+    // Try exact matches in priority order with variations for barcodes
     let item = await prisma.inventoryItem.findFirst({
-      where: { upc: code },
+      where: { upc: { in: codeVariations } },
     })
 
     if (!item) {
@@ -46,7 +57,7 @@ export async function GET(req: Request) {
 
     if (!item) {
       item = await prisma.inventoryItem.findFirst({
-        where: { ean: code },
+        where: { ean: { in: codeVariations } },
       })
     }
 
