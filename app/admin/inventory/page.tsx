@@ -383,14 +383,3 @@ export default function InventoryPage() {
     </div>
   )
 }
-nded-lg" />}
-        </DialogContent>
-      </Dialog>
-
-      {/* Modals */}
-      <ManualItemModal isOpen={showManualModal} onClose={() => setShowManualModal(false)} onSubmit={handleCreateManual} />
-      <ConfirmModal isOpen={confirmDialog.isOpen} onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
-        onConfirm={confirmDialog.onConfirm} title={confirmDialog.title} message={confirmDialog.message} />
-    </div>
-  )
-}
