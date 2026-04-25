@@ -213,6 +213,17 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
   const [scannerOpen, setScannerOpen] = useState(false)
   const [lookupSource, setLookupSource] = useState<"amazon" | "external" | null>(null)
 
+  useEffect(() => {
+    if (open) {
+      if (!document.querySelector('script[src="https://unpkg.com/html5-qrcode"]')) {
+        const script = document.createElement("script")
+        script.src = "https://unpkg.com/html5-qrcode"
+        script.async = true
+        document.body.appendChild(script)
+      }
+    }
+  }, [open])
+
   const handleLookup = async (code: string) => {
     if (!code) return
     setIsScanning(true)
