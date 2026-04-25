@@ -2,19 +2,31 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { searchItems } from "@/lib/amazon-service"
+
+/**
+ * Fetch with a hard timeout to prevent hanging on slow external APIs.
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
 
 /**
  * GET /api/admin/inventory/lookup?code=XXXXX
  *
- * Scans for a matching inventory item by:
- *   1. UPC barcode
- *   2. EAN / IAN barcode
- *   3. ASIN
- *   4. SKU
- *   5. Partial name match (fallback)
+ * Multi-tier product lookup:
+ *   Tier 1: Local database (UPC, EAN, FNSKU, ASIN, SKU, partial name)
+ *   Tier 2: UPCItemDB API (universal barcode database)
+ *   Tier 3: Open Food Facts (food/beverage products)
+ *   Tier 4: Go-UPC API (broad product coverage)
+ *   Tier 5: BarcodeSpider web scraping (last resort)
  *
- * Returns the matching item if found, or { found: false }.
+ * Returns { found: true, source, item } or { found: false }.
  * Used by the barcode scanner input on the inventory page.
  */
 export async function GET(req: Request) {
@@ -34,7 +46,8 @@ export async function GET(req: Request) {
   }
 
   try {
-    // Generate variations of the code to handle missing/extra leading zeros
+    // ─── TIER 1: Local Database Lookup ───────────────────────────────
+    // Generate variations to handle missing/extra leading zeros on UPCs
     const strippedCode = code.replace(/^0+/, "") || code;
     const codeVariations = [
       code,
@@ -94,114 +107,278 @@ export async function GET(req: Request) {
       })
     }
 
-    // New Tier: Live Amazon Marketplace Search (Even if not in local inventory)
-    try {
-       const amazonItems = await searchItems(code);
-       if (amazonItems && amazonItems.length > 0) {
-         const amz = amazonItems[0];
-         return NextResponse.json({
-           found: true,
-           source: "amazon", // Treat live marketplace as Amazon source
-           item: {
-             name: amz.ItemInfo?.Title?.DisplayValue || "",
-             upc: code,
-             sku: "",
-             ean: "",
-             asin: amz.ASIN || "",
-             description: amz.ItemInfo?.Features?.DisplayValues?.join(". ") || "",
-             amazonImageUrl: amz.Images?.Primary?.Large?.URL || null,
-           }
-         });
-       }
-    } catch (err) {
-       console.error("Live Amazon lookup error:", err);
-    }
+    // ─── TIER 2+: External Universal UPC Lookups ────────────────────
+    // Only run external lookups for numeric barcodes (UPC/EAN)
+    // FNSKUs like X00... are Amazon-specific and won't exist in universal DBs
+    const numericCode = code.replace(/\D/g, "")
+    const isBarcode = /^\d{5,14}$/.test(numericCode)
 
-    // Fallback: Universal UPC Database (UPCItemDB)
-    // Only query if it is purely numeric, since FNSKUs (X00...) are Amazon-specific
-    // Strip non-digits for the universal logic
-    const numericCode = code.replace(/\D/g, "");
-    const isNumeric = /^\d{5,14}$/.test(numericCode);
-    if (isNumeric) {
+    if (isBarcode) {
+      // Prepare padded variants for UPC-A normalization
+      const padded = numericCode.padStart(13, "0")
+      const barcodesToTry = Array.from(new Set([numericCode, padded, numericCode.padStart(12, "0")]))
+
+      // ── Tier 2: UPCItemDB ──
       try {
-        // 1. Try UPCItemDB
-        const upcRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${numericCode}`);
-        let upcData = upcRes.ok ? await upcRes.json() : null;
+        console.log(`[LOOKUP] Tier 2: UPCItemDB for ${numericCode}`)
+        const upcRes = await fetchWithTimeout(
+          `https://api.upcitemdb.com/prod/trial/lookup?upc=${numericCode}`,
+          {},
+          6000
+        )
 
-        if ((!upcData || !upcData.items || upcData.items.length === 0) && (numericCode.length === 11 || numericCode.length === 12)) {
-           const paddedRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=0${numericCode}`);
-           if (paddedRes.ok) upcData = await paddedRes.json();
-        }
+        if (upcRes.ok) {
+          let upcData = await upcRes.json()
 
-        if (upcData && upcData.items && upcData.items.length > 0) {
-          const externalItem = upcData.items[0];
-          return NextResponse.json({
-            found: true,
-            source: "external",
-            item: {
-              name: externalItem.title || "",
-              upc: externalItem.upc || numericCode,
-              ean: externalItem.ean || "",
-              asin: externalItem.asin || "",
-              description: externalItem.description || "",
-              amazonImageUrl: externalItem.images && externalItem.images.length > 0 ? externalItem.images[0] : null,
+          // If no results, try with zero-padded variant
+          if ((!upcData?.items || upcData.items.length === 0) && numericCode.length <= 12) {
+            const paddedCode = numericCode.padStart(13, "0")
+            try {
+              const paddedRes = await fetchWithTimeout(
+                `https://api.upcitemdb.com/prod/trial/lookup?upc=${paddedCode}`,
+                {},
+                6000
+              )
+              if (paddedRes.ok) {
+                upcData = await paddedRes.json()
+              }
+            } catch (padErr) {
+              console.warn("[LOOKUP] UPCItemDB padded lookup failed:", padErr)
             }
-          });
-        }
+          }
 
-        // 2. Fallback to OpenFoodFacts (good for international EANs)
-        const offRes = await fetch(`https://world.openfoodfacts.org/api/v0/product/${numericCode}.json`);
+          if (upcData?.items && upcData.items.length > 0) {
+            const externalItem = upcData.items[0]
+            console.log(`[LOOKUP] ✅ UPCItemDB HIT: "${externalItem.title}"`)
+            return NextResponse.json({
+              found: true,
+              source: "external",
+              item: {
+                name: externalItem.title || "",
+                upc: externalItem.upc || numericCode,
+                ean: externalItem.ean || "",
+                asin: externalItem.asin || "",
+                description: externalItem.description || "",
+                amazonImageUrl: externalItem.images && externalItem.images.length > 0 ? externalItem.images[0] : null,
+              }
+            })
+          }
+        } else if (upcRes.status === 429) {
+          console.warn("[LOOKUP] UPCItemDB rate limited (429). Skipping to next tier.")
+        } else {
+          console.warn(`[LOOKUP] UPCItemDB returned ${upcRes.status}`)
+        }
+      } catch (err: any) {
+        if (err?.name === "AbortError") {
+          console.warn("[LOOKUP] UPCItemDB timed out after 6s")
+        } else {
+          console.error("[LOOKUP] UPCItemDB error:", err?.message)
+        }
+      }
+
+      // ── Tier 3: Open Food Facts (good for international EANs & food items) ──
+      try {
+        console.log(`[LOOKUP] Tier 3: OpenFoodFacts for ${numericCode}`)
+        const offRes = await fetchWithTimeout(
+          `https://world.openfoodfacts.org/api/v0/product/${numericCode}.json`,
+          {},
+          6000
+        )
         if (offRes.ok) {
-          const offData = await offRes.json();
+          const offData = await offRes.json()
           if (offData.status === 1 && offData.product) {
-             const p = offData.product;
-             return NextResponse.json({
-               found: true,
-               source: "external",
-               item: {
-                 name: p.product_name || "",
-                 upc: numericCode,
-                 ean: numericCode,
-                 asin: "",
-                 description: p.generic_name || "",
-                 amazonImageUrl: p.image_url || null,
-               }
-             });
+            const p = offData.product
+            console.log(`[LOOKUP] ✅ OpenFoodFacts HIT: "${p.product_name}"`)
+            return NextResponse.json({
+              found: true,
+              source: "external",
+              item: {
+                name: p.product_name || "",
+                upc: numericCode,
+                ean: numericCode,
+                asin: "",
+                description: p.generic_name || p.categories || "",
+                amazonImageUrl: p.image_url || p.image_front_url || null,
+              }
+            })
           }
         }
-        // 3. Fallback to BarcodeSpider (excellent for niche items like Adalya)
-        try {
-          const spiderRes = await fetch(`https://www.barcodespider.com/${numericCode}`, {
-            headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" }
-          });
-          if (spiderRes.ok) {
-            const html = await spiderRes.text();
-            // Look for <title>... - Barcode 8681655717905</title>
-            // or <div className="detail-item">...
-            const titleMatch = html.match(/<title>(.*?) - Barcode/i);
-            if (titleMatch && titleMatch[1]) {
-              return NextResponse.json({
-                found: true,
-                source: "external",
-                item: {
-                  name: titleMatch[1].trim(),
-                  upc: numericCode,
-                  ean: numericCode,
-                  asin: "",
-                  description: "Encontrado vía BarcodeSpider",
-                  amazonImageUrl: null,
-                }
-              });
-            }
-          }
-        } catch (err) {
-          console.error("BarcodeSpider lookup error:", err);
+      } catch (err: any) {
+        if (err?.name === "AbortError") {
+          console.warn("[LOOKUP] OpenFoodFacts timed out")
+        } else {
+          console.error("[LOOKUP] OpenFoodFacts error:", err?.message)
         }
-      } catch (err) {
-        console.error("External UPC lookup error:", err);
+      }
+
+      // ── Tier 4: Go-UPC (broad coverage, free tier) ──
+      try {
+        console.log(`[LOOKUP] Tier 4: Go-UPC for ${numericCode}`)
+        const goUpcRes = await fetchWithTimeout(
+          `https://go-upc.com/api/v1/code/${numericCode}`,
+          {
+            headers: {
+              "Accept": "application/json",
+              "User-Agent": "WarehouseInventory/1.0",
+            },
+          },
+          6000
+        )
+        if (goUpcRes.ok) {
+          const goData = await goUpcRes.json()
+          if (goData?.product?.name) {
+            console.log(`[LOOKUP] ✅ Go-UPC HIT: "${goData.product.name}"`)
+            return NextResponse.json({
+              found: true,
+              source: "external",
+              item: {
+                name: goData.product.name || "",
+                upc: numericCode,
+                ean: goData.product.ean || numericCode,
+                asin: "",
+                description: goData.product.description || goData.product.category || "",
+                amazonImageUrl: goData.product.imageUrl || null,
+              }
+            })
+          }
+        }
+      } catch (err: any) {
+        if (err?.name === "AbortError") {
+          console.warn("[LOOKUP] Go-UPC timed out")
+        } else {
+          console.error("[LOOKUP] Go-UPC error:", err?.message)
+        }
+      }
+
+      // ── Tier 5: BarcodeSpider Web Scraping (last resort) ──
+      try {
+        console.log(`[LOOKUP] Tier 5: BarcodeSpider for ${numericCode}`)
+        const spiderRes = await fetchWithTimeout(
+          `https://www.barcodespider.com/${numericCode}`,
+          {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml",
+            },
+          },
+          6000
+        )
+        if (spiderRes.ok) {
+          const html = await spiderRes.text()
+
+          // Try to extract product name from <title>
+          const titleMatch = html.match(/<title>(.*?) - Barcode/i)
+
+          // Try to extract from <h2 class="product-name"> or similar
+          const h2Match = html.match(/<h2[^>]*class="[^"]*product[^"]*"[^>]*>(.*?)<\/h2>/i)
+
+          const productName = titleMatch?.[1]?.trim() || h2Match?.[1]?.trim()
+
+          // Try to extract image
+          const imgMatch = html.match(/<img[^>]*class="[^"]*product[^"]*"[^>]*src="([^"]+)"/i)
+
+          if (productName && productName !== "Not Found" && !productName.toLowerCase().includes("not found")) {
+            console.log(`[LOOKUP] ✅ BarcodeSpider HIT: "${productName}"`)
+            return NextResponse.json({
+              found: true,
+              source: "external",
+              item: {
+                name: productName,
+                upc: numericCode,
+                ean: numericCode,
+                asin: "",
+                description: "",
+                amazonImageUrl: imgMatch?.[1] || null,
+              }
+            })
+          }
+        }
+      } catch (err: any) {
+        if (err?.name === "AbortError") {
+          console.warn("[LOOKUP] BarcodeSpider timed out")
+        } else {
+          console.error("[LOOKUP] BarcodeSpider error:", err?.message)
+        }
+      }
+
+      // ── Tier 6: Digit Eyes (alternative barcode database) ──
+      try {
+        console.log(`[LOOKUP] Tier 6: BarcodeLookup.com for ${numericCode}`)
+        const blRes = await fetchWithTimeout(
+          `https://www.barcodelookup.com/${numericCode}`,
+          {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml",
+            },
+          },
+          6000
+        )
+        if (blRes.ok) {
+          const html = await blRes.text()
+          // barcodelookup.com has <h4 class="product-name">Product Name</h4>
+          const nameMatch = html.match(/<h4[^>]*class="[^"]*product-name[^"]*"[^>]*>(.*?)<\/h4>/i)
+          // Also try the <title> tag
+          const titleMatch = html.match(/<title>(.*?)\s*[-|]\s*Barcode/i)
+          const productName = nameMatch?.[1]?.trim() || titleMatch?.[1]?.trim()
+
+          const imgMatch = html.match(/<img[^>]*class="[^"]*product-image[^"]*"[^>]*src="([^"]+)"/i)
+
+          if (productName && productName.length > 2 && !productName.toLowerCase().includes("not found")) {
+            console.log(`[LOOKUP] ✅ BarcodeLookup HIT: "${productName}"`)
+            return NextResponse.json({
+              found: true,
+              source: "external",
+              item: {
+                name: productName,
+                upc: numericCode,
+                ean: numericCode,
+                asin: "",
+                description: "",
+                amazonImageUrl: imgMatch?.[1] || null,
+              }
+            })
+          }
+        }
+      } catch (err: any) {
+        if (err?.name === "AbortError") {
+          console.warn("[LOOKUP] BarcodeLookup timed out")
+        } else {
+          console.error("[LOOKUP] BarcodeLookup error:", err?.message)
+        }
       }
     }
 
+    // ─── FINAL: Amazon PA-API Keyword Search (for non-UPC codes like ASINs) ──
+    // Only try if code looks like it could be an ASIN or keyword
+    if (!isBarcode || code.length === 10) {
+      try {
+        console.log(`[LOOKUP] Amazon PA-API search for "${code}"`)
+        const { searchItems } = await import("@/lib/amazon-service")
+        const amazonItems = await searchItems(code);
+        if (amazonItems && amazonItems.length > 0) {
+          const amz = amazonItems[0];
+          console.log(`[LOOKUP] ✅ Amazon PA-API HIT: "${amz.ItemInfo?.Title?.DisplayValue}"`)
+          return NextResponse.json({
+            found: true,
+            source: "amazon",
+            item: {
+              name: amz.ItemInfo?.Title?.DisplayValue || "",
+              upc: code,
+              sku: "",
+              ean: "",
+              asin: amz.ASIN || "",
+              description: amz.ItemInfo?.Features?.DisplayValues?.join(". ") || "",
+              amazonImageUrl: amz.Images?.Primary?.Large?.URL || null,
+            }
+          });
+        }
+      } catch (err: any) {
+        console.warn("[LOOKUP] Amazon PA-API search failed:", err?.message)
+      }
+    }
+
+    console.log(`[LOOKUP] ❌ No results found for code: ${code}`)
     return NextResponse.json({ found: false, code })
   } catch (error: any) {
     console.error("Inventory lookup error:", error)

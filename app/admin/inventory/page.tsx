@@ -48,7 +48,10 @@ const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string)
 
       if (!isMounted || !open) return;
       
-      if (!(window as any).Html5Qrcode) {
+      const Html5Qrcode = (window as any).Html5Qrcode;
+      const Html5QrcodeSupportedFormats = (window as any).Html5QrcodeSupportedFormats;
+
+      if (!Html5Qrcode) {
         console.error("Html5Qrcode library failed to load after 5s");
         return;
       }
@@ -66,35 +69,58 @@ const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string)
       }
 
       try {
-        html5QrCode = new (window as any).Html5Qrcode("inventory-reader");
+        // Explicitly enable ALL barcode formats — critical for UPC/EAN scanning
+        const formatsToSupport = Html5QrcodeSupportedFormats
+          ? [
+              Html5QrcodeSupportedFormats.UPC_A,
+              Html5QrcodeSupportedFormats.UPC_E,
+              Html5QrcodeSupportedFormats.EAN_13,
+              Html5QrcodeSupportedFormats.EAN_8,
+              Html5QrcodeSupportedFormats.CODE_128,
+              Html5QrcodeSupportedFormats.CODE_39,
+              Html5QrcodeSupportedFormats.ITF,
+              Html5QrcodeSupportedFormats.CODABAR,
+              Html5QrcodeSupportedFormats.QR_CODE,
+              Html5QrcodeSupportedFormats.DATA_MATRIX,
+            ].filter(Boolean)
+          : undefined;
+
+        html5QrCode = new Html5Qrcode("inventory-reader", {
+          formatsToSupport,
+          verbose: false,
+        });
         
+        // Scanning box optimized for 1D barcodes: wide and thin
         const qrboxFunction = (viewfinderWidth: number, viewfinderHeight: number) => {
-            let minEdgePercentage = 0.7;
-            let minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
-            let qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+            const boxWidth = Math.floor(viewfinderWidth * 0.85);
+            const boxHeight = Math.floor(viewfinderHeight * 0.25);
             return {
-                width: qrboxSize,
-                height: Math.floor(qrboxSize * 0.7)
+                width: Math.max(boxWidth, 200),
+                height: Math.max(boxHeight, 80)
             };
         };
 
         await html5QrCode.start(
           { facingMode: "environment" },
           { 
-            fps: 20, 
+            fps: 15, 
             qrbox: qrboxFunction,
             rememberLastUsedCamera: true,
-            aspectRatio: 1.0,
+            aspectRatio: 1.7777, // 16:9 widescreen — much better for horizontal barcodes
+            disableFlip: false,
           },
           (decodedText: string) => {
+            console.log("[SCANNER] Barcode detected:", decodedText);
             // Haptic feedback if available
             if ("vibrate" in navigator) {
-              navigator.vibrate(100);
+              navigator.vibrate(200);
             }
             onScan(decodedText);
             html5QrCode.stop().catch(console.error);
           },
-          (error: any) => {}
+          (error: any) => {
+            // Silent — this fires on every frame that doesn't detect a barcode
+          }
         );
       } catch (err) {
         console.error("Scanner start error:", err);
@@ -257,6 +283,7 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
   const [isScanning, setIsScanning] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [lookupSource, setLookupSource] = useState<"amazon" | "external" | "none" | null>(null)
+  const [lookupMessage, setLookupMessage] = useState<string>("")
 
   useEffect(() => {
     if (open) {
@@ -273,10 +300,20 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
     if (!code) return
     setIsScanning(true)
     setLookupSource(null)
+    setLookupMessage("Buscando en inventario local...")
     
     // Optimistically fill the barcode fields we have
     const cleanCode = code.trim()
     setForm(f => ({ ...f, upc: cleanCode }))
+
+    // Show progressive feedback: the API searches multiple tiers
+    // but we give a visual indication that external DBs are being queried
+    const messageTimer = setTimeout(() => {
+      setLookupMessage("Buscando en bases de datos universales de UPC...")
+    }, 2000)
+    const messageTimer2 = setTimeout(() => {
+      setLookupMessage("Consultando múltiples fuentes externas...")
+    }, 6000)
 
     try {
       const res = await fetch(`/api/admin/inventory/lookup?code=${encodeURIComponent(cleanCode)}`)
@@ -294,14 +331,26 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
           imageUrl: data.item.amazonImageUrl || data.item.imageUrl || f.imageUrl,
           description: data.item.description || f.description,
         }))
+        setLookupMessage(
+          data.source === "amazon" 
+            ? "✅ Producto encontrado en inventario Amazon" 
+            : "✅ Producto encontrado en base de datos universal"
+        )
       } else {
         setLookupSource("none")
+        setLookupMessage("❌ No encontrado en ninguna base de datos. Ingresa la información manualmente.")
       }
     } catch (e) {
       console.error("Lookup error:", e)
+      setLookupSource("none")
+      setLookupMessage("⚠️ Error de conexión. Intenta de nuevo o ingresa manualmente.")
     } finally {
+      clearTimeout(messageTimer)
+      clearTimeout(messageTimer2)
       setIsScanning(false)
       setScannerOpen(false)
+      // Clear the message after 5 seconds
+      setTimeout(() => setLookupMessage(""), 5000)
     }
   }
 
@@ -314,6 +363,7 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
       status: "AVAILABLE", notes: "",
     })
     setLookupSource(null)
+    setLookupMessage("")
   }
 
   const levelMap: Record<string, string> = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
@@ -446,16 +496,28 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
               </Button>
             </div>
             
-            {isScanning && <div className="text-[10px] font-bold text-blue-600 animate-pulse text-center">Buscando producto...</div>}
+            {(isScanning || lookupMessage) && (
+              <div className={`text-[10px] font-bold text-center transition-all duration-300 ${
+                isScanning ? "text-blue-600 animate-pulse" 
+                : lookupMessage.startsWith("✅") ? "text-emerald-600" 
+                : lookupMessage.startsWith("❌") ? "text-red-600"
+                : "text-amber-600"
+              }`}>
+                {isScanning ? lookupMessage || "Buscando producto..." : lookupMessage}
+              </div>
+            )}
             
             {scannerOpen && (
-              <div className="fixed inset-0 z-[200] bg-black/80 flex flex-col items-center justify-center p-4">
-                <div className="bg-white p-4 rounded-xl max-w-sm w-full mx-auto space-y-4">
+              <div className="fixed inset-0 z-[200] bg-black/90 flex flex-col items-center justify-center p-4">
+                <div className="bg-white p-4 rounded-xl max-w-md w-full mx-auto space-y-3">
                   <div className="flex justify-between items-center">
-                    <h3 className="font-black uppercase tracking-widest text-slate-900">Escanear Barcode</h3>
+                    <h3 className="font-black uppercase tracking-widest text-slate-900 text-sm">Escanear Barcode</h3>
                     <Button size="icon" variant="ghost" onClick={() => setScannerOpen(false)}><X className="h-4 w-4" /></Button>
                   </div>
-                  <div id="inventory-reader" className="w-full overflow-hidden rounded-xl bg-slate-100 aspect-square"></div>
+                  <div id="inventory-reader" className="w-full overflow-hidden rounded-xl bg-slate-100 aspect-video"></div>
+                  <p className="text-[10px] text-slate-400 text-center font-medium">
+                    Alinea el código de barras dentro del rectángulo. Mantén el teléfono estable.
+                  </p>
                   <ScannerEffect open={scannerOpen} onScan={(code) => handleLookup(code)} />
                 </div>
               </div>
