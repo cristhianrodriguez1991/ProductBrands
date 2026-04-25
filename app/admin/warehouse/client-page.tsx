@@ -64,7 +64,7 @@ const STATUS_LABELS: Record<string, string> = {
   AVAILABLE: "Disponible",
   DAMAGED: "Dañado",
   HOLD: "En Espera",
-  INBOUND: "Entrante",
+  INBOUND: "Shipping Supply",
   OUTBOUND: "Saliente",
 }
 
