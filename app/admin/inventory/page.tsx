@@ -298,6 +298,8 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
 
   const handleLookup = async (code: string) => {
     if (!code) return
+    // IMMEDIATELY close scanner overlay so user sees the form + loading state
+    setScannerOpen(false)
     setIsScanning(true)
     setLookupSource(null)
     setLookupMessage("Buscando en inventario local...")
@@ -348,7 +350,6 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
       clearTimeout(messageTimer)
       clearTimeout(messageTimer2)
       setIsScanning(false)
-      setScannerOpen(false)
       // Clear the message after 5 seconds
       setTimeout(() => setLookupMessage(""), 5000)
     }
