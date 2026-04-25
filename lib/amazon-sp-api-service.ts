@@ -27,6 +27,9 @@ function getClient(): any {
       credentials: {
         SELLING_PARTNER_APP_CLIENT_ID: AMAZON_SPAPI_CLIENT_ID,
         SELLING_PARTNER_APP_CLIENT_SECRET: AMAZON_SPAPI_CLIENT_SECRET,
+        AWS_ACCESS_KEY_ID: "dummy_access_key_since_iam_deprecated",
+        AWS_SECRET_ACCESS_KEY: "dummy_secret_key_since_iam_deprecated",
+        AWS_SELLING_PARTNER_ROLE: "arn:aws:iam::123456789012:role/dummy_role",
       },
       use_sandbox: false,
     })
