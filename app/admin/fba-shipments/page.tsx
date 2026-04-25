@@ -1229,6 +1229,14 @@ export default function FbaShipmentsPage() {
         multiple 
         onChange={handleImageUpload} 
       />
+      {/* Modal de Confirmación Global */}
+      <ConfirmDeleteModal 
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog(p => ({ ...p, isOpen: false }))}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </>
   )
 }
