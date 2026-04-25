@@ -73,43 +73,85 @@ const parseSyncDate = (val: string) => {
 }
 
 const LocationPicker = ({ value, onChange }: { value: string; onChange: (val: string) => void }) => {
-  const { rack, num, level } = parseLocationCode(value)
+  const [isAdding, setIsAdding] = useState(false)
+  const locations = value ? value.split(' + ').filter(Boolean) : []
+  const [tempLocation, setTempLocation] = useState("A1P")
 
-  const handleRackChange = (newRack: string) => {
-    onChange(`${newRack}${num || "1"}${level || "P"}`)
+  const { rack, num, level } = parseLocationCode(tempLocation)
+
+  const handleAddField = () => {
+    if (!locations.includes(tempLocation)) {
+      onChange([...locations, tempLocation].join(' + '))
+    }
+    setIsAdding(false)
   }
-  const handleLevelChange = (newLevel: string) => {
-    onChange(`${rack || "A"}${num || "1"}${newLevel}`)
+
+  const handleRemove = (loc: string) => {
+    onChange(locations.filter(l => l !== loc).join(' + '))
   }
-  const handleNumChange = (newNum: string) => {
-    onChange(`${rack || "A"}${newNum}${level || "P"}`)
-  }
+
+  const handleRackChange = (newRack: string) => setTempLocation(`${newRack}${num || "1"}${level || "P"}`)
+  const handleLevelChange = (newLevel: string) => setTempLocation(`${rack || "A"}${num || "1"}${newLevel}`)
+  const handleNumChange = (newNum: string) => setTempLocation(`${rack || "A"}${newNum}${level || "P"}`)
 
   return (
-    <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shadow-sm group-hover/row:border-blue-300 transition-all">
-      <select 
-        value={rack || "A"} 
-        onChange={e => handleRackChange(e.target.value)}
-        className="bg-slate-50 px-1.5 py-0.5 rounded text-[11px] font-black text-blue-700 outline-none cursor-pointer hover:bg-blue-50 transition-colors border-none appearance-none"
-      >
-        {Object.keys(RACKS_CONFIG).map(r => <option key={r} value={r}>{r}</option>)}
-      </select>
-      
-      <select 
-        value={level || "P"} 
-        onChange={e => handleLevelChange(e.target.value)}
-        className="bg-slate-50 px-1.5 py-0.5 rounded text-[11px] font-black text-emerald-700 outline-none cursor-pointer hover:bg-emerald-50 transition-colors border-none appearance-none"
-      >
-        {LEVELS_CONFIG.map(l => <option key={l.key} value={l.key}>{l.key}</option>)}
-      </select>
-      
-      <select 
-        value={num || "1"} 
-        onChange={e => handleNumChange(e.target.value)}
-        className="bg-slate-50 px-1.5 py-0.5 rounded text-[11px] font-black text-slate-700 outline-none cursor-pointer hover:bg-slate-100 transition-colors border-none appearance-none"
-      >
-        {Array.from({ length: 20 }, (_, i) => i + 1).map(n => <option key={n} value={n.toString()}>{n}</option>)}
-      </select>
+    <div className="flex flex-col gap-1.5 p-1">
+      <div className="flex flex-wrap gap-1">
+        {locations.map(loc => (
+          <div key={loc} className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-100 text-[10px] font-black group/loc relative pr-5">
+            {loc}
+            <button 
+              onClick={() => handleRemove(loc)}
+              className="absolute right-1 hover:bg-red-100 hover:text-red-700 rounded-full p-0.5 transition-colors"
+            >
+              <X className="h-2 w-2" />
+            </button>
+          </div>
+        ))}
+        {!isAdding && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setIsAdding(true)}
+            className="h-6 px-2 text-[10px] font-bold text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-dashed border-slate-200"
+          >
+            <Plus className="h-3 w-3 mr-1" /> Añadir
+          </Button>
+        )}
+      </div>
+
+      {isAdding && (
+        <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200 shadow-inner animate-in fade-in slide-in-from-top-1 duration-200">
+          <select 
+            value={rack || "A"} 
+            onChange={e => handleRackChange(e.target.value)}
+            className="bg-white px-1 py-0.5 rounded text-[10px] font-black text-blue-700 border border-slate-200 outline-none"
+          >
+            {Object.keys(RACKS_CONFIG).map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+          
+          <select 
+            value={level || "P"} 
+            onChange={e => handleLevelChange(e.target.value)}
+            className="bg-white px-1 py-0.5 rounded text-[10px] font-black text-emerald-700 border border-slate-200 outline-none"
+          >
+            {LEVELS_CONFIG.map(l => <option key={l.key} value={l.key}>{l.key}</option>)}
+          </select>
+          
+          <select 
+            value={num || "1"} 
+            onChange={e => handleNumChange(e.target.value)}
+            className="bg-white px-1 py-0.5 rounded text-[10px] font-black text-slate-700 border border-slate-200 outline-none"
+          >
+            {Array.from({ length: 20 }, (_, i) => i + 1).map(n => <option key={n} value={n.toString()}>{n}</option>)}
+          </select>
+          
+          <div className="flex items-center gap-1 ml-1">
+            <button onClick={handleAddField} className="bg-blue-600 text-white rounded p-1 hover:bg-blue-700 shadow-sm"><CheckCircle2 className="h-3 w-3"/></button>
+            <button onClick={() => setIsAdding(false)} className="bg-slate-200 text-slate-600 rounded p-1 hover:bg-slate-300"><X className="h-3 w-3"/></button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -295,27 +337,30 @@ export default function FbaShipmentsPage() {
       
       // Perform batch-like sequential updates
       for (const item of itemsToSync) {
-        const { rack, num, level } = parseLocationCode(item.location)
-        if (rack && num && level) {
-          const numInt = parseInt(num)
-          const warehousePayload = {
-            locationCode: item.location,
-            rack,
-            level: levelMap[level] || "TOP",
-            cellNumber: Math.ceil(numInt / 2),
-            palletPosition: numInt % 2 === 0 ? 2 : 1,
-            sku: item.sku,
-            productName: item.name,
-            quantity: parseInt(item.totalUnits as any) || 0,
-            expirationDate: parseSyncDate(item.expDate || ""),
-            status: "RESERVED"
+        const locations = item.location.split(' + ').filter(Boolean)
+        for (const loc of locations) {
+          const { rack, num, level } = parseLocationCode(loc)
+          if (rack && num && level) {
+            const numInt = parseInt(num)
+            const warehousePayload = {
+              locationCode: loc,
+              rack,
+              level: levelMap[level] || "TOP",
+              cellNumber: Math.ceil(numInt / 2),
+              palletPosition: numInt % 2 === 0 ? 2 : 1,
+              sku: item.sku,
+              productName: item.name,
+              quantity: Math.floor((parseInt(item.totalUnits as any) || 0) / locations.length), // Distribute qty
+              expirationDate: parseSyncDate(item.expDate || ""),
+              status: "RESERVED"
+            }
+            
+            await fetch("/api/admin/warehouse", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(warehousePayload)
+            })
           }
-          
-          await fetch("/api/admin/warehouse", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(warehousePayload)
-          })
         }
       }
       setSaveStatus("saved")
@@ -497,35 +542,24 @@ export default function FbaShipmentsPage() {
 
       // ── Synchronization with Warehouse Map ──
       const updatedItem = { ...itemBefore, ...payload, [field]: finalValue }
-      if (updatedItem.location) {
-        const { rack, num, level } = parseLocationCode(updatedItem.location)
-        if (rack && num && level) {
-          const numInt = parseInt(num)
-          const levelMap: any = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
-          const warehousePayload = {
-            locationCode: updatedItem.location,
-            rack,
-            level: levelMap[level] || "TOP",
-            cellNumber: Math.ceil(numInt / 2),
-            palletPosition: numInt % 2 === 0 ? 2 : 1,
-            sku: updatedItem.sku,
-            productName: updatedItem.name,
-            quantity: parseInt(updatedItem.totalUnits as any) || 0,
-            expirationDate: parseSyncDate(updatedItem.expDate || ""),
-            status: "RESERVED"
-          }
+      if (updatedItem.location || itemBefore.location) {
+        const levelMap: any = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
+        const oldLocs = (itemBefore.location || "").split(' + ').filter(Boolean)
+        const newLocs = (updatedItem.location || "").split(' + ').filter(Boolean)
 
-          // If location changed, clear the old one
-          if (field === "location" && itemBefore.location && itemBefore.location !== finalValue) {
+        // Clear locations removed
+        for (const loc of oldLocs) {
+          if (!newLocs.includes(loc)) {
+            const { rack, num, level } = parseLocationCode(loc)
             await fetch("/api/admin/warehouse", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                locationCode: itemBefore.location,
-                rack: parseLocationCode(itemBefore.location).rack,
-                level: levelMap[parseLocationCode(itemBefore.location).level] || "TOP",
-                cellNumber: Math.ceil(parseInt(parseLocationCode(itemBefore.location).num) / 2),
-                palletPosition: parseInt(parseLocationCode(itemBefore.location).num) % 2 === 0 ? 2 : 1,
+                locationCode: loc,
+                rack,
+                level: levelMap[level] || "TOP",
+                cellNumber: Math.ceil(parseInt(num) / 2),
+                palletPosition: parseInt(num) % 2 === 0 ? 2 : 1,
                 status: "AVAILABLE",
                 productName: null,
                 sku: null,
@@ -533,13 +567,31 @@ export default function FbaShipmentsPage() {
               })
             })
           }
+        }
 
-          // Update current location in warehouse
-          await fetch("/api/admin/warehouse", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(warehousePayload)
-          })
+        // Update/Upsert current locations
+        for (const loc of newLocs) {
+          const { rack, num, level } = parseLocationCode(loc)
+          if (rack && num && level) {
+            const numInt = parseInt(num)
+            const warehousePayload = {
+              locationCode: loc,
+              rack,
+              level: levelMap[level] || "TOP",
+              cellNumber: Math.ceil(numInt / 2),
+              palletPosition: numInt % 2 === 0 ? 2 : 1,
+              sku: updatedItem.sku,
+              productName: updatedItem.name,
+              quantity: Math.floor((parseInt(updatedItem.totalUnits as any) || 0) / newLocs.length),
+              expirationDate: parseSyncDate(updatedItem.expDate || ""),
+              status: "RESERVED"
+            }
+            await fetch("/api/admin/warehouse", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(warehousePayload)
+            })
+          }
         }
       }
 
