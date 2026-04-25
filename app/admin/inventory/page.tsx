@@ -99,27 +99,22 @@ const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string)
           }
         });
         
-        // Scanning box optimized for 1D barcodes: wide and thin
+        // Scanning box optimized for mobile portrait mode
         const qrboxFunction = (viewfinderWidth: number, viewfinderHeight: number) => {
             const boxWidth = Math.floor(viewfinderWidth * 0.85);
-            const boxHeight = Math.floor(viewfinderHeight * 0.25);
+            const boxHeight = Math.floor(viewfinderHeight * 0.35); // Taller box for easier aiming
             return {
                 width: Math.max(boxWidth, 200),
-                height: Math.max(boxHeight, 80)
+                height: Math.max(boxHeight, 100)
             };
         };
 
         await html5QrCode.start(
-          { 
-            facingMode: "environment",
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 }
-          },
+          { facingMode: "environment" }, // Safari-safe constraints
           { 
             fps: 15, 
             qrbox: qrboxFunction,
             rememberLastUsedCamera: true,
-            aspectRatio: 1.7777, // 16:9 widescreen — much better for horizontal barcodes
             disableFlip: false,
           },
           (decodedText: string) => {
@@ -528,13 +523,13 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
             
             {scannerOpen && (
               <div className="fixed inset-0 z-[200] bg-black/90 flex flex-col items-center justify-center p-4">
-                <div className="bg-white p-4 rounded-xl max-w-md w-full mx-auto space-y-3">
+                <div className="bg-white p-4 rounded-xl w-full max-w-[340px] mx-auto space-y-3 flex flex-col">
                   <div className="flex justify-between items-center">
                     <h3 className="font-black uppercase tracking-widest text-slate-900 text-sm">Escanear Barcode</h3>
                     <Button size="icon" variant="ghost" onClick={() => setScannerOpen(false)}><X className="h-4 w-4" /></Button>
                   </div>
-                  <div id="inventory-reader" className="w-full overflow-hidden rounded-xl bg-slate-100 aspect-video"></div>
-                  <p className="text-[10px] text-slate-400 text-center font-medium">
+                  <div id="inventory-reader" className="w-full overflow-hidden rounded-xl bg-slate-100 min-h-[300px] relative"></div>
+                  <p className="text-[10px] text-slate-400 text-center font-medium leading-tight">
                     Alinea el código de barras dentro del rectángulo. Mantén el teléfono estable.
                   </p>
                   <ScannerEffect open={scannerOpen} onScan={(code) => handleLookup(code)} />
