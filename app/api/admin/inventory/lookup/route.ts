@@ -145,6 +145,34 @@ export async function GET(req: Request) {
              });
           }
         }
+        // 3. Fallback to BarcodeSpider (excellent for niche items like Adalya)
+        try {
+          const spiderRes = await fetch(`https://www.barcodespider.com/${numericCode}`, {
+            headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" }
+          });
+          if (spiderRes.ok) {
+            const html = await spiderRes.text();
+            // Look for <title>... - Barcode 8681655717905</title>
+            // or <div className="detail-item">...
+            const titleMatch = html.match(/<title>(.*?) - Barcode/i);
+            if (titleMatch && titleMatch[1]) {
+              return NextResponse.json({
+                found: true,
+                source: "external",
+                item: {
+                  name: titleMatch[1].trim(),
+                  upc: numericCode,
+                  ean: numericCode,
+                  asin: "",
+                  description: "Encontrado vía BarcodeSpider",
+                  amazonImageUrl: null,
+                }
+              });
+            }
+          }
+        } catch (err) {
+          console.error("BarcodeSpider lookup error:", err);
+        }
       } catch (err) {
         console.error("External UPC lookup error:", err);
       }

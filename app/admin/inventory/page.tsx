@@ -402,9 +402,19 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
                 </span>
               )}
               {lookupSource === "none" && (
-                <span className="text-[9px] font-black uppercase text-red-800 bg-red-100 px-2.5 py-0.5 rounded flex items-center gap-1">
-                  <X className="h-3 w-3" /> No Encontrado
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-black uppercase text-red-800 bg-red-100 px-2.5 py-0.5 rounded flex items-center gap-1">
+                    <X className="h-3 w-3" /> No Encontrado
+                  </span>
+                  <a 
+                    href={`https://www.google.com/search?q=UPC+barcode+${form.upc || form.fnsku}`} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="text-[9px] font-bold text-blue-600 underline hover:text-blue-800"
+                  >
+                    Buscar en Google
+                  </a>
+                </div>
               )}
             </div>
             
