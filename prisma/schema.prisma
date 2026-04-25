@@ -913,9 +913,11 @@ model InventoryItem {
   quantityReserved Int            @default(0)
   reorderPoint    Int             @default(0)
   unitCost        Float?
+  fulfillmentChannel String?      // AMAZON (FBA) or MERCHANT (FBM)
 
   // Status
   isActive        Boolean         @default(true)
+  amazonStatus    String?         // From Amazon Status column (Active, Inactive, etc.)
   notes           String?         @db.Text
 
   // Sync metadata

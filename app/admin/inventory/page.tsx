@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { compressImage } from "@/lib/image-compression"
 import {
   ChevronLeft,
@@ -19,6 +19,8 @@ import {
   Zap,
   ArrowUpDown,
   Filter,
+  Check,
+  X
 } from "lucide-react"
 
 // ── Types ──
@@ -217,7 +219,8 @@ export default function InventoryPage() {
   // ── Rendering ──
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
   const [sortBy, setSortBy] = useState<"NAME_ASC" | "NAME_DESC" | "CREATED_DESC" | "CREATED_ASC" | "STOCK_DESC" | "STOCK_ASC" | "DEFAULT">("DEFAULT")
-  const [hideOutOfStock, setHideOutOfStock] = useState(false)
+  const [statusFilter, setStatusFilter] = useState("ALL")
+  const [fulfillmentFilter, setFulfillmentFilter] = useState("ALL")
   const [pushOutofStockToBottom, setPushOutofStockToBottom] = useState(true)
 
   // ── Processing (Search, Filter, Sort) ──
@@ -230,13 +233,31 @@ export default function InventoryPage() {
           item.name?.toLowerCase().includes(q) ||
           item.sku?.toLowerCase().includes(q) ||
           item.asin?.toLowerCase().includes(q) ||
-          item.upc?.includes(q)
+          item.upc?.toLowerCase().includes(q)
         if (!matches) return false
       }
 
-      // 2. Hide Out of stock filter
-      const totalStock = (item.quantityOnHand || 0) + (item.quantityReserved || 0)
-      if (hideOutOfStock && totalStock === 0) return false
+      // 2. Status Filter (Amazon Style)
+      if (statusFilter !== "ALL") {
+        if (statusFilter === "ACTIVE" && !item.isActive) return false
+        if (statusFilter === "INACTIVE" && item.isActive) return false
+        if (statusFilter === "OUT_OF_STOCK") {
+          const s = (item.quantityOnHand || 0) + (item.quantityReserved || 0)
+          if (s > 0) return false
+        }
+        if (statusFilter === "INCOMPLETE") {
+          const amzStatus = (item as any).amazonStatus?.toLowerCase() || ""
+          if (!amzStatus.includes("incomplete")) return false
+        }
+        // ... more can be added
+      }
+
+      // 3. Fulfillment Filter
+      if (fulfillmentFilter !== "ALL") {
+        const channel = (item as any).fulfillmentChannel?.toUpperCase() || ""
+        if (fulfillmentFilter === "AMAZON" && !channel.includes("AMAZON")) return false
+        if (fulfillmentFilter === "MERCHANT" && !channel.includes("MERCHANT")) return false
+      }
 
       return true
     })
@@ -361,60 +382,115 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* FILTER & SORT MODAL */}
+  // ── Counts for Filters ──
+  const filterCounts = useMemo(() => {
+    return {
+      all: items.length,
+      active: items.filter(i => i.isActive).length,
+      inactive: items.filter(i => (i.source === 'AMAZON' && !i.isActive)).length,
+      outOfStock: items.filter(i => (i.quantityOnHand + (i.quantityReserved || 0)) === 0).length,
+      amazon: items.filter(i => ((i as any).fulfillmentChannel || '').toUpperCase().includes('AMAZON')).length,
+      merchant: items.filter(i => ((i as any).fulfillmentChannel || '').toUpperCase().includes('MERCHANT')).length,
+    }
+  }, [items])
+
+      {/* FILTER & SORT MODAL - Amazon Style */}
       <Dialog open={isFilterModalOpen} onOpenChange={setIsFilterModalOpen}>
-        <DialogContent className="max-w-sm rounded-lg">
-          <DialogHeader>
-            <DialogTitle>Sort & Filter</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col space-y-4 py-2">
-            {/* Sort Logic */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Sort By</label>
+        <DialogContent className="max-w-md p-0 overflow-hidden bg-white sm:rounded-xl">
+          <div className="flex items-center justify-between px-4 h-14 border-b">
+             <button onClick={() => setIsFilterModalOpen(false)} className="text-blue-600 text-sm font-medium">Cancel</button>
+             <h2 className="font-bold text-slate-800">Filter</h2>
+             <button onClick={() => setIsFilterModalOpen(false)} className="text-blue-600 text-sm font-bold">Apply</button>
+          </div>
+
+          <div className="max-h-[80vh] overflow-y-auto">
+            {/* Status Section */}
+            <div className="px-4 py-2 bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b">
+              Status
+            </div>
+            {[
+              { id: "ALL", label: "All", count: filterCounts.all },
+              { id: "ACTIVE", label: "Active", count: filterCounts.active },
+              { id: "INACTIVE", label: "Inactive", count: filterCounts.inactive },
+              { id: "OUT_OF_STOCK", label: "Out of stock", count: filterCounts.outOfStock },
+              { id: "INCOMPLETE", label: "Incomplete", count: 0 }, // Placeholder for now
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setStatusFilter(opt.id)}
+                className="w-full flex items-center justify-between px-4 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`text-[15px] ${statusFilter === opt.id ? "font-bold text-slate-900" : "text-slate-700"}`}>
+                    {opt.label}
+                  </span>
+                  <span className="text-[12px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full min-w-[20px]">
+                    {opt.count}
+                  </span>
+                </div>
+                {statusFilter === opt.id && <Check className="h-4 w-4 text-orange-500" />}
+              </button>
+            ))}
+
+            {/* Fulfilled By Section */}
+            <div className="px-4 py-2 bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b mt-2">
+              Fulfilled By
+            </div>
+            {[
+              { id: "ALL", label: "All", count: filterCounts.all },
+              { id: "AMAZON", label: "Amazon", count: filterCounts.amazon },
+              { id: "MERCHANT", label: "Merchant", count: filterCounts.merchant },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setFulfillmentFilter(opt.id)}
+                className="w-full flex items-center justify-between px-4 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`text-[15px] ${fulfillmentFilter === opt.id ? "font-bold text-slate-900" : "text-slate-700"}`}>
+                    {opt.label}
+                  </span>
+                  <span className="text-[12px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full min-w-[20px]">
+                    {opt.count}
+                  </span>
+                </div>
+                {fulfillmentFilter === opt.id && <Check className="h-4 w-4 text-orange-500" />}
+              </button>
+            ))}
+
+            {/* Sort Logic Section */}
+            <div className="px-4 py-2 bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b mt-2">
+              Sort Options
+            </div>
+            <div className="p-4">
               <select 
                 title="Sort By"
                 value={sortBy} 
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="w-full border-slate-300 rounded-md text-sm p-2 bg-white border outline-none"
+                className="w-full border-slate-300 rounded-lg text-sm p-3 bg-white border outline-none shadow-sm h-12"
               >
-                <option value="DEFAULT">Default</option>
+                <option value="DEFAULT">Default (Newest First)</option>
                 <option value="NAME_ASC">Name (A-Z)</option>
                 <option value="NAME_DESC">Name (Z-A)</option>
                 <option value="STOCK_DESC">Stock (High to Low)</option>
                 <option value="STOCK_ASC">Stock (Low to High)</option>
-                <option value="CREATED_DESC">Newest First</option>
-                <option value="CREATED_ASC">Oldest First</option>
+                <option value="CREATED_DESC">Creation (Newest First)</option>
+                <option value="CREATED_ASC">Creation (Oldest First)</option>
               </select>
-            </div>
 
-            {/* Checkboxes */}
-            <div className="space-y-3 pt-2 border-t">
-              <label className="flex items-center space-x-2 text-sm cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  title="Push Out of Stock to Bottom"
-                  checked={pushOutofStockToBottom}
-                  onChange={(e) => setPushOutofStockToBottom(e.target.checked)}
-                  className="rounded border-slate-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                />
-                <span>Push "Out of Stock" to Bottom</span>
-              </label>
-
-              <label className="flex items-center space-x-2 text-sm cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  title="Hide Out of Stock completely"
-                  checked={hideOutOfStock}
-                  onChange={(e) => setHideOutOfStock(e.target.checked)}
-                  className="rounded border-slate-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                />
-                <span>Hide "Out of Stock" entirely</span>
-              </label>
+              <div className="mt-4 space-y-3">
+                <label className="flex items-center justify-between group cursor-pointer p-1">
+                  <span className="text-sm text-slate-700">Push "Out of Stock" to Bottom</span>
+                  <input 
+                    type="checkbox" 
+                    title="Push Out of Stock to Bottom"
+                    checked={pushOutofStockToBottom}
+                    onChange={(e) => setPushOutofStockToBottom(e.target.checked)}
+                    className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </label>
+              </div>
             </div>
-            
-            <Button onClick={() => setIsFilterModalOpen(false)} className="w-full mt-4">
-              Apply
-            </Button>
           </div>
         </DialogContent>
       </Dialog>

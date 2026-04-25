@@ -71,7 +71,8 @@ export async function POST() {
       const asin = item["asin1"] || item["ASIN"] || item["asin"] || ""
       const sku = item["seller-sku"] || item["sku"] || ""
       const title = item["item-name"] || item["product-name"] || item["Title"] || ""
-      const condition = item["item-condition"] || item["condition"] || item["Condition"] || ""
+      const amzStatus = item["status"] || item["item-status"] || ""
+      const fulfillmentChannel = item["fulfillment-channel"] || item["fulfillment_channel"] || ""
 
       // Extract quantities AND fnsku from FBA response (using SKU as primary key for FBA)
       const fbaQty = fbaQtyMap.get(sku)
@@ -117,7 +118,9 @@ export async function POST() {
         amazonUrl: asin ? `https://www.amazon.com/dp/${asin}` : null,
         quantityOnHand,
         quantityReserved,
-        isActive: true,
+        isActive: amzStatus.toLowerCase().includes("active"),
+        amazonStatus: amzStatus || null,
+        fulfillmentChannel: fulfillmentChannel || null,
         lastSyncedAt: new Date(),
       }
 
