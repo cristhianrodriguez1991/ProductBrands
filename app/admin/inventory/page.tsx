@@ -66,32 +66,31 @@ const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string)
       }
 
       try {
-        html5QrCode = new (window as any).Html5Qrcode("inventory-reader", { 
-           verbose: false,
-           // Use native browser barcode detector if available (major speed boost)
-           experimentalFeatures: { useBarCodeDetectorIfSupported: true } 
-        });
+        html5QrCode = new (window as any).Html5Qrcode("inventory-reader");
         
         const qrboxFunction = (viewfinderWidth: number, viewfinderHeight: number) => {
-            const width = Math.floor(viewfinderWidth * 0.8);
-            const height = Math.floor(width * 0.6);
-            return { width, height };
+            let minEdgePercentage = 0.7;
+            let minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+            let qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+            return {
+                width: qrboxSize,
+                height: Math.floor(qrboxSize * 0.7)
+            };
         };
 
         await html5QrCode.start(
           { facingMode: "environment" },
           { 
-            fps: 25, 
+            fps: 20, 
             qrbox: qrboxFunction,
+            rememberLastUsedCamera: true,
             aspectRatio: 1.0,
-            // Requesting higher resolution for clearer barcode lines
-            videoConstraints: {
-              width: { min: 640, ideal: 1280, max: 1920 },
-              height: { min: 480, ideal: 720, max: 1080 },
-              facingMode: "environment"
-            }
           },
           (decodedText: string) => {
+            // Haptic feedback if available
+            if ("vibrate" in navigator) {
+              navigator.vibrate(100);
+            }
             onScan(decodedText);
             html5QrCode.stop().catch(console.error);
           },
