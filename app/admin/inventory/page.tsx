@@ -311,20 +311,7 @@ export default function InventoryPage() {
               {items.reduce((acc, curr) => acc + (curr.quantityOnHand || 0) + (curr.quantityReserved || 0), 0).toLocaleString()}
             </div>
           </div>
-          
-          <div className="relative flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all shadow-sm">
-            <div className="pl-3 py-2 text-slate-400">
-              <Search className="h-5 w-5" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search Inventory or scan barcode..."
-              className="flex-1 px-2 py-2.5 outline-none text-[15px] text-slate-800 placeholder-slate-400 w-full"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleScanSubmit()
-              }}
+
           <div className="flex gap-2">
             <div className="relative flex-1 flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all shadow-sm">
               <div className="pl-3 py-2 text-slate-400">
