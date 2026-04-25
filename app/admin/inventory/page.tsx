@@ -653,6 +653,27 @@ function WarehouseInventoryTab() {
     })
   }
 
+  // Delete shipment history log
+  const deleteShipmentLog = async (log: any) => {
+    setConfirmDelete({
+      open: true,
+      title: "Delete Shipment Log",
+      message: `Are you sure you want to delete this log for "${log.productName}"?`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/shipment-logs/${log.id}`, {
+            method: "DELETE",
+          })
+          if (res.ok) {
+            setShipmentLogs(prev => prev.filter(l => l.id !== log.id))
+          }
+        } catch (e) {
+          console.error(e)
+        }
+      },
+    })
+  }
+
   // Open edit modal for a specific pallet
   const openEditPallet = (loc: PalletLocation, product: WarehouseProduct) => {
     setEditPallet({
@@ -1041,12 +1062,21 @@ function WarehouseInventoryTab() {
                         {formatDateTime(log.shippedAt)}
                       </div>
                     </div>
-                    {/* Action badge */}
-                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded shrink-0 ${
-                      log.action === "SHIPPED" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
-                    }`}>
-                      {log.action === "SHIPPED" ? "Enviado" : log.action}
-                    </span>
+                    {/* Action badge & Delete */}
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded ${
+                        log.action === "SHIPPED" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
+                      }`}>
+                        {log.action === "SHIPPED" ? "Enviado" : log.action}
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteShipmentLog(log) }}
+                        className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        title="Delete log"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
