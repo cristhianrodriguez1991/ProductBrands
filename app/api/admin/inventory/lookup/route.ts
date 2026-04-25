@@ -45,7 +45,7 @@ export async function GET(req: Request) {
     }
 
     if (!item) {
-      item = await prisma.inventoryItem.findUnique({
+      item = await prisma.inventoryItem.findFirst({
         where: { asin: code.toUpperCase() },
       })
     }
