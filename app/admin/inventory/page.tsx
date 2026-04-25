@@ -338,11 +338,41 @@ function EditPalletModal({ open, onClose, pallet, onSaved }: {
     palletHeightIn: "",
     status: "AVAILABLE",
     notes: "",
+    rack: "A",
+    level: "FLOOR",
+    cellNumber: "1",
+    palletPosition: "1",
   })
   const [saving, setSaving] = useState(false)
 
+  const levelMap: Record<string, string> = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
+  const levelKeys: Record<string, string> = { TOP: "T", MID: "M", BOT: "L", FLOOR: "P" }
+
+  const locationCode = useMemo(() => {
+    const cn = parseInt(form.cellNumber) || 1
+    const pp = parseInt(form.palletPosition) || 1
+    const globalNum = (cn - 1) * 2 + pp
+    return `${form.rack}${globalNum}${levelKeys[form.level] || "P"}`
+  }, [form.rack, form.level, form.cellNumber, form.palletPosition])
+
   useEffect(() => {
     if (pallet) {
+      let initialRack = "A"
+      let initialLevel = "FLOOR"
+      let initialCell = "1"
+      let initialPos = "1"
+      
+      if (pallet.locationCode) {
+        const match = pallet.locationCode.match(/^([A-C])(\d+)([TMLP])$/)
+        if (match) {
+          initialRack = match[1]
+          const globalNum = parseInt(match[2])
+          initialLevel = levelMap[match[3]] || "FLOOR"
+          initialCell = Math.ceil(globalNum / 2).toString()
+          initialPos = (globalNum % 2 === 0 ? 2 : 1).toString()
+        }
+      }
+
       setForm({
         productName: (pallet as any).productName || "",
         sku: (pallet as any).sku || "",
@@ -352,6 +382,10 @@ function EditPalletModal({ open, onClose, pallet, onSaved }: {
         palletHeightIn: pallet.palletHeightIn?.toString() || "",
         status: pallet.status || "AVAILABLE",
         notes: pallet.notes || "",
+        rack: initialRack,
+        level: initialLevel,
+        cellNumber: initialCell,
+        palletPosition: initialPos,
       })
     }
   }, [pallet])
@@ -360,22 +394,52 @@ function EditPalletModal({ open, onClose, pallet, onSaved }: {
     if (!pallet?.palletId) return
     setSaving(true)
     try {
-      const res = await fetch("/api/admin/inventory/warehouse/pallet", {
+      // First, update via PATCH
+      const patchRes = await fetch("/api/admin/inventory/warehouse/pallet", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           palletId: pallet.palletId,
-          ...form,
+          productName: form.productName,
+          sku: form.sku,
+          quantity: form.quantity,
+          status: form.status,
+          palletHeightIn: form.palletHeightIn,
+          lotNumber: form.lotNumber,
           expirationDate: form.expirationDate || null,
+          notes: form.notes,
         }),
       })
-      if (res.ok) {
-        onSaved()
-        onClose()
-      } else {
-        const err = await res.json()
-        alert("❌ " + (err.error || "Failed to update"))
+
+      if (!patchRes.ok) {
+        const err = await patchRes.json()
+        throw new Error(err.error || "Failed to update pallet properties")
       }
+
+      // If location changed, do POST to move
+      if (locationCode !== pallet.locationCode) {
+        const cn = parseInt(form.cellNumber) || 1
+        const pp = parseInt(form.palletPosition) || 1
+        const moveRes = await fetch("/api/admin/inventory/warehouse/pallet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            palletId: pallet.palletId,
+            newLocationCode: locationCode,
+            newRack: form.rack,
+            newLevel: form.level,
+            newCellNumber: cn,
+            newPalletPosition: pp,
+          }),
+        })
+        if (!moveRes.ok) {
+          const err = await moveRes.json()
+          throw new Error("Failed to move location: " + (err.error || "Unknown error"))
+        }
+      }
+
+      onSaved()
+      onClose()
     } catch (e: any) {
       alert("❌ " + e.message)
     } finally {
@@ -391,18 +455,54 @@ function EditPalletModal({ open, onClose, pallet, onSaved }: {
         <div className="flex items-center justify-between px-4 h-14 border-b bg-blue-50">
           <button onClick={onClose} className="text-slate-500 text-sm font-medium">Cancel</button>
           <h2 className="font-black text-slate-800 uppercase tracking-wider text-[12px]">
-            <Pencil className="inline h-4 w-4 mr-1 -mt-0.5" /> Edit {pallet.locationCode}
+            <Pencil className="inline h-4 w-4 mr-1 -mt-0.5" /> Edit Pallet
           </h2>
           <button onClick={handleSave} disabled={saving} className="text-blue-600 text-sm font-bold">
             {saving ? "..." : "Save"}
           </button>
         </div>
         <div className="overflow-y-auto max-h-[75vh] p-4 space-y-4">
-          <div className="text-center mb-2">
-            <span className={`text-xs font-black px-3 py-1.5 rounded-lg ${STATUS_COLORS[pallet.status] || "bg-slate-100"}`}>
-              <MapPin className="inline h-3 w-3 mr-1 -mt-0.5" />
-              {pallet.locationCode}
-            </span>
+          {/* Location Picker */}
+          <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+            <div className="flex justify-between items-center">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" /> Location
+              </label>
+              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-md ${STATUS_COLORS[form.status] || "bg-slate-200"}`}>
+                {locationCode}
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-4 gap-2 mt-2">
+              <div>
+                <label className="text-[9px] text-slate-400 font-bold">Rack</label>
+                <select value={form.rack} onChange={(e) => setForm(f => ({ ...f, rack: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5">
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[9px] text-slate-400 font-bold">Level</label>
+                <select value={form.level} onChange={(e) => setForm(f => ({ ...f, level: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5">
+                  <option value="TOP">Top</option>
+                  <option value="MID">Mid</option>
+                  <option value="BOT">Bot</option>
+                  <option value="FLOOR">Floor</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[9px] text-slate-400 font-bold">Cell #</label>
+                <Input type="number" min={1} max={8} value={form.cellNumber} onChange={(e) => setForm(f => ({ ...f, cellNumber: e.target.value }))} className="mt-0.5" />
+              </div>
+              <div>
+                <label className="text-[9px] text-slate-400 font-bold">Position</label>
+                <select value={form.palletPosition} onChange={(e) => setForm(f => ({ ...f, palletPosition: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm font-bold mt-0.5">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <div>
@@ -1384,7 +1484,7 @@ export default function InventoryPage() {
     <div className="min-h-screen bg-slate-50 font-sans sm:pb-20 -mt-4 md:-mt-8 -mx-4 md:-mx-8">
       
       {/* HEADER - Sticky and Opaque */}
-      <div className="sticky -top-4 md:-top-8 pt-4 md:pt-8 z-[100] bg-white border-b border-slate-200 shadow-md relative isolate">
+      <div className="sticky -top-4 md:-top-8 pt-4 md:pt-8 z-40 bg-white border-b border-slate-200 shadow-md relative isolate">
         <div className="flex items-center justify-between px-2 h-14 bg-white">
           <Button variant="ghost" size="icon" className="text-slate-600 hover:bg-slate-100">
             <ChevronLeft className="h-6 w-6" />
