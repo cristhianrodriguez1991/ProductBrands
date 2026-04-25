@@ -79,16 +79,22 @@ export default function InventoryPage() {
     }
   }, [])
 
-  // ── Auto-sync on load ──
+  // ── Fetch ──
   const autoSync = useCallback(async () => {
     setIsSyncing(true)
     try {
       const res = await fetch("/api/admin/inventory/sync", { method: "POST" })
-      if (res.ok) {
+      const data = await res.json()
+      
+      if (res.ok && data.success !== false) {
         await fetchItems()
+        alert(`✅ Sync response:\nCreated: ${data.created || 0}\nUpdated: ${data.synced || 0}\nMessage: ${data.message || "Done"}`)
+      } else {
+        alert("❌ Amazon API Error:\n" + (data.error || "Unknown") + "\nDetails: " + (data.details || ""))
       }
     } catch (e) {
       console.error("Auto-sync failed:", e)
+      alert("❌ Sync request failed to connect to Vercel API.")
     } finally {
       setIsSyncing(false)
     }

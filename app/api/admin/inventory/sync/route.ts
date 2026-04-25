@@ -126,8 +126,12 @@ export async function POST() {
   } catch (error: any) {
     console.error("Seller Central SP-API Sync error:", error)
     return NextResponse.json(
-      { error: "Seller Central Sync failed: " + (error?.message || "Unknown error") },
-      { status: 500 }
+      { 
+        success: false, 
+        error: "Seller Central Sync failed: " + (error?.message || "Unknown error"),
+        details: JSON.stringify(error)
+      },
+      { status: 200 } // Send 200 so Vercel/browser doesn't mask the JSON with an HTML error page!
     )
   }
 }
