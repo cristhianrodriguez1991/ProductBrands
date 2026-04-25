@@ -279,10 +279,19 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
       >
         <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ${statusColor}`} />
         {occupied ? (
-          <>
-            <span className="text-[7px] font-black text-slate-700 truncate w-full px-1 text-center leading-tight">{pallet.sku || "—"}</span>
-            <span className="text-[6px] text-slate-500 font-bold">{pallet.quantity ? `×${pallet.quantity}` : ""}</span>
-          </>
+          <div className="flex flex-col items-center justify-center w-full px-[2px] overflow-hidden mt-1">
+            <span className="text-[7.5px] font-black text-slate-800 truncate w-full text-center leading-[1.1]">
+              {pallet.productName || pallet.sku || "—"}
+            </span>
+            {pallet.productName && pallet.sku && (
+              <span className="text-[5.5px] font-bold text-slate-500 truncate w-full text-center leading-[1.1]">
+                {pallet.sku}
+              </span>
+            )}
+            <span className="text-[6.5px] text-slate-700 font-extrabold mt-[2px] tracking-tight">
+              {pallet.quantity ? `QTY: ${pallet.quantity}` : ""}
+            </span>
+          </div>
         ) : (
           <span className="text-[8px] text-slate-400 font-bold">{locationCode}</span>
         )}
