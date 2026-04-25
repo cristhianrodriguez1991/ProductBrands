@@ -298,10 +298,10 @@ export default function InventoryPage() {
     })
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans sm:pb-20">
+    <div className="min-h-screen bg-slate-50 font-sans sm:pb-20 -mx-4 -mt-4 md:-mx-8 md:-mt-8">
       
       {/* HEADER - Amazon App Style */}
-      <div className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
+      <div className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-md">
         <div className="flex items-center justify-between px-2 h-14 bg-white">
           <Button variant="ghost" size="icon" className="text-slate-600 hover:bg-slate-100">
             <ChevronLeft className="h-6 w-6" />
