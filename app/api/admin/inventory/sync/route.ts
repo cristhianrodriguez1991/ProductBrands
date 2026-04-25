@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getActiveListings, getCatalogItemsByAsins } from "@/lib/amazon-sp-api-service"
+import { getActiveListings, getCatalogItemsByAsins, getFbaQuantities } from "@/lib/amazon-sp-api-service"
 import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
@@ -50,7 +50,15 @@ export async function POST() {
       console.warn("Catalog lookup failed (continuing without images):", catErr?.message)
     }
 
-    // ── 3. Wipe old inventory and insert fresh from Amazon ──
+    // ── 3. Get real FBA warehouse quantities ──
+    let fbaQtyMap = new Map<string, { fulfillable: number; reserved: number }>()
+    try {
+      fbaQtyMap = await getFbaQuantities()
+    } catch (qtyErr: any) {
+      console.warn("FBA quantity lookup failed (quantities will show as 0):", qtyErr?.message)
+    }
+
+    // ── 4. Wipe old inventory and insert fresh from Amazon ──
     await prisma.inventoryItem.deleteMany({
       where: { source: "AMAZON" }
     })
@@ -58,19 +66,16 @@ export async function POST() {
     let createdCount = 0
 
     for (const item of listings) {
-      // Amazon report columns (tab-separated):
-      // item-name, item-description, listing-id, seller-sku, price, quantity, 
-      // open-date, image-url, item-is-marketplace, product-id-type, 
-      // zshop-shipping-fee, item-note, item-condition, zshop-category1,
-      // zshop-browse-path, zshop-storefront-feature, asin1, ...
       const asin = item["asin1"] || item["ASIN"] || item["asin"] || ""
       const sku = item["seller-sku"] || item["sku"] || ""
       const title = item["item-name"] || item["Title"] || ""
-      const quantity = parseInt(item["quantity"] || item["Quantity"] || "0", 10) || 0
-      const price = item["price"] || item["Price"] || ""
       const imageUrl = item["image-url"] || item["Image Url"] || ""
       const condition = item["item-condition"] || item["Condition"] || ""
-      const openDate = item["open-date"] || ""
+
+      // Get REAL FBA quantities from warehouse data
+      const fbaQty = fbaQtyMap.get(asin)
+      const quantityOnHand = fbaQty?.fulfillable || 0
+      const quantityReserved = fbaQty?.reserved || 0
 
       // Get catalog image (richer quality) if available
       const cData = catalogMap.get(asin)
@@ -91,8 +96,8 @@ export async function POST() {
           amazonTitle: catalogTitle || title || null,
           amazonImageUrl: catalogImage || imageUrl || null,
           amazonUrl: asin ? `https://www.amazon.com/dp/${asin}` : null,
-          quantityOnHand: quantity,
-          quantityReserved: 0,
+          quantityOnHand,
+          quantityReserved,
           isActive: true,
           lastSyncedAt: new Date(),
         },

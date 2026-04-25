@@ -121,6 +121,55 @@ export async function getActiveListings(): Promise<any[]> {
 }
 
 /**
+ * Get real-time FBA inventory quantities.
+ * Returns a Map of ASIN → { fulfillable, reserved } for quick lookup.
+ */
+export async function getFbaQuantities(): Promise<Map<string, { fulfillable: number; reserved: number }>> {
+  const client: any = getClient()
+  const usMarketplaceId = "ATVPDKIKX0DER"
+  const quantityMap = new Map<string, { fulfillable: number; reserved: number }>()
+
+  let nextToken: string | undefined = undefined
+
+  do {
+    const res: any = await client.callAPI({
+      operation: "getInventorySummaries",
+      endpoint: "fbaInventory",
+      query: {
+        details: true,
+        granularityType: "Marketplace",
+        granularityId: usMarketplaceId,
+        marketplaceIds: usMarketplaceId,
+        ...(nextToken ? { nextToken } : {}),
+      },
+    })
+
+    if (res && res.inventorySummaries) {
+      for (const inv of res.inventorySummaries) {
+        const asin = inv.asin
+        const fulfillable = inv.inventoryDetails?.fulfillableQuantity || 0
+        const reserved = inv.inventoryDetails?.reservedQuantity?.totalReservedQuantity || 0
+        
+        // Accumulate if same ASIN appears multiple times (different SKUs)
+        const existing = quantityMap.get(asin)
+        if (existing) {
+          quantityMap.set(asin, {
+            fulfillable: existing.fulfillable + fulfillable,
+            reserved: existing.reserved + reserved,
+          })
+        } else {
+          quantityMap.set(asin, { fulfillable, reserved })
+        }
+      }
+    }
+
+    nextToken = res?.pagination?.nextToken
+  } while (nextToken)
+
+  return quantityMap
+}
+
+/**
  * Parse Amazon's tab-separated report into an array of objects.
  * The first row is the header row with column names.
  */
