@@ -159,16 +159,18 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
         {locations.map((loc, idx) => (
           <div 
             key={`${loc}-${idx}`} 
-            onClick={() => handleStartEdit(loc, idx)}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-black transition-all group/loc relative pr-5 shadow-sm cursor-pointer ${editingIndex === idx ? "bg-blue-600 text-white border-blue-700" : "bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200 hover:border-blue-200"}`}
+            onClick={() => loc !== "ENVIADO" && handleStartEdit(loc, idx)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-black transition-all group/loc relative pr-5 shadow-sm ${loc === "ENVIADO" ? "bg-blue-600 text-white border-blue-700 cursor-default" : editingIndex === idx ? "bg-blue-600 text-white border-blue-700 cursor-pointer" : "bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200 hover:border-blue-200 cursor-pointer"}`}
           >
-            {loc}
-            <button 
-              onClick={(e) => handleRemoveClick(e, loc)}
-              className="absolute right-0.5 hover:bg-red-100 hover:text-red-700 rounded p-0.5 transition-colors opacity-0 group-hover/loc:opacity-100"
-            >
-              <X className="h-2 w-2" />
-            </button>
+            {loc === "ENVIADO" ? "📦 ENVIADO" : loc}
+            {loc !== "ENVIADO" && (
+              <button 
+                onClick={(e) => handleRemoveClick(e, loc)}
+                className="absolute right-0.5 hover:bg-red-100 hover:text-red-700 rounded p-0.5 transition-colors opacity-0 group-hover/loc:opacity-100"
+              >
+                <X className="h-2 w-2" />
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -454,7 +456,7 @@ export default function FbaShipmentsPage() {
             await fetch(`/api/admin/fba-shipments/items/${item.id}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ location: null })
+              body: JSON.stringify({ location: "ENVIADO" })
             })
           }
 
