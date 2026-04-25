@@ -1172,17 +1172,17 @@ export default function FbaShipmentsPage() {
               {/* MAIN TABLE */}
               <Card className="w-full border-0 shadow-2xl rounded-none overflow-hidden bg-white mb-10 border border-slate-100">
                 <div className="overflow-x-auto custom-scrollbar">
-                  <table className="w-full text-left border-collapse min-w-[1500px]">
+                  <table className="text-left border-collapse min-w-[2200px] table-auto">
                     <thead>
                       <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-black tracking-widest">
                         <th className="py-6 px-1 w-[35px] text-center bg-[#163a2d]"></th>
                         <th className="py-6 px-3 w-[110px] border-r border-white/5">Location</th>
                         <th className="py-6 px-3 w-[130px] border-r border-white/5">Orden Cajas</th>
                         <th className="py-6 px-5 min-w-[300px] border-r border-white/5">Producto</th>
-                        <th className="py-6 px-3 w-[160px] border-r border-white/5 text-center">FnSKU</th>
-                        <th className="py-6 px-3 w-[140px] border-r border-white/5 text-center">UPC</th>
-                        <th className="py-6 px-3 w-[130px] border-r border-white/5 text-center">SKU</th>
-                        <th className="py-6 px-3 w-[130px] border-r border-white/5 text-center">ASIN</th>
+                        <th className="py-6 px-3 w-[180px] border-r border-white/5 text-center whitespace-nowrap">FnSKU</th>
+                        <th className="py-6 px-3 w-[180px] border-r border-white/5 text-center whitespace-nowrap">UPC</th>
+                        <th className="py-6 px-3 w-[160px] border-r border-white/5 text-center whitespace-nowrap">SKU</th>
+                        <th className="py-6 px-3 w-[160px] border-r border-white/5 text-center whitespace-nowrap">ASIN</th>
                         <th className="py-6 px-3 w-[85px] border-r border-white/5 text-center">U/C</th>
                         <th className="py-6 px-3 w-[105px] border-r border-white/5 text-center bg-[#245d48]">Cajas ({activeTab.items.filter((i: any) => i.status === "IN_SHIPMENT").reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</th>
                         <th className="py-6 px-3 w-[115px] border-r border-white/5 text-center bg-[#245d48]">Und ({activeTab.items.filter((i: any) => i.status === "IN_SHIPMENT").reduce((acc: number, i: any) => acc + (parseInt(i.totalUnits) || 0), 0)})</th>
@@ -1235,17 +1235,17 @@ export default function FbaShipmentsPage() {
                     <span className="text-[10px] font-black bg-amber-600 text-white px-3 py-1 rounded-full uppercase tracking-tighter">Disponible para este envío</span>
                   </h2>
                   <div className="overflow-x-auto rounded-none border border-amber-200 bg-white shadow-xl">
-                    <table className="w-full text-left min-w-[1300px]">
+                    <table className="text-left min-w-[2000px] table-auto border-collapse">
                       <thead>
                         <tr className="bg-amber-800 text-white text-[10px] uppercase font-black tracking-widest">
                           <th className="py-4 px-1 w-[30px] text-center"></th>
                           <th className="py-4 px-3 w-[110px]">Location</th>
                           <th className="py-4 px-3 w-[130px]">Orden</th>
                           <th className="py-4 min-w-[200px]">PRODUCTO PENDIENTE</th>
-                          <th className="py-4 px-3 w-[150px]">FnSKU</th>
-                          <th className="py-4 px-3 w-[140px]">UPC</th>
-                          <th className="py-4 px-3 w-[120px]">SKU</th>
-                          <th className="py-4 px-3 w-[120px]">ASIN</th>
+                          <th className="py-4 px-3 w-[180px] whitespace-nowrap">FnSKU</th>
+                          <th className="py-4 px-3 w-[180px] whitespace-nowrap">UPC</th>
+                          <th className="py-4 px-3 w-[160px] whitespace-nowrap">SKU</th>
+                          <th className="py-4 px-3 w-[160px] whitespace-nowrap">ASIN</th>
                           <th className="py-4 px-3 w-[90px] text-center">U/C</th>
                           <th className="py-4 px-3 w-[90px] text-center leading-tight">Cajas<br/><span className="text-[9px] text-amber-200">({globalPendingItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</span></th>
                           <th className="py-4 px-3 w-[90px] text-center leading-tight">Unds<br/><span className="text-[9px] text-amber-200">({globalPendingItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalUnits) || 0), 0)})</span></th>
