@@ -34,125 +34,141 @@ import {
 
 // ── Constants & Utilities ──
 const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string) => void }) => {
-  // Store onScan in a ref so the useEffect doesn't restart the scanner
-  // every time the parent re-renders (which creates a new onScan reference)
   const onScanRef = useRef(onScan);
   useEffect(() => { onScanRef.current = onScan; }, [onScan]);
 
   useEffect(() => {
-    let html5QrCode: any = null;
     let isMounted = true;
     let hasScanned = false; // Prevent double-fires
 
-    const startScanner = async () => {
-      // 1. Wait for script to be available globally
+    const startQuagga = async () => {
+      // 1. Inject Quagga2 if missing
+      if (!document.querySelector('script[src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"]')) {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js";
+        script.async = true;
+        document.body.appendChild(script);
+      }
+
+      // 2. Wait for script to be available globally
       let retries = 0;
-      while (!(window as any).Html5Qrcode && retries < 10) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+      while (!(window as any).Quagga && retries < 20) {
+        await new Promise(resolve => setTimeout(resolve, 200));
         retries++;
       }
 
       if (!isMounted || !open) return;
       
-      const Html5Qrcode = (window as any).Html5Qrcode;
-      const Html5QrcodeSupportedFormats = (window as any).Html5QrcodeSupportedFormats;
+      const Quagga = (window as any).Quagga;
 
-      if (!Html5Qrcode) {
-        console.error("Html5Qrcode library failed to load after 5s");
+      if (!Quagga) {
+        console.error("Quagga library failed to load");
         return;
       }
 
-      // 2. Wait for DOM element to be definitely ready
+      // 3. Wait for DOM element
       let domRetries = 0;
       while (!document.getElementById("inventory-reader") && domRetries < 5) {
         await new Promise(resolve => setTimeout(resolve, 200));
         domRetries++;
       }
 
-      if (!document.getElementById("inventory-reader")) {
-        console.error("inventory-reader element not found in DOM");
-        return;
-      }
+      const targetEl = document.getElementById("inventory-reader");
+      if (!targetEl) return;
 
       try {
-        // Explicitly enable ALL barcode formats — critical for UPC/EAN scanning
-        const formatsToSupport = Html5QrcodeSupportedFormats
-          ? [
-              Html5QrcodeSupportedFormats.UPC_A,
-              Html5QrcodeSupportedFormats.UPC_E,
-              Html5QrcodeSupportedFormats.EAN_13,
-              Html5QrcodeSupportedFormats.EAN_8,
-              Html5QrcodeSupportedFormats.CODE_128,
-              Html5QrcodeSupportedFormats.CODE_39,
-              Html5QrcodeSupportedFormats.ITF,
-              Html5QrcodeSupportedFormats.CODABAR,
-              Html5QrcodeSupportedFormats.QR_CODE,
-              Html5QrcodeSupportedFormats.DATA_MATRIX,
-            ].filter(Boolean)
-          : undefined;
-
-        html5QrCode = new Html5Qrcode("inventory-reader", {
-          formatsToSupport,
-          verbose: false,
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true // Use native hardware scanning if available (much faster for 1D)
-          }
-        });
-        
-        // Scanning box optimized for mobile portrait mode
-        const qrboxFunction = (viewfinderWidth: number, viewfinderHeight: number) => {
-            const boxWidth = Math.floor(viewfinderWidth * 0.85);
-            const boxHeight = Math.floor(viewfinderHeight * 0.35); // Taller box for easier aiming
-            return {
-                width: Math.max(boxWidth, 200),
-                height: Math.max(boxHeight, 100)
-            };
-        };
-
-        await html5QrCode.start(
-          { facingMode: "environment" }, // Safari-safe constraints
-          { 
-            fps: 15, 
-            qrbox: qrboxFunction,
-            rememberLastUsedCamera: true,
-            disableFlip: false,
-          },
-          (decodedText: string) => {
-            // Guard against double-fires
-            if (hasScanned) return;
-            hasScanned = true;
-
-            console.log("[SCANNER] Barcode detected:", decodedText);
-            // Haptic feedback if available
-            if ("vibrate" in navigator) {
-              navigator.vibrate(200);
+        Quagga.init({
+          inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: targetEl, // Or '#inventory-reader' (optional)
+            constraints: {
+              facingMode: "environment", // Safest for iOS
+              // Request decent resolution without forcing constraints that fail
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+            area: { // Defines rectangle of the detection/localization area
+              top: "20%",    // top offset
+              right: "10%",  // right offset
+              left: "10%",   // left offset
+              bottom: "20%"  // bottom offset
             }
-            // Use the ref to call the latest onScan without triggering useEffect restart
-            onScanRef.current(decodedText);
-            html5QrCode.stop().catch(console.error);
           },
-          (error: any) => {
-            // Silent — this fires on every frame that doesn't detect a barcode
+          decoder: {
+            readers: [
+              "upc_reader", 
+              "upc_e_reader", 
+              "ean_reader", 
+              "ean_8_reader", 
+              "code_128_reader",
+              "code_39_reader"
+            ],
+            multiple: false
+          },
+          locate: true // Essential for finding barcodes in the frame
+        }, function(err: any) {
+            if (err) {
+                console.error("Quagga init error:", err);
+                return;
+            }
+            if (!isMounted) return;
+            Quagga.start();
+        });
+
+        Quagga.onDetected((result: any) => {
+          if (hasScanned) return;
+          const code = result.codeResult.code;
+          
+          // Basic validation (UPC/EAN are strictly numbers)
+          if (!/^\d+$/.test(code) && code.length > 20) return;
+
+          console.log("[QUAGGA] Barcode detected:", code);
+          hasScanned = true;
+          
+          if ("vibrate" in navigator) {
+            navigator.vibrate(200);
           }
-        );
+          
+          onScanRef.current(code);
+          Quagga.stop();
+        });
+
       } catch (err) {
         console.error("Scanner start error:", err);
       }
     };
 
     if (open) {
-      startScanner();
+      startQuagga();
     }
 
     return () => {
       isMounted = false;
-      if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(console.error);
+      if ((window as any).Quagga) {
+        try {
+          (window as any).Quagga.stop();
+          (window as any).Quagga.offDetected();
+        } catch(e) {}
       }
     };
-  }, [open]); // Only depend on `open` — NOT onScan
+  }, [open]);
 
-  return null;
+  return (
+    <style dangerouslySetInnerHTML={{__html: `
+      #inventory-reader video, #inventory-reader canvas {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+      }
+      #inventory-reader canvas.drawingBuffer {
+        z-index: 10;
+      }
+    `}} />
+  );
 };
 
 // ── Types ──
