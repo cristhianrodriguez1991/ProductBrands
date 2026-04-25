@@ -1121,7 +1121,7 @@ export default function FbaShipmentsPage() {
                         <StandaloneRow 
                           key={item.id} item={item} index={index} isPending={false}
                           updateItem={updateItem} 
-                          deleteItem={() => deleteItem(activeTab.id, item.id)} 
+                          deleteItem={() => deleteItem(item.id)} 
                           setConfirmDialog={setConfirmDialog} // Pass the global setter
                           switchItemStatus={switchItemStatus}
                           removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
@@ -1181,7 +1181,7 @@ export default function FbaShipmentsPage() {
                           <StandaloneRow 
                             key={item.id} item={item} index={index} isPending={true}
                             updateItem={updateItem} 
-                            deleteItem={() => deleteItem(activeTab.id, item.id)} 
+                            deleteItem={() => deleteItem(item.id)} 
                             setConfirmDialog={setConfirmDialog}
                             switchItemStatus={switchItemStatus}
                             removeImage={removeImage} setSelectedIdForUpload={setSelectedIdForUpload}
