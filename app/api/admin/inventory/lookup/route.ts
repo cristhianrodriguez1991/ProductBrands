@@ -94,27 +94,35 @@ export async function GET(req: Request) {
     }
 
     // Fallback: Universal UPC Database (UPCItemDB)
-    const isEanUpc = /^\d{8,14}$/.test(code);
+    // Only query if it is purely numeric, since FNSKUs (X00...) are Amazon-specific
+    const isEanUpc = /^\d{5,14}$/.test(code);
     if (isEanUpc) {
       try {
+        // Many systems miss a leading check digit, UPCItemDB strictly uses standard lengths.
+        // We can try exactly as scanned first.
         const upcRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${code}`);
-        if (upcRes.ok) {
-          const upcData = await upcRes.json();
-          if (upcData && upcData.items && upcData.items.length > 0) {
-            const externalItem = upcData.items[0];
-            return NextResponse.json({
-              found: true,
-              source: "external",
-              item: {
-                name: externalItem.title || "",
-                upc: externalItem.upc || code,
-                ean: externalItem.ean || "",
-                asin: externalItem.asin || "",
-                description: externalItem.description || "",
-                amazonImageUrl: externalItem.images && externalItem.images.length > 0 ? externalItem.images[0] : null,
-              }
-            });
-          }
+        let upcData = upcRes.ok ? await upcRes.json() : null;
+
+        // If not found and it's 11 or 12 digits, try padding with a zero (as EAN-13)
+        if ((!upcData || !upcData.items || upcData.items.length === 0) && (code.length === 11 || code.length === 12)) {
+           const paddedRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=0${code}`);
+           if (paddedRes.ok) upcData = await paddedRes.json();
+        }
+
+        if (upcData && upcData.items && upcData.items.length > 0) {
+          const externalItem = upcData.items[0];
+          return NextResponse.json({
+            found: true,
+            source: "external",
+            item: {
+              name: externalItem.title || "",
+              upc: externalItem.upc || code,
+              ean: externalItem.ean || "",
+              asin: externalItem.asin || "",
+              description: externalItem.description || "",
+              amazonImageUrl: externalItem.images && externalItem.images.length > 0 ? externalItem.images[0] : null,
+            }
+          });
         }
       } catch (err) {
         console.error("External UPC lookup error:", err);

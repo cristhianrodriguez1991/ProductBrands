@@ -242,6 +242,17 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
     }
   }
 
+  const handleClose = () => {
+    onClose()
+    setForm({
+      productName: "", sku: "", upc: "", fnsku: "", asin: "", imageUrl: "", description: "", quantity: "", locationCode: "",
+      rack: "A", level: "FLOOR", cellNumber: "1", palletPosition: "1",
+      lotNumber: "", expirationDate: "", palletHeightIn: "",
+      status: "AVAILABLE", notes: "",
+    })
+    setLookupSource(null)
+  }
+
   const levelMap: Record<string, string> = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
   const levelKeys: Record<string, string> = { TOP: "T", MID: "M", BOT: "L", FLOOR: "P" }
 
@@ -292,10 +303,10 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
   }
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(val) => { if(!val) handleClose() }}>
       <DialogContent className="max-w-md p-0 overflow-hidden bg-white sm:rounded-xl max-h-[90vh]">
         <div className="flex items-center justify-between px-4 h-14 border-b bg-emerald-50">
-          <button onClick={onClose} className="text-slate-500 text-sm font-medium">Cancel</button>
+          <button onClick={handleClose} className="text-slate-500 text-sm font-medium">Cancel</button>
           <h2 className="font-black text-slate-800 uppercase tracking-wider text-[12px]">
             <Plus className="inline h-4 w-4 mr-1 -mt-0.5" /> Add Product to Warehouse
           </h2>
