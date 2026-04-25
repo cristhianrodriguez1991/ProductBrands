@@ -119,35 +119,54 @@ export async function getFbaQuantities(): Promise<Map<string, { fulfillable: num
   const usMarketplaceId = "ATVPDKIKX0DER"
   const quantityMap = new Map<string, { fulfillable: number; reserved: number; fnsku: string | null }>()
 
-  // Request the unsuppressed FBA report which contains perfect quantities and fnsku
-  const createRes: any = await client.callAPI({
-    operation: "createReport",
+  // 1. Try to fetch a recent successful report first to avoid the 30-min throttle limit
+  const recentReportsRes: any = await client.callAPI({
+    operation: "getReports",
     endpoint: "reports",
-    body: {
-      reportType: "GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA",
-      marketplaceIds: [usMarketplaceId],
+    query: {
+      reportTypes: ["GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA"],
+      processingStatuses: ["DONE"],
+      pageSize: 1,
     },
   })
 
-  const reportId = createRes?.reportId
-  if (!reportId) return quantityMap
-
-  let reportStatus = "IN_QUEUE"
   let docId: string | null = null
-  let attempts = 0
 
-  while (reportStatus !== "DONE" && attempts < 24) {
-    await new Promise((r) => setTimeout(r, 5000))
-    attempts++
-    const statusRes: any = await client.callAPI({
-      operation: "getReport",
+  if (recentReportsRes?.reports && recentReportsRes.reports.length > 0) {
+    // Re-use the existing active report completely bypassing Amazon rate limit!
+    docId = recentReportsRes.reports[0].reportDocumentId
+    console.log("Reusing recent FBA Unsuppressed Report to bypass throttling. Document ID:", docId)
+  } else {
+    // 2. Request a new report if none exists
+    const createRes: any = await client.callAPI({
+      operation: "createReport",
       endpoint: "reports",
-      path: { reportId },
+      body: {
+        reportType: "GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA",
+        marketplaceIds: [usMarketplaceId],
+      },
     })
-    reportStatus = statusRes?.processingStatus
-    if (reportStatus === "DONE") docId = statusRes?.reportDocumentId
-    if (reportStatus === "CANCELLED" || reportStatus === "FATAL") {
-      throw new Error(`Amazon API returned ${reportStatus} for the FBA Inventory Report. This usually means the API was requested too frequently.`)
+
+    const reportId = createRes?.reportId
+    if (!reportId) return quantityMap
+
+    let reportStatus = "IN_QUEUE"
+    let attempts = 0
+
+    while (reportStatus !== "DONE" && attempts < 24) {
+      await new Promise((r) => setTimeout(r, 5000))
+      attempts++
+      const statusRes: any = await client.callAPI({
+        operation: "getReport",
+        endpoint: "reports",
+        path: { reportId },
+      })
+      reportStatus = statusRes?.processingStatus
+      if (reportStatus === "DONE") docId = statusRes?.reportDocumentId
+      if (reportStatus === "CANCELLED" || reportStatus === "FATAL") {
+        console.warn(`Amazon API returned ${reportStatus} on generating new report.`)
+        break
+      }
     }
   }
 

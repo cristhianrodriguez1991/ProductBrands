@@ -129,7 +129,7 @@ export default function InventoryPage() {
 
   useEffect(() => {
     fetchItems().then((fetchedItems: InventoryItem[]) => {
-      // Auto-sync protection logic (every 12 hours max) to prevent Amazon API blocks
+      // Auto-sync protection logic (every 24 hours max) to prevent Amazon API blocks
       if (fetchedItems && fetchedItems.length > 0) {
         const latestSync = fetchedItems.reduce((latest, item) => {
           if (!item.lastSyncedAt) return latest
@@ -137,10 +137,10 @@ export default function InventoryPage() {
           return current > latest ? current : latest
         }, 0)
 
-        // 12 hours in milliseconds = 12 * 60 * 60 * 1000 = 43200000
-        const twelveHoursAgo = Date.now() - 43200000
+        // 24 hours in milliseconds
+        const twentyFourHoursAgo = Date.now() - 86400000
         
-        if (latestSync === 0 || latestSync < twelveHoursAgo) {
+        if (latestSync === 0 || latestSync < twentyFourHoursAgo) {
           syncInventory(false) // Auto-sync in background
         }
       } else {
