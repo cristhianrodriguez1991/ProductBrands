@@ -55,6 +55,32 @@ export async function POST(req: Request) {
         }
       })
 
+      // ── Handle Bi-directional Sync with FBA Shipments ──
+      // If we moved a pallet, we need to update any FBA items that point to the old location
+      const sourceCode = source.locationCode
+      const targetCode = target.locationCode
+      
+      const itemsToUpdate = await tx.fbaShipmentItem.findMany({
+        where: {
+          location: { contains: sourceCode }
+        }
+      })
+
+      for (const item of itemsToUpdate) {
+        if (item.location) {
+          const locs = item.location.split(' + ').filter(Boolean)
+          const newLocs = locs.map(l => l === sourceCode ? targetCode : l)
+          const newLocationString = newLocs.join(' + ')
+          
+          if (newLocationString !== item.location) {
+            await tx.fbaShipmentItem.update({
+              where: { id: item.id },
+              data: { location: newLocationString }
+            })
+          }
+        }
+      }
+
       return [emptySource, updatedTarget]
     })
 

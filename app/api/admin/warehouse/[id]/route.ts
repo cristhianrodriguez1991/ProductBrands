@@ -50,12 +50,39 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (body.status !== undefined) updateData.status = body.status
     if (body.notes !== undefined) updateData.notes = body.notes
 
-    const pallet = await prisma.warehousePallet.update({
-      where: { id: params.id },
-      data: updateData,
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = await tx.warehousePallet.findUnique({ where: { id: params.id } })
+      if (!existing) throw new Error("Pallet no encontrado.")
+
+      const pallet = await tx.warehousePallet.update({
+        where: { id: params.id },
+        data: updateData,
+      })
+
+      // Sync content changes with FBA shipments pointing to this location
+      if (updateData.sku !== undefined || updateData.productName !== undefined || updateData.quantity !== undefined) {
+        const itemsToUpdate = await tx.fbaShipmentItem.findMany({
+          where: {
+            location: { contains: existing.locationCode }
+          }
+        })
+
+        for (const item of itemsToUpdate) {
+          const updateItemData: any = {}
+          if (updateData.sku !== undefined) updateItemData.sku = updateData.sku
+          if (updateData.productName !== undefined) updateItemData.name = updateData.productName
+          // If qty changed in one pallet of a multi-location item, it's tricky, but let's update if it's the only one
+          // Actually, if we update the name/sku, it's always correct to sync
+          await tx.fbaShipmentItem.update({
+            where: { id: item.id },
+            data: updateItemData
+          })
+        }
+      }
+      return pallet
     })
 
-    return NextResponse.json(pallet)
+    return NextResponse.json(result)
   } catch (error) {
     console.error("[WAREHOUSE_PALLET_PATCH]", error)
     return new NextResponse("Internal Error", { status: 500 })
@@ -70,21 +97,45 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const pallet = await prisma.warehousePallet.update({
-      where: { id: params.id },
-      data: {
-        sku: null,
-        productName: null,
-        quantity: null,
-        lotNumber: null,
-        expirationDate: null,
-        palletHeightIn: null,
-        status: "AVAILABLE",
-        notes: null,
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = await tx.warehousePallet.findUnique({ where: { id: params.id } })
+      if (!existing) throw new Error("Pallet no encontrado.")
+
+      const pallet = await tx.warehousePallet.update({
+        where: { id: params.id },
+        data: {
+          sku: null,
+          productName: null,
+          quantity: null,
+          lotNumber: null,
+          expirationDate: null,
+          palletHeightIn: null,
+          status: "AVAILABLE",
+          notes: null,
+        },
+      })
+
+      // Sync removal with FBA shipments
+      const itemsToUpdate = await tx.fbaShipmentItem.findMany({
+        where: {
+          location: { contains: existing.locationCode }
+        }
+      })
+
+      for (const item of itemsToUpdate) {
+        if (item.location) {
+          const locs = item.location.split(' + ').filter(Boolean)
+          const newLocs = locs.filter(l => l !== existing.locationCode)
+          await tx.fbaShipmentItem.update({
+            where: { id: item.id },
+            data: { location: newLocs.join(' + ') }
+          })
+        }
+      }
+      return pallet
     })
 
-    return NextResponse.json(pallet)
+    return NextResponse.json(result)
   } catch (error) {
     console.error("[WAREHOUSE_PALLET_DELETE]", error)
     return new NextResponse("Internal Error", { status: 500 })
