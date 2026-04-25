@@ -1111,6 +1111,20 @@ export default function FbaShipmentsPage() {
           .print-area, .print-area * { visibility: visible; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .tab-bar, .no-print { display: none !important; }
         }
+        #reader video {
+          object-fit: cover !important;
+        }
+        #reader__dashboard_section_csr button {
+          background: #3b82f6 !important;
+          color: white !important;
+          padding: 8px 16px !important;
+          border-radius: 8px !important;
+          font-weight: bold !important;
+          border: none !important;
+        }
+        #reader__status_span {
+          display: none !important;
+        }
       `}</style>
         {/* TOP TAB NAV */}
         <div className="tab-bar no-print flex items-end gap-1 px-6 bg-white border-b border-slate-200 pt-4 shadow-sm z-30">
@@ -1462,22 +1476,7 @@ export default function FbaShipmentsPage() {
       
       <ScannerEffect open={scannerOpen} onScan={handleScanResult} />
 
-      <style jsx global>{`
-        #reader video {
-          object-fit: cover !important;
-        }
-        #reader__dashboard_section_csr button {
-          background: #3b82f6 !important;
-          color: white !important;
-          padding: 8px 16px !important;
-          border-radius: 8px !important;
-          font-weight: bold !important;
-          border: none !important;
-        }
-        #reader__status_span {
-          display: none !important;
-        }
-      `}</style>
+
     </>
   )
 }
