@@ -35,9 +35,9 @@ const RACKS = {
 } as const
 
 const LEVELS = [
-  { key: "TOP", label: "ARRIBA", maxHeight: 80, order: 0 },
-  { key: "MID", label: "MEDIO", maxHeight: 56, order: 1 },
-  { key: "BOT", label: "ABAJO", maxHeight: 40, order: 2 },
+  { key: "T", label: "ARRIBA", maxHeight: 80, order: 0 },
+  { key: "M", label: "MEDIO", maxHeight: 56, order: 1 },
+  { key: "L", label: "ABAJO", maxHeight: 40, order: 2 },
 ] as const
 
 const STATUSES = ["AVAILABLE", "RESERVED", "DAMAGED", "HOLD", "INBOUND", "OUTBOUND"] as const
@@ -284,29 +284,28 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
             <span className="text-[6px] text-slate-500 font-bold">{pallet.quantity ? `×${pallet.quantity}` : ""}</span>
           </>
         ) : (
-          <span className="text-[7px] text-slate-300 font-bold">P{pallet.palletPosition}</span>
+          <span className="text-[8px] text-slate-400 font-bold">{locationCode}</span>
         )}
       </button>
     )
   }
 
   // ── Render Cell (2 pallets) ──
-  const Cell = ({ rack, level, cellNum }: { rack: string; level: string; cellNum: number }) => {
-    const cellStr = String(cellNum).padStart(2, "0")
-    const prefix = rack.startsWith("FLOOR-") ? `FLOOR-${rack.replace("FLOOR-", "")}-${cellStr}` : `${rack}-${level}-${cellStr}`
-    const loc1 = `${prefix}-P1`
-    const loc2 = `${prefix}-P2`
-
-    return (
+  // ── Render Cell (2 pallets) - Reversed for Right-to-Left physical look ──
+  const Cell = ({ loc1, loc2, p1Num, p2Num }: { loc1: string; loc2: string; p1Num: number; p2Num: number }) => (
+    <div className="flex gap-1 border-b-2 border-slate-200 pb-1 px-1">
+      {/* Left Pallet (p2) */}
       <div className="flex flex-col items-center gap-1">
-        <span className="text-[8px] font-black text-slate-400 tracking-widest">{cellStr}</span>
-        <div className="flex gap-1">
-          <PalletSlot locationCode={loc1} />
-          <PalletSlot locationCode={loc2} />
-        </div>
+        <PalletSlot locationCode={loc2} />
+        <span className="text-[9px] font-black text-slate-400">{p2Num}</span>
       </div>
-    )
-  }
+      {/* Right Pallet (p1) */}
+      <div className="flex flex-col items-center gap-1">
+        <PalletSlot locationCode={loc1} />
+        <span className="text-[9px] font-black text-slate-400">{p1Num}</span>
+      </div>
+    </div>
+  )
 
   // ── Render Level Row ──
   const LevelRow = ({ rack, levelKey, levelLabel, maxHeight, cellCount }: { rack: string; levelKey: string; levelLabel: string; maxHeight: number; cellCount: number }) => (
@@ -316,9 +315,14 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
         <div className="text-[8px] text-slate-400 font-bold">máx {maxHeight}"</div>
       </div>
       <div className="flex gap-2 flex-wrap">
-        {Array.from({ length: cellCount }, (_, i) => (
-          <Cell key={i} rack={rack} level={levelKey} cellNum={i + 1} />
-        ))}
+        {Array.from({ length: cellCount }, (_, i) => {
+          const cellNum = cellCount - i
+          const globalP1 = (cellNum - 1) * 2 + 1
+          const globalP2 = (cellNum - 1) * 2 + 2
+          const loc1 = `${rack}${globalP1}${levelKey}`
+          const loc2 = `${rack}${globalP2}${levelKey}`
+          return <Cell key={i} loc1={loc1} loc2={loc2} p1Num={globalP1} p2Num={globalP2} />
+        })}
       </div>
     </div>
   )
@@ -331,9 +335,14 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
         <div className="text-[8px] text-slate-400 font-bold">sin límite</div>
       </div>
       <div className="flex gap-2 flex-wrap">
-        {Array.from({ length: cellCount }, (_, i) => (
-          <Cell key={i} rack={`FLOOR-${rackName}`} level="FLOOR" cellNum={i + 1} />
-        ))}
+        {Array.from({ length: cellCount }, (_, i) => {
+          const cellNum = cellCount - i
+          const globalP1 = (cellNum - 1) * 2 + 1
+          const globalP2 = (cellNum - 1) * 2 + 2
+          const loc1 = `${rackName}${globalP1}P`
+          const loc2 = `${rackName}${globalP2}P`
+          return <Cell key={i} loc1={loc1} loc2={loc2} p1Num={globalP1} p2Num={globalP2} />
+        })}
       </div>
     </div>
   )
