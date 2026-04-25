@@ -180,11 +180,11 @@ function Pallet3D({ pallet, position, onSelect }: { pallet: Pallet; position: [n
         )}
       </group>
 
-      {/* SKU label */}
-      {occupied && pallet.sku && (
+      {/* Product Name or SKU label */}
+      {occupied && (pallet.productName || pallet.sku) && (
         <Text
           position={[0, (displayHeight + 0.1) * S, 0]}
-          fontSize={0.09 * S}
+          fontSize={0.08 * S}
           color="#1e293b"
           anchorX="center"
           anchorY="bottom"
@@ -193,24 +193,7 @@ function Pallet3D({ pallet, position, onSelect }: { pallet: Pallet; position: [n
           outlineWidth={0.005 * S}
           outlineColor="#ffffff"
         >
-          {pallet.sku}
-        </Text>
-      )}
-
-      {/* Product Name label (if occupied but no SKU) */}
-      {occupied && !pallet.sku && pallet.productName && (
-        <Text
-          position={[0, (displayHeight + 0.1) * S, 0]}
-          fontSize={0.08 * S}
-          color="#334155"
-          anchorX="center"
-          anchorY="bottom"
-          maxWidth={0.45 * S}
-          fontWeight="bold"
-          outlineWidth={0.005 * S}
-          outlineColor="#ffffff"
-        >
-          {pallet.productName}
+          {pallet.productName || pallet.sku}
         </Text>
       )}
 
