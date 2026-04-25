@@ -83,6 +83,7 @@ export async function GET(req: Request) {
     if (item) {
       return NextResponse.json({
         found: true,
+        source: "amazon",
         item: {
           ...item,
           lastSyncedAt: item.lastSyncedAt?.toISOString() || null,
@@ -90,6 +91,34 @@ export async function GET(req: Request) {
           updatedAt: item.updatedAt.toISOString(),
         },
       })
+    }
+
+    // Fallback: Universal UPC Database (UPCItemDB)
+    const isEanUpc = /^\d{8,14}$/.test(code);
+    if (isEanUpc) {
+      try {
+        const upcRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${code}`);
+        if (upcRes.ok) {
+          const upcData = await upcRes.json();
+          if (upcData && upcData.items && upcData.items.length > 0) {
+            const externalItem = upcData.items[0];
+            return NextResponse.json({
+              found: true,
+              source: "external",
+              item: {
+                name: externalItem.title || "",
+                upc: externalItem.upc || code,
+                ean: externalItem.ean || "",
+                asin: externalItem.asin || "",
+                description: externalItem.description || "",
+                amazonImageUrl: externalItem.images && externalItem.images.length > 0 ? externalItem.images[0] : null,
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.error("External UPC lookup error:", err);
+      }
     }
 
     return NextResponse.json({ found: false, code })

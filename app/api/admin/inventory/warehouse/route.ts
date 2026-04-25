@@ -217,6 +217,53 @@ export async function POST(req: Request) {
         },
       })
 
+      // If UPC or Amazon fields are provided, link or create an InventoryItem
+      const { upc, fnsku, asin, imageUrl, description } = body
+      if (sku || upc || fnsku || asin) {
+        // Find existing match
+        let exItem = null
+        if (sku) exItem = await prisma.inventoryItem.findFirst({ where: { sku: { equals: sku, mode: "insensitive" } } })
+        if (!exItem && upc) exItem = await prisma.inventoryItem.findFirst({ where: { upc: { in: [upc, `0${upc}`] } } })
+        if (!exItem && fnsku) exItem = await prisma.inventoryItem.findFirst({ where: { fnsku } })
+
+        if (exItem) {
+          // Update existing
+          await prisma.inventoryItem.update({
+            where: { id: exItem.id },
+            data: {
+              upc: upc || exItem.upc,
+              fnsku: fnsku || exItem.fnsku,
+              asin: asin || exItem.asin,
+              imageUrl: imageUrl || exItem.imageUrl,
+              description: description || exItem.description,
+            }
+          })
+        } else {
+          // Create new record for this product to hold Universal data
+          await prisma.inventoryItem.create({
+            data: {
+              source: "MANUAL",
+              name: productName,
+              sku: sku || upc || fnsku || `WHS-${Date.now()}`,
+              upc: upc || null,
+              fnsku: fnsku || null,
+              asin: asin || null,
+              imageUrl: imageUrl || null,
+              description: description || null,
+              quantityOnHand: quantity ? parseInt(quantity) : 0,
+            }
+          })
+          
+          if (!sku) {
+             // Link back to pallet if sku wasn't provided so they join correctly
+             await prisma.warehousePallet.update({
+               where: { id: pallet.id },
+               data: { sku: upc || fnsku || `WHS-${Date.now()}` }
+             })
+          }
+        }
+      }
+
       return NextResponse.json(pallet)
     }
 

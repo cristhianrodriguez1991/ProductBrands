@@ -32,6 +32,45 @@ import {
   Move,
 } from "lucide-react"
 
+// ── Constants & Utilities ──
+const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string) => void }) => {
+  useEffect(() => {
+    let html5QrCode: any = null;
+    let isMounted = true;
+
+    if (open) {
+      const checkReady = setInterval(() => {
+        if ((window as any).Html5Qrcode) {
+          clearInterval(checkReady);
+          if (!isMounted) return;
+          
+          html5QrCode = new (window as any).Html5Qrcode("reader");
+          html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText: string) => {
+              onScan(decodedText);
+              html5QrCode.stop().catch(console.error);
+            },
+            (error: any) => {}
+          ).catch((err: any) => {
+            console.error("Scanner start error:", err);
+          });
+        }
+      }, 500);
+    }
+
+    return () => {
+      isMounted = false;
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(console.error);
+      }
+    };
+  }, [open, onScan]);
+
+  return null;
+};
+
 // ── Types ──
 type InventoryItem = {
   id: string
@@ -152,6 +191,11 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
   const [form, setForm] = useState({
     productName: "",
     sku: "",
+    upc: "",
+    fnsku: "",
+    asin: "",
+    imageUrl: "",
+    description: "",
     quantity: "",
     locationCode: "",
     rack: "A",
@@ -165,6 +209,38 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
     notes: "",
   })
   const [saving, setSaving] = useState(false)
+  const [isScanning, setIsScanning] = useState(false)
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [lookupSource, setLookupSource] = useState<"amazon" | "external" | null>(null)
+
+  const handleLookup = async (code: string) => {
+    if (!code) return
+    setIsScanning(true)
+    try {
+      const res = await fetch(`/api/admin/inventory/lookup?code=${encodeURIComponent(code)}`)
+      const data = await res.json()
+      if (data.found && data.item) {
+        setLookupSource(data.source) // "amazon" or "external"
+        setForm(f => ({
+          ...f,
+          productName: data.item.amazonTitle || data.item.name || f.productName,
+          sku: data.item.sku || f.sku,
+          upc: data.item.upc || f.upc,
+          fnsku: data.item.fnsku || f.fnsku,
+          asin: data.item.asin || f.asin,
+          imageUrl: data.item.amazonImageUrl || data.item.imageUrl || f.imageUrl,
+          description: data.item.description || f.description,
+        }))
+      } else {
+        setLookupSource(null)
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsScanning(false)
+      setScannerOpen(false)
+    }
+  }
 
   const levelMap: Record<string, string> = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
   const levelKeys: Record<string, string> = { TOP: "T", MID: "M", BOT: "L", FLOOR: "P" }
@@ -198,11 +274,12 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
         onAdded()
         onClose()
         setForm({
-          productName: "", sku: "", quantity: "", locationCode: "",
+          productName: "", sku: "", upc: "", fnsku: "", asin: "", imageUrl: "", description: "", quantity: "", locationCode: "",
           rack: "A", level: "FLOOR", cellNumber: "1", palletPosition: "1",
           lotNumber: "", expirationDate: "", palletHeightIn: "",
           status: "AVAILABLE", notes: "",
         })
+        setLookupSource(null)
       } else {
         const err = await res.json()
         alert("❌ " + (err.error || "Failed to add"))
@@ -227,10 +304,75 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
           </button>
         </div>
         <div className="overflow-y-auto max-h-[75vh] p-4 space-y-4">
+          
+          {/* Universal Scanner Section */}
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-3">
+            <div className="flex justify-between items-center">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <ScanLine className="h-3.5 w-3.5" /> Scan UPC / FNSKU
+              </label>
+              {lookupSource === "amazon" && (
+                <span className="text-[9px] font-black uppercase text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded flex items-center gap-1">
+                  <Check className="h-3 w-3" /> In Amazon Inventory
+                </span>
+              )}
+              {lookupSource === "external" && (
+                <span className="text-[9px] font-black uppercase text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" /> Not In Amazon Inventory
+                </span>
+              )}
+            </div>
+            
+            <div className="flex gap-2 relative">
+              <Input 
+                value={form.upc || form.fnsku || ""} 
+                onChange={(e) => {
+                  const val = e.target.value
+                  setForm(f => ({ ...f, upc: val }))
+                  if (val.length >= 8) handleLookup(val)
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleLookup(form.upc || form.fnsku || "")
+                  }
+                }}
+                placeholder="Escanea o ingresa código" 
+                className="pl-9"
+              />
+              <ScanLine className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Button size="icon" variant="outline" className="shrink-0" onClick={() => setScannerOpen(true)}>
+                <Camera className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {isScanning && <div className="text-[10px] font-bold text-blue-600 animate-pulse text-center">Buscando producto...</div>}
+            
+            {scannerOpen && (
+              <div className="fixed inset-0 z-[200] bg-black/80 flex flex-col items-center justify-center p-4">
+                <div className="bg-white p-4 rounded-xl max-w-sm w-full mx-auto space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-black uppercase tracking-widest text-slate-900">Escanear Barcode</h3>
+                    <Button size="icon" variant="ghost" onClick={() => setScannerOpen(false)}><X className="h-4 w-4" /></Button>
+                  </div>
+                  <div id="reader" className="w-full overflow-hidden rounded-xl bg-slate-100 aspect-square"></div>
+                  <ScannerEffect open={scannerOpen} onScan={(code) => handleLookup(code)} />
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Product Name */}
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Product Name *</label>
-            <Input value={form.productName} onChange={(e) => setForm(f => ({ ...f, productName: e.target.value }))} placeholder="e.g. Bubble Wrap, Tape, Product XYZ..." className="mt-1" />
+          <div className="flex gap-3 items-end">
+            {form.imageUrl && (
+              <div className="w-12 h-12 rounded bg-white shadow-sm border overflow-hidden shrink-0">
+                <img src={form.imageUrl} alt="preview" className="w-full h-full object-contain" />
+              </div>
+            )}
+            <div className="flex-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Product Name *</label>
+              <Input value={form.productName} onChange={(e) => setForm(f => ({ ...f, productName: e.target.value }))} placeholder="e.g. Bubble Wrap, Tape, Product XYZ..." className="mt-1" />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
