@@ -34,9 +34,15 @@ import {
 
 // ── Constants & Utilities ──
 const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string) => void }) => {
+  // Store onScan in a ref so the useEffect doesn't restart the scanner
+  // every time the parent re-renders (which creates a new onScan reference)
+  const onScanRef = useRef(onScan);
+  useEffect(() => { onScanRef.current = onScan; }, [onScan]);
+
   useEffect(() => {
     let html5QrCode: any = null;
     let isMounted = true;
+    let hasScanned = false; // Prevent double-fires
 
     const startScanner = async () => {
       // 1. Wait for script to be available globally
@@ -110,12 +116,17 @@ const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string)
             disableFlip: false,
           },
           (decodedText: string) => {
+            // Guard against double-fires
+            if (hasScanned) return;
+            hasScanned = true;
+
             console.log("[SCANNER] Barcode detected:", decodedText);
             // Haptic feedback if available
             if ("vibrate" in navigator) {
               navigator.vibrate(200);
             }
-            onScan(decodedText);
+            // Use the ref to call the latest onScan without triggering useEffect restart
+            onScanRef.current(decodedText);
             html5QrCode.stop().catch(console.error);
           },
           (error: any) => {
@@ -137,7 +148,7 @@ const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string)
         html5QrCode.stop().catch(console.error);
       }
     };
-  }, [open, onScan]);
+  }, [open]); // Only depend on `open` — NOT onScan
 
   return null;
 };
