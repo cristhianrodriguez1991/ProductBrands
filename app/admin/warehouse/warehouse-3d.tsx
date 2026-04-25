@@ -152,12 +152,14 @@ function Pallet3D({
 // ── Cell (2 pallets side by side) ──
 function Cell3D({
   position,
-  cellNum,
+  p1Num,
+  p2Num,
   pallets,
   onSelect,
 }: {
   position: [number, number, number]
-  cellNum: number
+  p1Num: number
+  p2Num: number
   pallets: [Pallet | undefined, Pallet | undefined]
   onSelect: (p: Pallet) => void
 }) {
@@ -173,15 +175,12 @@ function Cell3D({
         <meshStandardMaterial color="#e2e8f0" roughness={0.8} metalness={0.05} />
       </RoundedBox>
 
-      {/* Cell number label */}
-      <Text
-        position={[0, -0.05 * S, 0.3 * S]}
-        fontSize={0.065 * S}
-        color="#64748b"
-        anchorX="center"
-        anchorY="top"
-      >
-        {String(cellNum).padStart(2, "0")}
+      {/* Platform labels for each Pallet */}
+      <Text position={[0.22 * S, -0.05 * S, 0.3 * S]} fontSize={0.055 * S} color="#64748b" anchorX="center" anchorY="top" fontWeight="bold">
+        {p1Num}
+      </Text>
+      <Text position={[-0.22 * S, -0.05 * S, 0.3 * S]} fontSize={0.055 * S} color="#64748b" anchorX="center" anchorY="top" fontWeight="bold">
+        {p2Num}
       </Text>
 
       {/* Pallet 1 (Right pallet) */}
@@ -245,7 +244,8 @@ function RackLevel3D({
           <Cell3D
             key={i}
             position={[startX - i * cellSpacing, 0, 0]} // Negative step towards left
-            cellNum={cellNum}
+            p1Num={globalP1}
+            p2Num={globalP2}
             pallets={[palletMap[p1Key], palletMap[p2Key]]}
             onSelect={onSelect}
           />
@@ -403,7 +403,8 @@ function Floor3D({
           <Cell3D
             key={i}
             position={[startX - i * cellSpacing, 0, 0]} // Step left
-            cellNum={cellNum}
+            p1Num={globalP1}
+            p2Num={globalP2}
             pallets={[palletMap[p1Key], palletMap[p2Key]]}
             onSelect={onSelect}
           />
