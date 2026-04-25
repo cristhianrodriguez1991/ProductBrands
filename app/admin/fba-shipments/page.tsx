@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, memo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,7 +10,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import Image from "next/image"
 import { compressImage } from "@/lib/image-compression"
 import { Reorder, useDragControls } from "framer-motion"
-import { memo, useCallback, useEffect } from "react"
 
 // ── Scanner Effect Component ──
 const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string) => void }) => {
