@@ -262,7 +262,7 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
   const [saving, setSaving] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
-  const [lookupSource, setLookupSource] = useState<"amazon" | "external" | null>(null)
+  const [lookupSource, setLookupSource] = useState<"amazon" | "external" | "none" | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -301,7 +301,7 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
           description: data.item.description || f.description,
         }))
       } else {
-        setLookupSource(null)
+        setLookupSource("none")
       }
     } catch (e) {
       console.error("Lookup error:", e)
@@ -373,7 +373,7 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
 
   return (
     <Dialog open={open} onOpenChange={(val) => { if(!val) handleClose() }}>
-      <DialogContent className="max-w-md p-0 overflow-hidden bg-white sm:rounded-xl max-h-[90vh]">
+      <DialogContent hideClose className="max-w-md p-0 overflow-hidden bg-white sm:rounded-xl max-h-[90vh]">
         <div className="flex items-center justify-between px-4 h-14 border-b bg-emerald-50">
           <button onClick={handleClose} className="text-slate-500 text-sm font-medium">Cancel</button>
           <h2 className="font-black text-slate-800 uppercase tracking-wider text-[12px]">
@@ -399,6 +399,11 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
               {lookupSource === "external" && (
                 <span className="text-[9px] font-black uppercase text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3" /> Not In Amazon Inventory
+                </span>
+              )}
+              {lookupSource === "none" && (
+                <span className="text-[9px] font-black uppercase text-red-800 bg-red-100 px-2.5 py-0.5 rounded flex items-center gap-1">
+                  <X className="h-3 w-3" /> No Encontrado
                 </span>
               )}
             </div>
