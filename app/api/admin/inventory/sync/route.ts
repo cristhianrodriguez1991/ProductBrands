@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 
+export const maxDuration = 300; // Allow up to 5 minutes since Amazon Reports take time to generate
+export const dynamic = "force-dynamic";
+
 /**
  * POST – Sync ALL active Amazon listings via the Reports API.
  * 
@@ -50,27 +53,24 @@ export async function POST() {
       console.warn("Catalog lookup failed (continuing without images):", catErr?.message)
     }
 
-    // ── 3. Get real FBA warehouse quantities ──
-    let fbaQtyMap = new Map<string, { fulfillable: number; reserved: number }>()
-    try {
-      fbaQtyMap = await getFbaQuantities()
-    } catch (qtyErr: any) {
-      console.warn("FBA quantity lookup failed (quantities will show as 0):", qtyErr?.message)
-    }
-
+    // ── 3. Parse and Insert/Upsert ──
     let createdCount = 0
     let updatedCount = 0
 
     for (const item of listings) {
-      const asin = item["asin1"] || item["ASIN"] || item["asin"] || ""
-      const sku = item["seller-sku"] || item["sku"] || ""
-      const title = item["item-name"] || item["Title"] || ""
-      const imageUrl = item["image-url"] || item["Image Url"] || ""
+      // The GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA report headers are:
+      // sku, fnsku, asin, product-name, condition, your-price, mfn-listing-exists, 
+      // mfn-fulfillable-quantity, afn-listing-exists, afn-fulfillable-quantity, 
+      // afn-unsellable-quantity, afn-reserved-quantity, afn-total-quantity...
+      
+      const asin = item["asin"] || item["ASIN"] || ""
+      const sku = item["sku"] || item["seller-sku"] || ""
+      const title = item["product-name"] || item["item-name"] || item["Title"] || ""
+      const condition = item["condition"] || item["item-condition"] || item["Condition"] || ""
 
-      // Get REAL FBA quantities from warehouse data
-      const fbaQty = fbaQtyMap.get(asin)
-      const quantityOnHand = fbaQty?.fulfillable || 0
-      const quantityReserved = fbaQty?.reserved || 0
+      // Get REAL FBA quantities directly from the FBA report!
+      const quantityOnHand = parseInt(item["afn-fulfillable-quantity"] || item["quantity"] || "0", 10) || 0
+      const quantityReserved = parseInt(item["afn-reserved-quantity"] || "0", 10) || 0
 
       // Get catalog image (richer quality) if available
       const cData = catalogMap.get(asin)
@@ -87,7 +87,7 @@ export async function POST() {
         asin: asin || null,
         name: catalogTitle || title || `Amazon Product (${asin})`,
         amazonTitle: catalogTitle || title || null,
-        amazonImageUrl: catalogImage || imageUrl || null,
+        amazonImageUrl: catalogImage || null,
         amazonUrl: asin ? `https://www.amazon.com/dp/${asin}` : null,
         quantityOnHand,
         quantityReserved,

@@ -39,23 +39,22 @@ function getClient(): any {
 }
 
 /**
- * Fetch ONLY active listings using the Reports API.
- * Uses GET_MERCHANT_LISTINGS_ALL_DATA which includes a 'status' column,
- * then filters to only 'Active' items — excludes eliminated, 
- * missing-info, or approval-removed listings.
+ * Fetch ONLY active FBA listings using the Reports API.
+ * Uses GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA which returns only 
+ * active/unsuppressed FBA items (exactly what the user sees in Seller Central).
  * 
- * Flow: createReport → poll until DONE → download & parse TSV → filter Active
+ * Flow: createReport → poll until DONE → download & parse TSV
  */
 export async function getActiveListings(): Promise<any[]> {
   const client: any = getClient()
   const usMarketplaceId = "ATVPDKIKX0DER"
 
-  // Step 1: Request the report (ALL_DATA includes status column for filtering)
+  // Step 1: Request the report
   const createRes: any = await client.callAPI({
     operation: "createReport",
     endpoint: "reports",
     body: {
-      reportType: "GET_MERCHANT_LISTINGS_ALL_DATA",
+      reportType: "GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA",
       marketplaceIds: [usMarketplaceId],
     },
   })
@@ -120,14 +119,8 @@ export async function getActiveListings(): Promise<any[]> {
   // Step 4: Parse TSV into structured data
   const allItems = parseTSV(tsvContent)
 
-  // Step 5: Filter to ONLY "Active" listings
-  const activeItems = allItems.filter((item: any) => {
-    const status = (item["status"] || item["Status"] || "").toLowerCase()
-    return status === "active"
-  })
-
-  console.log(`Report returned ${allItems.length} total items, ${activeItems.length} are Active`)
-  return activeItems
+  console.log(`FBA Report returned ${allItems.length} active inventory items.`)
+  return allItems
 }
 
 /**
