@@ -299,7 +299,7 @@ export default function InventoryPage() {
     <div className="min-h-screen bg-slate-50 font-sans sm:pb-20 -mt-4 md:-mt-8 -mx-4 md:-mx-8">
       
       {/* HEADER - Sticky and Opaque */}
-      <div className="sticky top-0 z-[100] bg-white border-b border-slate-200 shadow-md relative isolate">
+      <div className="sticky -top-4 md:-top-8 pt-4 md:pt-8 z-[100] bg-white border-b border-slate-200 shadow-md relative isolate">
         <div className="flex items-center justify-between px-2 h-14 bg-white">
           <Button variant="ghost" size="icon" className="text-slate-600 hover:bg-slate-100">
             <ChevronLeft className="h-6 w-6" />
