@@ -1002,6 +1002,8 @@ function WarehouseInventoryTab() {
     open: false, title: "", message: "", onConfirm: () => {},
   })
 
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
+
   // Selection for bulk operations
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set())
   const [selectionMode, setSelectionMode] = useState(false)
@@ -1353,7 +1355,13 @@ function WarehouseInventoryTab() {
                           </h3>
                           <div className="flex items-start justify-between">
                             <div className="flex gap-4 flex-1">
-                              <div className="w-[72px] h-[72px] bg-white border border-slate-200 rounded shrink-0 flex items-center justify-center overflow-hidden">
+                              <div 
+                                className="w-[72px] h-[72px] bg-white border border-slate-200 rounded shrink-0 flex items-center justify-center overflow-hidden cursor-pointer hover:border-blue-400 hover:ring-1 hover:ring-blue-400 transition-all"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (product.imageUrl) setFullscreenImage(product.imageUrl)
+                                }}
+                              >
                                 {product.imageUrl ? (
                                   <img src={product.imageUrl} alt="" className="max-w-full max-h-full object-contain p-1" />
                                 ) : (
@@ -1633,6 +1641,23 @@ function WarehouseInventoryTab() {
         title={confirmDelete.title} 
         message={confirmDelete.message} 
       />
+      {fullscreenImage && (
+        <Dialog open={!!fullscreenImage} onOpenChange={() => setFullscreenImage(null)}>
+          <DialogContent className="max-w-3xl p-0 overflow-hidden bg-slate-900 border-0 shadow-2xl flex items-center justify-center relative min-h-[300px] rounded-2xl">
+            <button
+              onClick={() => setFullscreenImage(null)}
+              className="absolute top-4 right-4 text-white/80 hover:text-white bg-black/50 hover:bg-black/70 rounded-full p-2 z-50 transition-all focus:outline-none"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <img 
+              src={fullscreenImage} 
+              alt="Full Screen Product" 
+              className="max-w-full max-h-[85vh] object-contain p-4 animate-in zoom-in-95 duration-200"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   )
 }
