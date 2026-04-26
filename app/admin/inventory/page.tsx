@@ -1915,6 +1915,9 @@ export default function InventoryPage() {
   const processedItems = useMemo(() => {
     return [...items]
       .filter((item) => {
+        // 0. Only show Amazon items in the Amazon Inventory tab
+        if (item.source !== "AMAZON") return false
+
         // 1. Text Search
         if (searchQuery) {
           const q = searchQuery.toLowerCase()
@@ -1971,13 +1974,14 @@ export default function InventoryPage() {
 
   // ── Counts for Filters ──
   const filterCounts = useMemo(() => {
+    const amazonOnly = items.filter(i => i.source === 'AMAZON')
     return {
-      all: items.length,
-      active: items.filter(i => i.isActive).length,
-      inactive: items.filter(i => (i.source === 'AMAZON' && !i.isActive)).length,
-      outOfStock: items.filter(i => (i.quantityOnHand + (i.quantityReserved || 0)) === 0).length,
-      amazon: items.filter(i => ((i as any).fulfillmentChannel || '').toUpperCase().includes('AMAZON')).length,
-      merchant: items.filter(i => ((i as any).fulfillmentChannel || '').toUpperCase().includes('MERCHANT')).length,
+      all: amazonOnly.length,
+      active: amazonOnly.filter(i => i.isActive).length,
+      inactive: amazonOnly.filter(i => !i.isActive).length,
+      outOfStock: amazonOnly.filter(i => (i.quantityOnHand + (i.quantityReserved || 0)) === 0).length,
+      amazon: amazonOnly.filter(i => ((i as any).fulfillmentChannel || '').toUpperCase().includes('AMAZON')).length,
+      merchant: amazonOnly.filter(i => ((i as any).fulfillmentChannel || '').toUpperCase().includes('MERCHANT')).length,
     }
   }, [items])
 
@@ -2040,11 +2044,11 @@ export default function InventoryPage() {
           <div className="relative z-10 px-3 pb-3 pt-1 border-t border-slate-100 bg-white">
             <div className="flex items-center space-x-4 mb-2 px-1 text-sm text-slate-600">
               <div className="font-semibold text-slate-800">
-                <span className="text-slate-500 font-normal mr-1">Total Listings:</span> {items.length}
+                <span className="text-slate-500 font-normal mr-1">Total Listings:</span> {items.filter(i => i.source === "AMAZON").length}
               </div>
               <div className="font-semibold text-blue-600">
                 <span className="text-slate-500 font-normal mr-1">Total Items:</span>
-                {items.reduce((acc, curr) => acc + (curr.quantityOnHand || 0) + (curr.quantityReserved || 0), 0).toLocaleString()}
+                {items.filter(i => i.source === "AMAZON").reduce((acc, curr) => acc + (curr.quantityOnHand || 0) + (curr.quantityReserved || 0), 0).toLocaleString()}
               </div>
             </div>
 
