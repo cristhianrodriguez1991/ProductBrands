@@ -981,7 +981,7 @@ function EditPalletModal({ open, onClose, pallet, occupiedLocationCodes, onSaved
 // ══════════════════════════════════════════════════
 // WAREHOUSE INVENTORY TAB
 // ══════════════════════════════════════════════════
-function WarehouseInventoryTab() {
+function WarehouseInventoryTab({ amazonItems = [] }: { amazonItems?: InventoryItem[] }) {
   const [products, setProducts] = useState<WarehouseProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -1330,6 +1330,12 @@ function WarehouseInventoryTab() {
               {filteredProducts.map((product) => {
                 const isExpanded = expandedItem === product.id
                 const isSelected = selectedProducts.has(product.id)
+                const isInAmazon = amazonItems.some(amz => 
+                  (product.asin && amz.asin === product.asin) || 
+                  (product.sku && amz.sku === product.sku) ||
+                  (product.upc && amz.upc === product.upc)
+                )
+
                 return (
                   <div key={product.id} className={`border-b border-slate-200 bg-white ${isSelected ? "ring-2 ring-blue-300 ring-inset" : ""}`}>
                     {/* Collapsed Row */}
@@ -1350,6 +1356,15 @@ function WarehouseInventoryTab() {
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
+                          {isInAmazon ? (
+                            <span className="bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-sm tracking-wide inline-block mb-1.5">
+                              THAT IS IN AMAZON
+                            </span>
+                          ) : (
+                            <span className="bg-slate-400 text-white text-[9px] font-black px-1.5 py-0.5 rounded-sm tracking-wide inline-block mb-1.5">
+                              NOT IN AMAZON INVENTORY
+                            </span>
+                          )}
                           <h3 className="font-bold text-[14px] text-slate-900 leading-snug line-clamp-2 mb-3 pr-4">
                             {product.amazonTitle || product.productName}
                           </h3>
@@ -1392,6 +1407,30 @@ function WarehouseInventoryTab() {
                                     <span>ASIN: {product.asin}</span>
                                     <button
                                       onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(product.asin || "") }}
+                                      className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95"
+                                      title="Copy"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                                {product.upc && (
+                                  <div className="group flex items-center gap-1.5 w-max">
+                                    <span>UPC: {product.upc}</span>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(product.upc || "") }}
+                                      className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95"
+                                      title="Copy"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                                {product.fnsku && (
+                                  <div className="group flex items-center gap-1.5 w-max">
+                                    <span>FNSKU: {product.fnsku}</span>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(product.fnsku || "") }}
                                       className="opacity-0 group-hover:opacity-100 p-0.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded transition-all active:scale-95"
                                       title="Copy"
                                     >
@@ -1642,21 +1681,25 @@ function WarehouseInventoryTab() {
         message={confirmDelete.message} 
       />
       {fullscreenImage && (
-        <Dialog open={!!fullscreenImage} onOpenChange={() => setFullscreenImage(null)}>
-          <DialogContent className="max-w-3xl p-0 overflow-hidden bg-slate-900 border-0 shadow-2xl flex items-center justify-center relative min-h-[300px] rounded-2xl">
-            <button
-              onClick={() => setFullscreenImage(null)}
-              className="absolute top-4 right-4 text-white/80 hover:text-white bg-black/50 hover:bg-black/70 rounded-full p-2 z-50 transition-all focus:outline-none"
-            >
-              <X className="h-6 w-6" />
-            </button>
+        <div 
+          className="fixed inset-0 bg-black/95 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
+          onClick={() => setFullscreenImage(null)}
+        >
+          <button
+            onClick={() => setFullscreenImage(null)}
+            className="absolute top-6 right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2.5 transition-all focus:outline-none z-[10000]"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <div className="relative max-w-[90vw] max-h-[90vh] flex items-center justify-center">
             <img 
               src={fullscreenImage} 
               alt="Full Screen Product" 
-              className="max-w-full max-h-[85vh] object-contain p-4 animate-in zoom-in-95 duration-200"
+              className="max-w-full max-h-[90vh] object-contain rounded shadow-2xl animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
             />
-          </DialogContent>
-        </Dialog>
+          </div>
+        </div>
       )}
     </>
   )
@@ -2028,7 +2071,7 @@ export default function InventoryPage() {
       </div>
 
       {/* ── WAREHOUSE TAB CONTENT ── */}
-      {activeTab === "warehouse" && <WarehouseInventoryTab />}
+      {activeTab === "warehouse" && <WarehouseInventoryTab amazonItems={items} />}
 
       {/* ── AMAZON TAB CONTENT ── */}
       {activeTab === "amazon" && (
