@@ -171,6 +171,11 @@ export async function POST(req: Request) {
 
     // If locationCode is provided, create a pallet at that location
     if (locationCode && rack && level && cellNumber && palletPosition) {
+      // Intercept receiving area (temporary location)
+      const finalLocationCode = locationCode.toUpperCase().startsWith("RECEIVING")
+        ? `RECEIVING-${Date.now()}`
+        : locationCode
+
       // Height validation for rack levels
       const HEIGHT_LIMITS: Record<string, number> = {
         TOP: 80,
@@ -188,8 +193,26 @@ export async function POST(req: Request) {
         }
       }
 
-      const pallet = await prisma.warehousePallet.upsert({
-        where: { locationCode },
+      const pallet = locationCode.toUpperCase().startsWith("RECEIVING")
+        ? await prisma.warehousePallet.create({
+            data: {
+              locationCode: finalLocationCode,
+              rack: "RECEIVING",
+              level: "FLOOR",
+              cellNumber: parseInt(cellNumber) || 1,
+              palletPosition: parseInt(palletPosition) || 1,
+              sku: sku || null,
+              productName,
+              quantity: quantity ? parseInt(quantity) : null,
+              lotNumber: lotNumber || null,
+              expirationDate: expirationDate ? new Date(expirationDate) : null,
+              palletHeightIn: palletHeightIn ? parseFloat(palletHeightIn) : null,
+              status: status || "AVAILABLE",
+              notes: notes || null,
+            }
+          })
+        : await prisma.warehousePallet.upsert({
+            where: { locationCode: finalLocationCode },
         update: {
           sku: sku || null,
           productName,

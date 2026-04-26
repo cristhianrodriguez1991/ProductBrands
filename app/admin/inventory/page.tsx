@@ -298,7 +298,7 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
     description: "",
     quantity: "",
     locationCode: "",
-    rack: "A",
+    rack: "RECEIVING",
     level: "FLOOR",
     cellNumber: "1",
     palletPosition: "1",
@@ -309,6 +309,7 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
     notes: "",
   })
   const RACKS = {
+    RECEIVING: { cells: 1, label: "Receiving Area (Temporary)" },
     A: { cells: 8, label: "Rack A" },
     B: { cells: 5, label: "Rack B" },
     C: { cells: 5, label: "Rack C" },
@@ -319,6 +320,32 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
   const [scannerOpen, setScannerOpen] = useState(false)
   const [lookupSource, setLookupSource] = useState<"amazon" | "external" | "none" | null>(null)
   const [lookupMessage, setLookupMessage] = useState<string>("")
+  
+  const modalFileRef = useRef<HTMLInputElement | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+
+  const handleModalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingImage(true)
+    try {
+      const compressed = await compressImage(file, 800, 0.8)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setForm(f => ({ ...f, imageUrl: reader.result as string }))
+        setUploadingImage(false)
+      }
+      reader.readAsDataURL(compressed)
+    } catch {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setForm(f => ({ ...f, imageUrl: reader.result as string }))
+        setUploadingImage(false)
+      }
+      reader.readAsDataURL(file)
+    }
+    e.target.value = ""
+  }
 
   useEffect(() => {
     if (open) {
@@ -394,7 +421,7 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
     onClose()
     setForm({
       productName: "", sku: "", upc: "", fnsku: "", asin: "", imageUrl: "", description: "", quantity: "", locationCode: "",
-      rack: "A", level: "FLOOR", cellNumber: "1", palletPosition: "1",
+      rack: "RECEIVING", level: "FLOOR", cellNumber: "1", palletPosition: "1",
       lotNumber: "", expirationDate: "", palletHeightIn: "",
       status: "AVAILABLE", notes: "",
     })
@@ -407,6 +434,7 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
 
   // Auto-generate locationCode
   const locationCode = useMemo(() => {
+    if (form.rack === "RECEIVING") return "RECEIVING"
     const cn = parseInt(form.cellNumber) || 1
     const pp = parseInt(form.palletPosition) || 1
     const globalNum = (cn - 1) * 2 + pp
@@ -435,7 +463,7 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
         onClose()
         setForm({
           productName: "", sku: "", upc: "", fnsku: "", asin: "", imageUrl: "", description: "", quantity: "", locationCode: "",
-          rack: "A", level: "FLOOR", cellNumber: "1", palletPosition: "1",
+          rack: "RECEIVING", level: "FLOOR", cellNumber: "1", palletPosition: "1",
           lotNumber: "", expirationDate: "", palletHeightIn: "",
           status: "AVAILABLE", notes: "",
         })
@@ -560,13 +588,24 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
             )}
           </div>
 
+          <input ref={modalFileRef} type="file" accept="image/*" className="hidden" onChange={handleModalImageUpload} />
+
           {/* Product Name */}
           <div className="flex gap-3 items-end">
-            {form.imageUrl && (
-              <div className="w-12 h-12 rounded bg-white shadow-sm border overflow-hidden shrink-0">
+            <div 
+              onClick={() => modalFileRef.current?.click()}
+              className="w-12 h-12 rounded bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 flex flex-col items-center justify-center shrink-0 cursor-pointer overflow-hidden relative group transition-all"
+              title="Upload manual picture"
+            >
+              {form.imageUrl ? (
                 <img src={form.imageUrl} alt="preview" className="w-full h-full object-contain" />
-              </div>
-            )}
+              ) : (
+                <>
+                  <Camera className={`h-4 w-4 text-slate-400 group-hover:scale-110 transition-transform ${uploadingImage ? "animate-pulse" : ""}`} />
+                  <span className="text-[8px] font-bold text-slate-400 mt-0.5">{uploadingImage ? "..." : "Subir"}</span>
+                </>
+              )}
+            </div>
             <div className="flex-1">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Product Name *</label>
               <Input value={form.productName} onChange={(e) => setForm(f => ({ ...f, productName: e.target.value }))} placeholder="e.g. Bubble Wrap, Tape, Product XYZ..." className="mt-1" />
@@ -705,6 +744,7 @@ function EditPalletModal({ open, onClose, pallet, occupiedLocationCodes, onSaved
   const [saving, setSaving] = useState(false)
 
   const RACKS = {
+    RECEIVING: { cells: 1 },
     A: { cells: 8 },
     B: { cells: 5 },
     C: { cells: 5 },
@@ -737,14 +777,21 @@ function EditPalletModal({ open, onClose, pallet, occupiedLocationCodes, onSaved
       let initialPos = "1"
       
       if (pallet.locationCode) {
-        const match = pallet.locationCode.match(/^([A-C])(\d+)([TMLP])$/)
-        if (match) {
-          initialRack = match[1]
-          const globalNum = parseInt(match[2])
-          const levelMap: Record<string, string> = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
-          initialLevel = levelMap[match[3]] || "FLOOR"
-          initialCell = Math.ceil(globalNum / 2).toString()
-          initialPos = (globalNum % 2 === 0 ? 2 : 1).toString()
+        if (pallet.locationCode.toUpperCase().startsWith("RECEIVING")) {
+          initialRack = "RECEIVING"
+          initialLevel = "FLOOR"
+          initialCell = "1"
+          initialPos = "1"
+        } else {
+          const match = pallet.locationCode.match(/^([A-C])(\d+)([TMLP])$/)
+          if (match) {
+            initialRack = match[1]
+            const globalNum = parseInt(match[2])
+            const levelMap: Record<string, string> = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
+            initialLevel = levelMap[match[3]] || "FLOOR"
+            initialCell = Math.ceil(globalNum / 2).toString()
+            initialPos = (globalNum % 2 === 0 ? 2 : 1).toString()
+          }
         }
       }
 
@@ -1101,7 +1148,7 @@ function WarehouseInventoryTab({ amazonItems = [] }: { amazonItems?: InventoryIt
     setConfirmDelete({
       open: true,
       title: "¿Eliminar Pallet?",
-      message: `¿Estás seguro de que deseas vaciar la posición ${locationCode}? El producto será removido de esta ubicación.`,
+      message: `¿Estás seguro de que deseas vaciar la posición ${locationCode.toUpperCase().startsWith("RECEIVING") ? "Receiving" : locationCode}? El producto será removido de esta ubicación.`,
       onConfirm: async () => {
         try {
           await fetch("/api/admin/inventory/warehouse", {
@@ -1446,7 +1493,7 @@ function WarehouseInventoryTab({ amazonItems = [] }: { amazonItems?: InventoryIt
                                       className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${STATUS_COLORS[loc.status] || "bg-slate-100 text-slate-600"}`}
                                     >
                                       <MapPin className="inline h-2.5 w-2.5 mr-0.5 -mt-[1px]" />
-                                      {loc.locationCode}
+                                      {loc.locationCode.toUpperCase().startsWith("RECEIVING") ? "Receiving" : loc.locationCode}
                                     </span>
                                   ))}
                                   {product.locations.length > 4 && (
@@ -1529,7 +1576,7 @@ function WarehouseInventoryTab({ amazonItems = [] }: { amazonItems?: InventoryIt
                                   <span
                                     className={`text-[11px] font-black px-2 py-1 rounded ${STATUS_COLORS[loc.status] || "bg-slate-100 text-slate-600"}`}
                                   >
-                                    {loc.locationCode}
+                                    {loc.locationCode.toUpperCase().startsWith("RECEIVING") ? "Receiving" : loc.locationCode}
                                   </span>
                                   <div className="flex flex-col gap-0.5">
                                     <span className="text-slate-700 font-medium">

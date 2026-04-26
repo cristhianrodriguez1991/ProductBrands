@@ -134,10 +134,15 @@ export async function POST(req: Request) {
 
       const oldLocationCode = source.locationCode
 
+      // Intercept receiving area (temporary location)
+      const finalLocationCode = newLocationCode.toUpperCase().startsWith("RECEIVING")
+        ? `RECEIVING-${Date.now()}`
+        : newLocationCode
+
       // Check if target location exists and is available
-      const target = await tx.warehousePallet.findUnique({ where: { locationCode: newLocationCode } })
-      if (target && target.productName) {
-        throw new Error(`Location ${newLocationCode} is already occupied`)
+      const target = await tx.warehousePallet.findUnique({ where: { locationCode: finalLocationCode } })
+      if (target && target.productName && !finalLocationCode.toUpperCase().startsWith("RECEIVING")) {
+        throw new Error(`Location ${finalLocationCode} is already occupied`)
       }
 
       // If target exists, update it with source data
@@ -159,11 +164,11 @@ export async function POST(req: Request) {
         // Create new pallet position
         await tx.warehousePallet.create({
           data: {
-            locationCode: newLocationCode,
-            rack: newRack,
-            level: newLevel,
-            cellNumber: parseInt(newCellNumber),
-            palletPosition: parseInt(newPalletPosition),
+            locationCode: finalLocationCode,
+            rack: finalLocationCode.toUpperCase().startsWith("RECEIVING") ? "RECEIVING" : newRack,
+            level: finalLocationCode.toUpperCase().startsWith("RECEIVING") ? "FLOOR" : newLevel,
+            cellNumber: finalLocationCode.toUpperCase().startsWith("RECEIVING") ? 1 : parseInt(newCellNumber) || 1,
+            palletPosition: finalLocationCode.toUpperCase().startsWith("RECEIVING") ? 1 : parseInt(newPalletPosition) || 1,
             sku: source.sku,
             productName: source.productName,
             quantity: source.quantity,
@@ -199,7 +204,7 @@ export async function POST(req: Request) {
       for (const item of fbaItems) {
         if (item.location) {
           const locs = item.location.split(' + ').filter(Boolean)
-          const newLocs = locs.map(l => l === oldLocationCode ? newLocationCode : l)
+          const newLocs = locs.map(l => l === oldLocationCode ? finalLocationCode : l)
           await tx.fbaShipmentItem.update({
             where: { id: item.id },
             data: { location: newLocs.join(' + ') }
@@ -207,7 +212,7 @@ export async function POST(req: Request) {
         }
       }
 
-      return { success: true, from: oldLocationCode, to: newLocationCode }
+      return { success: true, from: oldLocationCode, to: finalLocationCode }
     })
 
     return NextResponse.json(result)
