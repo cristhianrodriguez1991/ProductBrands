@@ -2207,22 +2207,25 @@ export default function InventoryPage() {
 
                       {isExpanded && (
                         <div className="bg-slate-50 border-t p-4 space-y-4 animate-in slide-in-from-top-2">
-                          <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
-                            <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => updateItem(item.id, "isActive", !item.isActive)}>
-                              {item.isActive ? "Deactivate" : "Activate"}
-                            </Button>
-                            <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
-                              const val = prompt("New quantity:", String(item.quantityOnHand))
-                              if (val !== null) updateItem(item.id, "quantityOnHand", parseInt(val) || 0)
-                            }}> <Zap className="h-3 w-3 mr-1" /> Qty </Button>
-                            <Button variant="outline" size="sm" className="text-xs h-8 ml-auto" onClick={() => fileInputRef.current?.click()}>
-                              {uploadingId === item.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
-                            </Button>
-                          </div>
                           <div className="grid grid-cols-2 gap-3 text-[12px]">
-                            <div><label className="font-bold text-slate-500 uppercase text-[10px]">UPC</label><Input className="h-8 text-[13px]" value={item.upc||""} onChange={(e)=>updateItem(item.id, "upc", e.target.value)} /></div>
-                            <div><label className="font-bold text-slate-500 uppercase text-[10px]">FNSKU</label><Input className="h-8 text-[13px]" value={item.fnsku||""} onChange={(e)=>updateItem(item.id, "fnsku", e.target.value)} /></div>
-                            <div><label className="font-bold text-slate-500 uppercase text-[10px]">SKU</label><Input className="h-8 text-[13px]" value={item.sku||""} onChange={(e)=>updateItem(item.id, "sku", e.target.value)} /></div>
+                            <div>
+                              <label className="font-bold text-slate-500 uppercase text-[10px]">UPC</label>
+                              <div className="h-8 text-[13px] border border-slate-200 rounded-lg bg-slate-100 px-3 flex items-center text-slate-700 font-medium">
+                                {item.upc || "—"}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="font-bold text-slate-500 uppercase text-[10px]">FNSKU</label>
+                              <div className="h-8 text-[13px] border border-slate-200 rounded-lg bg-slate-100 px-3 flex items-center text-slate-700 font-medium">
+                                {item.fnsku || "—"}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="font-bold text-slate-500 uppercase text-[10px]">SKU</label>
+                              <div className="h-8 text-[13px] border border-slate-200 rounded-lg bg-slate-100 px-3 flex items-center text-slate-700 font-medium">
+                                {item.sku || "—"}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
