@@ -91,15 +91,15 @@ function WrappedBoxes({ width, depth, height, colors, hovered }: WrappedBoxesPro
   const numLayers = Math.max(1, Math.floor(height / layerH))
   const actualBoxH = height / numLayers
 
-  // Distribute colors across 4 inner box positions:
+  // Distribute colors:
   // 1 color: all boxes same color
-  // 2 colors: positions [0,1] = colors[0], positions [2,3] = colors[1]
+  // 2 colors: lower half of layers uses colors[0], upper half uses colors[1]
   const boxPositions: [number, number][] = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
-  const getBoxColor = (index: number): string => {
+  const getBoxColor = (index: number, layerIndex: number): string => {
     if (colors.length === 0) return "#94a3b8"
     if (colors.length === 1) return colors[0]
-    // 2+ colors: front 2 get colors[0], back 2 get colors[1]
-    return index < 2 ? colors[0] : colors[1]
+    const splitLayer = Math.ceil(numLayers / 2)
+    return layerIndex < splitLayer ? colors[0] : colors[1]
   }
 
   return (
@@ -127,7 +127,7 @@ function WrappedBoxes({ width, depth, height, colors, hovered }: WrappedBoxesPro
               radius={0.01 * S}
               position={[x * (boxW / 2 + 0.005 * S), 0, z * (boxD / 2 + 0.005 * S)]}
             >
-              <meshStandardMaterial color={hovered ? "#60a5fa" : getBoxColor(idx)} roughness={0.7} />
+              <meshStandardMaterial color={hovered ? "#60a5fa" : getBoxColor(idx, l)} roughness={0.7} />
             </RoundedBox>
           ))}
         </group>

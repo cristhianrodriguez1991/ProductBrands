@@ -94,7 +94,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )
   }
 
-  if (!session || (session.user as any)?.role !== "ADMIN") {
+  if (!session || !userRole || !getEffectivePermissions(userRole, customPermissions).includes(PERMISSIONS.DASHBOARD)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">

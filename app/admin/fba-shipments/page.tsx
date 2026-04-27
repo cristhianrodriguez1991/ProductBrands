@@ -162,7 +162,7 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
     const isOccupiedByOther = warehousePositions?.find((p: any) => p.locationCode === tempLocation && p.status !== "AVAILABLE")
     const isMine = locations.includes(tempLocation)
 
-    if (isOccupiedByOther && !isMine && editingIndex === null) {
+    if (isOccupiedByOther && !isMine) {
       setConfirmOccupied(tempLocation)
       return
     }
@@ -317,8 +317,14 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
               </Button>
               <Button
                 onClick={() => {
-                  if (confirmOccupied && !locations.includes(confirmOccupied)) {
-                    onChange([...locations, confirmOccupied].join(' + '))
+                  if (confirmOccupied) {
+                    if (editingIndex !== null) {
+                      const newLocs = [...locations]
+                      newLocs[editingIndex] = confirmOccupied
+                      onChange(newLocs.join(' + '))
+                    } else if (!locations.includes(confirmOccupied)) {
+                      onChange([...locations, confirmOccupied].join(' + '))
+                    }
                   }
                   setConfirmOccupied(null)
                   setIsAdding(false)
@@ -591,6 +597,16 @@ export default function FbaShipmentsPage() {
   const [warehousePositions, setWarehousePositions] = useState<any[]>([])
   const [isSyncing, setIsSyncing] = useState(false)
 
+  const refreshWarehousePositions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/warehouse")
+      if (res.ok) {
+        const data = await res.json()
+        setWarehousePositions(Array.isArray(data) ? data : [])
+      }
+    } catch {}
+  }, [])
+
   const handleMarkAsShipped = async (shId: string) => {
     const tab = tabs.find(t => t.id === shId)
     if (!tab) return
@@ -703,6 +719,7 @@ export default function FbaShipmentsPage() {
               const updatedData = await updatedRes.json()
               setTabs(prev => prev.map(t => t.id === shId ? { ...t, items: updatedData.items } : t))
             }
+            await refreshWarehousePositions()
             alert("✅ Envío marcado como ENVIADO. Posiciones liberadas y historial registrado.")
           } catch(e) {
             alert("❌ Error al procesar el envío.")
@@ -758,6 +775,7 @@ export default function FbaShipmentsPage() {
       }
       setSaveStatus("saved")
       setTimeout(() => setSaveStatus("idle"), 2000)
+      await refreshWarehousePositions()
       alert("✅ Sincronización con el almacén completada!")
     } catch (err) {
       alert("❌ Error al sincronizar")
@@ -795,18 +813,12 @@ export default function FbaShipmentsPage() {
   useEffect(() => {
     const init = async () => {
       await Promise.all([fetchShipments(), fetchPendingItems()])
-      // Fetch warehouse positions for location dropdown
-      try {
-        const res = await fetch("/api/admin/warehouse")
-        if (res.ok) {
-          const data = await res.json()
-          setWarehousePositions(data)
-        }
-      } catch {}
+      // Fetch warehouse positions for location dropdown + mixed pallet highlights
+      await refreshWarehousePositions()
       setLoading(false)
     }
     init()
-  }, [])
+  }, [refreshWarehousePositions])
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -992,6 +1004,7 @@ export default function FbaShipmentsPage() {
             })
           }
         }
+        await refreshWarehousePositions()
       }
 
       setSaveStatus("saved")

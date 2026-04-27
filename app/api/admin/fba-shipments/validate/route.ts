@@ -30,7 +30,12 @@ export async function POST(req: Request) {
 
     // Get all warehouse pallets for quick lookup
     const pallets = await prisma.warehousePallet.findMany()
-    const palletMap = new Map(pallets.map(p => [p.locationCode, p]))
+    const palletMap = new Map<string, typeof pallets>()
+    for (const pallet of pallets) {
+      const existing = palletMap.get(pallet.locationCode) || []
+      existing.push(pallet)
+      palletMap.set(pallet.locationCode, existing)
+    }
 
     for (const item of items) {
       if (!item.location || item.location === "ENVIADO") continue // Skip already-shipped items
@@ -43,31 +48,36 @@ export async function POST(req: Request) {
       }
 
       for (const loc of locations) {
-        const pallet = palletMap.get(loc)
+        const palletsAtLocation = palletMap.get(loc) || []
         
-        if (!pallet) {
+        if (palletsAtLocation.length === 0) {
           errors.push(`Location ${loc} for "${item.name}" does not exist in the warehouse map.`)
           continue
         }
 
-        if (!pallet.productName && !pallet.sku) {
+        const occupiedPallets = palletsAtLocation.filter(p => p.productName || p.sku)
+        if (occupiedPallets.length === 0) {
           warnings.push(`Location ${loc} for "${item.name}" is marked as EMPTY in the warehouse. Product may have already been moved.`)
           continue
         }
 
-        // Check if the product matches
-        const palletSku = (pallet.sku || "").toLowerCase().trim()
+        // Check if at least one pallet at this location matches the item's SKU
         const itemSku = (item.sku || "").toLowerCase().trim()
-        
-        if (itemSku && palletSku && palletSku !== itemSku) {
-          warnings.push(`SKU mismatch at ${loc}: Shipment has "${item.sku}" but warehouse has "${pallet.sku}".`)
+        const skuMatches = itemSku
+          ? occupiedPallets.some(p => (p.sku || "").toLowerCase().trim() === itemSku)
+          : false
+
+        if (itemSku && !skuMatches) {
+          const warehouseSkus = [...new Set(occupiedPallets.map(p => p.sku).filter(Boolean))]
+          warnings.push(`SKU mismatch at ${loc}: Shipment has "${item.sku}" but warehouse has "${warehouseSkus.join(", ") || "N/A"}".`)
         }
 
-        // Check quantity
-        if (pallet.quantity !== null && item.totalUnits) {
+        // Check quantity using sum across pallets at same location
+        const locationQty = occupiedPallets.reduce((sum, p) => sum + (p.quantity || 0), 0)
+        if (item.totalUnits) {
           const perLocationQty = Math.ceil(item.totalUnits / locations.length)
-          if (pallet.quantity < perLocationQty) {
-            warnings.push(`Location ${loc}: Warehouse shows ${pallet.quantity} units but shipment expects ~${perLocationQty} units for "${item.name}".`)
+          if (locationQty > 0 && locationQty < perLocationQty) {
+            warnings.push(`Location ${loc}: Warehouse shows ${locationQty} units but shipment expects ~${perLocationQty} units for "${item.name}".`)
           }
         }
 
