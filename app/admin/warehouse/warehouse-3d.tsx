@@ -20,6 +20,13 @@ const RACK_COLORS: Record<string, string> = {
   C: "#5b21b6",
 }
 
+const PRODUCT_COLORS = ["#2563eb", "#16a34a", "#d97706", "#9333ea", "#dc2626", "#0891b2", "#db2777", "#4f46e5"]
+const colorFromSeed = (seed: string) => {
+  let hash = 0
+  for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0
+  return PRODUCT_COLORS[Math.abs(hash) % PRODUCT_COLORS.length]
+}
+
 // Uniform scale – everything is proportionally bigger
 const S = 3
 
@@ -161,7 +168,7 @@ function Pallet3D({ pallets: palletList, position, onSelect, moveSourceId, onMov
   // Colors: for a single product all 4 boxes same; for 2 products split front/back
   const getColor = (p: Pallet) => {
     if (moveSourceId != null && palletList.some(pp => pp.id === moveSourceId)) return "#3b82f6"
-    return STATUS_COLORS[p.status] || "#94a3b8"
+    return colorFromSeed(p.productName || p.sku || p.id)
   }
   const colors = isMixed
     ? [getColor(occupiedPallets[0]), getColor(occupiedPallets[1])]

@@ -99,10 +99,29 @@ function getRolePermissions(role: string | undefined): string[] {
   return ROLE_PERMISSIONS[role] || []
 }
 
+function getEffectivePermissions(role: string | undefined, customPermissions: string[] = []): string[] {
+  if (!role) return []
+
+  const permissions = new Set(getRolePermissions(role))
+
+  for (const custom of customPermissions) {
+    if (custom.startsWith("+")) {
+      const perm = custom.slice(1)
+      if (Object.values(PERMISSIONS).includes(perm as any)) permissions.add(perm)
+    } else if (custom.startsWith("-")) {
+      const perm = custom.slice(1)
+      permissions.delete(perm)
+    }
+  }
+
+  return Array.from(permissions)
+}
+
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token
     const userRole = token?.role as string | undefined
+    const customPermissions = (token?.customPermissions as string[] | undefined) || []
     const isAuth = !!token
     const pathname = req.nextUrl.pathname
 
@@ -143,7 +162,7 @@ export default withAuth(
       const requiredPermission = getRoutePermission(pathname)
 
       if (requiredPermission) {
-        const rolePermissions = getRolePermissions(userRole)
+        const rolePermissions = getEffectivePermissions(userRole, customPermissions)
 
         if (!rolePermissions.includes(requiredPermission)) {
           return NextResponse.redirect(new URL("/admin/access-denied", req.url))

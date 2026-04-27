@@ -148,6 +148,18 @@ const parseSyncDate = (val: string) => {
   return null
 }
 
+const isOccupiedWarehousePosition = (p: any) => {
+  if (!p) return false
+  return !!p.productName || !!p.sku || p.status !== "AVAILABLE"
+}
+
+const colorFromSeed = (seed: string) => {
+  const palette = ["#2563eb", "#16a34a", "#d97706", "#9333ea", "#dc2626", "#0891b2", "#db2777", "#4f46e5"]
+  let hash = 0
+  for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0
+  return palette[Math.abs(hash) % palette.length]
+}
+
 const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { value: string; onChange: (val: string) => void; setConfirm: any; warehousePositions: any[] }) => {
   const [isAdding, setIsAdding] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -159,7 +171,7 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
 
   const handleAddField = () => {
     // Check if location is occupied by another product (not already one of this item's locations)
-    const isOccupiedByOther = warehousePositions?.find((p: any) => p.locationCode === tempLocation && p.status !== "AVAILABLE")
+    const isOccupiedByOther = warehousePositions?.find((p: any) => p.locationCode === tempLocation && isOccupiedWarehousePosition(p))
     const isMine = locations.includes(tempLocation)
 
     if (isOccupiedByOther && !isMine) {
@@ -207,9 +219,12 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
           <span className="text-[10px] text-slate-300 font-medium italic py-1">Sin ubicación</span>
         )}
         {locations.map((loc, idx) => {
-          const palletsAtLoc = warehousePositions?.filter((p: any) => p.locationCode === loc && p.status !== "AVAILABLE") || []
+          const palletsAtLoc = warehousePositions?.filter((p: any) => p.locationCode === loc && isOccupiedWarehousePosition(p)) || []
           const isMixed = loc !== "ENVIADO" && palletsAtLoc.length > 1
           const mixedProducts = isMixed ? palletsAtLoc.map((p: any) => p.productName || p.sku).filter(Boolean) : []
+          const mixedColors = isMixed
+            ? mixedProducts.slice(0, 2).map((name: string) => colorFromSeed(name))
+            : []
           return (
             <div
               key={`${loc}-${idx}`}
@@ -219,6 +234,16 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
             >
               {loc === "ENVIADO" ? "📦 ENVIADO" : loc}
               {isMixed && <span className="inline-flex items-center justify-center px-1 py-0 text-[7px] font-black bg-amber-500 text-white rounded ml-0.5 leading-none">MIX</span>}
+              {isMixed && (
+                <span
+                  className="absolute left-0.5 right-0.5 -bottom-0.5 h-1 rounded-full"
+                  style={{
+                    background: mixedColors.length > 1
+                      ? `linear-gradient(90deg, ${mixedColors[0]} 0%, ${mixedColors[0]} 50%, ${mixedColors[1]} 50%, ${mixedColors[1]} 100%)`
+                      : mixedColors[0]
+                  }}
+                />
+              )}
               {loc !== "ENVIADO" && (
                 <button
                   onClick={(e) => handleRemoveClick(e, loc)}
@@ -271,7 +296,7 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
             >
               {LEVELS_CONFIG.map(l => {
                 const locCode = `${rack || "A"}${num || "1"}${l.key}`
-                const isOccupied = warehousePositions?.find((p: any) => p.locationCode === locCode && p.status !== "AVAILABLE")
+                const isOccupied = warehousePositions?.find((p: any) => p.locationCode === locCode && isOccupiedWarehousePosition(p))
                 const isMine = locations.includes(locCode)
                 return <option key={l.key} value={l.key} className={isOccupied && !isMine ? "text-amber-600" : undefined}>{isOccupied && !isMine ? `${l.key} (Ocupado)` : l.key}</option>
               })}
@@ -450,7 +475,7 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
         </div>
       </td>
 
-      <td className="p-1 border-l align-top">
+      <td className="p-1 border-l align-top w-[300px] min-w-[300px] max-w-[300px]">
         <textarea 
           onFocus={handleFocus} 
           onBlur={handleBlur} 
@@ -1437,7 +1462,7 @@ export default function FbaShipmentsPage() {
               {/* MAIN TABLE */}
               <Card className="w-full border-0 shadow-2xl rounded-none overflow-hidden bg-white mb-10 border border-slate-100">
                 <div className="overflow-x-auto custom-scrollbar">
-                  <table className="text-left border-collapse min-w-[2200px] table-auto">
+                  <table className="text-left border-collapse min-w-[2200px] table-fixed">
                     <thead>
                       <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-black tracking-widest">
                         <th className="py-6 px-1 w-[35px] text-center bg-[#163a2d]"></th>
@@ -1501,7 +1526,7 @@ export default function FbaShipmentsPage() {
                     <span className="text-[10px] font-black bg-amber-600 text-white px-3 py-1 rounded-full uppercase tracking-tighter">Disponible para este envío</span>
                   </h2>
                   <div className="overflow-x-auto rounded-none border border-amber-200 bg-white shadow-xl">
-                    <table className="text-left min-w-[2000px] table-auto border-collapse">
+                    <table className="text-left min-w-[2000px] table-fixed border-collapse">
                       <thead>
                         <tr className="bg-amber-800 text-white text-[10px] uppercase font-black tracking-widest">
                           <th className="py-4 px-1 w-[30px] text-center"></th>

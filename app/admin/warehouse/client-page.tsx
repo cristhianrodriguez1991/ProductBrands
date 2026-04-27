@@ -101,6 +101,13 @@ function isOccupied(p: Pallet) {
   return !!p.productName || !!p.sku
 }
 
+function colorFromSeed(seed: string) {
+  const palette = ["#2563eb", "#16a34a", "#d97706", "#9333ea", "#dc2626", "#0891b2", "#db2777", "#4f46e5"]
+  let hash = 0
+  for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0
+  return palette[Math.abs(hash) % palette.length]
+}
+
 // ── Main Component ─────────────────────────────────────────
 // ── Confirmation Modal Component ──
 const ConfirmDeleteModal = ({ isOpen, onClose, onConfirm, title, message }: any) => (
@@ -416,8 +423,8 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
 
     // For mixed pallets, use split background colors
     const secondPallet = isMixed ? occupiedPallets[1] : null
-    const firstColor = STATUS_BG[pallet.status] || "bg-slate-50 border-slate-200"
-    const secondColor = secondPallet ? (STATUS_BG[secondPallet.status] || "bg-slate-50 border-slate-200") : ""
+    const firstProductColor = colorFromSeed(pallet.productName || pallet.sku || pallet.id)
+    const secondProductColor = secondPallet ? colorFromSeed(secondPallet.productName || secondPallet.sku || secondPallet.id) : firstProductColor
     const borderBg = isMixed ? "" : (STATUS_BG[pallet.status] || "bg-slate-50 border-slate-200")
 
     const isDragOver = dragSourceId !== null && dragSourceId !== pallet.id && !occupied
@@ -465,8 +472,8 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
         {/* Split-color background for mixed pallets */}
         {isMixed && (
           <div className="absolute inset-0 flex">
-            <div className="flex-1" style={{backgroundColor: STATUS_HEX[pallet.status] || "#f8fafc"}} />
-            <div className="flex-1" style={{backgroundColor: secondPallet ? (STATUS_HEX[secondPallet.status] || "#f8fafc") : "#94a3b8"}} />
+            <div className="flex-1" style={{ backgroundColor: `${firstProductColor}26` }} />
+            <div className="flex-1" style={{ backgroundColor: `${secondProductColor}26` }} />
           </div>
         )}
         {isMixed && (
@@ -482,6 +489,12 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
                 <span className="text-[6px] text-amber-600 font-extrabold mt-[1px] tracking-tight">
                   {occupiedPallets.length} productos
                 </span>
+                <span
+                  className="w-full h-1 rounded-full mt-[2px]"
+                  style={{
+                    background: `linear-gradient(90deg, ${firstProductColor} 0%, ${firstProductColor} 50%, ${secondProductColor} 50%, ${secondProductColor} 100%)`,
+                  }}
+                />
               </>
             ) : (
               <>
