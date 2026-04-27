@@ -467,11 +467,13 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
         </div>
       </td>
 
-      <td className="p-1 border-l align-top w-[300px] min-w-[300px] max-w-[300px] overflow-hidden" style={{ width: "300px", maxWidth: "300px" }}>
+      <td className="p-1 border-l align-top w-[300px] min-w-[300px] max-w-[300px] overflow-hidden bg-white/50" style={{ width: "300px", maxWidth: "300px" }}>
         <textarea
           onFocus={handleFocus}
           onBlur={() => { handleBlur(); commitChange("name") }}
-          className="w-full text-[11px] border-0 bg-transparent rounded-none px-2 font-bold text-slate-800 resize-none focus:ring-0 min-h-[40px] leading-tight block break-words whitespace-pre-wrap"
+          spellCheck={false}
+          data-gramm="false"
+          className="w-full text-[11px] border-0 bg-transparent rounded-none px-2 font-bold text-slate-800 resize-none focus:ring-0 min-h-[44px] leading-tight block break-words whitespace-pre-wrap"
           value={localItem.name || ""}
           onChange={e => handleLocalChange("name", e.target.value)}
           rows={2}
@@ -481,6 +483,8 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
         <div className="relative group/input flex items-center w-full">
           <Input
             onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("fnsku") }}
+            spellCheck={false}
+            data-gramm="false"
             className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2 pr-7 w-full focus:bg-white shadow-none"
             value={localItem.fnsku || ""}
             onChange={e => { handleLocalChange("fnsku", e.target.value); if (e.target.value.length >= 5) handleLookup(e.target.value); }}
@@ -497,6 +501,8 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
         <div className="relative group/input flex items-center w-full">
           <Input
             onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("upc") }}
+            spellCheck={false}
+            data-gramm="false"
             className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2 pr-7 w-full focus:bg-white shadow-none"
             value={localItem.upc || ""}
             onChange={e => { handleLocalChange("upc", e.target.value); if (e.target.value.length >= 5) handleLookup(e.target.value); }}
@@ -510,14 +516,16 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
           </button>
         </div>
       </td>
-      <td className="p-0 border-l w-[160px] min-w-[160px] max-w-[160px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("sku") }} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={localItem.sku || ""} onChange={e => handleLocalChange("sku", e.target.value)} /></td>
-      <td className="p-0 border-l w-[160px] min-w-[160px] max-w-[160px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("asin") }} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={localItem.asin || ""} onChange={e => handleLocalChange("asin", e.target.value)} placeholder="ASIN" title="ASIN" /></td>
+      <td className="p-0 border-l w-[160px] min-w-[160px] max-w-[160px]"><Input spellCheck={false} data-gramm="false" onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("sku") }} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={localItem.sku || ""} onChange={e => handleLocalChange("sku", e.target.value)} /></td>
+      <td className="p-0 border-l w-[160px] min-w-[160px] max-w-[160px]"><Input spellCheck={false} data-gramm="false" onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("asin") }} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={localItem.asin || ""} onChange={e => handleLocalChange("asin", e.target.value)} placeholder="ASIN" title="ASIN" /></td>
       <td className="p-0 border-l w-[85px] min-w-[85px] max-w-[85px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("qtyPerBox") }} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center" value={localItem.qtyPerBox || ""} onChange={e => handleLocalChange("qtyPerBox", e.target.value)} /></td>
       <td className="p-0 border-l w-[105px] min-w-[105px] max-w-[105px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("totalBoxes") }} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center" value={localItem.totalBoxes || ""} onChange={e => handleLocalChange("totalBoxes", e.target.value)} /></td>
       <td className="p-0 border-l w-[115px] min-w-[115px] max-w-[115px] text-center font-black text-xs px-2 bg-green-50/50 text-green-700">{item.totalUnits || 0}</td>
       <td className="p-0 border-l w-[115px] min-w-[115px] max-w-[115px] relative">
         <Input
           onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("expDate") }}
+          spellCheck={false}
+          data-gramm="false"
           className={`h-8 text-[11px] border-0 bg-transparent rounded-none px-2 ${expiring ? "text-red-600 font-bold bg-red-50" : ""}`}
           value={localItem.expDate || ""}
           placeholder="MMDDYY"
@@ -529,11 +537,13 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
       <td className="p-0 border-l w-[55px] min-w-[55px] max-w-[55px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("width") }} type="number" className="h-8 text-[10px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={localItem.width || ""} onChange={e => handleLocalChange("width", e.target.value)} /></td>
       <td className="p-0 border-l w-[55px] min-w-[55px] max-w-[55px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("height") }} type="number" className="h-8 text-[10px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={localItem.height || ""} onChange={e => handleLocalChange("height", e.target.value)} /></td>
       <td className="p-0 border-l w-[90px] min-w-[90px] max-w-[90px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("boxWeight") }} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center font-semibold" value={localItem.boxWeight || ""} onChange={e => handleLocalChange("boxWeight", e.target.value)} /></td>
-      <td className="p-1 border-l align-top w-[300px] min-w-[300px] max-w-[300px] overflow-hidden" style={{ width: "300px", maxWidth: "300px" }}>
+      <td className="p-1 border-l align-top w-[300px] min-w-[300px] max-w-[300px] overflow-hidden bg-white/50" style={{ width: "300px", maxWidth: "300px" }}>
         <textarea
           onFocus={handleFocus}
           onBlur={() => { handleBlur(); commitChange("description") }}
-          className="w-full text-[11px] border-0 bg-transparent rounded-none px-2 resize-none focus:ring-0 min-h-[40px] leading-tight block break-words whitespace-pre-wrap"
+          spellCheck={false}
+          data-gramm="false"
+          className="w-full text-[11px] border-0 bg-transparent rounded-none px-2 resize-none focus:ring-0 min-h-[44px] leading-tight block break-words whitespace-pre-wrap"
           value={localItem.description || ""}
           onChange={e => handleLocalChange("description", e.target.value)}
           rows={2}
@@ -836,6 +846,8 @@ export default function FbaShipmentsPage() {
 
   useEffect(() => {
     const interval = setInterval(async () => {
+      // Skip sync if user is currently typing/focusing an item to prevent displacement or layout jumps
+      if (focusedItemId) return;
       try {
         await fetchPendingItems()
         if (activeTabId === "dashboard") return
@@ -853,7 +865,7 @@ export default function FbaShipmentsPage() {
           }))
         }
       } catch (error) { }
-    }, 10000)
+    }, 15000)
     return () => clearInterval(interval)
   }, [activeTabId, focusedItemId])
 
@@ -1475,9 +1487,9 @@ export default function FbaShipmentsPage() {
               </div>
 
               {/* MAIN TABLE */}
-              <Card className="w-full border-0 shadow-2xl rounded-none overflow-hidden bg-white mb-10 border border-slate-100">
+              <Card className="w-full border-0 shadow-2xl rounded-none overflow-hidden bg-white mb-10 border border-slate-100 p-0">
                 <div className="overflow-x-auto custom-scrollbar">
-                  <table className="text-left border-collapse min-w-[2200px] table-fixed">
+                  <table className="text-left border-collapse w-[2240px] min-w-[2240px] table-fixed" style={{ tableLayout: "fixed", width: "2240px" }}>
                     {renderShipmentColGroup()}
                     <thead>
                       <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-black tracking-widest">
@@ -1541,8 +1553,8 @@ export default function FbaShipmentsPage() {
                     <MousePointer2 className="h-6 w-6" /> Palets en Espera (Global)
                     <span className="text-[10px] font-black bg-amber-600 text-white px-3 py-1 rounded-full uppercase tracking-tighter">Disponible para este envío</span>
                   </h2>
-                  <div className="overflow-x-auto rounded-none border border-amber-200 bg-white shadow-xl">
-                    <table className="text-left min-w-[2000px] table-fixed border-collapse">
+                  <div className="overflow-x-auto rounded-none border border-amber-200 bg-white shadow-xl p-0">
+                    <table className="text-left w-[2240px] min-w-[2240px] table-fixed border-collapse" style={{ tableLayout: "fixed", width: "2240px" }}>
                       {renderShipmentColGroup()}
                       <thead>
                         <tr className="bg-amber-800 text-white text-[11px] uppercase font-black tracking-widest leading-none">
