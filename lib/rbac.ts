@@ -3,6 +3,7 @@ import { authOptions } from "./auth"
 import { UserRole } from "@prisma/client"
 import { redirect } from "next/navigation"
 import { NextRequest, NextResponse } from "next/server"
+import { Permission, hasPermission, hasEffectivePermission, getEffectivePermissions, getRoutePermission } from "./permissions"
 
 /**
  * Admin roles that can access admin portal
@@ -152,7 +153,7 @@ export async function requireRoleApi(req: NextRequest, allowedRoles: UserRole[])
  */
 export async function requireWriteAccess(req: NextRequest) {
   const auth = await requireAdminApi(req)
-  
+
   if (auth instanceof NextResponse) {
     return auth
   }
@@ -165,4 +166,101 @@ export async function requireWriteAccess(req: NextRequest) {
   }
 
   return auth
+}
+
+/**
+ * Server-side: Require specific permission for pages/components
+ */
+export async function requirePermission(permission: Permission) {
+  const { session, user, userId, role } = await requireAdminSession()
+
+  const userCustomPermissions = (user as any).customPermissions || []
+  if (!hasEffectivePermission(role, userCustomPermissions, permission)) {
+    redirect("/admin/access-denied")
+  }
+
+  return {
+    session,
+    user,
+    userId,
+    role,
+  }
+}
+
+/**
+ * Server-side: Require any of multiple permissions
+ */
+export async function requireAnyPermission(permissions: Permission[]) {
+  const { session, user, userId, role } = await requireAdminSession()
+
+  const userCustomPermissions = (user as any).customPermissions || []
+  const hasAny = permissions.some(p => hasEffectivePermission(role, userCustomPermissions, p))
+
+  if (!hasAny) {
+    redirect("/admin/access-denied")
+  }
+
+  return {
+    session,
+    user,
+    userId,
+    role,
+  }
+}
+
+/**
+ * API route: Require specific permission
+ */
+export async function requirePermissionApi(req: NextRequest, permission: Permission) {
+  const auth = await requireAdminApi(req)
+
+  if (auth instanceof NextResponse) {
+    return auth
+  }
+
+  const userCustomPermissions = (auth.user as any).customPermissions || []
+  if (!hasEffectivePermission(auth.role, userCustomPermissions, permission)) {
+    return NextResponse.json(
+      { error: `Forbidden: Requires ${permission} permission` },
+      { status: 403 }
+    )
+  }
+
+  return auth
+}
+
+/**
+ * API route: Check permission based on route
+ */
+export async function requireRoutePermission(req: NextRequest) {
+  const auth = await requireAdminApi(req)
+
+  if (auth instanceof NextResponse) {
+    return auth
+  }
+
+  const pathname = req.nextUrl.pathname
+  const requiredPermission = getRoutePermission(pathname)
+
+  if (!requiredPermission) {
+    // No specific permission required, allow admin access
+    return auth
+  }
+
+  const userCustomPermissions = (auth.user as any).customPermissions || []
+  if (!hasEffectivePermission(auth.role, userCustomPermissions, requiredPermission)) {
+    return NextResponse.json(
+      { error: `Forbidden: Requires ${requiredPermission} permission` },
+      { status: 403 }
+    )
+  }
+
+  return auth
+}
+
+/**
+ * Get user's effective permissions (for API responses)
+ */
+export function getUserPermissions(role: UserRole, customPermissions: string[] = []): Permission[] {
+  return getEffectivePermissions(role, customPermissions)
 }

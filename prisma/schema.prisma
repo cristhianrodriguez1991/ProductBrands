@@ -55,18 +55,19 @@ enum InvoiceStatus {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  password      String? // hashed
-  emailVerified DateTime?
-  image         String?
-  role          UserRole  @default(CUSTOMER)
-  isActive      Boolean   @default(true)
-  companyId     String?
-  company       Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String?
+  password          String? // hashed
+  emailVerified     DateTime?
+  image             String?
+  role              UserRole  @default(CUSTOMER)
+  isActive          Boolean   @default(true)
+  companyId         String?
+  company           Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  customPermissions String[]  // Permission overrides: '+users' to add, '-users' to remove
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   quotesCreated    Quote[]       @relation("QuoteCreator")
   ordersCreated    Order[]        @relation("OrderCreator")

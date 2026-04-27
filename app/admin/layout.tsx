@@ -27,26 +27,35 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
+import { UserRole } from "@prisma/client"
+import { PERMISSIONS, Permission, getEffectivePermissions } from "@/lib/permissions"
 
-const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/brands", label: "Brands", icon: Tag },
-  { href: "/admin/suppliers", label: "Suppliers", icon: Truck },
-  { href: "/admin/fba-shipments", label: "FBA Shipments", icon: Ship },
-  { href: "/admin/machines", label: "Machine Setup", icon: Cpu },
-  { href: "/admin/warehouse", label: "Warehouse Map", icon: MapPin },
-  { href: "/admin/inventory", label: "Inventory", icon: Boxes },
-  { href: "/admin/cleaning-logs", label: "Clean Logs", icon: ClipboardCheck },
+interface NavItem {
+  href: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  exact?: boolean
+  permission: Permission
+}
 
-  { href: "/admin/listings", label: "Listings", icon: Package },
-  { href: "/admin/quotes", label: "Quotes", icon: FileText },
-  { href: "/admin/contact", label: "Contact", icon: Inbox },
-  { href: "/admin/clients", label: "Clients", icon: Users },
-  { href: "/admin/orders", label: "Orders", icon: Package },
-  { href: "/admin/invoices", label: "Invoices", icon: Receipt },
-  { href: "/admin/chat", label: "Live Chat", icon: MessageSquare },
-  { href: "/admin/settings", label: "Site Settings", icon: Settings },
+const NAV_ITEMS: NavItem[] = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, permission: PERMISSIONS.DASHBOARD },
+  { href: "/admin/users", label: "Users", icon: Users, permission: PERMISSIONS.USERS },
+  { href: "/admin/brands", label: "Brands", icon: Tag, permission: PERMISSIONS.BRANDS },
+  { href: "/admin/suppliers", label: "Suppliers", icon: Truck, permission: PERMISSIONS.SUPPLIERS },
+  { href: "/admin/fba-shipments", label: "FBA Shipments", icon: Ship, permission: PERMISSIONS.FBA_SHIPMENTS },
+  { href: "/admin/machines", label: "Machine Setup", icon: Cpu, permission: PERMISSIONS.MACHINES },
+  { href: "/admin/warehouse", label: "Warehouse Map", icon: MapPin, permission: PERMISSIONS.WAREHOUSE },
+  { href: "/admin/inventory", label: "Inventory", icon: Boxes, permission: PERMISSIONS.INVENTORY },
+  { href: "/admin/cleaning-logs", label: "Clean Logs", icon: ClipboardCheck, permission: PERMISSIONS.CLEANING_LOGS },
+  { href: "/admin/listings", label: "Listings", icon: Package, permission: PERMISSIONS.LISTINGS },
+  { href: "/admin/quotes", label: "Quotes", icon: FileText, permission: PERMISSIONS.QUOTES },
+  { href: "/admin/contact", label: "Contact", icon: Inbox, permission: PERMISSIONS.CONTACT },
+  { href: "/admin/clients", label: "Clients", icon: Users, permission: PERMISSIONS.CLIENTS },
+  { href: "/admin/orders", label: "Orders", icon: Package, permission: PERMISSIONS.ORDERS },
+  { href: "/admin/invoices", label: "Invoices", icon: Receipt, permission: PERMISSIONS.INVOICES },
+  { href: "/admin/chat", label: "Live Chat", icon: MessageSquare, permission: PERMISSIONS.CHAT },
+  { href: "/admin/settings", label: "Site Settings", icon: Settings, permission: PERMISSIONS.SETTINGS },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -56,14 +65,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [desktopCollapsed, setDesktopCollapsed] = useState(false)
 
+  const userRole = (session?.user as any)?.role as UserRole | undefined
+  const customPermissions = (session?.user as any)?.customPermissions || []
+  const userPermissions = getEffectivePermissions(userRole, customPermissions)
+
   useEffect(() => {
     if (
       status === "unauthenticated" ||
-      (status === "authenticated" && (!session || (session.user as any)?.role !== "ADMIN"))
+      (status === "authenticated" && (!session || !userRole || !getEffectivePermissions(userRole, customPermissions).includes(PERMISSIONS.DASHBOARD)))
     ) {
       router.push("/admin-login")
     }
-  }, [status, session, router])
+  }, [status, session, router, userRole, customPermissions])
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -156,32 +169,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-        {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
-          const isActive = exact
-            ? pathname === "/admin"
-            : pathname.startsWith(href.split("?")[0])
-          
-          return (
-            <Link key={href} href={href}>
-              <Button
-                variant={isActive ? "secondary" : "ghost"}
-                className={cn(
-                  "w-full text-sm h-10 transition-all",
-                  !mobile && desktopCollapsed ? "justify-center px-0" : "justify-start"
-                )}
-                title={!mobile && desktopCollapsed ? label : ""}
-              >
-                <Icon className={cn("h-4 w-4 flex-shrink-0", (!mobile && desktopCollapsed) ? "" : "mr-3")} />
-                {(!mobile && !desktopCollapsed) && (
-                  <span className="truncate">{label}</span>
-                )}
-                {mobile && (
-                  <span className="truncate">{label}</span>
-                )}
-              </Button>
-            </Link>
-          )
-        })}
+        {NAV_ITEMS
+          .filter(({ permission }) => userPermissions.includes(permission))
+          .map(({ href, label, icon: Icon, exact }) => {
+            const isActive = exact
+              ? pathname === "/admin"
+              : pathname.startsWith(href.split("?")[0])
+
+            return (
+              <Link key={href} href={href}>
+                <Button
+                  variant={isActive ? "secondary" : "ghost"}
+                  className={cn(
+                    "w-full text-sm h-10 transition-all",
+                    !mobile && desktopCollapsed ? "justify-center px-0" : "justify-start"
+                  )}
+                  title={!mobile && desktopCollapsed ? label : ""}
+                >
+                  <Icon className={cn("h-4 w-4 flex-shrink-0", (!mobile && desktopCollapsed) ? "" : "mr-3")} />
+                  {(!mobile && !desktopCollapsed) && (
+                    <span className="truncate">{label}</span>
+                  )}
+                  {mobile && (
+                    <span className="truncate">{label}</span>
+                  )}
+                </Button>
+              </Link>
+            )
+          })}
       </nav>
 
       {/* Bottom Actions */}
