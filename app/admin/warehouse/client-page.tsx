@@ -114,8 +114,8 @@ const ConfirmDeleteModal = ({ isOpen, onClose, onConfirm, title, message }: any)
   <Dialog open={isOpen} onOpenChange={onClose}>
     <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden border-0 shadow-2xl">
       <div className="bg-white p-6 pt-8 text-center">
-        <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4 animate-bounce">
-          <AlertTriangle className="h-8 w-8 text-red-600" />
+        <div className="mx-auto w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4">
+          <AlertTriangle className="h-8 w-8 text-amber-600" />
         </div>
         <DialogHeader className="p-0">
           <DialogTitle className="text-xl font-black text-slate-900 text-center uppercase tracking-tight">
@@ -137,7 +137,7 @@ const ConfirmDeleteModal = ({ isOpen, onClose, onConfirm, title, message }: any)
             onClick={() => { onConfirm(); onClose(); }}
             className="h-11 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-red-200"
           >
-            Confirmar Borrado
+            Confirmar
           </Button>
         </div>
       </div>
@@ -191,13 +191,11 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
     notes: "",
   })
 
-  // Auto-seed if not fully populated (144 pallets total) or if using old formatting
+  // Seed is now only manual or on first empty load
   useEffect(() => {
-    const hasOldFormat = pallets.some(p => p.locationCode.includes('-'))
-    if ((pallets.length < 144 || hasOldFormat) && !seeding) {
+    if (pallets.length === 0 && !seeding) {
       seedWarehouse()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pallets, seeding])
 
   const seedWarehouse = async () => {
@@ -256,8 +254,10 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
 
   // ── Open form ──
   const openPalletForm = (pallet: Pallet, allPalletsAtLoc?: Pallet[]) => {
+    // Auto-resolve all pallets at this location if not provided (e.g. from 3D view)
+    const resolvedAll = allPalletsAtLoc || palletsByLocation[pallet.locationCode] || [pallet]
     setSelectedPallet(pallet)
-    setOtherPalletsAtLoc((allPalletsAtLoc || []).filter(p => p.id !== pallet.id && (p.productName || p.sku)))
+    setOtherPalletsAtLoc(resolvedAll.filter(p => p.id !== pallet.id && (p.productName || p.sku)))
     setForm({
       sku: pallet.sku || "",
       productName: pallet.productName || "",
@@ -446,7 +446,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
           }
           setDragSourceId(null)
         }}
-        className={`w-[58px] h-[48px] rounded-lg border-2 flex flex-col items-center justify-center gap-0 transition-all cursor-pointer hover:scale-105 hover:shadow-lg hover:z-10 relative select-none group overflow-hidden ${isMixed ? "border-amber-400" : borderBg} ${isDragOver ? "ring-2 ring-blue-400 ring-offset-1 scale-110 !bg-blue-50 !border-blue-300" : ""} ${dragSourceId === pallet.id ? "opacity-40 scale-95" : ""}`}
+        className={`w-[58px] h-[48px] rounded-lg border-2 flex flex-col items-center justify-center gap-0 cursor-pointer hover:scale-110 hover:shadow-xl hover:z-20 relative select-none group overflow-hidden ${isMixed ? "border-amber-500 ring-2 ring-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.3)]" : borderBg} ${isDragOver ? "ring-2 ring-blue-400 ring-offset-1 scale-110 !bg-blue-50 !border-blue-300" : ""} ${dragSourceId === pallet.id ? "opacity-40 scale-95" : ""}`}
         title={`${locationCode}${occupied ? `\n${occupiedPallets.map(p => p.productName || p.sku).join(" + ")}` : "\nVacío — suelta un pallet aquí"}`}
       >
         {/* Drag handle — only visible on hover for occupied pallets */}
@@ -469,15 +469,16 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
         )}
 
         <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ${statusColor}`} />
-        {/* Split-color background for mixed pallets */}
         {isMixed && (
-          <div className="absolute inset-0 flex opacity-90">
-            <div className="flex-1" style={{ backgroundColor: firstProductColor }} />
-            <div className="flex-1" style={{ backgroundColor: secondProductColor }} />
+          <div className="absolute inset-0 flex">
+            <div className="flex-1 h-full border-r border-white/20" style={{ backgroundColor: firstProductColor }} />
+            <div className="flex-1 h-full" style={{ backgroundColor: secondProductColor }} />
           </div>
         )}
         {isMixed && (
-          <div className="absolute top-0 left-0 bg-amber-500 text-white text-[6px] font-bold px-1 rounded-br rounded-tl-lg leading-none z-10">MIX</div>
+          <div className="absolute top-0 left-0 bg-amber-600 text-white text-[7px] font-black px-1.5 py-0.5 rounded-br-lg shadow-sm border-r border-b border-white/30 leading-none z-10 animate-pulse">
+            MIX ({occupiedPallets.length})
+          </div>
         )}
         {occupied ? (
           <div className="flex flex-col items-center justify-center w-full px-[2px] overflow-hidden mt-1 h-full">
@@ -799,26 +800,41 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
           </DialogHeader>
 
           {/* Multi-Pallet Switcher */}
-          {palletsByLocation[selectedPallet?.locationCode || ""]?.filter(isOccupied).length > 1 && (
-            <div className="flex flex-wrap gap-2 mb-4 p-2 bg-slate-50 rounded-xl border border-slate-100">
-              {palletsByLocation[selectedPallet?.locationCode || ""]
-                .filter(isOccupied)
-                .map((p, idx) => (
-                  <button
-                    key={p.id}
-                    onClick={() => openPalletForm(p, palletsByLocation[p.locationCode])}
-                    className={`flex-1 min-w-[120px] px-3 py-2 rounded-lg text-left transition-all border-2 ${selectedPallet?.id === p.id
-                      ? "bg-white border-emerald-500 shadow-md ring-2 ring-emerald-100"
-                      : "bg-slate-100 border-transparent hover:border-slate-300 opacity-60 hover:opacity-100"}`}
-                  >
-                    <div className="text-[8px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Pallet {idx + 1}</div>
-                    <div className="text-[10px] font-black text-slate-800 truncate">{p.productName || p.sku}</div>
-                    <div className="text-[9px] font-bold text-slate-500">QTY: {p.quantity || 0}</div>
-                  </button>
-                ))
-              }
-            </div>
-          )}
+          {(() => {
+            const currentLocPallets = palletsByLocation[selectedPallet?.locationCode || ""]?.filter(isOccupied) || []
+            if (currentLocPallets.length <= 1) return null
+            return (
+              <div className="mb-6 animate-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <LayoutGrid className="h-4 w-4 text-amber-600" />
+                  <span className="text-[10px] font-black text-amber-700 uppercase tracking-[0.2em]">
+                    Posición Mixta ({currentLocPallets.length} Productos)
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2 p-2 bg-amber-50/50 rounded-xl border border-amber-100/50 shadow-inner">
+                  {currentLocPallets.map((p, idx) => (
+                    <button
+                      key={p.id}
+                      onClick={() => openPalletForm(p, palletsByLocation[p.locationCode])}
+                      className={`flex-1 min-w-[140px] px-4 py-3 rounded-xl text-left transition-all border-2 ${selectedPallet?.id === p.id
+                        ? "bg-white border-amber-500 shadow-md ring-4 ring-amber-100 scale-[1.02] z-10"
+                        : "bg-white/40 border-transparent hover:border-amber-200 opacity-60 hover:opacity-100 grayscale-[0.5] hover:grayscale-0"}`}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <div className="text-[8px] font-black uppercase text-amber-600/60 tracking-widest">Item {idx + 1}</div>
+                        {selectedPallet?.id === p.id && <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
+                      </div>
+                      <div className="text-[11px] font-black text-slate-800 truncate leading-tight">{p.productName || p.sku}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 rounded">QTY: {p.quantity || 0}</div>
+                        <div className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 rounded">{p.status}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
 
           <div className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">

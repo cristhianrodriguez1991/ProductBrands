@@ -73,9 +73,8 @@ export async function POST(req: Request) {
     const normalizedSku = typeof sku === "string" ? sku.trim() : ""
     const normalizedProductName = typeof productName === "string" ? productName.trim() : ""
 
-    // Support mixed pallets without overwriting different products when SKU is empty.
-    // Match by SKU when provided; if SKU is empty, match by product name at the location.
-    const existingPallet = await prisma.warehousePallet.findFirst({
+    // 1. Try to find an exact match (Same SKU or Same Name at this location)
+    let targetPallet = await prisma.warehousePallet.findFirst({
       where: {
         locationCode,
         OR: normalizedSku
@@ -86,36 +85,44 @@ export async function POST(req: Request) {
       }
     })
 
-    const pallet = existingPallet
+    // 2. If no exact match, try to find an AVAILABLE (empty) slot at this location
+    if (!targetPallet) {
+      targetPallet = await prisma.warehousePallet.findFirst({
+        where: { locationCode, status: "AVAILABLE" }
+      })
+    }
+
+    const pallet = targetPallet
       ? await prisma.warehousePallet.update({
-          where: { id: existingPallet.id },
-          data: {
-            productName,
-            quantity,
-            lotNumber,
-            expirationDate: expirationDate ? new Date(expirationDate) : null,
-            palletHeightIn,
-            status: status || "AVAILABLE",
-            notes,
-          },
-        })
+        where: { id: targetPallet.id },
+        data: {
+          sku: normalizedSku || null,
+          productName,
+          quantity,
+          lotNumber,
+          expirationDate: expirationDate ? new Date(expirationDate) : null,
+          palletHeightIn,
+          status: status || "AVAILABLE",
+          notes,
+        },
+      })
       : await prisma.warehousePallet.create({
-          data: {
-            locationCode,
-            rack,
-            level,
-            cellNumber,
-            palletPosition,
-            sku: normalizedSku || null,
-            productName,
-            quantity,
-            lotNumber,
-            expirationDate: expirationDate ? new Date(expirationDate) : null,
-            palletHeightIn,
-            status: status || "AVAILABLE",
-            notes,
-          },
-        })
+        data: {
+          locationCode,
+          rack,
+          level,
+          cellNumber,
+          palletPosition,
+          sku: normalizedSku || null,
+          productName,
+          quantity,
+          lotNumber,
+          expirationDate: expirationDate ? new Date(expirationDate) : null,
+          palletHeightIn,
+          status: status || "AVAILABLE",
+          notes,
+        },
+      })
 
     return NextResponse.json(pallet)
   } catch (error) {

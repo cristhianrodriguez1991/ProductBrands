@@ -51,40 +51,44 @@ const ScannerEffect = ({ open, onScan }: { open: boolean, onScan: (code: string)
 };
 
 // ── Confirmation Modal Component ──
-const ConfirmDeleteModal = ({ isOpen, onClose, onConfirm, title, message }: any) => (
-  <Dialog open={isOpen} onOpenChange={onClose}>
-    <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden border-0 shadow-2xl">
-      <div className="bg-white p-6 pt-8 text-center">
-        <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4 animate-bounce">
-          <AlertTriangle className="h-8 w-8 text-red-600" />
-        </div>
-        <DialogHeader className="p-0">
-          <DialogTitle className="text-xl font-black text-slate-900 text-center uppercase tracking-tight">
-            {title}
-          </DialogTitle>
-          <div className="mt-4 text-slate-500 font-medium text-sm leading-relaxed">
-            {message}
+const ConfirmDeleteModal = ({ isOpen, onClose, onConfirm, title, message, confirmLabel, confirmColor }: any) => {
+  const label = confirmLabel || "Confirmar"
+  const colorClass = confirmColor || "bg-blue-600 hover:bg-blue-700 shadow-blue-200"
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden border-0 shadow-2xl">
+        <div className="bg-white p-6 pt-8 text-center">
+          <div className="mx-auto w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4">
+            <AlertTriangle className="h-8 w-8 text-amber-600" />
           </div>
-        </DialogHeader>
-        <div className="grid grid-cols-2 gap-3 mt-8">
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="h-11 font-black uppercase tracking-widest text-[10px] text-slate-400 hover:bg-slate-50"
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={() => { onConfirm(); onClose(); }}
-            className="h-11 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-red-200"
-          >
-            Confirmar Borrado
-          </Button>
+          <DialogHeader className="p-0">
+            <DialogTitle className="text-xl font-black text-slate-900 text-center uppercase tracking-tight">
+              {title}
+            </DialogTitle>
+            <div className="mt-4 text-slate-500 font-medium text-sm leading-relaxed">
+              {message}
+            </div>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 mt-8">
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              className="h-11 font-black uppercase tracking-widest text-[10px] text-slate-400 hover:bg-slate-50"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => { onConfirm(); onClose(); }}
+              className={`h-11 text-white font-black uppercase tracking-widest text-[10px] shadow-lg ${colorClass}`}
+            >
+              {label}
+            </Button>
+          </div>
         </div>
-      </div>
-    </DialogContent>
-  </Dialog>
-)
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 type FbaItem = {
   id: string
@@ -188,6 +192,8 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
         isOpen: true,
         title: "Pallet Mixto",
         message: `La ubicación ${tempLocation} ya está ocupada por otro producto. ¿Deseas agregarlo a este pallet mixto?`,
+        confirmLabel: "Sí, Agregar",
+        confirmColor: "bg-amber-600 hover:bg-amber-700 shadow-amber-200",
         onConfirm: () => {
           if (editingIndex !== null) {
             const newLocs = [...locations]
@@ -230,6 +236,8 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
       isOpen: true,
       title: "¿Eliminar ubicación?",
       message: `¿Estás seguro de que deseas eliminar la ubicación ${loc}? Esto también la liberará en el mapa del almacén.`,
+      confirmLabel: "Confirmar Borrado",
+      confirmColor: "bg-red-600 hover:bg-red-700 shadow-red-200",
       onConfirm: () => onChange(locations.filter(l => l !== loc).join(' + '))
     })
   }
@@ -296,7 +304,7 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
       )}
 
       {isAdding && (
-        <div className="flex flex-col gap-1 bg-white p-1.5 rounded-lg border border-blue-200 shadow-lg animate-in zoom-in-95 duration-200 z-10">
+        <div className="flex flex-col gap-1 bg-white p-1.5 rounded-lg border border-blue-200 shadow-lg z-10">
           <div className="flex items-center gap-1">
             <select
               value={rack || "A"}
@@ -397,7 +405,9 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
       as="tr"
       dragListener={false}
       dragControls={controls}
-      className="border-b hover:bg-slate-50 transition-colors bg-white group/row relative overflow-hidden"
+      transition={{ duration: 0 }}
+      style={{ position: "relative", height: "48px", maxHeight: "48px" }}
+      className="border-b bg-white group/row overflow-hidden"
     >
       <td className="p-0 border-r w-[35px] min-w-[35px] max-w-[35px] bg-slate-50 select-none">
         <div
@@ -1341,7 +1351,7 @@ export default function FbaShipmentsPage() {
         <div className="flex-1 w-full max-w-[1900px] mx-auto p-6 md:p-10">
           {activeTabId === "dashboard" ? (
             /* GOOGLE DRIVE STYLE DASHBOARD VIEW */
-            <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+            <div>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
                   <h1 className="text-3xl font-black text-slate-900 tracking-tight">Mis Envíos FBA</h1>
@@ -1515,7 +1525,7 @@ export default function FbaShipmentsPage() {
                       </tr>
                     </thead>
 
-                    <Reorder.Group axis="y" as="tbody" values={activeTab.items.filter((i: any) => i.status === "IN_SHIPMENT")} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")}>
+                    <Reorder.Group axis="y" as="tbody" layoutScroll={false} values={activeTab.items.filter((i: any) => i.status === "IN_SHIPMENT")} onReorder={(v) => handleDragReorder(v, "IN_SHIPMENT")}>
                       {activeTab.items.filter((i: any) => i.status === "IN_SHIPMENT").map((item: any, index: number) => (
                         <StandaloneRow
                           key={item.id} item={item} index={index} isPending={false}
@@ -1548,7 +1558,7 @@ export default function FbaShipmentsPage() {
 
               {/* GLOBAL PENDING SECTION */}
               {globalPendingItems.length > 0 && (
-                <div className="no-print bg-amber-50/40 rounded-3xl p-10 border border-amber-100/50 shadow-inner mt-10 mb-20 animate-in fade-in zoom-in duration-500">
+                <div className="no-print bg-amber-50/40 rounded-3xl p-10 border border-amber-100/50 shadow-inner mt-10 mb-20">
                   <h2 className="text-2xl font-black text-amber-900 mb-8 flex items-center gap-3">
                     <MousePointer2 className="h-6 w-6" /> Palets en Espera (Global)
                     <span className="text-[10px] font-black bg-amber-600 text-white px-3 py-1 rounded-full uppercase tracking-tighter">Disponible para este envío</span>
@@ -1579,7 +1589,7 @@ export default function FbaShipmentsPage() {
                           <th className="py-6 px-3 w-[70px] text-center">Acc</th>
                         </tr>
                       </thead>
-                      <Reorder.Group axis="y" as="tbody" values={globalPendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
+                      <Reorder.Group axis="y" as="tbody" layoutScroll={false} values={globalPendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
                         {globalPendingItems.map((item: any, index: number) => (
                           <StandaloneRow
                             key={item.id} item={item} index={index} isPending={true}
@@ -1640,6 +1650,8 @@ export default function FbaShipmentsPage() {
         title={confirmDialog.title}
         message={confirmDialog.message}
         onConfirm={confirmDialog.onConfirm}
+        confirmLabel={(confirmDialog as any).confirmLabel}
+        confirmColor={(confirmDialog as any).confirmColor}
       />
 
       {/* SCANNER MODAL */}

@@ -22,9 +22,36 @@ export async function POST(req: Request) {
 
       if (!source || !target) throw new Error("Pallet no encontrado.")
 
-      // Move source payload to target (update target record with source data)
+      // Determine the actual target record to update
+      let finalTargetId = targetId
+      const isTargetOccupied = !!target.productName || !!target.sku
+
+      if (isTargetOccupied && source.locationCode !== target.locationCode) {
+        // Find an empty record at same location or create a new one
+        const emptyAtLoc = await tx.warehousePallet.findFirst({
+          where: { locationCode: target.locationCode, productName: null, sku: null }
+        })
+        if (emptyAtLoc) {
+          finalTargetId = emptyAtLoc.id
+        } else {
+          // Mixed pallet: Create a new record at the location
+          const newPalletAtLoc = await tx.warehousePallet.create({
+            data: {
+              locationCode: target.locationCode,
+              rack: target.rack,
+              level: target.level,
+              cellNumber: target.cellNumber,
+              palletPosition: target.palletPosition,
+              status: "AVAILABLE",
+            }
+          })
+          finalTargetId = newPalletAtLoc.id
+        }
+      }
+
+      // Move source payload to final target
       const updatedTarget = await tx.warehousePallet.update({
-        where: { id: targetId },
+        where: { id: finalTargetId },
         data: {
           sku: source.sku,
           productName: source.productName,
@@ -56,7 +83,7 @@ export async function POST(req: Request) {
       // If we moved a pallet, we need to update any FBA items that point to the old location
       const sourceCode = source.locationCode
       const targetCode = target.locationCode
-      
+
       const itemsToUpdate = await tx.fbaShipmentItem.findMany({
         where: {
           location: { contains: sourceCode }
@@ -68,7 +95,7 @@ export async function POST(req: Request) {
           const locs = item.location.split(' + ').filter(Boolean)
           const newLocs = locs.map(l => l === sourceCode ? targetCode : l)
           const newLocationString = newLocs.join(' + ')
-          
+
           if (newLocationString !== item.location) {
             await tx.fbaShipmentItem.update({
               where: { id: item.id },
