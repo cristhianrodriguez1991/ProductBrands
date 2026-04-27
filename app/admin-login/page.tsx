@@ -36,7 +36,15 @@ export default function AdminLoginPage() {
       return
     }
 
-    // Success - redirect to admin
+    // Wait for session to be established, then redirect
+    const { getSession } = await import("next-auth/react")
+    let retries = 0
+    while (retries < 10) {
+      const session = await getSession()
+      if (session?.user) break
+      await new Promise(r => setTimeout(r, 300))
+      retries++
+    }
     window.location.href = "/admin"
   }
 
