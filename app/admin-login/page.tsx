@@ -38,17 +38,18 @@ export default function AdminLoginPage() {
         return
       }
 
-      // Fetch the session to verify admin role
+      // Fetch the session to verify role
       const sessionRes = await fetch("/api/auth/session")
       const sessionData = await sessionRes.json()
       const userRole = sessionData?.user?.role
 
-      if (userRole !== "ADMIN") {
-        // Sign out non-admin users
+      const allowedRoles = ["OWNER", "ADMIN", "SALES", "OPS", "SUPPORT", "READONLY"]
+      if (!allowedRoles.includes(userRole)) {
+        // Sign out unauthorized users (e.g. customers)
         await signOut({ redirect: false })
         toast({
           title: "Access Denied",
-          description: "This login is for administrators only.",
+          description: "You do not have access to the admin portal.",
           variant: "destructive",
         })
         setLoading(false)
