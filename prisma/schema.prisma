@@ -873,7 +873,6 @@ model WarehousePallet {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  @@unique([locationCode, sku])
   @@index([rack])
   @@index([status])
   @@index([sku])

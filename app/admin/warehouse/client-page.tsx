@@ -584,7 +584,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
     const floorTotal = floorPallets.length
 
     const colorMap: Record<string, string> = {
-      emerald: "from-red-600 to-red-800",
+      emerald: "from-emerald-600 to-emerald-800",
       blue: "from-blue-600 to-blue-800",
       violet: "from-violet-600 to-violet-800",
     }
@@ -597,7 +597,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
         >
           <div className="flex items-center gap-3">
             <Warehouse className="h-5 w-5" />
-            <span className="font-black text-lg tracking-widest uppercase">{config.label} — DEPLOYMENT TEST RED</span>
+            <span className="font-black text-lg tracking-widest uppercase">{config.label}</span>
             <span className="text-white/70 text-xs font-bold">({config.cells} cells × 3 niveles × 2 pallets = {config.cells * 6} posiciones)</span>
           </div>
           <div className="flex items-center gap-4">
