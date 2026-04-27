@@ -23,9 +23,10 @@ export default function AdminLoginPage() {
       const result = await signIn("credentials", {
         email,
         password,
-        redirect: false,
+        redirect: true,
       })
 
+      // If we get here with an error, show it
       if (result?.error) {
         toast({
           title: "Error",
@@ -33,52 +34,8 @@ export default function AdminLoginPage() {
           variant: "destructive",
         })
         setLoading(false)
-        return
       }
-
-      if (!result?.ok) {
-        toast({
-          title: "Error",
-          description: "Authentication failed. Please try again.",
-          variant: "destructive",
-        })
-        setLoading(false)
-        return
-      }
-
-      // Force a small delay to allow session to propagate
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Verify session and redirect
-      const sessionRes = await fetch("/api/auth/session")
-      const sessionData = await sessionRes.json()
-
-      if (!sessionData?.user) {
-        toast({
-          title: "Error",
-          description: "Failed to establish session. Please try again.",
-          variant: "destructive",
-        })
-        setLoading(false)
-        return
-      }
-
-      const userRole = sessionData.user.role
-      const allowedRoles = ["OWNER", "ADMIN", "SALES", "OPS", "SUPPORT", "READONLY"]
-
-      if (!allowedRoles.includes(userRole)) {
-        await signOut({ redirect: false })
-        toast({
-          title: "Access Denied",
-          description: "You do not have access to the admin portal.",
-          variant: "destructive",
-        })
-        setLoading(false)
-        return
-      }
-
-      // Use window.location for a hard redirect instead of router.push
-      window.location.href = "/admin"
+      // Otherwise, NextAuth will redirect automatically to /admin (or the page specified in authOptions)
     } catch (error) {
       console.error("Login error:", error)
       toast({
