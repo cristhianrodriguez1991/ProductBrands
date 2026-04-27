@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { signIn, signOut } from "next-auth/react"
+import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,23 +19,25 @@ export default function AdminLoginPage() {
     e.preventDefault()
     setLoading(true)
 
-    try {
-      await signIn("credentials", {
-        email,
-        password,
-        callbackUrl: "/admin",
-      })
-      // If this succeeds, NextAuth redirects to callbackUrl
-      // If it fails, NextAuth redirects back to the current page with the error in the URL
-    } catch (error) {
-      console.error("Login error:", error)
+    // Use redirect: false so we can handle errors ourselves
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    })
+
+    if (result?.error) {
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: "Invalid email or password",
         variant: "destructive",
       })
       setLoading(false)
+      return
     }
+
+    // Success - redirect to admin
+    window.location.href = "/admin"
   }
 
   return (
