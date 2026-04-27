@@ -20,22 +20,13 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
-      const result = await signIn("credentials", {
+      await signIn("credentials", {
         email,
         password,
-        redirect: true,
+        callbackUrl: "/admin",
       })
-
-      // If we get here with an error, show it
-      if (result?.error) {
-        toast({
-          title: "Error",
-          description: "Invalid email or password",
-          variant: "destructive",
-        })
-        setLoading(false)
-      }
-      // Otherwise, NextAuth will redirect automatically to /admin (or the page specified in authOptions)
+      // If this succeeds, NextAuth redirects to callbackUrl
+      // If it fails, NextAuth redirects back to the current page with the error in the URL
     } catch (error) {
       console.error("Login error:", error)
       toast({
