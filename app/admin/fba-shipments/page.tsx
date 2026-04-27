@@ -467,13 +467,13 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
         </div>
       </td>
 
-      <td className="p-1 border-l align-top w-[300px] min-w-[300px] max-w-[300px] overflow-hidden bg-white/50" style={{ width: "300px", maxWidth: "300px" }}>
+      <td className="p-0 border-l align-middle w-[300px] min-w-[300px] max-w-[300px] overflow-hidden bg-white/50" style={{ width: "300px", maxWidth: "300px" }}>
         <textarea
           onFocus={handleFocus}
           onBlur={() => { handleBlur(); commitChange("name") }}
           spellCheck={false}
           data-gramm="false"
-          className="w-full text-[11px] border-0 bg-transparent rounded-none px-2 font-bold text-slate-800 resize-none focus:ring-0 min-h-[44px] leading-tight block break-words whitespace-pre-wrap"
+          className="w-full text-[11px] border-0 bg-transparent rounded-none px-2 font-bold text-slate-800 resize-none focus:ring-0 h-[48px] min-h-[48px] leading-tight block break-words whitespace-pre-wrap py-2"
           value={localItem.name || ""}
           onChange={e => handleLocalChange("name", e.target.value)}
           rows={2}
@@ -537,13 +537,13 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
       <td className="p-0 border-l w-[55px] min-w-[55px] max-w-[55px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("width") }} type="number" className="h-8 text-[10px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={localItem.width || ""} onChange={e => handleLocalChange("width", e.target.value)} /></td>
       <td className="p-0 border-l w-[55px] min-w-[55px] max-w-[55px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("height") }} type="number" className="h-8 text-[10px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={localItem.height || ""} onChange={e => handleLocalChange("height", e.target.value)} /></td>
       <td className="p-0 border-l w-[90px] min-w-[90px] max-w-[90px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("boxWeight") }} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center font-semibold" value={localItem.boxWeight || ""} onChange={e => handleLocalChange("boxWeight", e.target.value)} /></td>
-      <td className="p-1 border-l align-top w-[300px] min-w-[300px] max-w-[300px] overflow-hidden bg-white/50" style={{ width: "300px", maxWidth: "300px" }}>
+      <td className="p-0 border-l align-middle w-[300px] min-w-[300px] max-w-[300px] overflow-hidden bg-white/50" style={{ width: "300px", maxWidth: "300px" }}>
         <textarea
           onFocus={handleFocus}
           onBlur={() => { handleBlur(); commitChange("description") }}
           spellCheck={false}
           data-gramm="false"
-          className="w-full text-[11px] border-0 bg-transparent rounded-none px-2 resize-none focus:ring-0 min-h-[44px] leading-tight block break-words whitespace-pre-wrap"
+          className="w-full text-[11px] border-0 bg-transparent rounded-none px-2 resize-none focus:ring-0 h-[48px] min-h-[48px] leading-tight block break-words whitespace-pre-wrap py-2"
           value={localItem.description || ""}
           onChange={e => handleLocalChange("description", e.target.value)}
           rows={2}
@@ -1450,7 +1450,7 @@ export default function FbaShipmentsPage() {
             </div>
           ) : activeTab ? (
             /* SHIPMENT TAB VIEW */
-            <div className="animate-in slide-in-from-bottom-5 duration-500">
+            <div className="">
               <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8 no-print">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
