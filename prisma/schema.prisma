@@ -854,7 +854,7 @@ model CleaningLog {
 
 model WarehousePallet {
   id                String   @id @default(cuid())
-  locationCode      String   @unique  // e.g. "A-TOP-01-P1", "FLOOR-A-01-P2"
+  locationCode      String   // e.g. "A1T", "B5P" — no longer unique, supports mixed pallets
   
   rack              String   // "A", "B", "C", "FLOOR-A", "FLOOR-B", "FLOOR-C"
   level             String   // "TOP", "MID", "BOT", "FLOOR"
@@ -873,6 +873,7 @@ model WarehousePallet {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  @@unique([locationCode, sku])
   @@index([rack])
   @@index([status])
   @@index([sku])

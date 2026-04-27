@@ -15,17 +15,14 @@ export async function POST(req: Request) {
       return new NextResponse("Missing source or target", { status: 400 })
     }
 
-    // Use transaction to swap them
+    // Use transaction to move pallet (supports mixed pallets — target can already have products)
     const result = await prisma.$transaction(async (tx) => {
       const source = await tx.warehousePallet.findUnique({ where: { id: sourceId } })
       const target = await tx.warehousePallet.findUnique({ where: { id: targetId } })
-      
-      if (!source || !target) throw new Error("Pallet no encontrado.")
-      if (target.status !== "AVAILABLE" && target.status !== null) {
-         throw new Error(`La posición destino ${target.locationCode} ya está ocupada.`)
-      }
 
-      // Move source payload to target
+      if (!source || !target) throw new Error("Pallet no encontrado.")
+
+      // Move source payload to target (update target record with source data)
       const updatedTarget = await tx.warehousePallet.update({
         where: { id: targetId },
         data: {

@@ -38,6 +38,9 @@ export default function AdminLoginPage() {
         return
       }
 
+      // Small delay to allow session to be established
+      await new Promise(resolve => setTimeout(resolve, 500))
+
       // Fetch the session to verify role
       const sessionRes = await fetch("/api/auth/session")
       const sessionData = await sessionRes.json()
@@ -57,7 +60,6 @@ export default function AdminLoginPage() {
       }
 
       router.push("/admin")
-      router.refresh()
     } catch (error) {
       toast({
         title: "Error",

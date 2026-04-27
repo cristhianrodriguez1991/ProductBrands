@@ -122,38 +122,29 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       const existing = await tx.warehousePallet.findUnique({ where: { id: params.id } })
       if (!existing) throw new Error("Pallet no encontrado.")
 
-      const pallet = await tx.warehousePallet.update({
-        where: { id: params.id },
-        data: {
-          sku: null,
-          productName: null,
-          quantity: null,
-          lotNumber: null,
-          expirationDate: null,
-          palletHeightIn: null,
-          status: "AVAILABLE",
-          notes: null,
-        },
-      })
+      const locationCode = existing.locationCode
+
+      // Delete the pallet record entirely (supports mixed pallets — other products at same location remain)
+      await tx.warehousePallet.delete({ where: { id: params.id } })
 
       // Two-way sync: Update FBA shipments referencing this location
       const itemsToUpdate = await tx.fbaShipmentItem.findMany({
         where: {
-          location: { contains: existing.locationCode }
+          location: { contains: locationCode }
         }
       })
 
       for (const item of itemsToUpdate) {
         if (item.location) {
           const locs = item.location.split(' + ').filter(Boolean)
-          const newLocs = locs.filter(l => l !== existing.locationCode)
+          const newLocs = locs.filter(l => l !== locationCode)
           await tx.fbaShipmentItem.update({
             where: { id: item.id },
             data: { location: newLocs.join(' + ') }
           })
         }
       }
-      return pallet
+      return { id: params.id, locationCode, deleted: true }
     })
 
     return NextResponse.json(result)

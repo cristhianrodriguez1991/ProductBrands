@@ -75,19 +75,38 @@ function RealisticPallet({ width, depth }: { width: number; depth: number }) {
 }
 
 // ── Stack of Shrink-Wrapped Boxes ──
-function WrappedBoxes({ width, depth, height, color, hovered }: { width: number; depth: number; height: number; color: string; hovered: boolean }) {
+interface WrappedBoxesProps {
+  width: number
+  depth: number
+  height: number
+  colors: string[]
+  hovered: boolean
+}
+
+function WrappedBoxes({ width, depth, height, colors, hovered }: WrappedBoxesProps) {
   const boxW = (width - 0.04 * S) / 2
   const boxD = (depth - 0.04 * S) / 2
-  
-  const layerH = 0.15 * S 
+
+  const layerH = 0.15 * S
   const numLayers = Math.max(1, Math.floor(height / layerH))
   const actualBoxH = height / numLayers
+
+  // Distribute colors across 4 inner box positions:
+  // 1 color: all boxes same color
+  // 2 colors: positions [0,1] = colors[0], positions [2,3] = colors[1]
+  const boxPositions: [number, number][] = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
+  const getBoxColor = (index: number): string => {
+    if (colors.length === 0) return "#94a3b8"
+    if (colors.length === 1) return colors[0]
+    // 2+ colors: front 2 get colors[0], back 2 get colors[1]
+    return index < 2 ? colors[0] : colors[1]
+  }
 
   return (
     <group position={[0, height / 2 + 0.04 * S, 0]}>
       {/* Outer shrink wrap */}
       <RoundedBox args={[width, height, depth]} radius={0.01 * S}>
-        <meshPhysicalMaterial 
+        <meshPhysicalMaterial
           color="#ffffff"
           transparent
           opacity={0.35}
@@ -101,17 +120,15 @@ function WrappedBoxes({ width, depth, height, color, hovered }: { width: number;
       {/* Inner boxes */}
       {Array.from({ length: numLayers }).map((_, l) => (
         <group key={l} position={[0, -height / 2 + l * actualBoxH + actualBoxH / 2, 0]}>
-          {[-1, 1].map(x => (
-            [-1, 1].map(z => (
-              <RoundedBox 
-                key={`${x}-${z}`} 
-                args={[boxW, actualBoxH - 0.01 * S, boxD]} 
-                radius={0.01 * S} 
-                position={[x * (boxW / 2 + 0.005 * S), 0, z * (boxD / 2 + 0.005 * S)]}
-              >
-                <meshStandardMaterial color={hovered ? "#60a5fa" : color} roughness={0.7} />
-              </RoundedBox>
-            ))
+          {boxPositions.map(([x, z], idx) => (
+            <RoundedBox
+              key={`${x}-${z}`}
+              args={[boxW, actualBoxH - 0.01 * S, boxD]}
+              radius={0.01 * S}
+              position={[x * (boxW / 2 + 0.005 * S), 0, z * (boxD / 2 + 0.005 * S)]}
+            >
+              <meshStandardMaterial color={hovered ? "#60a5fa" : getBoxColor(idx)} roughness={0.7} />
+            </RoundedBox>
           ))}
         </group>
       ))}
@@ -120,8 +137,8 @@ function WrappedBoxes({ width, depth, height, color, hovered }: { width: number;
 }
 
 // ── Single Pallet (3D Node) ──
-function Pallet3D({ pallet, position, onSelect, moveSourceId, onMoveClick }: {
-  pallet: Pallet;
+function Pallet3D({ pallets: palletList, position, onSelect, moveSourceId, onMoveClick }: {
+  pallets: Pallet[];
   position: [number, number, number];
   onSelect: (p: Pallet) => void;
   moveSourceId: string | null;
@@ -130,14 +147,30 @@ function Pallet3D({ pallet, position, onSelect, moveSourceId, onMoveClick }: {
   const meshRef = useRef<any>(null)
   const [hovered, setHovered] = useState(false)
 
-  const occupied = !!pallet.productName || !!pallet.sku
-  const isSource = moveSourceId === pallet.id
+  // Primary pallet is the first occupied one, or fallback to first in list
+  const primaryPallet = palletList.find(p => !!p.productName || !!p.sku) || palletList[0]
+  const occupied = !!primaryPallet.productName || !!primaryPallet.sku
+  const isSource = moveSourceId != null && palletList.some(p => p.id === moveSourceId)
   const isMoveTarget = moveSourceId !== null && !isSource && !occupied
-  const color = isSource ? "#3b82f6" : STATUS_COLORS[pallet.status] || "#94a3b8"
 
-  // Occupied pallets get a visible block of products
+  // Determine distinct occupied products for mixed pallet detection
+  const occupiedPallets = palletList.filter(p => !!p.productName || !!p.sku)
+  const distinctProducts = [...new Set(occupiedPallets.map(p => p.productName || p.sku || ""))]
+  const isMixed = distinctProducts.length > 1
+
+  // Colors: for a single product all 4 boxes same; for 2 products split front/back
+  const getColor = (p: Pallet) => {
+    if (moveSourceId != null && palletList.some(pp => pp.id === moveSourceId)) return "#3b82f6"
+    return STATUS_COLORS[p.status] || "#94a3b8"
+  }
+  const colors = isMixed
+    ? [getColor(occupiedPallets[0]), getColor(occupiedPallets[1])]
+    : occupied
+      ? [getColor(primaryPallet)]
+      : ["#94a3b8"]
+
   const displayHeight = occupied
-    ? (pallet.palletHeightIn ? Math.max(0.3, Math.min(0.85, pallet.palletHeightIn / 100)) : 0.4)
+    ? (primaryPallet.palletHeightIn ? Math.max(0.3, Math.min(0.85, primaryPallet.palletHeightIn / 100)) : 0.4)
     : 0
 
   useFrame(() => {
@@ -150,6 +183,18 @@ function Pallet3D({ pallet, position, onSelect, moveSourceId, onMoveClick }: {
     }
   })
 
+  // Label for mixed pallets: show abbreviated names of up to 2 products
+  const getMixedLabel = (): string => {
+    if (!isMixed) return ""
+    const names = distinctProducts.slice(0, 2).map(n =>
+      n.length > 10 ? n.substring(0, 10) + "..." : n
+    )
+    if (distinctProducts.length > 2) {
+      return `${distinctProducts.length} Products`
+    }
+    return names.join(" / ")
+  }
+
   return (
     <group position={position}>
       {/* Invisible Interactive Hitbox */}
@@ -158,9 +203,9 @@ function Pallet3D({ pallet, position, onSelect, moveSourceId, onMoveClick }: {
         onClick={(e: ThreeEvent<MouseEvent>) => {
           e.stopPropagation()
           if (moveSourceId) {
-            onMoveClick(pallet)
+            onMoveClick(primaryPallet)
           } else {
-            onSelect(pallet)
+            onSelect(primaryPallet)
           }
         }}
         onPointerOver={(e: ThreeEvent<PointerEvent>) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = moveSourceId ? (isMoveTarget ? "copy" : "not-allowed") : "pointer" }}
@@ -174,12 +219,12 @@ function Pallet3D({ pallet, position, onSelect, moveSourceId, onMoveClick }: {
         {occupied ? (
           <>
             <RealisticPallet width={0.40 * S} depth={0.44 * S} />
-            <WrappedBoxes 
-              width={0.36 * S} 
-              depth={0.40 * S} 
-              height={displayHeight * S} 
-              color={color} 
-              hovered={hovered} 
+            <WrappedBoxes
+              width={0.36 * S}
+              depth={0.40 * S}
+              height={displayHeight * S}
+              colors={colors}
+              hovered={hovered}
             />
           </>
         ) : (
@@ -193,6 +238,14 @@ function Pallet3D({ pallet, position, onSelect, moveSourceId, onMoveClick }: {
           </RoundedBox>
         )}
       </group>
+
+      {/* Mixed pallet amber/yellow ring indicator */}
+      {isMixed && (
+        <mesh position={[0, 0.01 * S, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.23 * S, 0.27 * S, 32]} />
+          <meshBasicMaterial color="#f59e0b" transparent opacity={0.85} />
+        </mesh>
+      )}
 
       {/* Move source glow ring */}
       {isSource && (
@@ -211,7 +264,7 @@ function Pallet3D({ pallet, position, onSelect, moveSourceId, onMoveClick }: {
       )}
 
       {/* Product Name or SKU label */}
-      {occupied && (pallet.productName || pallet.sku) && (
+      {occupied && (primaryPallet.productName || primaryPallet.sku) && !isMixed && (
         <Text
           position={[0, (displayHeight + 0.1) * S, 0]}
           fontSize={0.07 * S}
@@ -224,13 +277,45 @@ function Pallet3D({ pallet, position, onSelect, moveSourceId, onMoveClick }: {
           outlineWidth={0.005 * S}
           outlineColor="#ffffff"
         >
-          {pallet.productName 
-            ? (pallet.productName.length > 15 ? pallet.productName.substring(0, 15) + "..." : pallet.productName)
-            : pallet.sku}
+          {primaryPallet.productName
+            ? (primaryPallet.productName.length > 15 ? primaryPallet.productName.substring(0, 15) + "..." : primaryPallet.productName)
+            : primaryPallet.sku}
         </Text>
       )}
 
-      {/* Position label for empty slots (removed to prefer floor text) */}
+      {/* Mixed pallet label: show abbreviated product names */}
+      {isMixed && (
+        <Text
+          position={[0, (displayHeight + 0.1) * S, 0]}
+          fontSize={0.06 * S}
+          color="#92400e"
+          anchorX="center"
+          anchorY="bottom"
+          maxWidth={0.5 * S}
+          fontWeight="bold"
+          lineHeight={1.1}
+          outlineWidth={0.005 * S}
+          outlineColor="#fde68a"
+        >
+          {getMixedLabel()}
+        </Text>
+      )}
+
+      {/* Mixed pallet "MIX" or "2x" badge */}
+      {isMixed && (
+        <Text
+          position={[0, (displayHeight + 0.25) * S + 0.03 * S, 0]}
+          fontSize={0.055 * S}
+          color="#92400e"
+          anchorX="center"
+          anchorY="bottom"
+          fontWeight="black"
+          outlineWidth={0.003 * S}
+          outlineColor="#fde68a"
+        >
+          {occupiedPallets.length > 2 ? "MIX" : `${occupiedPallets.length}x`}
+        </Text>
+      )}
     </group>
   )
 }
@@ -248,7 +333,7 @@ function Cell3D({
   position: [number, number, number]
   p1Loc: string
   p2Loc: string
-  pallets: [Pallet | undefined, Pallet | undefined]
+  pallets: [Pallet[], Pallet[]]
   onSelect: (p: Pallet) => void
   moveSourceId: string | null
   onMoveClick: (p: Pallet) => void
@@ -281,12 +366,12 @@ function Cell3D({
       </Text>
 
       {/* Pallet 1 (Right pallet) */}
-      {pallets[0] && (
-        <Pallet3D position={[0.22 * S, 0, 0]} pallet={pallets[0]} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
+      {pallets[0].length > 0 && (
+        <Pallet3D position={[0.22 * S, 0, 0]} pallets={pallets[0]} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
       )}
       {/* Pallet 2 (Left pallet) */}
-      {pallets[1] && (
-        <Pallet3D position={[-0.22 * S, 0, 0]} pallet={pallets[1]} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
+      {pallets[1].length > 0 && (
+        <Pallet3D position={[-0.22 * S, 0, 0]} pallets={pallets[1]} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
       )}
     </group>
   )
@@ -311,7 +396,7 @@ function RackLevel3D({
   levelLabel: string
   maxHeight: number
   cellCount: number
-  palletMap: Record<string, Pallet>
+  palletMap: Record<string, Pallet[]>
   onSelect: (p: Pallet) => void
   moveSourceId: string | null
   onMoveClick: (p: Pallet) => void
@@ -347,7 +432,7 @@ function RackLevel3D({
             position={[startX - i * cellSpacing, 0, 0]}
             p1Loc={p1Key}
             p2Loc={p2Key}
-            pallets={[palletMap[p1Key], palletMap[p2Key]]}
+            pallets={[palletMap[p1Key] || [], palletMap[p2Key] || []]}
             onSelect={onSelect}
             moveSourceId={moveSourceId}
             onMoveClick={onMoveClick}
@@ -373,7 +458,7 @@ function Rack3D({
   rotation?: [number, number, number]
   rackName: string
   cellCount: number
-  palletMap: Record<string, Pallet>
+  palletMap: Record<string, Pallet[]>
   onSelect: (p: Pallet) => void
   moveSourceId: string | null
   onMoveClick: (p: Pallet) => void
@@ -474,7 +559,7 @@ function Floor3D({
   rotation?: [number, number, number]
   rackName: string
   cellCount: number
-  palletMap: Record<string, Pallet>
+  palletMap: Record<string, Pallet[]>
   onSelect: (p: Pallet) => void
   moveSourceId: string | null
   onMoveClick: (p: Pallet) => void
@@ -518,7 +603,7 @@ function Floor3D({
             position={[startX - i * cellSpacing, 0, 0]}
             p1Loc={p1Key}
             p2Loc={p2Key}
-            pallets={[palletMap[p1Key], palletMap[p2Key]]}
+            pallets={[palletMap[p1Key] || [], palletMap[p2Key] || []]}
             onSelect={onSelect}
             moveSourceId={moveSourceId}
             onMoveClick={onMoveClick}
@@ -592,8 +677,11 @@ function WarehouseScene({
   onMoveClick: (p: Pallet) => void
 }) {
   const palletMap = useMemo(() => {
-    const map: Record<string, Pallet> = {}
-    pallets.forEach((p) => (map[p.locationCode] = p))
+    const map: Record<string, Pallet[]> = {}
+    pallets.forEach((p) => {
+      if (!map[p.locationCode]) map[p.locationCode] = []
+      map[p.locationCode].push(p)
+    })
     return map
   }, [pallets])
 

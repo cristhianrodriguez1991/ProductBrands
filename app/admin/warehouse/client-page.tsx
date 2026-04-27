@@ -230,8 +230,11 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
 
   // ── Build rack groups ──
   const palletsByLocation = useMemo(() => {
-    const map: Record<string, Pallet> = {}
-    pallets.forEach((p) => (map[p.locationCode] = p))
+    const map: Record<string, Pallet[]> = {}
+    pallets.forEach((p) => {
+      if (!map[p.locationCode]) map[p.locationCode] = []
+      map[p.locationCode].push(p)
+    })
     return map
   }, [pallets])
 
@@ -318,11 +321,12 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
   const movePallet = async () => {
     if (!selectedPallet || !moveRack || !moveLevel || !movePosition) return
     const targetLocCode = `${moveRack}${movePosition}${moveLevel}`
-    const targetPallet = palletsByLocation[targetLocCode]
-    if (!targetPallet) {
+    const targetPallets = palletsByLocation[targetLocCode]
+    if (!targetPallets || targetPallets.length === 0) {
       toast({ title: "Error", description: "Posición destino no encontrada.", variant: "destructive" })
       return
     }
+    const targetPallet = targetPallets[0]
     setMoving(true)
     try {
       const res = await fetch("/api/admin/warehouse/move", {
@@ -353,14 +357,13 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
 
   // ── Drag-and-drop handlers ──
   const handleDragMovePallet = async (sourceLocCode: string, targetLocCode: string) => {
-    const sourcePallet = palletsByLocation[sourceLocCode]
-    const targetPallet = palletsByLocation[targetLocCode]
-    if (!sourcePallet || !targetPallet) return
+    const sourcePallets = palletsByLocation[sourceLocCode]
+    const targetPallets = palletsByLocation[targetLocCode]
+    if (!sourcePallets || sourcePallets.length === 0 || !targetPallets || targetPallets.length === 0) return
+    const sourcePallet = sourcePallets.find(p => isOccupied(p)) || sourcePallets[0]
+    const targetPallet = targetPallets[0]
     if (!isOccupied(sourcePallet)) return
-    if (isOccupied(targetPallet)) {
-      toast({ title: "Posición ocupada", description: `${targetLocCode} ya tiene carga.`, variant: "destructive" })
-      return
-    }
+    // Mixed pallets allowed — removing the occupied target block
     try {
       const res = await fetch("/api/admin/warehouse/move", {
         method: "POST",
@@ -390,9 +393,14 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
 
   // ── Render Pallet Slot ──
   const PalletSlot = ({ locationCode }: { locationCode: string }) => {
-    const pallet = palletsByLocation[locationCode]
-    if (!pallet) return <div className="w-[58px] h-[48px] bg-slate-100 rounded-lg border border-dashed border-slate-200" />
+    const locationPallets = palletsByLocation[locationCode] || []
+    if (locationPallets.length === 0) return <div className="w-[58px] h-[48px] bg-slate-100 rounded-lg border border-dashed border-slate-200" />
 
+    const primaryPallet = locationPallets.find(p => isOccupied(p)) || locationPallets[0]
+    const occupiedPallets = locationPallets.filter(p => isOccupied(p))
+    const isMixed = occupiedPallets.length > 1
+
+    const pallet = primaryPallet
     const occupied = isOccupied(pallet)
     const statusColor = STATUS_COLORS[pallet.status] || "bg-slate-400"
     const borderBg = STATUS_BG[pallet.status] || "bg-slate-50 border-slate-200"
@@ -438,19 +446,35 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
         )}
 
         <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ${statusColor}`} />
+        {isMixed && (
+          <div className="absolute top-0 left-0 bg-amber-500 text-white text-[6px] font-bold px-1 rounded-br rounded-tl-lg leading-none z-10">MIX</div>
+        )}
         {occupied ? (
           <div className="flex flex-col items-center justify-center w-full px-[2px] overflow-hidden mt-1">
-            <span className="text-[7.5px] font-black text-slate-800 truncate w-full text-center leading-[1.1]">
-              {pallet.productName || pallet.sku || "—"}
-            </span>
-            {pallet.productName && pallet.sku && (
-              <span className="text-[5.5px] font-bold text-slate-500 truncate w-full text-center leading-[1.1]">
-                {pallet.sku}
-              </span>
+            {isMixed ? (
+              <>
+                <span className="text-[7px] font-black text-amber-700 truncate w-full text-center leading-[1.1]">
+                  {occupiedPallets.map(p => p.productName || p.sku || "—").filter(Boolean).join(" + ")}
+                </span>
+                <span className="text-[6px] text-amber-600 font-extrabold mt-[1px] tracking-tight">
+                  {occupiedPallets.length} productos
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-[7.5px] font-black text-slate-800 truncate w-full text-center leading-[1.1]">
+                  {pallet.productName || pallet.sku || "—"}
+                </span>
+                {pallet.productName && pallet.sku && (
+                  <span className="text-[5.5px] font-bold text-slate-500 truncate w-full text-center leading-[1.1]">
+                    {pallet.sku}
+                  </span>
+                )}
+                <span className="text-[6.5px] text-slate-700 font-extrabold mt-[2px] tracking-tight">
+                  {pallet.quantity ? `QTY: ${pallet.quantity}` : ""}
+                </span>
+              </>
             )}
-            <span className="text-[6.5px] text-slate-700 font-extrabold mt-[2px] tracking-tight">
-              {pallet.quantity ? `QTY: ${pallet.quantity}` : ""}
-            </span>
           </div>
         ) : (
           <span className="text-[8px] text-slate-400 font-bold">{locationCode}</span>

@@ -139,11 +139,8 @@ export async function POST(req: Request) {
         ? `RECEIVING-${Date.now()}`
         : newLocationCode
 
-      // Check if target location exists and is available
-      const target = await tx.warehousePallet.findUnique({ where: { locationCode: finalLocationCode } })
-      if (target && target.productName && !finalLocationCode.toUpperCase().startsWith("RECEIVING")) {
-        throw new Error(`Location ${finalLocationCode} is already occupied`)
-      }
+      // Check if target location exists
+      const target = await tx.warehousePallet.findFirst({ where: { locationCode: finalLocationCode } })
 
       // If target exists, update it with source data
       if (target) {

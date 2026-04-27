@@ -211,34 +211,43 @@ export async function POST(req: Request) {
               notes: notes || null,
             }
           })
-        : await prisma.warehousePallet.upsert({
-            where: { locationCode: finalLocationCode },
-        update: {
-          sku: sku || null,
-          productName,
-          quantity: quantity ? parseInt(quantity) : null,
-          lotNumber: lotNumber || null,
-          expirationDate: expirationDate ? new Date(expirationDate) : null,
-          palletHeightIn: palletHeightIn ? parseFloat(palletHeightIn) : null,
-          status: status || "AVAILABLE",
-          notes: notes || null,
-        },
-        create: {
-          locationCode,
-          rack,
-          level,
-          cellNumber: parseInt(cellNumber),
-          palletPosition: parseInt(palletPosition),
-          sku: sku || null,
-          productName,
-          quantity: quantity ? parseInt(quantity) : null,
-          lotNumber: lotNumber || null,
-          expirationDate: expirationDate ? new Date(expirationDate) : null,
-          palletHeightIn: palletHeightIn ? parseFloat(palletHeightIn) : null,
-          status: status || "AVAILABLE",
-          notes: notes || null,
-        },
-      })
+        : await (async () => {
+            // Support mixed pallets: find existing pallet at this location with the same SKU, or create new
+            const existingPallet = await prisma.warehousePallet.findFirst({
+              where: { locationCode: finalLocationCode, sku: sku || null }
+            })
+            if (existingPallet) {
+              return prisma.warehousePallet.update({
+                where: { id: existingPallet.id },
+                data: {
+                  productName,
+                  quantity: quantity ? parseInt(quantity) : null,
+                  lotNumber: lotNumber || null,
+                  expirationDate: expirationDate ? new Date(expirationDate) : null,
+                  palletHeightIn: palletHeightIn ? parseFloat(palletHeightIn) : null,
+                  status: status || "AVAILABLE",
+                  notes: notes || null,
+                },
+              })
+            }
+            return prisma.warehousePallet.create({
+              data: {
+                locationCode,
+                rack,
+                level,
+                cellNumber: parseInt(cellNumber),
+                palletPosition: parseInt(palletPosition),
+                sku: sku || null,
+                productName,
+                quantity: quantity ? parseInt(quantity) : null,
+                lotNumber: lotNumber || null,
+                expirationDate: expirationDate ? new Date(expirationDate) : null,
+                palletHeightIn: palletHeightIn ? parseFloat(palletHeightIn) : null,
+                status: status || "AVAILABLE",
+                notes: notes || null,
+              },
+            })
+          })()
 
       // If UPC or Amazon fields are provided, link or create an InventoryItem
       const { upc, fnsku, asin, imageUrl, description } = body

@@ -70,34 +70,41 @@ export async function POST(req: Request) {
       }
     }
 
-    const pallet = await prisma.warehousePallet.upsert({
-      where: { locationCode },
-      update: {
-        sku,
-        productName,
-        quantity,
-        lotNumber,
-        expirationDate: expirationDate ? new Date(expirationDate) : null,
-        palletHeightIn,
-        status: status || "AVAILABLE",
-        notes,
-      },
-      create: {
-        locationCode,
-        rack,
-        level,
-        cellNumber,
-        palletPosition,
-        sku,
-        productName,
-        quantity,
-        lotNumber,
-        expirationDate: expirationDate ? new Date(expirationDate) : null,
-        palletHeightIn,
-        status: status || "AVAILABLE",
-        notes,
-      },
+    // Support mixed pallets: find existing pallet at this location with the same SKU, or create new
+    const existingPallet = await prisma.warehousePallet.findFirst({
+      where: { locationCode, sku: sku || null }
     })
+
+    const pallet = existingPallet
+      ? await prisma.warehousePallet.update({
+          where: { id: existingPallet.id },
+          data: {
+            productName,
+            quantity,
+            lotNumber,
+            expirationDate: expirationDate ? new Date(expirationDate) : null,
+            palletHeightIn,
+            status: status || "AVAILABLE",
+            notes,
+          },
+        })
+      : await prisma.warehousePallet.create({
+          data: {
+            locationCode,
+            rack,
+            level,
+            cellNumber,
+            palletPosition,
+            sku,
+            productName,
+            quantity,
+            lotNumber,
+            expirationDate: expirationDate ? new Date(expirationDate) : null,
+            palletHeightIn,
+            status: status || "AVAILABLE",
+            notes,
+          },
+        })
 
     return NextResponse.json(pallet)
   } catch (error) {
