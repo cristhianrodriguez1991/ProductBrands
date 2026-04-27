@@ -126,14 +126,14 @@ const ConfirmDeleteModal = ({ isOpen, onClose, onConfirm, title, message }: any)
           </div>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3 mt-8">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             onClick={onClose}
             className="h-11 font-black uppercase tracking-widest text-[10px] text-slate-400 hover:bg-slate-50"
           >
             Cancelar
           </Button>
-          <Button 
+          <Button
             onClick={() => { onConfirm(); onClose(); }}
             className="h-11 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-red-200"
           >
@@ -151,7 +151,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
     isOpen: false,
     title: "",
     message: "",
-    onConfirm: () => {}
+    onConfirm: () => { }
   })
   const [selectedPallet, setSelectedPallet] = useState<Pallet | null>(null)
   const [otherPalletsAtLoc, setOtherPalletsAtLoc] = useState<Pallet[]>([])
@@ -471,9 +471,9 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
         <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ${statusColor}`} />
         {/* Split-color background for mixed pallets */}
         {isMixed && (
-          <div className="absolute inset-0 flex">
-            <div className="flex-1" style={{ backgroundColor: `${firstProductColor}26` }} />
-            <div className="flex-1" style={{ backgroundColor: `${secondProductColor}26` }} />
+          <div className="absolute inset-0 flex opacity-90">
+            <div className="flex-1" style={{ backgroundColor: firstProductColor }} />
+            <div className="flex-1" style={{ backgroundColor: secondProductColor }} />
           </div>
         )}
         {isMixed && (
@@ -483,10 +483,10 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
           <div className="flex flex-col items-center justify-center w-full px-[2px] overflow-hidden mt-1">
             {isMixed ? (
               <>
-                <span className="text-[7px] font-black text-amber-700 truncate w-full text-center leading-[1.1]">
+                <span className="text-[7px] font-black text-white drop-shadow-md truncate w-full text-center leading-[1.1]">
                   {occupiedPallets.map(p => p.productName || p.sku || "—").filter(Boolean).join(" + ")}
                 </span>
-                <span className="text-[6px] text-amber-600 font-extrabold mt-[1px] tracking-tight">
+                <span className="text-[6px] text-white/90 font-extrabold mt-[1px] tracking-tight drop-shadow-md">
                   {occupiedPallets.length} productos
                 </span>
                 <span
@@ -770,7 +770,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
               const data = await res.json()
               setPallets(data)
             }
-          } catch {}
+          } catch { }
         }} />
       ) : (
         <div className="space-y-6">
@@ -917,9 +917,9 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
                           // A position is only "available" to show if at least one of its levels is free
                           const levels = [...LEVELS.map(l => l.key), "P"]
                           const hasFreeLevel = levels.some(lvl => {
-                             const loc = `${moveRack}${num}${lvl}`
-                             const p = pallets.find(p => p.locationCode === loc)
-                             return !p || p.status === "AVAILABLE"
+                            const loc = `${moveRack}${num}${lvl}`
+                            const p = pallets.find(p => p.locationCode === loc)
+                            return !p || p.status === "AVAILABLE"
                           })
                           if (!hasFreeLevel) return null
                           return <option key={num} value={String(num)}>{num}</option>
@@ -945,10 +945,10 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
                         return <option key={lvl.key} value={lvl.key}>{lvl.label} ({lvl.key})</option>
                       })}
                       {(() => {
-                         const locCode = `${moveRack}${movePosition}P`
-                         const isTaken = pallets.find(p => p.locationCode === locCode && p.status !== "AVAILABLE")
-                         if (isTaken) return null
-                         return <option value="P">PISO (P)</option>
+                        const locCode = `${moveRack}${movePosition}P`
+                        const isTaken = pallets.find(p => p.locationCode === locCode && p.status !== "AVAILABLE")
+                        if (isTaken) return null
+                        return <option value="P">PISO (P)</option>
                       })()}
                     </select>
                   </div>
@@ -979,7 +979,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
       </Dialog>
 
       {/* Modal de Confirmación Global */}
-      <ConfirmDeleteModal 
+      <ConfirmDeleteModal
         isOpen={confirmDialog.isOpen}
         onClose={() => setConfirmDialog(p => ({ ...p, isOpen: false }))}
         title={confirmDialog.title}

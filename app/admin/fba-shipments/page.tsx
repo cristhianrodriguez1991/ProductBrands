@@ -184,7 +184,24 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
     const isMine = locations.includes(tempLocation)
 
     if (isOccupiedByOther && !isMine) {
-      setConfirmOccupied(tempLocation)
+      setConfirm({
+        isOpen: true,
+        title: "Pallet Mixto",
+        message: `La ubicación ${tempLocation} ya está ocupada por otro producto. ¿Deseas agregarlo a este pallet mixto?`,
+        onConfirm: () => {
+          if (editingIndex !== null) {
+            const newLocs = [...locations]
+            newLocs[editingIndex] = tempLocation
+            onChange(newLocs.join(' + '))
+          } else {
+            if (!locations.includes(tempLocation)) {
+              onChange([...locations, tempLocation].join(' + '))
+            }
+          }
+          setIsAdding(false)
+          setEditingIndex(null)
+        }
+      });
       return
     }
 
@@ -238,14 +255,12 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
             <div
               key={`${loc}-${idx}`}
               onClick={() => loc !== "ENVIADO" && handleStartEdit(loc, idx)}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-black transition-all group/loc relative pr-5 shadow-sm ${loc === "ENVIADO" ? "bg-blue-600 text-white border-blue-700 cursor-default" : isMixed ? "bg-amber-100 text-amber-800 border-amber-300 ring-2 ring-amber-400 cursor-pointer" : editingIndex === idx ? "bg-blue-600 text-white border-blue-700 cursor-pointer" : "bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200 hover:border-blue-200 cursor-pointer"}`}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-black transition-all group/loc relative pr-5 shadow-sm overflow-hidden ${loc === "ENVIADO" ? "bg-blue-600 text-white border-blue-700 cursor-default" : isMixed ? "text-white border-transparent cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-slate-400" : editingIndex === idx ? "bg-blue-600 text-white border-blue-700 cursor-pointer" : "bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200 hover:border-blue-200 cursor-pointer"}`}
               title={isMixed ? `Pallet mixto: ${mixedProducts.join(", ")}` : loc}
             >
-              {loc === "ENVIADO" ? "📦 ENVIADO" : loc}
-              {isMixed && <span className="inline-flex items-center justify-center px-1 py-0 text-[7px] font-black bg-amber-500 text-white rounded ml-0.5 leading-none">MIX</span>}
               {isMixed && (
-                <span
-                  className="absolute left-0.5 right-0.5 -bottom-0.5 h-1 rounded-full"
+                <div
+                  className="absolute inset-0 z-0 opacity-90"
                   style={{
                     background: mixedColors.length > 1
                       ? `linear-gradient(90deg, ${mixedColors[0]} 0%, ${mixedColors[0]} 50%, ${mixedColors[1]} 50%, ${mixedColors[1]} 100%)`
@@ -253,10 +268,14 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
                   }}
                 />
               )}
+              <span className={`relative z-10 ${isMixed ? "drop-shadow-md" : ""}`}>
+                {loc === "ENVIADO" ? "📦 ENVIADO" : loc}
+              </span>
+              {isMixed && <span className="relative z-10 inline-flex items-center justify-center px-1 py-0 text-[7px] font-black bg-white/20 backdrop-blur-sm shadow-sm text-white rounded ml-0.5 leading-none">MIX</span>}
               {loc !== "ENVIADO" && (
                 <button
                   onClick={(e) => handleRemoveClick(e, loc)}
-                  className="absolute right-0.5 hover:bg-red-100 hover:text-red-700 rounded p-0.5 transition-colors opacity-0 group-hover/loc:opacity-100"
+                  className="absolute right-0.5 z-10 hover:bg-red-500/80 hover:text-white text-slate-400 rounded p-0.5 transition-colors opacity-0 group-hover/loc:opacity-100"
                 >
                   <X className="h-2 w-2" />
                 </button>
@@ -325,53 +344,6 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
           </div>
         </div>
       )}
-
-      {/* Confirmation dialog for adding to an occupied location (mixed pallet) */}
-      <Dialog open={!!confirmOccupied} onOpenChange={(open) => { if (!open) setConfirmOccupied(null) }}>
-        <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden border-0 shadow-2xl">
-          <div className="bg-white p-6 pt-8 text-center">
-            <div className="mx-auto w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4">
-              <AlertTriangle className="h-8 w-8 text-amber-600" />
-            </div>
-            <DialogHeader className="p-0">
-              <DialogTitle className="text-xl font-black text-slate-900 text-center uppercase tracking-tight">
-                Pallet Mixto
-              </DialogTitle>
-              <div className="mt-4 text-slate-500 font-medium text-sm leading-relaxed">
-                La ubicaci&oacute;n <span className="font-black text-amber-700">{confirmOccupied}</span> ya est&aacute; ocupada por otro producto. &iquest;Deseas agregarlo como pallet mixto?
-              </div>
-            </DialogHeader>
-            <div className="grid grid-cols-2 gap-3 mt-8">
-              <Button
-                variant="ghost"
-                onClick={() => setConfirmOccupied(null)}
-                className="h-11 font-black uppercase tracking-widest text-[10px] text-slate-400 hover:bg-slate-50"
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={() => {
-                  if (confirmOccupied) {
-                    if (editingIndex !== null) {
-                      const newLocs = [...locations]
-                      newLocs[editingIndex] = confirmOccupied
-                      onChange(newLocs.join(' + '))
-                    } else if (!locations.includes(confirmOccupied)) {
-                      onChange([...locations, confirmOccupied].join(' + '))
-                    }
-                  }
-                  setConfirmOccupied(null)
-                  setIsAdding(false)
-                  setEditingIndex(null)
-                }}
-                className="h-11 bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-amber-200"
-              >
-                Confirmar Pallet Mixto
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
@@ -382,6 +354,17 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
   const handleFocus = useCallback(() => setFocusedItemId(item.id), [item.id, setFocusedItemId])
   const handleBlur = useCallback(() => setFocusedItemId(null), [setFocusedItemId])
   const expiring = item.expDate && new Date(item.expDate.replace(/(\d{2})(\d{2})(\d{2})/, '20$3-$1-$2')) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+
+  const [localItem, setLocalItem] = useState(item)
+  useEffect(() => { setLocalItem(item) }, [item])
+
+  const handleLocalChange = (field: string, value: any) => setLocalItem((prev: any) => ({ ...prev, [field]: value }))
+
+  const commitChange = (field: string) => {
+    if (localItem[field] !== item[field]) {
+      updateItem(item.id, field, localItem[field])
+    }
+  }
 
   const handleLookup = async (code: string) => {
     if (!code || code.length < 5) return
@@ -438,7 +421,7 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
         />
       </td>
       <td className="p-0 border-l w-[130px] min-w-[130px] max-w-[130px]">
-        <Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={item.boxOrder || ""} onChange={e => updateItem(item.id, "boxOrder", e.target.value)} />
+        <Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("boxOrder") }} className="h-8 text-[11px] border-0 bg-transparent rounded-none px-2" value={localItem.boxOrder || ""} onChange={e => handleLocalChange("boxOrder", e.target.value)} />
       </td>
 
       <td className="p-1 border-l text-center w-[130px] min-w-[130px] max-w-[130px]">
@@ -484,26 +467,26 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
         </div>
       </td>
 
-      <td className="p-1 border-l align-top w-[300px] min-w-[300px] max-w-[300px] overflow-hidden">
+      <td className="p-1 border-l align-top w-[300px] min-w-[300px] max-w-[300px] overflow-hidden" style={{ width: "300px", maxWidth: "300px" }}>
         <textarea
           onFocus={handleFocus}
-          onBlur={handleBlur}
-          className="w-full text-[11px] border-0 bg-transparent rounded-none px-2 font-bold text-slate-800 resize-none focus:ring-0 min-h-[40px] leading-tight block"
-          value={item.name || ""}
-          onChange={e => updateItem(item.id, "name", e.target.value)}
+          onBlur={() => { handleBlur(); commitChange("name") }}
+          className="w-full text-[11px] border-0 bg-transparent rounded-none px-2 font-bold text-slate-800 resize-none focus:ring-0 min-h-[40px] leading-tight block break-words whitespace-pre-wrap"
+          value={localItem.name || ""}
+          onChange={e => handleLocalChange("name", e.target.value)}
           rows={2}
         />
       </td>
       <td className="p-0 border-l w-[180px] min-w-[180px] max-w-[180px]">
         <div className="relative group/input flex items-center w-full">
           <Input
-            onFocus={handleFocus} onBlur={handleBlur}
+            onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("fnsku") }}
             className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2 pr-7 w-full focus:bg-white shadow-none"
-            value={item.fnsku || ""}
-            onChange={e => { updateItem(item.id, "fnsku", e.target.value); handleLookup(e.target.value); }}
+            value={localItem.fnsku || ""}
+            onChange={e => { handleLocalChange("fnsku", e.target.value); if (e.target.value.length >= 5) handleLookup(e.target.value); }}
           />
           <button
-            onClick={() => onOpenScanner((code: string) => { updateItem(item.id, "fnsku", code); handleLookup(code); })}
+            onClick={() => onOpenScanner((code: string) => { handleLocalChange("fnsku", code); handleLookup(code); commitChange("fnsku"); })}
             className="absolute right-1 text-slate-300 hover:text-blue-600 transition-colors bg-white/50 rounded p-0.5"
           >
             <QrCode className="h-3.5 w-3.5" />
@@ -513,46 +496,46 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
       <td className="p-0 border-l w-[180px] min-w-[180px] max-w-[180px]">
         <div className="relative group/input flex items-center w-full">
           <Input
-            onFocus={handleFocus} onBlur={handleBlur}
+            onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("upc") }}
             className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2 pr-7 w-full focus:bg-white shadow-none"
-            value={item.upc || ""}
-            onChange={e => { updateItem(item.id, "upc", e.target.value); handleLookup(e.target.value); }}
+            value={localItem.upc || ""}
+            onChange={e => { handleLocalChange("upc", e.target.value); if (e.target.value.length >= 5) handleLookup(e.target.value); }}
             placeholder="UPC" title="UPC"
           />
           <button
-            onClick={() => onOpenScanner((code: string) => { updateItem(item.id, "upc", code); handleLookup(code); })}
+            onClick={() => onOpenScanner((code: string) => { handleLocalChange("upc", code); handleLookup(code); commitChange("upc"); })}
             className="absolute right-1 text-slate-300 hover:text-blue-600 transition-colors bg-white/50 rounded p-0.5"
           >
             <QrCode className="h-3.5 w-3.5" />
           </button>
         </div>
       </td>
-      <td className="p-0 border-l w-[160px] min-w-[160px] max-w-[160px]"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.sku || ""} onChange={e => updateItem(item.id, "sku", e.target.value)} /></td>
-      <td className="p-0 border-l w-[160px] min-w-[160px] max-w-[160px]"><Input onFocus={handleFocus} onBlur={handleBlur} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={item.asin || ""} onChange={e => updateItem(item.id, "asin", e.target.value)} placeholder="ASIN" title="ASIN" /></td>
-      <td className="p-0 border-l w-[85px] min-w-[85px] max-w-[85px]"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center" value={item.qtyPerBox || ""} onChange={e => updateItem(item.id, "qtyPerBox", e.target.value)} /></td>
-      <td className="p-0 border-l w-[105px] min-w-[105px] max-w-[105px]"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center" value={item.totalBoxes || ""} onChange={e => updateItem(item.id, "totalBoxes", e.target.value)} /></td>
+      <td className="p-0 border-l w-[160px] min-w-[160px] max-w-[160px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("sku") }} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={localItem.sku || ""} onChange={e => handleLocalChange("sku", e.target.value)} /></td>
+      <td className="p-0 border-l w-[160px] min-w-[160px] max-w-[160px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("asin") }} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={localItem.asin || ""} onChange={e => handleLocalChange("asin", e.target.value)} placeholder="ASIN" title="ASIN" /></td>
+      <td className="p-0 border-l w-[85px] min-w-[85px] max-w-[85px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("qtyPerBox") }} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center" value={localItem.qtyPerBox || ""} onChange={e => handleLocalChange("qtyPerBox", e.target.value)} /></td>
+      <td className="p-0 border-l w-[105px] min-w-[105px] max-w-[105px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("totalBoxes") }} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center" value={localItem.totalBoxes || ""} onChange={e => handleLocalChange("totalBoxes", e.target.value)} /></td>
       <td className="p-0 border-l w-[115px] min-w-[115px] max-w-[115px] text-center font-black text-xs px-2 bg-green-50/50 text-green-700">{item.totalUnits || 0}</td>
       <td className="p-0 border-l w-[115px] min-w-[115px] max-w-[115px] relative">
         <Input
-          onFocus={handleFocus} onBlur={handleBlur}
+          onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("expDate") }}
           className={`h-8 text-[11px] border-0 bg-transparent rounded-none px-2 ${expiring ? "text-red-600 font-bold bg-red-50" : ""}`}
-          value={item.expDate || ""}
+          value={localItem.expDate || ""}
           placeholder="MMDDYY"
-          onChange={e => updateItem(item.id, "expDate", e.target.value)}
+          onChange={e => handleLocalChange("expDate", e.target.value)}
         />
         {expiring && <AlertCircle className="h-3 w-3 absolute right-1 top-2.5 text-red-500 animate-pulse pointer-events-none" />}
       </td>
-      <td className="p-0 border-l w-[55px] min-w-[55px] max-w-[55px]"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-8 text-[10px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={item.length || ""} onChange={e => updateItem(item.id, "length", e.target.value)} /></td>
-      <td className="p-0 border-l w-[55px] min-w-[55px] max-w-[55px]"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-8 text-[10px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={item.width || ""} onChange={e => updateItem(item.id, "width", e.target.value)} /></td>
-      <td className="p-0 border-l w-[55px] min-w-[55px] max-w-[55px]"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-8 text-[10px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={item.height || ""} onChange={e => updateItem(item.id, "height", e.target.value)} /></td>
-      <td className="p-0 border-l w-[90px] min-w-[90px] max-w-[90px]"><Input onFocus={handleFocus} onBlur={handleBlur} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center font-semibold" value={item.boxWeight || ""} onChange={e => updateItem(item.id, "boxWeight", e.target.value)} /></td>
-      <td className="p-1 border-l align-top w-[300px] min-w-[300px] max-w-[300px] overflow-hidden">
+      <td className="p-0 border-l w-[55px] min-w-[55px] max-w-[55px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("length") }} type="number" className="h-8 text-[10px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={localItem.length || ""} onChange={e => handleLocalChange("length", e.target.value)} /></td>
+      <td className="p-0 border-l w-[55px] min-w-[55px] max-w-[55px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("width") }} type="number" className="h-8 text-[10px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={localItem.width || ""} onChange={e => handleLocalChange("width", e.target.value)} /></td>
+      <td className="p-0 border-l w-[55px] min-w-[55px] max-w-[55px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("height") }} type="number" className="h-8 text-[10px] border-0 bg-transparent rounded-none px-1 w-full text-center" value={localItem.height || ""} onChange={e => handleLocalChange("height", e.target.value)} /></td>
+      <td className="p-0 border-l w-[90px] min-w-[90px] max-w-[90px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("boxWeight") }} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center font-semibold" value={localItem.boxWeight || ""} onChange={e => handleLocalChange("boxWeight", e.target.value)} /></td>
+      <td className="p-1 border-l align-top w-[300px] min-w-[300px] max-w-[300px] overflow-hidden" style={{ width: "300px", maxWidth: "300px" }}>
         <textarea
           onFocus={handleFocus}
-          onBlur={handleBlur}
-          className="w-full text-[11px] border-0 bg-transparent rounded-none px-2 resize-none focus:ring-0 min-h-[40px] leading-tight block"
-          value={item.description || ""}
-          onChange={e => updateItem(item.id, "description", e.target.value)}
+          onBlur={() => { handleBlur(); commitChange("description") }}
+          className="w-full text-[11px] border-0 bg-transparent rounded-none px-2 resize-none focus:ring-0 min-h-[40px] leading-tight block break-words whitespace-pre-wrap"
+          value={localItem.description || ""}
+          onChange={e => handleLocalChange("description", e.target.value)}
           rows={2}
         />
       </td>

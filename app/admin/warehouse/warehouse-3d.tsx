@@ -102,11 +102,11 @@ function WrappedBoxes({ width, depth, height, colors, hovered }: WrappedBoxesPro
   // 1 color: all boxes same color
   // 2 colors: lower half of layers uses colors[0], upper half uses colors[1]
   const boxPositions: [number, number][] = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
-  const getBoxColor = (index: number, layerIndex: number): string => {
+  const getBoxColor = (x: number, z: number, layerIndex: number): string => {
     if (colors.length === 0) return "#94a3b8"
     if (colors.length === 1) return colors[0]
-    const splitLayer = Math.ceil(numLayers / 2)
-    return layerIndex < splitLayer ? colors[0] : colors[1]
+    // Split the pallet evenly into left vs right (x < 0 vs x > 0)
+    return x < 0 ? colors[0] : colors[1]
   }
 
   return (
@@ -134,7 +134,7 @@ function WrappedBoxes({ width, depth, height, colors, hovered }: WrappedBoxesPro
               radius={0.01 * S}
               position={[x * (boxW / 2 + 0.005 * S), 0, z * (boxD / 2 + 0.005 * S)]}
             >
-              <meshStandardMaterial color={hovered ? "#60a5fa" : getBoxColor(idx, l)} roughness={0.7} />
+              <meshStandardMaterial color={hovered ? "#60a5fa" : getBoxColor(x, z, l)} roughness={0.7} />
             </RoundedBox>
           ))}
         </group>
@@ -359,14 +359,14 @@ function Cell3D({
 
       {/* Platform labels on metal plaques for each Pallet */}
       <RoundedBox args={[0.36 * S, 0.08 * S, 0.02 * S]} position={[0.22 * S, 0.02 * S, 0.26 * S]} radius={0.005 * S}>
-         <meshStandardMaterial color="#0f172a" roughness={0.4} metalness={0.6} />
+        <meshStandardMaterial color="#0f172a" roughness={0.4} metalness={0.6} />
       </RoundedBox>
       <Text position={[0.22 * S, 0.02 * S, 0.275 * S]} fontSize={0.055 * S} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="black">
         {p1Loc}
       </Text>
 
       <RoundedBox args={[0.36 * S, 0.08 * S, 0.02 * S]} position={[-0.22 * S, 0.02 * S, 0.26 * S]} radius={0.005 * S}>
-         <meshStandardMaterial color="#0f172a" roughness={0.4} metalness={0.6} />
+        <meshStandardMaterial color="#0f172a" roughness={0.4} metalness={0.6} />
       </RoundedBox>
       <Text position={[-0.22 * S, 0.02 * S, 0.275 * S]} fontSize={0.055 * S} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="black">
         {p2Loc}
@@ -885,7 +885,7 @@ export default function Warehouse3D({
 
       {/* Legend & Layout Controls */}
       <div className="absolute top-4 right-4 z-10 flex flex-col gap-3 items-end">
-        
+
         {/* Toggle Panel */}
         <div className="bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-slate-200 flex items-center gap-2">
           <span className="text-[9px] font-black tracking-widest uppercase text-slate-500 mr-1">Racks</span>
@@ -893,11 +893,10 @@ export default function Warehouse3D({
             <button
               key={r}
               onClick={() => setVisibleRacks(prev => ({ ...prev, [r]: !prev[r] }))}
-              className={`w-6 h-6 flex justify-center items-center rounded-full border-2 text-[10px] font-black transition-all ${
-                visibleRacks[r] 
-                  ? "bg-slate-800 border-slate-900 text-white shadow-md scale-100" 
-                  : "bg-slate-100 border-slate-200 text-slate-400 scale-95 opacity-50 hover:opacity-80"
-              }`}
+              className={`w-6 h-6 flex justify-center items-center rounded-full border-2 text-[10px] font-black transition-all ${visibleRacks[r]
+                ? "bg-slate-800 border-slate-900 text-white shadow-md scale-100"
+                : "bg-slate-100 border-slate-200 text-slate-400 scale-95 opacity-50 hover:opacity-80"
+                }`}
             >
               {r}
             </button>
