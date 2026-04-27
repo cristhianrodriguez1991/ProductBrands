@@ -132,14 +132,14 @@ export function CreateUserForm({ onSuccess }: CreateUserFormProps) {
   const displayPermissions = useCustomPermissions ? selectedPermissions : rolePermissions
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
       {error && (
         <div className="p-3 text-sm text-red-500 bg-red-50 rounded border border-red-200">
           {error}
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-1">
         <Label htmlFor="email">Email</Label>
         <Input
           id="email"
@@ -149,7 +149,7 @@ export function CreateUserForm({ onSuccess }: CreateUserFormProps) {
         />
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1">
         <Label htmlFor="name">Name</Label>
         <Input
           id="name"
@@ -159,7 +159,7 @@ export function CreateUserForm({ onSuccess }: CreateUserFormProps) {
         />
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1">
         <Label htmlFor="password">Password</Label>
         <Input
           id="password"
@@ -172,7 +172,7 @@ export function CreateUserForm({ onSuccess }: CreateUserFormProps) {
         />
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1">
         <Label htmlFor="role">Role</Label>
         <Select
           value={selectedRole}
@@ -212,7 +212,7 @@ export function CreateUserForm({ onSuccess }: CreateUserFormProps) {
       </div>
 
       {/* Custom Permissions Toggle */}
-      <div className="flex items-center space-x-2 pt-2 border-t">
+      <div className="flex items-center space-x-2 pt-1 border-t">
         <Checkbox
           id="customPerms"
           checked={useCustomPermissions}
@@ -229,7 +229,7 @@ export function CreateUserForm({ onSuccess }: CreateUserFormProps) {
       </div>
 
       {/* Permissions Grid */}
-      <div className="border rounded-lg p-3 space-y-2">
+      <div className="border rounded-lg p-2 space-y-1">
         <Label className="text-sm">
           {useCustomPermissions ? "Select Permissions" : "Included Permissions (read-only)"}
         </Label>
@@ -275,7 +275,7 @@ export function CreateUserForm({ onSuccess }: CreateUserFormProps) {
         </div>
       </div>
 
-      <div className="flex justify-end gap-2 pt-4">
+      <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" onClick={() => onSuccess?.()}>
           Cancel
         </Button>

@@ -1,10 +1,8 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { redirect } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { formatDate } from "@/lib/utils"
 import { UserRole } from "@prisma/client"
 import { getRolePermissions, PERMISSIONS, Permission } from "@/lib/permissions"
@@ -68,32 +66,7 @@ export default async function AdminUsersPage() {
         </div>
       </div>
 
-      {/* Permission Reference Card */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-lg">Permission Levels</CardTitle>
-          <CardDescription>Default permissions for each role</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {Object.values(UserRole).filter(r => r !== UserRole.CUSTOMER).map((role) => {
-              const permissions = getRolePermissions(role)
-              return (
-                <div key={role} className="border rounded-lg p-3">
-                  <Badge className="mb-2">{role}</Badge>
-                  <ul className="text-sm space-y-1 text-muted-foreground">
-                    {permissions.map((p) => (
-                      <li key={p}>&bull; {PERMISSION_LABELS[p]}</li>
-                    ))}
-                  </ul>
-                </div>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="space-y-4">
+<div className="space-y-4">
         {users.map((user) => (
           <Card key={user.id}>
             <CardHeader>
