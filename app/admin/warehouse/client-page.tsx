@@ -60,6 +60,14 @@ const STATUS_BG: Record<string, string> = {
   OUTBOUND: "bg-blue-50 border-blue-200",
 }
 
+const STATUS_HEX: Record<string, string> = {
+  AVAILABLE: "#ecfdf5",
+  DAMAGED: "#fef2f2",
+  HOLD: "#fff7ed",
+  INBOUND: "#faf5ff",
+  OUTBOUND: "#eff6ff",
+}
+
 const STATUS_LABELS: Record<string, string> = {
   AVAILABLE: "Disponible",
   DAMAGED: "Dañado",
@@ -139,6 +147,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
     onConfirm: () => {}
   })
   const [selectedPallet, setSelectedPallet] = useState<Pallet | null>(null)
+  const [otherPalletsAtLoc, setOtherPalletsAtLoc] = useState<Pallet[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [seeding, setSeeding] = useState(false)
@@ -239,8 +248,9 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
   }, [pallets])
 
   // ── Open form ──
-  const openPalletForm = (pallet: Pallet) => {
+  const openPalletForm = (pallet: Pallet, allPalletsAtLoc?: Pallet[]) => {
     setSelectedPallet(pallet)
+    setOtherPalletsAtLoc((allPalletsAtLoc || []).filter(p => p.id !== pallet.id && (p.productName || p.sku)))
     setForm({
       sku: pallet.sku || "",
       productName: pallet.productName || "",
@@ -403,12 +413,18 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
     const pallet = primaryPallet
     const occupied = isOccupied(pallet)
     const statusColor = STATUS_COLORS[pallet.status] || "bg-slate-400"
-    const borderBg = STATUS_BG[pallet.status] || "bg-slate-50 border-slate-200"
+
+    // For mixed pallets, use split background colors
+    const secondPallet = isMixed ? occupiedPallets[1] : null
+    const firstColor = STATUS_BG[pallet.status] || "bg-slate-50 border-slate-200"
+    const secondColor = secondPallet ? (STATUS_BG[secondPallet.status] || "bg-slate-50 border-slate-200") : ""
+    const borderBg = isMixed ? "" : (STATUS_BG[pallet.status] || "bg-slate-50 border-slate-200")
+
     const isDragOver = dragSourceId !== null && dragSourceId !== pallet.id && !occupied
 
     return (
       <div
-        onClick={() => openPalletForm(pallet)}
+        onClick={() => openPalletForm(pallet, locationPallets)}
         onDragOver={(e) => {
           if (dragSourceId && !occupied) {
             e.preventDefault()
@@ -423,8 +439,8 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
           }
           setDragSourceId(null)
         }}
-        className={`w-[58px] h-[48px] rounded-lg border-2 flex flex-col items-center justify-center gap-0 transition-all cursor-pointer hover:scale-105 hover:shadow-lg hover:z-10 relative select-none group ${borderBg} ${isDragOver ? "ring-2 ring-blue-400 ring-offset-1 scale-110 !bg-blue-50 !border-blue-300" : ""} ${dragSourceId === pallet.id ? "opacity-40 scale-95" : ""}`}
-        title={`${locationCode}${occupied ? `\n${pallet.productName || pallet.sku || ""}` : "\nVacío — suelta un pallet aquí"}`}
+        className={`w-[58px] h-[48px] rounded-lg border-2 flex flex-col items-center justify-center gap-0 transition-all cursor-pointer hover:scale-105 hover:shadow-lg hover:z-10 relative select-none group overflow-hidden ${isMixed ? "border-amber-400" : borderBg} ${isDragOver ? "ring-2 ring-blue-400 ring-offset-1 scale-110 !bg-blue-50 !border-blue-300" : ""} ${dragSourceId === pallet.id ? "opacity-40 scale-95" : ""}`}
+        title={`${locationCode}${occupied ? `\n${occupiedPallets.map(p => p.productName || p.sku).join(" + ")}` : "\nVacío — suelta un pallet aquí"}`}
       >
         {/* Drag handle — only visible on hover for occupied pallets */}
         {occupied && (
@@ -446,6 +462,13 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
         )}
 
         <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ${statusColor}`} />
+        {/* Split-color background for mixed pallets */}
+        {isMixed && (
+          <div className="absolute inset-0 flex">
+            <div className="flex-1" style={{backgroundColor: STATUS_HEX[pallet.status] || "#f8fafc"}} />
+            <div className="flex-1" style={{backgroundColor: secondPallet ? (STATUS_HEX[secondPallet.status] || "#f8fafc") : "#94a3b8"}} />
+          </div>
+        )}
         {isMixed && (
           <div className="absolute top-0 left-0 bg-amber-500 text-white text-[6px] font-bold px-1 rounded-br rounded-tl-lg leading-none z-10">MIX</div>
         )}
@@ -764,6 +787,21 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
               <span className="text-xs font-bold text-emerald-600">Piso — sin límite de altura</span>
             )}
           </DialogHeader>
+
+          {/* Other products at this location (mixed pallet) */}
+          {otherPalletsAtLoc.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2">Pallet Mixto — Otros productos aquí:</p>
+              {otherPalletsAtLoc.map(p => (
+                <div key={p.id} className="flex items-center gap-2 text-xs py-1">
+                  <div className={`w-2 h-2 rounded-full ${STATUS_COLORS[p.status] || "bg-slate-400"}`} />
+                  <span className="font-bold text-slate-700">{p.productName || p.sku || "—"}</span>
+                  {p.quantity && <span className="text-slate-500">×{p.quantity}</span>}
+                  <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded ${STATUS_COLORS[p.status] || "bg-slate-400 text-white"}`}>{p.status}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">

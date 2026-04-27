@@ -19,33 +19,23 @@ export default function AdminLoginPage() {
     e.preventDefault()
     setLoading(true)
 
-    // Use redirect: false so we can handle errors ourselves
+    // Let NextAuth handle the redirect natively — this ensures the session
+    // cookie is fully set before the browser navigates to /admin
     const result = await signIn("credentials", {
       email,
       password,
-      redirect: false,
+      callbackUrl: "/admin",
     })
 
-    if (result?.error) {
+    // signIn with default redirect:true only returns on error
+    if (result === undefined || result?.error) {
       toast({
         title: "Error",
         description: "Invalid email or password",
         variant: "destructive",
       })
       setLoading(false)
-      return
     }
-
-    // Wait for session to be established, then redirect
-    const { getSession } = await import("next-auth/react")
-    let retries = 0
-    while (retries < 10) {
-      const session = await getSession()
-      if (session?.user) break
-      await new Promise(r => setTimeout(r, 300))
-      retries++
-    }
-    window.location.href = "/admin"
   }
 
   return (

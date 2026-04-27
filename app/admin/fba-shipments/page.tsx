@@ -207,12 +207,15 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
           <span className="text-[10px] text-slate-300 font-medium italic py-1">Sin ubicación</span>
         )}
         {locations.map((loc, idx) => {
-          const isMixed = loc !== "ENVIADO" && (warehousePositions?.filter((p: any) => p.locationCode === loc && p.status !== "AVAILABLE").length || 0) > 1
+          const palletsAtLoc = warehousePositions?.filter((p: any) => p.locationCode === loc && p.status !== "AVAILABLE") || []
+          const isMixed = loc !== "ENVIADO" && palletsAtLoc.length > 1
+          const mixedProducts = isMixed ? palletsAtLoc.map((p: any) => p.productName || p.sku).filter(Boolean) : []
           return (
             <div
               key={`${loc}-${idx}`}
               onClick={() => loc !== "ENVIADO" && handleStartEdit(loc, idx)}
               className={`flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-black transition-all group/loc relative pr-5 shadow-sm ${loc === "ENVIADO" ? "bg-blue-600 text-white border-blue-700 cursor-default" : isMixed ? "bg-amber-100 text-amber-800 border-amber-300 ring-2 ring-amber-400 cursor-pointer" : editingIndex === idx ? "bg-blue-600 text-white border-blue-700 cursor-pointer" : "bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200 hover:border-blue-200 cursor-pointer"}`}
+              title={isMixed ? `Pallet mixto: ${mixedProducts.join(", ")}` : loc}
             >
               {loc === "ENVIADO" ? "📦 ENVIADO" : loc}
               {isMixed && <span className="inline-flex items-center justify-center px-1 py-0 text-[7px] font-black bg-amber-500 text-white rounded ml-0.5 leading-none">MIX</span>}
