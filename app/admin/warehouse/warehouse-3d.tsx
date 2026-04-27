@@ -171,7 +171,7 @@ function Pallet3D({ pallets: palletList, position, onSelect, moveSourceId, onMov
     return colorFromSeed(p.productName || p.sku || p.id)
   }
   const colors = isMixed
-    ? [getColor(occupiedPallets[0]), getColor(occupiedPallets[1])]
+    ? ["#ff0000", "#0000ff"] // RED and BLUE — UNMISTAKABLE
     : occupied
       ? [getColor(primaryPallet)]
       : ["#94a3b8"]
