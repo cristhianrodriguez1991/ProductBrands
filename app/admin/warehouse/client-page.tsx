@@ -421,10 +421,9 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
     const occupied = isOccupied(pallet)
     const statusColor = STATUS_COLORS[pallet.status] || "bg-slate-400"
 
-    // For mixed pallets, use split background colors
     const secondPallet = isMixed ? occupiedPallets[1] : null
-    const firstProductColor = colorFromSeed(pallet.productName || pallet.sku || pallet.id)
-    const secondProductColor = secondPallet ? colorFromSeed(secondPallet.productName || secondPallet.sku || secondPallet.id) : firstProductColor
+    const firstProductColorClass = STATUS_COLORS[occupiedPallets[0]?.status] || "bg-slate-400"
+    const secondProductColorClass = secondPallet ? (STATUS_COLORS[secondPallet.status] || "bg-slate-400") : firstProductColorClass
     const borderBg = isMixed ? "" : (STATUS_BG[pallet.status] || "bg-slate-50 border-slate-200")
 
     const isDragOver = dragSourceId !== null && dragSourceId !== pallet.id && !occupied
@@ -470,9 +469,9 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
 
         <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ${statusColor}`} />
         {isMixed && (
-          <div className="absolute inset-0 flex">
-            <div className="flex-1 h-full border-r border-white/20" style={{ backgroundColor: firstProductColor }} />
-            <div className="flex-1 h-full" style={{ backgroundColor: secondProductColor }} />
+          <div className="absolute inset-0 flex overflow-hidden rounded-lg opacity-80 mix-blend-multiply">
+            <div className={`flex-1 h-full border-r border-white/20 ${firstProductColorClass}`} />
+            <div className={`flex-1 h-full ${secondProductColorClass}`} />
           </div>
         )}
         {isMixed && (

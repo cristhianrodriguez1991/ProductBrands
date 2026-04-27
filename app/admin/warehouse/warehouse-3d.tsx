@@ -165,13 +165,21 @@ function Pallet3D({ pallets: palletList, position, onSelect, moveSourceId, onMov
   const distinctProducts = [...new Set(occupiedPallets.map(p => p.productName || p.sku || ""))]
   const isMixed = distinctProducts.length > 1
 
+  const STATUS_HEX: Record<string, string> = {
+    AVAILABLE: "#10b981",
+    DAMAGED: "#dc2626",
+    HOLD: "#f97316",
+    INBOUND: "#a855f7",
+    OUTBOUND: "#2563eb",
+  }
+
   // Colors: for a single product all 4 boxes same; for 2 products split front/back
   const getColor = (p: Pallet) => {
     if (moveSourceId != null && palletList.some(pp => pp.id === moveSourceId)) return "#3b82f6"
-    return colorFromSeed(p.productName || p.sku || p.id)
+    return STATUS_HEX[p.status] || "#94a3b8"
   }
   const colors = isMixed
-    ? [colorFromSeed((occupiedPallets[0].productName || "") + "1"), colorFromSeed((occupiedPallets[1].productName || "") + "2")]
+    ? [getColor(occupiedPallets[0]), getColor(occupiedPallets[1])]
     : occupied
       ? [getColor(primaryPallet)]
       : ["#94a3b8"]
