@@ -1469,8 +1469,6 @@ export default function FbaShipmentsPage() {
                   <div>
                     <div className="flex items-center gap-3">
                       <h1 className="text-3xl font-black text-slate-900 leading-none">{activeTab.name}</h1>
-                      {saveStatus === "saving" && <span className="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full font-bold animate-pulse">Guardando...</span>}
-                      {saveStatus === "saved" && <span className="text-[10px] bg-green-50 text-green-500 px-2 py-0.5 rounded-full font-bold">Guardado</span>}
                     </div>
                   </div>
                 </div>
