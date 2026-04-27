@@ -193,6 +193,9 @@ export async function POST(req: Request) {
         }
       }
 
+      const normalizedSku = typeof sku === "string" ? sku.trim() : ""
+      const normalizedProductName = typeof productName === "string" ? productName.trim() : ""
+
       const pallet = locationCode.toUpperCase().startsWith("RECEIVING")
         ? await prisma.warehousePallet.create({
             data: {
@@ -201,7 +204,7 @@ export async function POST(req: Request) {
               level: "FLOOR",
               cellNumber: parseInt(cellNumber) || 1,
               palletPosition: parseInt(palletPosition) || 1,
-              sku: sku || null,
+              sku: normalizedSku || null,
               productName,
               quantity: quantity ? parseInt(quantity) : null,
               lotNumber: lotNumber || null,
@@ -212,9 +215,16 @@ export async function POST(req: Request) {
             }
           })
         : await (async () => {
-            // Support mixed pallets: find existing pallet at this location with the same SKU, or create new
+            // Support mixed pallets without overwriting different products when SKU is empty
             const existingPallet = await prisma.warehousePallet.findFirst({
-              where: { locationCode: finalLocationCode, sku: sku || null }
+              where: {
+                locationCode: finalLocationCode,
+                OR: normalizedSku
+                  ? [{ sku: normalizedSku }]
+                  : normalizedProductName
+                    ? [{ sku: null, productName: normalizedProductName }]
+                    : [{ sku: null, productName: null }],
+              }
             })
             if (existingPallet) {
               return prisma.warehousePallet.update({
@@ -237,7 +247,7 @@ export async function POST(req: Request) {
                 level,
                 cellNumber: parseInt(cellNumber),
                 palletPosition: parseInt(palletPosition),
-                sku: sku || null,
+                sku: normalizedSku || null,
                 productName,
                 quantity: quantity ? parseInt(quantity) : null,
                 lotNumber: lotNumber || null,

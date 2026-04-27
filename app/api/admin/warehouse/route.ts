@@ -70,9 +70,20 @@ export async function POST(req: Request) {
       }
     }
 
-    // Support mixed pallets: find existing pallet at this location with the same SKU, or create new
+    const normalizedSku = typeof sku === "string" ? sku.trim() : ""
+    const normalizedProductName = typeof productName === "string" ? productName.trim() : ""
+
+    // Support mixed pallets without overwriting different products when SKU is empty.
+    // Match by SKU when provided; if SKU is empty, match by product name at the location.
     const existingPallet = await prisma.warehousePallet.findFirst({
-      where: { locationCode, sku: sku || null }
+      where: {
+        locationCode,
+        OR: normalizedSku
+          ? [{ sku: normalizedSku }]
+          : normalizedProductName
+            ? [{ sku: null, productName: normalizedProductName }]
+            : [{ sku: null, productName: null }],
+      }
     })
 
     const pallet = existingPallet
@@ -95,7 +106,7 @@ export async function POST(req: Request) {
             level,
             cellNumber,
             palletPosition,
-            sku,
+            sku: normalizedSku || null,
             productName,
             quantity,
             lotNumber,

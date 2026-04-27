@@ -169,9 +169,18 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
 
   const { rack, num, level } = parseLocationCode(tempLocation)
 
-  const handleAddField = () => {
+  const handleAddField = async () => {
     // Check if location is occupied by another product (not already one of this item's locations)
-    const isOccupiedByOther = warehousePositions?.find((p: any) => p.locationCode === tempLocation && isOccupiedWarehousePosition(p))
+    let latestPositions = warehousePositions || []
+    try {
+      const res = await fetch("/api/admin/warehouse")
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data)) latestPositions = data
+      }
+    } catch {}
+
+    const isOccupiedByOther = latestPositions.find((p: any) => p.locationCode === tempLocation && isOccupiedWarehousePosition(p))
     const isMine = locations.includes(tempLocation)
 
     if (isOccupiedByOther && !isMine) {
@@ -1259,6 +1268,30 @@ export default function FbaShipmentsPage() {
     (sh.name || "").toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  const renderShipmentColGroup = () => (
+    <colgroup>
+      <col style={{ width: "35px" }} />
+      <col style={{ width: "110px" }} />
+      <col style={{ width: "130px" }} />
+      <col style={{ width: "130px" }} />
+      <col style={{ width: "300px" }} />
+      <col style={{ width: "180px" }} />
+      <col style={{ width: "180px" }} />
+      <col style={{ width: "160px" }} />
+      <col style={{ width: "160px" }} />
+      <col style={{ width: "85px" }} />
+      <col style={{ width: "105px" }} />
+      <col style={{ width: "115px" }} />
+      <col style={{ width: "115px" }} />
+      <col style={{ width: "55px" }} />
+      <col style={{ width: "55px" }} />
+      <col style={{ width: "55px" }} />
+      <col style={{ width: "90px" }} />
+      <col style={{ width: "300px" }} />
+      <col style={{ width: "70px" }} />
+    </colgroup>
+  )
+
   if (loading) return <div className="p-12 text-center animate-pulse text-slate-400 font-bold">Cargando Portal FBA...</div>
 
   const activeTab = tabs.find(t => t.id === activeTabId)
@@ -1463,6 +1496,7 @@ export default function FbaShipmentsPage() {
               <Card className="w-full border-0 shadow-2xl rounded-none overflow-hidden bg-white mb-10 border border-slate-100">
                 <div className="overflow-x-auto custom-scrollbar">
                   <table className="text-left border-collapse min-w-[2200px] table-fixed">
+                    {renderShipmentColGroup()}
                     <thead>
                       <tr className="bg-[#1f4e3d] text-white text-[11px] uppercase font-black tracking-widest">
                         <th className="py-6 px-1 w-[35px] text-center bg-[#163a2d]"></th>
@@ -1527,6 +1561,7 @@ export default function FbaShipmentsPage() {
                   </h2>
                   <div className="overflow-x-auto rounded-none border border-amber-200 bg-white shadow-xl">
                     <table className="text-left min-w-[2000px] table-fixed border-collapse">
+                      {renderShipmentColGroup()}
                       <thead>
                         <tr className="bg-amber-800 text-white text-[10px] uppercase font-black tracking-widest">
                           <th className="py-4 px-1 w-[30px] text-center"></th>
