@@ -480,22 +480,19 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
           <div className="absolute top-0 left-0 bg-amber-500 text-white text-[6px] font-bold px-1 rounded-br rounded-tl-lg leading-none z-10">MIX</div>
         )}
         {occupied ? (
-          <div className="flex flex-col items-center justify-center w-full px-[2px] overflow-hidden mt-1">
+          <div className="flex flex-col items-center justify-center w-full px-[2px] overflow-hidden mt-1 h-full">
             {isMixed ? (
-              <>
-                <span className="text-[7px] font-black text-white drop-shadow-md truncate w-full text-center leading-[1.1]">
-                  {occupiedPallets.map(p => p.productName || p.sku || "—").filter(Boolean).join(" + ")}
+              <div className="flex flex-col gap-[2px] w-full">
+                <span className="text-[6.5px] font-black text-white drop-shadow-md truncate w-full text-center leading-[1.1] bg-black/20 rounded">
+                  {occupiedPallets[0].productName || occupiedPallets[0].sku}
                 </span>
-                <span className="text-[6px] text-white/90 font-extrabold mt-[1px] tracking-tight drop-shadow-md">
-                  {occupiedPallets.length} productos
+                <span className="text-[6.5px] font-black text-white drop-shadow-md truncate w-full text-center leading-[1.1] bg-black/20 rounded">
+                  {occupiedPallets[1].productName || occupiedPallets[1].sku}
                 </span>
-                <span
-                  className="w-full h-1 rounded-full mt-[2px]"
-                  style={{
-                    background: `linear-gradient(90deg, ${firstProductColor} 0%, ${firstProductColor} 50%, ${secondProductColor} 50%, ${secondProductColor} 100%)`,
-                  }}
-                />
-              </>
+                {occupiedPallets.length > 2 && (
+                  <span className="text-[5px] text-white/90 font-bold self-center">+{occupiedPallets.length - 2} más</span>
+                )}
+              </div>
             ) : (
               <>
                 <span className="text-[7.5px] font-black text-slate-800 truncate w-full text-center leading-[1.1]">
@@ -801,18 +798,25 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
             )}
           </DialogHeader>
 
-          {/* Other products at this location (mixed pallet) */}
-          {otherPalletsAtLoc.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2">Pallet Mixto — Otros productos aquí:</p>
-              {otherPalletsAtLoc.map(p => (
-                <div key={p.id} className="flex items-center gap-2 text-xs py-1">
-                  <div className={`w-2 h-2 rounded-full ${STATUS_COLORS[p.status] || "bg-slate-400"}`} />
-                  <span className="font-bold text-slate-700">{p.productName || p.sku || "—"}</span>
-                  {p.quantity && <span className="text-slate-500">×{p.quantity}</span>}
-                  <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded ${STATUS_COLORS[p.status] || "bg-slate-400 text-white"}`}>{p.status}</span>
-                </div>
-              ))}
+          {/* Multi-Pallet Switcher */}
+          {palletsByLocation[selectedPallet?.locationCode || ""]?.filter(isOccupied).length > 1 && (
+            <div className="flex flex-wrap gap-2 mb-4 p-2 bg-slate-50 rounded-xl border border-slate-100">
+              {palletsByLocation[selectedPallet?.locationCode || ""]
+                .filter(isOccupied)
+                .map((p, idx) => (
+                  <button
+                    key={p.id}
+                    onClick={() => openPalletForm(p, palletsByLocation[p.locationCode])}
+                    className={`flex-1 min-w-[120px] px-3 py-2 rounded-lg text-left transition-all border-2 ${selectedPallet?.id === p.id
+                      ? "bg-white border-emerald-500 shadow-md ring-2 ring-emerald-100"
+                      : "bg-slate-100 border-transparent hover:border-slate-300 opacity-60 hover:opacity-100"}`}
+                  >
+                    <div className="text-[8px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Pallet {idx + 1}</div>
+                    <div className="text-[10px] font-black text-slate-800 truncate">{p.productName || p.sku}</div>
+                    <div className="text-[9px] font-bold text-slate-500">QTY: {p.quantity || 0}</div>
+                  </button>
+                ))
+              }
             </div>
           )}
 

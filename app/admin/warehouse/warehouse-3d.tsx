@@ -91,52 +91,52 @@ interface WrappedBoxesProps {
 }
 
 function WrappedBoxes({ width, depth, height, colors, hovered }: WrappedBoxesProps) {
-  const boxW = (width - 0.04 * S) / 2
-  const boxD = (depth - 0.04 * S) / 2
+  const isMixed = colors.length > 1
+  const boxW = isMixed ? (width - 0.08 * S) / 2 : (width - 0.04 * S) / 2
+  const boxD = isMixed ? (depth - 0.04 * S) / 2 : (depth - 0.04 * S) / 2
 
   const layerH = 0.15 * S
   const numLayers = Math.max(1, Math.floor(height / layerH))
   const actualBoxH = height / numLayers
 
-  // Distribute colors:
-  // 1 color: all boxes same color
-  // 2 colors: lower half of layers uses colors[0], upper half uses colors[1]
   const boxPositions: [number, number][] = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
-  const getBoxColor = (x: number, z: number, layerIndex: number): string => {
-    if (colors.length === 0) return "#94a3b8"
-    if (colors.length === 1) return colors[0]
-    // Split the pallet evenly into left vs right (x < 0 vs x > 0)
-    return x < 0 ? colors[0] : colors[1]
-  }
 
   return (
     <group position={[0, height / 2 + 0.04 * S, 0]}>
-      {/* Outer shrink wrap */}
+      {/* Outer shrink wrap - slightly more transparent for mixed */}
       <RoundedBox args={[width, height, depth]} radius={0.01 * S}>
         <meshPhysicalMaterial
           color="#ffffff"
           transparent
-          opacity={0.35}
+          opacity={isMixed ? 0.25 : 0.35}
           roughness={0.2}
           metalness={0.1}
           clearcoat={1.0}
-          clearcoatRoughness={0.1}
         />
       </RoundedBox>
 
       {/* Inner boxes */}
       {Array.from({ length: numLayers }).map((_, l) => (
         <group key={l} position={[0, -height / 2 + l * actualBoxH + actualBoxH / 2, 0]}>
-          {boxPositions.map(([x, z], idx) => (
-            <RoundedBox
-              key={`${x}-${z}`}
-              args={[boxW, actualBoxH - 0.01 * S, boxD]}
-              radius={0.01 * S}
-              position={[x * (boxW / 2 + 0.005 * S), 0, z * (boxD / 2 + 0.005 * S)]}
-            >
-              <meshStandardMaterial color={hovered ? "#60a5fa" : getBoxColor(x, z, l)} roughness={0.7} />
-            </RoundedBox>
-          ))}
+          {boxPositions.map(([x, z], idx) => {
+            // For mixed pallets, x < 0 is product 1, x > 0 is product 2
+            const colorIdx = isMixed ? (x < 0 ? 0 : 1) : 0
+            const color = colors[colorIdx] || "#94a3b8"
+            // Add a gap in the middle for mixed pallets
+            const xPos = x * (boxW / 2 + (isMixed ? 0.02 * S : 0.005 * S))
+            const zPos = z * (boxD / 2 + 0.005 * S)
+
+            return (
+              <RoundedBox
+                key={`${idx}`}
+                args={[boxW, actualBoxH - 0.01 * S, boxD]}
+                radius={0.01 * S}
+                position={[xPos, 0, zPos]}
+              >
+                <meshStandardMaterial color={hovered ? "#60a5fa" : color} roughness={0.7} />
+              </RoundedBox>
+            )
+          })}
         </group>
       ))}
     </group>
@@ -292,20 +292,35 @@ function Pallet3D({ pallets: palletList, position, onSelect, moveSourceId, onMov
 
       {/* Mixed pallet label: show abbreviated product names */}
       {isMixed && (
-        <Text
-          position={[0, (displayHeight + 0.1) * S, 0]}
-          fontSize={0.06 * S}
-          color="#92400e"
-          anchorX="center"
-          anchorY="bottom"
-          maxWidth={0.5 * S}
-          fontWeight="bold"
-          lineHeight={1.1}
-          outlineWidth={0.005 * S}
-          outlineColor="#fde68a"
-        >
-          {getMixedLabel()}
-        </Text>
+        <group position={[0, (displayHeight + 0.1) * S, 0]}>
+          <Text
+            position={[0, 0.15 * S, 0]}
+            fontSize={0.12 * S}
+            color="#fbbf24"
+            anchorX="center"
+            anchorY="bottom"
+            maxWidth={0.8 * S}
+            fontWeight="black"
+            lineHeight={1}
+            outlineWidth={0.02 * S}
+            outlineColor="#92400e"
+          >
+            {`MIXTO`}
+          </Text>
+          <Text
+            fontSize={0.055 * S}
+            color="#92400e"
+            anchorX="center"
+            anchorY="bottom"
+            maxWidth={0.55 * S}
+            fontWeight="black"
+            lineHeight={1.1}
+            outlineWidth={0.005 * S}
+            outlineColor="#ffffff"
+          >
+            {getMixedLabel()}
+          </Text>
+        </group>
       )}
 
       {/* Mixed pallet "MIX" or "2x" badge */}
