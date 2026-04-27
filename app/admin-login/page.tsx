@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { signIn, signOut } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,7 +10,6 @@ import { useToast } from "@/components/ui/use-toast"
 import { Shield } from "lucide-react"
 
 export default function AdminLoginPage() {
-  const router = useRouter()
   const { toast } = useToast()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -38,17 +36,37 @@ export default function AdminLoginPage() {
         return
       }
 
-      // Small delay to allow session to be established
-      await new Promise(resolve => setTimeout(resolve, 500))
+      if (!result?.ok) {
+        toast({
+          title: "Error",
+          description: "Authentication failed. Please try again.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
 
-      // Fetch the session to verify role
+      // Force a small delay to allow session to propagate
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Verify session and redirect
       const sessionRes = await fetch("/api/auth/session")
       const sessionData = await sessionRes.json()
-      const userRole = sessionData?.user?.role
 
+      if (!sessionData?.user) {
+        toast({
+          title: "Error",
+          description: "Failed to establish session. Please try again.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      const userRole = sessionData.user.role
       const allowedRoles = ["OWNER", "ADMIN", "SALES", "OPS", "SUPPORT", "READONLY"]
+
       if (!allowedRoles.includes(userRole)) {
-        // Sign out unauthorized users (e.g. customers)
         await signOut({ redirect: false })
         toast({
           title: "Access Denied",
@@ -59,11 +77,13 @@ export default function AdminLoginPage() {
         return
       }
 
-      router.push("/admin")
+      // Use window.location for a hard redirect instead of router.push
+      window.location.href = "/admin"
     } catch (error) {
+      console.error("Login error:", error)
       toast({
         title: "Error",
-        description: "Something went wrong",
+        description: "Something went wrong. Please try again.",
         variant: "destructive",
       })
       setLoading(false)
