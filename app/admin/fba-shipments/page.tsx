@@ -1300,6 +1300,23 @@ export default function FbaShipmentsPage() {
 
   const activeTab = tabs.find(t => t.id === activeTabId)
 
+  const calculatePallets = () => {
+    if (!activeTab || !activeTab.items) return 0
+    const inShipmentItems = activeTab.items.filter((i: any) => i.status === "IN_SHIPMENT")
+    let totalVolume = 0
+    inShipmentItems.forEach((item: any) => {
+      const length = parseFloat(item.length) || 0
+      const width = parseFloat(item.width) || 0
+      const height = parseFloat(item.height) || 0
+      const boxes = parseInt(item.totalBoxes) || 0
+      if (length > 0 && width > 0 && height > 0 && boxes > 0) {
+        totalVolume += (length * width * height) * boxes
+      }
+    })
+    const palletVolume = 40 * 48 * 72 // 138,240 cubic inches
+    return totalVolume / palletVolume
+  }
+
   return (
     <>
       <div className="w-full flex flex-col h-full bg-[#f8fafc] min-h-screen font-sans">
@@ -1491,6 +1508,19 @@ export default function FbaShipmentsPage() {
                   <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white rounded-xl shadow-sm px-6 font-bold border-slate-200"><Printer className="h-5 w-5" /> Imprimir</Button>
                   <Button variant="outline" onClick={() => exportToExcelObject(activeTab, activeTab.items)} className="h-12 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 rounded-xl px-6 font-bold gap-2"><Download className="h-5 w-5" /> Exportar Excel</Button>
                   <Button variant="ghost" onClick={() => closeTab(activeTab.id)} className="h-12 rounded-xl px-6 font-bold text-slate-500 hover:bg-slate-200">Cerrar Pestaña</Button>
+                </div>
+              </div>
+
+              {/* PALLET ESTIMATION */}
+              <div className="mb-6 flex items-center gap-4 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-100 rounded-2xl p-4 shadow-sm no-print animate-in fade-in slide-in-from-top-2 duration-300 max-w-xs">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-200">
+                  <LayoutGrid className="h-6 w-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-emerald-800/70 uppercase tracking-widest">Pallets Estimados</span>
+                  <div className="text-2xl font-black text-emerald-900 flex items-baseline gap-1">
+                    {calculatePallets().toFixed(2)} <span className="text-sm font-bold text-emerald-700/80">Pallets</span>
+                  </div>
                 </div>
               </div>
 
