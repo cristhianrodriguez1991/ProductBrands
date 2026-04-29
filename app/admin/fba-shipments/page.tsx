@@ -1303,18 +1303,35 @@ export default function FbaShipmentsPage() {
   const calculatePallets = () => {
     if (!activeTab || !activeTab.items) return 0
     const inShipmentItems = activeTab.items.filter((i: any) => i.status === "IN_SHIPMENT")
-    let totalVolume = 0
+    let totalPallets = 0
+    
     inShipmentItems.forEach((item: any) => {
-      const length = parseFloat(item.length) || 0
-      const width = parseFloat(item.width) || 0
-      const height = parseFloat(item.height) || 0
+      const l = parseFloat(item.length) || 0
+      const w = parseFloat(item.width) || 0
+      const h = parseFloat(item.height) || 0
       const boxes = parseInt(item.totalBoxes) || 0
-      if (length > 0 && width > 0 && height > 0 && boxes > 0) {
-        totalVolume += (length * width * height) * boxes
+
+      if (l > 0 && w > 0 && h > 0 && boxes > 0) {
+        // Orientación 1: Largo a lo largo de 40", Ancho a lo largo de 48"
+        const ti1 = Math.floor(40 / l) * Math.floor(48 / w)
+        // Orientación 2: Largo a lo largo de 48", Ancho a lo largo de 40"
+        const ti2 = Math.floor(48 / l) * Math.floor(40 / w)
+        const ti = Math.max(ti1, ti2)
+
+        const hi = Math.floor(72 / h)
+        const boxesPerPallet = ti * hi
+
+        if (boxesPerPallet > 0) {
+          totalPallets += boxes / boxesPerPallet
+        } else {
+          // Fallback volumétrico si la caja es muy grande para el cálculo estándar
+          const boxVol = l * w * h
+          const palletVol = 40 * 48 * 72
+          totalPallets += (boxVol * boxes) / palletVol
+        }
       }
     })
-    const palletVolume = 40 * 48 * 72 // 138,240 cubic inches
-    return totalVolume / palletVolume
+    return totalPallets
   }
 
   return (
