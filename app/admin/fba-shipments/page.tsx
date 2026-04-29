@@ -1529,15 +1529,10 @@ export default function FbaShipmentsPage() {
               </div>
 
               {/* PALLET ESTIMATION */}
-              <div className="mb-6 flex items-center gap-4 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-100 rounded-2xl p-4 shadow-sm no-print animate-in fade-in slide-in-from-top-2 duration-300 max-w-xs">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-200">
-                  <LayoutGrid className="h-6 w-6" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-emerald-800/70 uppercase tracking-widest">Pallets Estimados</span>
-                  <div className="text-2xl font-black text-emerald-900 flex items-baseline gap-1">
-                    {calculatePallets().toFixed(2)} <span className="text-sm font-bold text-emerald-700/80">Pallets</span>
-                  </div>
+              <div className="mb-4 flex items-center gap-2 no-print animate-in fade-in duration-300">
+                <div className="text-xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2">
+                  <LayoutGrid className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Pallets: <span className="font-black text-emerald-900 text-sm">{calculatePallets().toFixed(2)}</span></span>
                 </div>
               </div>
 
