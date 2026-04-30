@@ -20,7 +20,7 @@ export async function PATCH(
     if (contentType.includes("multipart/form-data")) {
       const formData = await req.formData()
       const rawData: Record<string, any> = {}
-      
+
       for (const [key, value] of formData.entries()) {
         if (key === "files" || key === "labels") continue
         rawData[key] = value

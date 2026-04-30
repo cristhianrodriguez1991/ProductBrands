@@ -419,6 +419,7 @@ function RackLevel3D({
   onSelect,
   moveSourceId,
   onMoveClick,
+  reverseOrder,
 }: {
   position: [number, number, number]
   rackName: string
@@ -430,6 +431,7 @@ function RackLevel3D({
   onSelect: (p: Pallet) => void
   moveSourceId: string | null
   onMoveClick: (p: Pallet) => void
+  reverseOrder?: boolean
 }) {
   const cellSpacing = 0.95 * S
   const totalWidth = cellCount * cellSpacing
@@ -451,9 +453,9 @@ function RackLevel3D({
 
       {/* Cells (drawn Right to Left) */}
       {Array.from({ length: cellCount }, (_, i) => {
-        const cellNum = i + 1
-        const globalP1 = (cellNum - 1) * 2 + 1
-        const globalP2 = (cellNum - 1) * 2 + 2
+        const cellNum = reverseOrder ? cellCount - i : i + 1
+        const globalP1 = reverseOrder ? cellNum * 2 : cellNum * 2 - 1
+        const globalP2 = reverseOrder ? cellNum * 2 - 1 : cellNum * 2
         const p1Key = `${rackName}${globalP1}${levelKey}`
         const p2Key = `${rackName}${globalP2}${levelKey}`
         return (
@@ -483,6 +485,7 @@ function Rack3D({
   onSelect,
   moveSourceId,
   onMoveClick,
+  reverseOrder,
 }: {
   position: [number, number, number]
   rotation?: [number, number, number]
@@ -492,6 +495,7 @@ function Rack3D({
   onSelect: (p: Pallet) => void
   moveSourceId: string | null
   onMoveClick: (p: Pallet) => void
+  reverseOrder?: boolean
 }) {
   const rackColor = RACK_COLORS[rackName] || "#334155"
   const cellSpacing = 0.95 * S
@@ -568,6 +572,7 @@ function Rack3D({
           onSelect={onSelect}
           moveSourceId={moveSourceId}
           onMoveClick={onMoveClick}
+          reverseOrder={reverseOrder}
         />
       ))}
     </group>
@@ -584,6 +589,7 @@ function Floor3D({
   onSelect,
   moveSourceId,
   onMoveClick,
+  reverseOrder,
 }: {
   position: [number, number, number]
   rotation?: [number, number, number]
@@ -593,6 +599,7 @@ function Floor3D({
   onSelect: (p: Pallet) => void
   moveSourceId: string | null
   onMoveClick: (p: Pallet) => void
+  reverseOrder?: boolean
 }) {
   const cellSpacing = 0.95 * S
   const totalWidth = cellCount * cellSpacing
@@ -621,9 +628,9 @@ function Floor3D({
 
       {/* Cells (drawn Right to Left) */}
       {Array.from({ length: cellCount }, (_, i) => {
-        const cellNum = i + 1
-        const globalP1 = (cellNum - 1) * 2 + 1
-        const globalP2 = (cellNum - 1) * 2 + 2
+        const cellNum = reverseOrder ? cellCount - i : i + 1
+        const globalP1 = reverseOrder ? cellNum * 2 : cellNum * 2 - 1
+        const globalP2 = reverseOrder ? cellNum * 2 - 1 : cellNum * 2
         const p1Key = `${rackName}${globalP1}P`
         const p2Key = `${rackName}${globalP2}P`
         const startX = totalWidth / 2 - cellSpacing / 2 // Start right
@@ -746,8 +753,8 @@ function WarehouseScene({
       {/* RACK B (Facing Rack A, rotated 180°, pushed back to widen aisle) */}
       {visibleRacks.B && (
         <group>
-          <Floor3D position={[-1.4 * S, 0, -0.1 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
-          <Rack3D position={[-1.4 * S, 0, 0.8 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
+          <Floor3D position={[-1.4 * S, 0, -0.1 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} reverseOrder={true} />
+          <Rack3D position={[-1.4 * S, 0, 0.8 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} reverseOrder={true} />
         </group>
       )}
 
