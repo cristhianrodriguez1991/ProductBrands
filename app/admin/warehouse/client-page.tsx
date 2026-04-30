@@ -519,17 +519,21 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
   // ── Render Cell (2 pallets) ──
   // ── Render Cell (2 pallets) - Reversed for Right-to-Left physical look ──
   const Cell = ({ loc1, loc2, p1Num, p2Num }: { loc1: string; loc2: string; p1Num: number; p2Num: number }) => (
-    <div className="flex gap-1 border-b-2 border-slate-200 pb-1 px-1">
+    <div className="flex gap-1 border-b-2 border-slate-200 pb-1 px-1 min-w-[124px]">
       {/* Left Pallet (p2) */}
-      <div className="flex flex-col items-center gap-1">
-        <PalletSlot locationCode={loc2} />
-        <span className="text-[9px] font-black text-slate-400">{p2Num}</span>
-      </div>
+      {loc2 ? (
+        <div className="flex flex-col items-center gap-1">
+          <PalletSlot locationCode={loc2} />
+          <span className="text-[9px] font-black text-slate-400">{p2Num}</span>
+        </div>
+      ) : <div className="w-[58px]" />}
       {/* Right Pallet (p1) */}
-      <div className="flex flex-col items-center gap-1">
-        <PalletSlot locationCode={loc1} />
-        <span className="text-[9px] font-black text-slate-400">{p1Num}</span>
-      </div>
+      {loc1 ? (
+        <div className="flex flex-col items-center gap-1">
+          <PalletSlot locationCode={loc1} />
+          <span className="text-[9px] font-black text-slate-400">{p1Num}</span>
+        </div>
+      ) : <div className="w-[58px]" />}
     </div>
   )
 
@@ -549,6 +553,13 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
           const loc2 = `${rack}${globalP2}${levelKey}`
           return <Cell key={i} loc1={loc1} loc2={loc2} p1Num={globalP1} p2Num={globalP2} />
         })}
+        {/* Extra negative positions only at ABAJO (L) level for B and C */}
+        {levelKey === "L" && (rack === "B" || rack === "C") && (
+          <>
+            <Cell loc1={`${rack}-1L`} loc2={`${rack}-2L`} p1Num={-1} p2Num={-2} />
+            <Cell loc1={`${rack}-3L`} loc2={""} p1Num={-3} p2Num={0} />
+          </>
+        )}
       </div>
     </div>
   )

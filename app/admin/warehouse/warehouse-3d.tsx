@@ -651,6 +651,61 @@ function Floor3D({
   )
 }
 
+// ── Extra cells at negative positions (B-1L, B-2L, B-3L / C-1L, C-2L, C-3L) ──
+function ExtraLevel3D({
+  position,
+  rotation = [0, 0, 0],
+  rackName,
+  palletMap,
+  onSelect,
+  moveSourceId,
+  onMoveClick,
+}: {
+  position: [number, number, number]
+  rotation?: [number, number, number]
+  rackName: string
+  palletMap: Record<string, Pallet[]>
+  onSelect: (p: Pallet) => void
+  moveSourceId: string | null
+  onMoveClick: (p: Pallet) => void
+}) {
+  const cellSpacing = 0.95 * S
+  // 3 extra single positions: -1L, -2L, -3L (placed consecutively after the last cell)
+  const extraKeys = [`${rackName}-1L`, `${rackName}-2L`, `${rackName}-3L`]
+  const totalWidth = extraKeys.length * cellSpacing
+
+  return (
+    <group position={position} rotation={rotation}>
+      {/* Surface strip */}
+      <RoundedBox
+        args={[totalWidth + 0.2 * S, 0.03 * S, 0.5 * S]}
+        radius={0.005 * S}
+        position={[0, -0.015 * S, 0]}
+      >
+        <meshStandardMaterial color="#dde4ee" roughness={0.9} transparent opacity={0.7} />
+      </RoundedBox>
+      {extraKeys.map((key, i) => {
+        const xOffset = (totalWidth / 2 - cellSpacing / 2) - i * cellSpacing
+        const palletList = palletMap[key] || []
+        return (
+          <group key={key} position={[xOffset, 0, 0]}>
+            {/* Label plaque */}
+            <RoundedBox args={[0.36 * S, 0.08 * S, 0.02 * S]} position={[0, 0.02 * S, 0.26 * S]} radius={0.005 * S}>
+              <meshStandardMaterial color="#7c3aed" roughness={0.4} metalness={0.6} />
+            </RoundedBox>
+            <Text position={[0, 0.02 * S, 0.275 * S]} fontSize={0.055 * S} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="black">
+              {key}
+            </Text>
+            {palletList.length > 0 ? (
+              <Pallet3D position={[0, 0, 0]} pallets={palletList} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
+            ) : null}
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
 // ── Warehouse Floor Grid ──
 function WarehouseFloor() {
   const rackAWidth = 8 * 0.95 * S
@@ -755,6 +810,16 @@ function WarehouseScene({
         <group>
           <Floor3D position={[-1.4 * S, 0, -0.1 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} reverseOrder={true} />
           <Rack3D position={[-1.4 * S, 0, 0.8 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} reverseOrder={true} />
+          {/* Extra B negative positions to the left of B1L */}
+          <ExtraLevel3D
+            position={[-1.4 * S + (5 * 0.95 * S / 2) + (3 * 0.95 * S / 2) + 0.05 * S, 0.15 * S, 0.8 * S]}
+            rotation={[0, Math.PI, 0]}
+            rackName="B"
+            palletMap={palletMap}
+            onSelect={onSelect}
+            moveSourceId={moveSourceId}
+            onMoveClick={onMoveClick}
+          />
         </group>
       )}
 
@@ -763,6 +828,15 @@ function WarehouseScene({
         <group>
           <Rack3D position={[-1.4 * S, 0, 1.4 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
           <Floor3D position={[-1.4 * S, 0, 2.3 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
+          {/* Extra C negative positions to the left of C1L */}
+          <ExtraLevel3D
+            position={[-1.4 * S + (5 * 0.95 * S / 2) + (3 * 0.95 * S / 2) + 0.05 * S, 0.15 * S, 1.4 * S]}
+            rackName="C"
+            palletMap={palletMap}
+            onSelect={onSelect}
+            moveSourceId={moveSourceId}
+            onMoveClick={onMoveClick}
+          />
         </group>
       )}
     </>

@@ -60,6 +60,25 @@ export async function POST() {
       }
     }
 
+    // Extra Floor spaces for B and C (negative direction, at ABAJO/L level)
+    const extraSpaces = [
+      { code: "B-1L", rack: "B" },
+      { code: "B-2L", rack: "B" },
+      { code: "B-3L", rack: "B" },
+      { code: "C-1L", rack: "C" },
+      { code: "C-2L", rack: "C" },
+      { code: "C-3L", rack: "C" },
+    ]
+    for (const extra of extraSpaces) {
+      positions.push({
+        locationCode: extra.code,
+        rack: extra.rack,
+        level: "BOT",
+        cellNumber: 0,
+        palletPosition: 0,
+      })
+    }
+
     await prisma.warehousePallet.createMany({
       data: positions.map(pos => ({ ...pos, status: "AVAILABLE" }))
     })
