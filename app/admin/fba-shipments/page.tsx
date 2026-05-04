@@ -1042,8 +1042,21 @@ export default function FbaShipmentsPage() {
       return { ...t, items: newItems }
     }))
 
+    setGlobalPendingItems(prev => prev.map(i => {
+      if (i.id !== itemId) return i
+      let updated = { ...i, [field]: finalValue }
+      if (field === "qtyPerBox" || field === "totalBoxes") {
+        const qty = field === "qtyPerBox" ? value : (i.qtyPerBox || 0)
+        const boxes = field === "totalBoxes" ? value : (i.totalBoxes || 0)
+        updated.totalUnits = (parseInt(qty) || 0) * (parseInt(boxes) || 0)
+      }
+      return updated
+    }))
+
     const activeTab = tabs.find(t => t.id === currentTabId)
-    const itemBefore = activeTab?.items.find((i: any) => i.id === itemId)
+    const itemBefore = activeTab?.items.find((i: any) => i.id === itemId) || globalPendingItems.find(i => i.id === itemId)
+    if (!itemBefore) return // safeguard
+
     const payload: any = {
       [field]: finalValue === "" ? null : finalValue,
       totalUnits: (field === "qtyPerBox" || field === "totalBoxes") ?
