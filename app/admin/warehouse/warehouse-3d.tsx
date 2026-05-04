@@ -368,6 +368,22 @@ function Cell3D({
   moveSourceId: string | null
   onMoveClick: (p: Pallet) => void
 }) {
+  const getPalletFallback = (loc: string, existing: Pallet[]) => {
+    if (existing && existing.length > 0) return existing
+    if (!loc) return []
+    // Dummy pallet for unseeded positions to ensure empty spaces are clickable and green
+    return [{
+      id: `dummy-${loc}`,
+      locationCode: loc,
+      rack: loc.charAt(0),
+      level: "FLOOR",
+      cellNumber: 1,
+      palletPosition: 1,
+      status: "AVAILABLE",
+      notes: ""
+    } as Pallet]
+  }
+
   return (
     <group position={position}>
       {/* Cell platform */}
@@ -396,12 +412,12 @@ function Cell3D({
       </Text>
 
       {/* Pallet 1 (Right pallet) */}
-      {pallets[0].length > 0 && (
-        <Pallet3D position={[0.22 * S, 0, 0]} pallets={pallets[0]} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
+      {p1Loc && (
+        <Pallet3D position={[0.22 * S, 0, 0]} pallets={getPalletFallback(p1Loc, pallets[0])} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
       )}
       {/* Pallet 2 (Left pallet) */}
-      {pallets[1].length > 0 && (
-        <Pallet3D position={[-0.22 * S, 0, 0]} pallets={pallets[1]} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
+      {p2Loc && (
+        <Pallet3D position={[-0.22 * S, 0, 0]} pallets={getPalletFallback(p2Loc, pallets[1])} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
       )}
     </group>
   )
@@ -696,8 +712,10 @@ function ExtraLevel3D({
             <Text position={[0, 0.02 * S, 0.275 * S]} fontSize={0.055 * S} color="#ffffff" anchorX="center" anchorY="middle" fontWeight="black">
               {key}
             </Text>
-            {palletList.length > 0 ? (
-              <Pallet3D position={[0, 0, 0]} pallets={palletList} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
+            {key ? (
+              <Pallet3D position={[0, 0, 0]} pallets={palletList.length > 0 ? palletList : [{
+                id: `dummy-${key}`, locationCode: key, rack: key.charAt(0), level: "BOT", cellNumber: 1, palletPosition: 1, status: "AVAILABLE", notes: ""
+              } as Pallet]} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
             ) : null}
           </group>
         )
