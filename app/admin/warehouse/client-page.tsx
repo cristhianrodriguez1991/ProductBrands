@@ -553,11 +553,17 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
           const loc2 = `${rack}${globalP2}${levelKey}`
           return <Cell key={i} loc1={loc1} loc2={loc2} p1Num={globalP1} p2Num={globalP2} />
         })}
-        {/* Extra negative positions only at ABAJO (L) level for B and C */}
-        {levelKey === "L" && (rack === "B" || rack === "C") && (
+        {/* Extra positions only at ABAJO (L) level for B and C */}
+        {levelKey === "L" && rack === "B" && (
           <>
-            <Cell loc1={`${rack}-1L`} loc2={`${rack}-2L`} p1Num={-1} p2Num={-2} />
-            <Cell loc1={`${rack}-3L`} loc2={""} p1Num={-3} p2Num={0} />
+            <Cell loc1="W-1" loc2="W-2" p1Num={1} p2Num={2} />
+            <Cell loc1="W-3" loc2="" p1Num={3} p2Num={0} />
+          </>
+        )}
+        {levelKey === "L" && rack === "C" && (
+          <>
+            <Cell loc1="W-4" loc2="W-5" p1Num={4} p2Num={5} />
+            <Cell loc1="W-6" loc2="" p1Num={6} p2Num={0} />
           </>
         )}
       </div>

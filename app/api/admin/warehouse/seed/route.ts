@@ -62,12 +62,12 @@ export async function POST() {
 
     // Extra Floor spaces for B and C (negative direction, at ABAJO/L level)
     const extraSpaces = [
-      { code: "B-1L", rack: "B" },
-      { code: "B-2L", rack: "B" },
-      { code: "B-3L", rack: "B" },
-      { code: "C-1L", rack: "C" },
-      { code: "C-2L", rack: "C" },
-      { code: "C-3L", rack: "C" },
+      { code: "W-1", rack: "W" },
+      { code: "W-2", rack: "W" },
+      { code: "W-3", rack: "W" },
+      { code: "W-4", rack: "W" },
+      { code: "W-5", rack: "W" },
+      { code: "W-6", rack: "W" },
     ]
     for (const extra of extraSpaces) {
       positions.push({

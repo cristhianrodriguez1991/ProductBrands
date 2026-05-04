@@ -667,11 +667,11 @@ function Floor3D({
   )
 }
 
-// ── Extra cells at negative positions (B-1L, B-2L, B-3L / C-1L, C-2L, C-3L) ──
+// ── Extra cells at negative positions ──
 function ExtraLevel3D({
   position,
   rotation = [0, 0, 0],
-  rackName,
+  extraKeys,
   palletMap,
   onSelect,
   moveSourceId,
@@ -679,15 +679,13 @@ function ExtraLevel3D({
 }: {
   position: [number, number, number]
   rotation?: [number, number, number]
-  rackName: string
+  extraKeys: string[]
   palletMap: Record<string, Pallet[]>
   onSelect: (p: Pallet) => void
   moveSourceId: string | null
   onMoveClick: (p: Pallet) => void
 }) {
   const cellSpacing = 0.95 * S
-  // 3 extra single positions: -1L, -2L, -3L (placed consecutively after the last cell)
-  const extraKeys = [`${rackName}-1L`, `${rackName}-2L`, `${rackName}-3L`]
   const totalWidth = extraKeys.length * cellSpacing
 
   return (
@@ -832,7 +830,7 @@ function WarehouseScene({
           <ExtraLevel3D
             position={[-1.4 * S + (5 * 0.95 * S / 2) + (3 * 0.95 * S / 2) + 0.05 * S, 0.15 * S, 0.8 * S]}
             rotation={[0, Math.PI, 0]}
-            rackName="B"
+            extraKeys={["W-1", "W-2", "W-3"]}
             palletMap={palletMap}
             onSelect={onSelect}
             moveSourceId={moveSourceId}
@@ -849,7 +847,7 @@ function WarehouseScene({
           {/* Extra C negative positions to the left of C1L */}
           <ExtraLevel3D
             position={[-1.4 * S + (5 * 0.95 * S / 2) + (3 * 0.95 * S / 2) + 0.05 * S, 0.15 * S, 1.4 * S]}
-            rackName="C"
+            extraKeys={["W-4", "W-5", "W-6"]}
             palletMap={palletMap}
             onSelect={onSelect}
             moveSourceId={moveSourceId}
