@@ -713,7 +713,9 @@ export default function FbaShipmentsPage() {
                       status: "AVAILABLE",
                       productName: null,
                       sku: null,
-                      quantity: null
+                      quantity: null,
+                      lotNumber: null,
+                      expirationDate: null
                     })
                   })
                 }
@@ -723,6 +725,34 @@ export default function FbaShipmentsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ location: "ENVIADO" })
               })
+            }
+
+            // ── Step 2.5: Sync PENDING items to warehouse (HOLD) ──
+            const pendingItems = tab.items.filter((i: any) => i.status === "PENDING" && i.location && i.location !== "ENVIADO")
+            for (const item of pendingItems) {
+              const locs = item.location.split(' + ').filter(Boolean)
+              for (const loc of locs) {
+                const { rack, num, level } = parseLocationCode(loc)
+                if (rack && num && level) {
+                  const numInt = parseInt(num)
+                  await fetch("/api/admin/warehouse", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      locationCode: loc,
+                      rack,
+                      level: levelMap[level] || "TOP",
+                      cellNumber: Math.ceil(numInt / 2),
+                      palletPosition: numInt % 2 === 0 ? 2 : 1,
+                      sku: item.sku,
+                      productName: item.name,
+                      quantity: Math.floor((parseInt(item.totalUnits as any) || 0) / locs.length),
+                      expirationDate: parseSyncDate(item.expDate || ""),
+                      status: "HOLD"
+                    })
+                  })
+                }
+              }
             }
 
             // ── Step 3: Create shipment history log ──
@@ -776,7 +806,8 @@ export default function FbaShipmentsPage() {
     setSaveStatus("saving")
 
     try {
-      const itemsToSync = tab.items.filter((i: any) => i.location && i.status === "IN_SHIPMENT")
+      // Include both IN_SHIPMENT and PENDING (En Espera) items, but ignore ENVIADO
+      const itemsToSync = tab.items.filter((i: any) => i.location && i.location !== "ENVIADO" && (i.status === "IN_SHIPMENT" || i.status === "PENDING"))
       const levelMap: any = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
 
       // Perform batch-like sequential updates
@@ -1010,7 +1041,9 @@ export default function FbaShipmentsPage() {
                 status: "AVAILABLE",
                 productName: null,
                 sku: null,
-                quantity: null
+                quantity: null,
+                lotNumber: null,
+                expirationDate: null
               })
             })
           }
