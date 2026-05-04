@@ -1227,6 +1227,36 @@ export default function FbaShipmentsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus, shipmentId: newStatus === "IN_SHIPMENT" ? currentTabId : undefined })
     })
+
+    // Auto-sync the new status (HOLD/OUTBOUND) to the warehouse map instantly
+    const itemToSync = tabs.find(t => t.id === currentTabId)?.items.find((i: any) => i.id === itemId) || globalPendingItems.find(i => i.id === itemId)
+    if (itemToSync && itemToSync.location && itemToSync.location !== "ENVIADO") {
+      const locs = itemToSync.location.split(' + ').filter(Boolean)
+      const levelMap: any = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
+      for (const loc of locs) {
+        const { rack, num, level } = parseLocationCode(loc)
+        if (rack && num && level) {
+          const numInt = parseInt(num)
+          await fetch("/api/admin/warehouse", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              locationCode: loc,
+              rack,
+              level: levelMap[level] || "TOP",
+              cellNumber: Math.ceil(numInt / 2),
+              palletPosition: numInt % 2 === 0 ? 2 : 1,
+              sku: itemToSync.sku,
+              productName: itemToSync.name,
+              quantity: Math.floor((parseInt(itemToSync.totalUnits as any) || 0) / locs.length),
+              expirationDate: parseSyncDate(itemToSync.expDate || ""),
+              status: newStatus === "PENDING" ? "HOLD" : "OUTBOUND"
+            })
+          })
+        }
+      }
+      await refreshWarehousePositions()
+    }
   }
 
   const deleteItem = async (itemId: string) => {
