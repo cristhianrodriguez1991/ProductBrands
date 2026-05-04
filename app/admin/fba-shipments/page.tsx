@@ -810,7 +810,47 @@ export default function FbaShipmentsPage() {
       const itemsToSync = tab.items.filter((i: any) => i.location && i.location !== "ENVIADO" && (i.status === "IN_SHIPMENT" || i.status === "PENDING"))
       const levelMap: any = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
 
-      // Perform batch-like sequential updates
+      // ── Step 1: Scrub Ghost Pallets ──
+      // Find all valid locations across ALL active shipments to avoid overwriting another tab's items
+      const allActiveLocations = new Set<string>()
+      tabs.forEach(t => {
+        t.items.forEach((i: any) => {
+          if (i.location && i.location !== "ENVIADO" && (i.status === "IN_SHIPMENT" || i.status === "PENDING")) {
+            i.location.split(' + ').filter(Boolean).forEach((l: string) => allActiveLocations.add(l))
+          }
+        })
+      })
+
+      // Fetch current warehouse state to find ghosts
+      const warehouseRes = await fetch("/api/admin/warehouse")
+      if (warehouseRes.ok) {
+        const currentPallets = await warehouseRes.json()
+        const ghostPallets = currentPallets.filter((p: any) => 
+          (p.status === "OUTBOUND" || p.status === "HOLD") && !allActiveLocations.has(p.locationCode)
+        )
+        // Clear ghosts
+        for (const ghost of ghostPallets) {
+          await fetch("/api/admin/warehouse", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              locationCode: ghost.locationCode,
+              rack: ghost.rack,
+              level: ghost.level,
+              cellNumber: ghost.cellNumber,
+              palletPosition: ghost.palletPosition,
+              sku: null,
+              productName: null,
+              quantity: null,
+              lotNumber: null,
+              expirationDate: null,
+              status: "AVAILABLE"
+            })
+          })
+        }
+      }
+
+      // ── Step 2: Perform batch-like sequential updates for current tab ──
       for (const item of itemsToSync) {
         const locations = item.location.split(' + ').filter(Boolean)
         for (const loc of locations) {
