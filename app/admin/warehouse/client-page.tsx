@@ -410,8 +410,20 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
 
   // ── Render Pallet Slot ──
   const PalletSlot = ({ locationCode }: { locationCode: string }) => {
-    const locationPallets = palletsByLocation[locationCode] || []
-    if (locationPallets.length === 0) return <div className="w-[58px] h-[48px] bg-slate-100 rounded-lg border border-dashed border-slate-200" />
+    let locationPallets = palletsByLocation[locationCode] || []
+    
+    if (locationPallets.length === 0) {
+      locationPallets = [{
+        id: `dummy-${locationCode}`,
+        locationCode,
+        rack: locationCode.charAt(0),
+        level: "FLOOR",
+        cellNumber: 1,
+        palletPosition: 1,
+        status: "AVAILABLE",
+        notes: ""
+      } as any]
+    }
 
     const primaryPallet = locationPallets.find(p => isOccupied(p)) || locationPallets[0]
     const occupiedPallets = locationPallets.filter(p => isOccupied(p))
