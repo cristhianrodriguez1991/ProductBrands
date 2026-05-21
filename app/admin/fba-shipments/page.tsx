@@ -1343,6 +1343,31 @@ export default function FbaShipmentsPage() {
     if (!targetShipment) return
     const activeItems = targetItems.filter((i: any) => i.status === "IN_SHIPMENT")
 
+    const formatExcelDate = (val: string) => {
+      if (!val) return ""
+      let parts: string[] = []
+      if (val.includes('/')) {
+        parts = val.split('/')
+      } else {
+        const digits = val.replace(/\D/g, "")
+        if (digits.length === 6) {
+          parts = [digits.slice(0, 2), digits.slice(2, 4), "20" + digits.slice(4, 6)]
+        } else if (digits.length === 8) {
+          parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)]
+        }
+      }
+
+      if (parts.length === 3) {
+        let [m, d, y] = parts
+        m = m.trim().padStart(2, '0')
+        d = d.trim().padStart(2, '0')
+        y = y.trim()
+        if (y.length === 2) y = "20" + y
+        return `${m}/${d}/${y}`
+      }
+      return val
+    }
+
     let tableHtml = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
       <head>
@@ -1363,7 +1388,7 @@ export default function FbaShipmentsPage() {
     `
     activeItems.forEach(i => {
       tableHtml += `
-            <tr><td>${i.location || ""}</td><td>${i.boxOrder || ""}</td><td style="font-weight:bold;">${i.name || ""}</td><td style="mso-number-format:'\\@';">${i.fnsku ? `&#8203;${i.fnsku}` : ""}</td><td style="mso-number-format:'\\@';">${i.sku ? `&#8203;${i.sku}` : ""}</td><td>${i.qtyPerBox || ""}</td><td>${i.totalBoxes || ""}</td><td style="font-weight:bold; background-color:#f0fdf4;">${i.totalUnits || 0}</td><td>${i.expDate || ""}</td><td>${i.length || ""}</td><td>${i.width || ""}</td><td>${i.height || ""}</td><td>${i.boxWeight || ""}</td><td>${i.description || ""}</td></tr>
+            <tr><td>${i.location || ""}</td><td>${i.boxOrder || ""}</td><td style="font-weight:bold;">${i.name || ""}</td><td style="mso-number-format:'\\@';">${i.fnsku ? `&#8203;${i.fnsku}` : ""}</td><td style="mso-number-format:'\\@';">${i.sku ? `&#8203;${i.sku}` : ""}</td><td>${i.qtyPerBox || ""}</td><td>${i.totalBoxes || ""}</td><td style="font-weight:bold; background-color:#f0fdf4;">${i.totalUnits || 0}</td><td style="mso-number-format:'\\@';">${formatExcelDate(i.expDate)}</td><td>${i.length || ""}</td><td>${i.width || ""}</td><td>${i.height || ""}</td><td>${i.boxWeight || ""}</td><td>${i.description || ""}</td></tr>
       `
     })
     tableHtml += `</tbody></table></body></html>`
