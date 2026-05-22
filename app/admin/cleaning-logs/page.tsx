@@ -237,9 +237,73 @@ export default function CleaningLogsPage() {
   )
 }
 
+const compressImage = (file: File): Promise<Blob | File> => {
+  return new Promise((resolve) => {
+    // Only compress images
+    if (!file.type.startsWith("image/")) {
+      return resolve(file)
+    }
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const img = new Image()
+      img.onload = () => {
+        // Max dimensions
+        const MAX_WIDTH = 1200
+        const MAX_HEIGHT = 1200
+        let width = img.width
+        let height = img.height
+
+        // Calculate aspect ratio and clamp size
+        if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+          if (width > height) {
+            height = Math.round((height * MAX_WIDTH) / width)
+            width = MAX_WIDTH
+          } else {
+            width = Math.round((width * MAX_HEIGHT) / height)
+            height = MAX_HEIGHT
+          }
+        }
+
+        const canvas = document.createElement("canvas")
+        canvas.width = width
+        canvas.height = height
+
+        const ctx = canvas.getContext("2d")
+        if (!ctx) {
+          return resolve(file)
+        }
+
+        ctx.drawImage(img, 0, 0, width, height)
+
+        // Compress as jpeg with 0.8 quality
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              // Convert blob back to a File
+              const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                type: "image/jpeg",
+                lastModified: Date.now()
+              })
+              resolve(compressedFile)
+            } else {
+              resolve(file)
+            }
+          },
+          "image/jpeg",
+          0.8
+        )
+      }
+      img.onerror = () => resolve(file)
+      img.src = event.target?.result as string
+    }
+    reader.onerror = () => resolve(file)
+    reader.readAsDataURL(file)
+  })
+}
+
 function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
   const [localLog, setLocalLog] = useState(log)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setLocalLog(log)
@@ -255,10 +319,14 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
     const files = e.target.files
     if (!files || !files[0]) return
 
-    const fd = new FormData()
-    fd.append("file", files[0])
+    const originalFile = files[0]
+    toast({ title: "Subiendo...", description: "Comprimiendo y subiendo imagen..." })
 
     try {
+      const compressedFile = await compressImage(originalFile)
+      const fd = new FormData()
+      fd.append("file", compressedFile)
+
       const res = await fetch(`/api/admin/cleaning-logs/${log.id}/image`, { 
         method: "POST", 
         body: fd 
@@ -266,9 +334,18 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
       if (res.ok) {
         const updated = await res.json()
         onUpdate(log.id, "imageUrls", updated.imageUrls)
+        toast({ title: "Éxito", description: "Imagen subida correctamente." })
+      } else {
+        const errText = await res.text().catch(() => "")
+        throw new Error(errText || "Error del servidor")
       }
-    } catch (error) {
-      toast({ title: "Error", description: "Error al subir la imagen." })
+    } catch (error: any) {
+      console.error("Upload error:", error)
+      toast({ title: "Error", description: `No se pudo subir la imagen: ${error.message || ""}`, variant: "destructive" })
+    } finally {
+      if (e.target) {
+        e.target.value = ""
+      }
     }
   }
 
@@ -345,14 +422,20 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
             </div>
           ))}
           
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="w-[80px] h-[60px] border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center gap-1 text-slate-300 hover:text-green-600 hover:border-green-400 hover:bg-green-50/30 transition-all group/plus"
+          <label 
+            htmlFor={`file-upload-${log.id}`}
+            className="w-[80px] h-[60px] border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center gap-1 text-slate-300 hover:text-green-600 hover:border-green-400 hover:bg-green-50/30 transition-all group/plus cursor-pointer"
           >
             <Camera className="h-4 w-4" />
             <span className="text-[6px] font-black uppercase tracking-widest">AÑADIR</span>
-          </button>
-          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+          </label>
+          <input 
+            type="file" 
+            id={`file-upload-${log.id}`}
+            className="hidden" 
+            accept="image/*" 
+            onChange={handleImageUpload} 
+          />
         </div>
       </TableCell>
 
