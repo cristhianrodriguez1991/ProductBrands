@@ -695,31 +695,8 @@ export default function FbaShipmentsPage() {
           try {
             const levelMap: any = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
 
-            // ── Step 2: Clear warehouse positions ──
+            // ── Step 2: Clear warehouse positions by marking as ENVIADO ──
             for (const item of inShipmentItems) {
-              const locs = item.location.split(' + ').filter(Boolean)
-              for (const loc of locs) {
-                const { rack, num, level } = parseLocationCode(loc)
-                if (rack && num && level) {
-                  await fetch("/api/admin/warehouse", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      locationCode: loc,
-                      rack,
-                      level: levelMap[level] || "TOP",
-                      cellNumber: Math.ceil(parseInt(num) / 2),
-                      palletPosition: parseInt(num) % 2 === 0 ? 2 : 1,
-                      status: "AVAILABLE",
-                      productName: null,
-                      sku: null,
-                      quantity: null,
-                      lotNumber: null,
-                      expirationDate: null
-                    })
-                  })
-                }
-              }
               await fetch(`/api/admin/fba-shipments/items/${item.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
@@ -830,22 +807,8 @@ export default function FbaShipmentsPage() {
         )
         // Clear ghosts
         for (const ghost of ghostPallets) {
-          await fetch("/api/admin/warehouse", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              locationCode: ghost.locationCode,
-              rack: ghost.rack,
-              level: ghost.level,
-              cellNumber: ghost.cellNumber,
-              palletPosition: ghost.palletPosition,
-              sku: null,
-              productName: null,
-              quantity: null,
-              lotNumber: null,
-              expirationDate: null,
-              status: "AVAILABLE"
-            })
+          await fetch(`/api/admin/warehouse/${ghost.id}`, {
+            method: "DELETE"
           })
         }
       }
@@ -1078,29 +1041,7 @@ export default function FbaShipmentsPage() {
         const oldLocs = (itemBefore.location || "").split(' + ').filter(Boolean)
         const newLocs = (updatedItem.location || "").split(' + ').filter(Boolean)
 
-        // Clear locations removed
-        for (const loc of oldLocs) {
-          if (!newLocs.includes(loc)) {
-            const { rack, num, level } = parseLocationCode(loc)
-            await fetch("/api/admin/warehouse", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                locationCode: loc,
-                rack,
-                level: levelMap[level] || "TOP",
-                cellNumber: Math.ceil(parseInt(num) / 2),
-                palletPosition: parseInt(num) % 2 === 0 ? 2 : 1,
-                status: "AVAILABLE",
-                productName: null,
-                sku: null,
-                quantity: null,
-                lotNumber: null,
-                expirationDate: null
-              })
-            })
-          }
-        }
+
 
         // Update/Upsert current locations
         for (const loc of newLocs) {

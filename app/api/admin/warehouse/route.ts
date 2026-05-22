@@ -73,6 +73,14 @@ export async function POST(req: Request) {
     const normalizedSku = typeof sku === "string" ? sku.trim() : ""
     const normalizedProductName = typeof productName === "string" ? productName.trim() : ""
 
+    // ── Robust Clear Position Logic ──
+    if (status === "AVAILABLE" && !normalizedSku && !normalizedProductName) {
+      await prisma.warehousePallet.deleteMany({
+        where: { locationCode }
+      })
+      return NextResponse.json({ locationCode, status: "AVAILABLE", cleared: true })
+    }
+
     // 1. Try to find an exact match (Same SKU or Same Name at this location)
     let targetPallet = await prisma.warehousePallet.findFirst({
       where: {

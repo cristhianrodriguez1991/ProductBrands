@@ -51,13 +51,23 @@ export async function PATCH(
         // Find locations that were removed
         const removedLocs = oldLocs.filter(l => !newLocs.includes(l) && l !== "ENVIADO")
         
-        // Clear removed locations in warehouse — only delete the pallet matching this item's SKU
+        // Clear removed locations in warehouse — only delete the pallet matching this item's SKU/Name robustly
         for (const loc of removedLocs) {
-          const matchingPallet = existing.sku
-            ? await tx.warehousePallet.findFirst({ where: { locationCode: loc, sku: existing.sku } })
-            : await tx.warehousePallet.findFirst({ where: { locationCode: loc } })
-          if (matchingPallet) {
-            await tx.warehousePallet.delete({ where: { id: matchingPallet.id } })
+          const itemSku = (existing.sku || "").trim().toLowerCase()
+          const itemName = (existing.name || "").trim().toLowerCase()
+
+          const palletsAtLoc = await tx.warehousePallet.findMany({
+            where: { locationCode: loc }
+          })
+
+          const bestMatch = palletsAtLoc.find(p => {
+            const pSku = (p.sku || "").trim().toLowerCase()
+            const pName = (p.productName || "").trim().toLowerCase()
+            return (itemSku && pSku === itemSku) || (itemName && pName === itemName)
+          }) || palletsAtLoc[0]
+
+          if (bestMatch) {
+            await tx.warehousePallet.delete({ where: { id: bestMatch.id } })
           }
         }
       }
@@ -126,15 +136,25 @@ export async function DELETE(
       const existing = await tx.fbaShipmentItem.findUnique({ where: { id: params.itemId } })
       if (!existing) throw new Error("Item not found")
 
-      // Delete associated warehouse pallet records (only matching this item's SKU)
+      // Delete associated warehouse pallet records (only matching this item's SKU/Name robustly)
       if (existing.location) {
         const locs = existing.location.split(' + ').filter(Boolean).filter(l => l !== "ENVIADO")
         for (const loc of locs) {
-          const matchingPallet = existing.sku
-            ? await tx.warehousePallet.findFirst({ where: { locationCode: loc, sku: existing.sku } })
-            : await tx.warehousePallet.findFirst({ where: { locationCode: loc } })
-          if (matchingPallet) {
-            await tx.warehousePallet.delete({ where: { id: matchingPallet.id } })
+          const itemSku = (existing.sku || "").trim().toLowerCase()
+          const itemName = (existing.name || "").trim().toLowerCase()
+
+          const palletsAtLoc = await tx.warehousePallet.findMany({
+            where: { locationCode: loc }
+          })
+
+          const bestMatch = palletsAtLoc.find(p => {
+            const pSku = (p.sku || "").trim().toLowerCase()
+            const pName = (p.productName || "").trim().toLowerCase()
+            return (itemSku && pSku === itemSku) || (itemName && pName === itemName)
+          }) || palletsAtLoc[0]
+
+          if (bestMatch) {
+            await tx.warehousePallet.delete({ where: { id: bestMatch.id } })
           }
         }
       }
