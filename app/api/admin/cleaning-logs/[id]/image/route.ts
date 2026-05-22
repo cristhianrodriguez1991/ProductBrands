@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { put } from "@vercel/blob"
+import { uploadFile } from "@/lib/storage"
 
 export async function POST(
   req: Request,
@@ -22,15 +22,13 @@ export async function POST(
       return new NextResponse("No file provided", { status: 400 })
     }
 
-    const blob = await put(file.name, file, {
-      access: "public",
-    })
+    const { url } = await uploadFile(file, "cleaning-logs")
 
     const log = await prisma.cleaningLog.update({
       where: { id },
       data: {
         imageUrls: {
-          push: blob.url
+          push: url
         }
       },
     })
@@ -41,3 +39,4 @@ export async function POST(
     return new NextResponse("Internal Error", { status: 500 })
   }
 }
+
