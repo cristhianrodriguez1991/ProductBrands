@@ -317,28 +317,33 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    if (!files || !files[0]) return
+    if (!files || files.length === 0) return
 
-    const originalFile = files[0]
-    toast({ title: "Subiendo...", description: "Comprimiendo y subiendo imagen..." })
+    toast({ title: "Subiendo...", description: `Procesando y subiendo ${files.length} imagen(es)...` })
+
+    let currentUrls = [...(localLog.imageUrls || [])]
 
     try {
-      const compressedFile = await compressImage(originalFile)
-      const fd = new FormData()
-      fd.append("file", compressedFile)
+      for (let i = 0; i < files.length; i++) {
+        const originalFile = files[i]
+        const compressedFile = await compressImage(originalFile)
+        const fd = new FormData()
+        fd.append("file", compressedFile)
 
-      const res = await fetch(`/api/admin/cleaning-logs/${log.id}/image`, { 
-        method: "POST", 
-        body: fd 
-      })
-      if (res.ok) {
-        const updated = await res.json()
-        onUpdate(log.id, "imageUrls", updated.imageUrls)
-        toast({ title: "Éxito", description: "Imagen subida correctamente." })
-      } else {
-        const errText = await res.text().catch(() => "")
-        throw new Error(errText || "Error del servidor")
+        const res = await fetch(`/api/admin/cleaning-logs/${log.id}/image`, { 
+          method: "POST", 
+          body: fd 
+        })
+        if (res.ok) {
+          const updated = await res.json()
+          currentUrls = updated.imageUrls
+        } else {
+          const errText = await res.text().catch(() => "")
+          throw new Error(errText || "Error del servidor")
+        }
       }
+      onUpdate(log.id, "imageUrls", currentUrls)
+      toast({ title: "Éxito", description: `${files.length} imagen(es) subida(s) correctamente.` })
     } catch (error: any) {
       console.error("Upload error:", error)
       toast({ title: "Error", description: `No se pudo subir la imagen: ${error.message || ""}`, variant: "destructive" })
@@ -348,6 +353,7 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
       }
     }
   }
+
 
   const removeImage = (index: number) => {
     const newImages = [...localLog.imageUrls]
@@ -434,6 +440,7 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
             id={`file-upload-${log.id}`}
             className="hidden" 
             accept="image/*" 
+            multiple
             onChange={handleImageUpload} 
           />
         </div>
