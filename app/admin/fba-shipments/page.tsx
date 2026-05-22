@@ -655,11 +655,27 @@ export default function FbaShipmentsPage() {
 
     setIsSyncing(true)
     try {
+      // Send only minimal fields to avoid huge request body (which can exceed serverless limits if base64 images exist)
+      const minimizedItems = inShipmentItems.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        sku: item.sku,
+        location: item.location,
+        totalUnits: item.totalUnits
+      }))
+
       const validateRes = await fetch("/api/admin/fba-shipments/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: inShipmentItems })
+        body: JSON.stringify({ items: minimizedItems })
       })
+
+      if (!validateRes.ok) {
+        const errorText = await validateRes.text().catch(() => "")
+        console.error("Validation API error:", validateRes.status, errorText)
+        throw new Error(`Server returned status ${validateRes.status}`)
+      }
+
       const validation = await validateRes.json()
 
       let confirmMsg = `¿Marcar ${inShipmentItems.length} artículos como ENVIADO?\n\n`
@@ -769,9 +785,10 @@ export default function FbaShipmentsPage() {
           }
         }
       })
-    } catch (e) {
+    } catch (e: any) {
       setIsSyncing(false)
-      alert("❌ Error al validar el envío.")
+      console.error("Validation error:", e)
+      alert(`❌ Error al validar el envío: ${e.message || "Error de red o de servidor"}`)
     }
   }
 
