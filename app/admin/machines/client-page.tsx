@@ -425,7 +425,7 @@ function EditableMachineRow({ setup, onUpdate, onDelete, onExpandImage }: any) {
           }`}
         />
         <input type="file" ref={galleryInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
-        <input type="file" ref={cameraInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleImageUpload} />
+        <input type="file" ref={cameraInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
       </TableCell>
       
       <TableCell className="py-10 px-4 border-r border-slate-200 text-center">

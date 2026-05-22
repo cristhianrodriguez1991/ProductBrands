@@ -352,7 +352,7 @@ function EditableCleaningRow({ log, onUpdate, onDelete, onExpandImage }: any) {
             <Camera className="h-4 w-4" />
             <span className="text-[6px] font-black uppercase tracking-widest">AÑADIR</span>
           </button>
-          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleImageUpload} />
+          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
         </div>
       </TableCell>
 
