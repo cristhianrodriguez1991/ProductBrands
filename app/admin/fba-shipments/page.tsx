@@ -492,7 +492,7 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
       <td className="p-0 border-l w-[180px] min-w-[180px] max-w-[180px]">
         <div className="relative group/input flex items-center w-full">
           <Input
-            onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("fnsku") }}
+            onFocus={handleFocus} onBlur={(e) => { handleBlur(); updateItem(item.id, "fnsku", e.target.value); }}
             spellCheck={false}
             data-gramm="false"
             className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2 pr-7 w-full focus:bg-white shadow-none"
@@ -500,7 +500,7 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
             onChange={e => { handleLocalChange("fnsku", e.target.value); if (e.target.value.length >= 5) handleLookup(e.target.value); }}
           />
           <button
-            onClick={() => onOpenScanner((code: string) => { handleLocalChange("fnsku", code); handleLookup(code); commitChange("fnsku"); })}
+            onClick={() => onOpenScanner((code: string) => { handleLocalChange("fnsku", code); handleLookup(code); updateItem(item.id, "fnsku", code); })}
             className="absolute right-1 text-slate-300 hover:text-blue-600 transition-colors bg-white/50 rounded p-0.5"
           >
             <QrCode className="h-3.5 w-3.5" />
@@ -510,7 +510,7 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
       <td className="p-0 border-l w-[180px] min-w-[180px] max-w-[180px]">
         <div className="relative group/input flex items-center w-full">
           <Input
-            onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("upc") }}
+            onFocus={handleFocus} onBlur={(e) => { handleBlur(); updateItem(item.id, "upc", e.target.value); }}
             spellCheck={false}
             data-gramm="false"
             className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2 pr-7 w-full focus:bg-white shadow-none"
@@ -519,15 +519,15 @@ const StandaloneRow = memo(({ item, index, isPending, updateItem, deleteItem, se
             placeholder="UPC" title="UPC"
           />
           <button
-            onClick={() => onOpenScanner((code: string) => { handleLocalChange("upc", code); handleLookup(code); commitChange("upc"); })}
+            onClick={() => onOpenScanner((code: string) => { handleLocalChange("upc", code); handleLookup(code); updateItem(item.id, "upc", code); })}
             className="absolute right-1 text-slate-300 hover:text-blue-600 transition-colors bg-white/50 rounded p-0.5"
           >
             <QrCode className="h-3.5 w-3.5" />
           </button>
         </div>
       </td>
-      <td className="p-0 border-l w-[160px] min-w-[160px] max-w-[160px]"><Input spellCheck={false} data-gramm="false" onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("sku") }} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={localItem.sku || ""} onChange={e => handleLocalChange("sku", e.target.value)} /></td>
-      <td className="p-0 border-l w-[160px] min-w-[160px] max-w-[160px]"><Input spellCheck={false} data-gramm="false" onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("asin") }} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={localItem.asin || ""} onChange={e => handleLocalChange("asin", e.target.value)} placeholder="ASIN" title="ASIN" /></td>
+      <td className="p-0 border-l w-[160px] min-w-[160px] max-w-[160px]"><Input spellCheck={false} data-gramm="false" onFocus={handleFocus} onBlur={(e) => { handleBlur(); updateItem(item.id, "sku", e.target.value); }} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={localItem.sku || ""} onChange={e => handleLocalChange("sku", e.target.value)} /></td>
+      <td className="p-0 border-l w-[160px] min-w-[160px] max-w-[160px]"><Input spellCheck={false} data-gramm="false" onFocus={handleFocus} onBlur={(e) => { handleBlur(); updateItem(item.id, "asin", e.target.value); }} className="h-8 text-[10px] border-0 bg-transparent rounded-none px-2" value={localItem.asin || ""} onChange={e => handleLocalChange("asin", e.target.value)} placeholder="ASIN" title="ASIN" /></td>
       <td className="p-0 border-l w-[85px] min-w-[85px] max-w-[85px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("qtyPerBox") }} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center" value={localItem.qtyPerBox || ""} onChange={e => handleLocalChange("qtyPerBox", e.target.value)} /></td>
       <td className="p-0 border-l w-[105px] min-w-[105px] max-w-[105px]"><Input onFocus={handleFocus} onBlur={() => { handleBlur(); commitChange("totalBoxes") }} type="number" className="h-8 text-xs border-0 bg-transparent rounded-none px-1 w-full text-center" value={localItem.totalBoxes || ""} onChange={e => handleLocalChange("totalBoxes", e.target.value)} /></td>
       <td className="p-0 border-l w-[115px] min-w-[115px] max-w-[115px] text-center font-black text-xs px-2 bg-green-50/50 text-green-700">{item.totalUnits || 0}</td>
