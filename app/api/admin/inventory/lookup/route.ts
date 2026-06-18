@@ -363,29 +363,26 @@ export async function GET(req: Request) {
       }
     }
 
-    // ─── FINAL: Amazon PA-API Keyword Search (for non-UPC codes like ASINs) ──
-    // Only try if code looks like it could be an ASIN or keyword
-    if (!isBarcode || code.length === 10) {
-      try {
-        console.log(`[LOOKUP] Amazon PA-API search for "${code}"`)
-        const { searchItems } = await import("@/lib/amazon-service")
-        const amazonItems = await searchItems(code);
-        if (amazonItems && amazonItems.length > 0) {
-          const amz = amazonItems[0];
-          console.log(`[LOOKUP] ✅ Amazon PA-API HIT: "${amz.ItemInfo?.Title?.DisplayValue}"`)
-          return saveAndReturn({
-            name: amz.ItemInfo?.Title?.DisplayValue || "",
-            upc: code,
-            sku: "",
-            ean: "",
-            asin: amz.ASIN || "",
-            description: amz.ItemInfo?.Features?.DisplayValues?.join(". ") || "",
-            amazonImageUrl: amz.Images?.Primary?.Large?.URL || null,
-          }, "amazon")
-        }
-      } catch (err: any) {
-        console.warn("[LOOKUP] Amazon PA-API search failed:", err?.message)
+    // ─── FINAL: Amazon PA-API Keyword Search ──
+    try {
+      console.log(`[LOOKUP] Amazon PA-API search for "${code}"`)
+      const { searchItems } = await import("@/lib/amazon-service")
+      const amazonItems = await searchItems(code);
+      if (amazonItems && amazonItems.length > 0) {
+        const amz = amazonItems[0];
+        console.log(`[LOOKUP] ✅ Amazon PA-API HIT: "${amz.ItemInfo?.Title?.DisplayValue}"`)
+        return saveAndReturn({
+          name: amz.ItemInfo?.Title?.DisplayValue || "",
+          upc: isBarcode ? code : "",
+          sku: "",
+          ean: "",
+          asin: amz.ASIN || "",
+          description: amz.ItemInfo?.Features?.DisplayValues?.join(". ") || "",
+          amazonImageUrl: amz.Images?.Primary?.Large?.URL || null,
+        }, "amazon")
       }
+    } catch (err: any) {
+      console.warn("[LOOKUP] Amazon PA-API search failed:", err?.message)
     }
 
     console.log(`[LOOKUP] ❌ No results found for code: ${code}`)

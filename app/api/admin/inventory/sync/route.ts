@@ -58,14 +58,17 @@ export async function POST() {
     const fbaQtyMap = await getFbaQuantities()
     
     // Safety check: if for some reason the FBA report was cancelled (Amazon throttles frequent requests)
-    // and returns 0 items, we MUST abort the sync so we don't accidentally set 24k items to 0 stock.
-    if (fbaQtyMap.size === 0 && listings.length > 10) { // If they have > 10 listings but 0 FBA items returned, it's 99% a throttle/error
-      throw new Error("Amazon FBA Inventory API throttled the request (CANCELLED). Please wait about 30 minutes before trying a manual sync again to allow Amazon's API limits to reset.")
+    // and returns 0 items, we MUST NOT abort the sync entirely, but we should skip setting quantities to 0.
+    const fbaReportFailed = fbaQtyMap.size === 0 && listings.length > 10;
+    if (fbaReportFailed) {
+      console.warn("Amazon FBA Inventory API throttled the request (CANCELLED). Quantities will not be updated this run, but new listings will still be synced.")
     }
 
     // ── 4. Parse and Insert/Upsert ──
     let createdCount = 0
     let updatedCount = 0
+
+    const activeSkus = new Set<string>()
 
     for (const item of listings) {
       const asin = item["asin1"] || item["ASIN"] || item["asin"] || ""
@@ -107,7 +110,7 @@ export async function POST() {
       
       const catalogTitle = cData?.summaries?.[0]?.itemName || ""
       
-      const itemData = {
+      const itemData: any = {
         source: "AMAZON" as const,
         asin: asin || null,
         fnsku: fnsku || null,
@@ -116,16 +119,20 @@ export async function POST() {
         amazonTitle: catalogTitle || title || null,
         amazonImageUrl: catalogImage || null,
         amazonUrl: asin ? `https://www.amazon.com/dp/${asin}` : null,
-        quantityOnHand,
-        quantityReserved,
         isActive: amzStatus.toLowerCase().includes("active"),
         amazonStatus: amzStatus || null,
         fulfillmentChannel: fulfillmentChannel || null,
         lastSyncedAt: new Date(),
       }
 
+      if (!fbaReportFailed) {
+        itemData.quantityOnHand = quantityOnHand;
+        itemData.quantityReserved = quantityReserved;
+      }
+
       // UPSERT LOGIC based on SKU to preserve manual items and update existing Amazon items
       if (sku) {
+        activeSkus.add(sku)
         const existingItem = await prisma.inventoryItem.findFirst({
           where: { sku }
         })
@@ -141,10 +148,32 @@ export async function POST() {
             data: {
                ...itemData,
                sku,
+               quantityOnHand: itemData.quantityOnHand || 0,
+               quantityReserved: itemData.quantityReserved || 0
             },
           })
           createdCount++
         }
+      }
+    }
+
+    // ── 5. Deactivate missing listings ──
+    const allAmazonItems = await prisma.inventoryItem.findMany({
+      where: { source: "AMAZON" }
+    })
+    
+    let deactivatedCount = 0
+    for (const item of allAmazonItems) {
+      if (item.sku && !activeSkus.has(item.sku) && item.isActive) {
+        await prisma.inventoryItem.update({
+          where: { id: item.id },
+          data: {
+            isActive: false,
+            quantityOnHand: 0,
+            quantityReserved: 0
+          }
+        })
+        deactivatedCount++
       }
     }
 
