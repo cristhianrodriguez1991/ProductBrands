@@ -45,6 +45,40 @@ export async function GET(req: Request) {
     )
   }
 
+  const saveAndReturn = async (itemData: any, source: string) => {
+    try {
+      const newItem = await prisma.inventoryItem.create({
+        data: {
+          source: "MANUAL",
+          name: itemData.name || "Unknown Product",
+          upc: itemData.upc || null,
+          ean: itemData.ean || null,
+          asin: itemData.asin || null,
+          amazonTitle: itemData.name || null,
+          amazonImageUrl: itemData.amazonImageUrl || null,
+          imageUrl: itemData.amazonImageUrl || null,
+          description: itemData.description || null,
+          isActive: true,
+        }
+      })
+      return NextResponse.json({
+        found: true,
+        source: source,
+        item: {
+          ...itemData,
+          ...newItem,
+        }
+      })
+    } catch (err: any) {
+      console.error("[LOOKUP] Failed to save external item to DB:", err.message)
+      return NextResponse.json({
+        found: true,
+        source: source,
+        item: itemData
+      })
+    }
+  }
+
   try {
     // ─── TIER 1: Local Database Lookup ───────────────────────────────
     // Generate variations to handle missing/extra leading zeros on UPCs
@@ -150,18 +184,14 @@ export async function GET(req: Request) {
           if (upcData?.items && upcData.items.length > 0) {
             const externalItem = upcData.items[0]
             console.log(`[LOOKUP] ✅ UPCItemDB HIT: "${externalItem.title}"`)
-            return NextResponse.json({
-              found: true,
-              source: "external",
-              item: {
-                name: externalItem.title || "",
-                upc: externalItem.upc || numericCode,
-                ean: externalItem.ean || "",
-                asin: externalItem.asin || "",
-                description: externalItem.description || "",
-                amazonImageUrl: externalItem.images && externalItem.images.length > 0 ? externalItem.images[0] : null,
-              }
-            })
+            return saveAndReturn({
+              name: externalItem.title || "",
+              upc: externalItem.upc || numericCode,
+              ean: externalItem.ean || "",
+              asin: externalItem.asin || "",
+              description: externalItem.description || "",
+              amazonImageUrl: externalItem.images && externalItem.images.length > 0 ? externalItem.images[0] : null,
+            }, "external")
           }
         } else if (upcRes.status === 429) {
           console.warn("[LOOKUP] UPCItemDB rate limited (429). Skipping to next tier.")
@@ -189,18 +219,14 @@ export async function GET(req: Request) {
           if (offData.status === 1 && offData.product) {
             const p = offData.product
             console.log(`[LOOKUP] ✅ OpenFoodFacts HIT: "${p.product_name}"`)
-            return NextResponse.json({
-              found: true,
-              source: "external",
-              item: {
-                name: p.product_name || "",
-                upc: numericCode,
-                ean: numericCode,
-                asin: "",
-                description: p.generic_name || p.categories || "",
-                amazonImageUrl: p.image_url || p.image_front_url || null,
-              }
-            })
+            return saveAndReturn({
+              name: p.product_name || "",
+              upc: numericCode,
+              ean: numericCode,
+              asin: "",
+              description: p.generic_name || p.categories || "",
+              amazonImageUrl: p.image_url || p.image_front_url || null,
+            }, "external")
           }
         }
       } catch (err: any) {
@@ -228,18 +254,14 @@ export async function GET(req: Request) {
           const goData = await goUpcRes.json()
           if (goData?.product?.name) {
             console.log(`[LOOKUP] ✅ Go-UPC HIT: "${goData.product.name}"`)
-            return NextResponse.json({
-              found: true,
-              source: "external",
-              item: {
-                name: goData.product.name || "",
-                upc: numericCode,
-                ean: goData.product.ean || numericCode,
-                asin: "",
-                description: goData.product.description || goData.product.category || "",
-                amazonImageUrl: goData.product.imageUrl || null,
-              }
-            })
+            return saveAndReturn({
+              name: goData.product.name || "",
+              upc: numericCode,
+              ean: goData.product.ean || numericCode,
+              asin: "",
+              description: goData.product.description || goData.product.category || "",
+              amazonImageUrl: goData.product.imageUrl || null,
+            }, "external")
           }
         }
       } catch (err: any) {
@@ -279,18 +301,14 @@ export async function GET(req: Request) {
 
           if (productName && productName !== "Not Found" && !productName.toLowerCase().includes("not found")) {
             console.log(`[LOOKUP] ✅ BarcodeSpider HIT: "${productName}"`)
-            return NextResponse.json({
-              found: true,
-              source: "external",
-              item: {
-                name: productName,
-                upc: numericCode,
-                ean: numericCode,
-                asin: "",
-                description: "",
-                amazonImageUrl: imgMatch?.[1] || null,
-              }
-            })
+            return saveAndReturn({
+              name: productName,
+              upc: numericCode,
+              ean: numericCode,
+              asin: "",
+              description: "",
+              amazonImageUrl: imgMatch?.[1] || null,
+            }, "external")
           }
         }
       } catch (err: any) {
@@ -326,18 +344,14 @@ export async function GET(req: Request) {
 
           if (productName && productName.length > 2 && !productName.toLowerCase().includes("not found")) {
             console.log(`[LOOKUP] ✅ BarcodeLookup HIT: "${productName}"`)
-            return NextResponse.json({
-              found: true,
-              source: "external",
-              item: {
-                name: productName,
-                upc: numericCode,
-                ean: numericCode,
-                asin: "",
-                description: "",
-                amazonImageUrl: imgMatch?.[1] || null,
-              }
-            })
+            return saveAndReturn({
+              name: productName,
+              upc: numericCode,
+              ean: numericCode,
+              asin: "",
+              description: "",
+              amazonImageUrl: imgMatch?.[1] || null,
+            }, "external")
           }
         }
       } catch (err: any) {
@@ -359,19 +373,15 @@ export async function GET(req: Request) {
         if (amazonItems && amazonItems.length > 0) {
           const amz = amazonItems[0];
           console.log(`[LOOKUP] ✅ Amazon PA-API HIT: "${amz.ItemInfo?.Title?.DisplayValue}"`)
-          return NextResponse.json({
-            found: true,
-            source: "amazon",
-            item: {
-              name: amz.ItemInfo?.Title?.DisplayValue || "",
-              upc: code,
-              sku: "",
-              ean: "",
-              asin: amz.ASIN || "",
-              description: amz.ItemInfo?.Features?.DisplayValues?.join(". ") || "",
-              amazonImageUrl: amz.Images?.Primary?.Large?.URL || null,
-            }
-          });
+          return saveAndReturn({
+            name: amz.ItemInfo?.Title?.DisplayValue || "",
+            upc: code,
+            sku: "",
+            ean: "",
+            asin: amz.ASIN || "",
+            description: amz.ItemInfo?.Features?.DisplayValues?.join(". ") || "",
+            amazonImageUrl: amz.Images?.Primary?.Large?.URL || null,
+          }, "amazon")
         }
       } catch (err: any) {
         console.warn("[LOOKUP] Amazon PA-API search failed:", err?.message)

@@ -60,14 +60,27 @@ export async function PATCH(
             where: { locationCode: loc }
           })
 
-          const bestMatch = palletsAtLoc.find(p => {
+          const matchedPallets = palletsAtLoc.filter(p => {
             const pSku = (p.sku || "").trim().toLowerCase()
             const pName = (p.productName || "").trim().toLowerCase()
-            return (itemSku && pSku === itemSku) || (itemName && pName === itemName)
-          }) || palletsAtLoc[0]
+            if (itemSku) return pSku === itemSku
+            if (itemName) return pSku === "" && pName === itemName
+            return pSku === "" && pName === ""
+          })
 
-          if (bestMatch) {
-            await tx.warehousePallet.delete({ where: { id: bestMatch.id } })
+          if (matchedPallets.length === 0) {
+            const fallbackPallets = palletsAtLoc.filter(p => {
+              const pSku = (p.sku || "").trim().toLowerCase()
+              const pName = (p.productName || "").trim().toLowerCase()
+              return (itemSku && pSku === itemSku) || (itemName && pName === itemName)
+            })
+            if (fallbackPallets.length > 0) {
+              matchedPallets.push(...fallbackPallets)
+            }
+          }
+
+          for (const match of matchedPallets) {
+            await tx.warehousePallet.delete({ where: { id: match.id } })
           }
         }
       }
@@ -147,14 +160,27 @@ export async function DELETE(
             where: { locationCode: loc }
           })
 
-          const bestMatch = palletsAtLoc.find(p => {
+          const matchedPallets = palletsAtLoc.filter(p => {
             const pSku = (p.sku || "").trim().toLowerCase()
             const pName = (p.productName || "").trim().toLowerCase()
-            return (itemSku && pSku === itemSku) || (itemName && pName === itemName)
-          }) || palletsAtLoc[0]
+            if (itemSku) return pSku === itemSku
+            if (itemName) return pSku === "" && pName === itemName
+            return pSku === "" && pName === ""
+          })
 
-          if (bestMatch) {
-            await tx.warehousePallet.delete({ where: { id: bestMatch.id } })
+          if (matchedPallets.length === 0) {
+            const fallbackPallets = palletsAtLoc.filter(p => {
+              const pSku = (p.sku || "").trim().toLowerCase()
+              const pName = (p.productName || "").trim().toLowerCase()
+              return (itemSku && pSku === itemSku) || (itemName && pName === itemName)
+            })
+            if (fallbackPallets.length > 0) {
+              matchedPallets.push(...fallbackPallets)
+            }
+          }
+
+          for (const match of matchedPallets) {
+            await tx.warehousePallet.delete({ where: { id: match.id } })
           }
         }
       }
