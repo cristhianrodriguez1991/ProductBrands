@@ -1,5 +1,24 @@
 /* eslint-disable @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any */
 const SellingPartnerAPI = require("amazon-sp-api")
+import { gunzipSync } from "zlib"
+
+/**
+ * Download an Amazon report and decompress if gzipped.
+ * Amazon SP-API often returns reports as gzip-compressed data.
+ */
+async function downloadReport(url: string): Promise<string> {
+  const res = await fetch(url)
+  const buffer = Buffer.from(await res.arrayBuffer())
+  
+  // Check for gzip magic bytes: 0x1F 0x8B
+  if (buffer.length >= 2 && buffer[0] === 0x1f && buffer[1] === 0x8b) {
+    console.log("[SYNC] Report is gzip-compressed, decompressing...")
+    const decompressed = gunzipSync(buffer)
+    return decompressed.toString("utf-8")
+  }
+  
+  return buffer.toString("utf-8")
+}
 
 /**
  * Initializes the Amazon Selling Partner API (SP-API) client.
@@ -71,8 +90,7 @@ export async function getActiveListings(): Promise<any[]> {
         endpoint: "reports",
         path: { reportDocumentId: recentDocId },
       })
-      const downloadRes = await fetch(docRes.url)
-      const tsvContent = await downloadRes.text()
+      const tsvContent = await downloadReport(docRes.url)
       const allItems = parseTSV(tsvContent)
       console.log(`[SYNC] Reused report returned ${allItems.length} active items.`)
       return allItems
@@ -130,8 +148,7 @@ export async function getActiveListings(): Promise<any[]> {
     path: { reportDocumentId },
   })
 
-  const downloadRes = await fetch(docRes.url)
-  let tsvContent = await downloadRes.text()
+  const tsvContent = await downloadReport(docRes.url)
 
   // Step 4: Parse TSV into structured data
   const allItems = parseTSV(tsvContent)
@@ -210,8 +227,7 @@ export async function getFbaQuantities(): Promise<Map<string, { fulfillable: num
       endpoint: "reports",
       path: { reportDocumentId: docId },
     })
-    const downloadRes = await fetch(docRes.url)
-    const tsvContent = await downloadRes.text()
+    const tsvContent = await downloadReport(docRes.url)
     
     // Parse the TSV items
     const fbaItems = parseTSV(tsvContent)

@@ -153,8 +153,20 @@ export async function GET() {
     addLog(`✅ Report document URL obtained`)
 
     const downloadRes = await fetch(docRes.url)
-    const tsvContent = await downloadRes.text()
-    addLog(`✅ Report downloaded: ${tsvContent.length} bytes`)
+    const rawBuffer = Buffer.from(await downloadRes.arrayBuffer())
+    addLog(`✅ Report downloaded: ${rawBuffer.length} bytes`)
+    
+    // Check for gzip compression (magic bytes 0x1F 0x8B)
+    let tsvContent: string
+    if (rawBuffer.length >= 2 && rawBuffer[0] === 0x1f && rawBuffer[1] === 0x8b) {
+      addLog("📦 Report is GZIP compressed — decompressing...")
+      const { gunzipSync } = require("zlib")
+      tsvContent = gunzipSync(rawBuffer).toString("utf-8")
+      addLog(`✅ Decompressed to ${tsvContent.length} chars`)
+    } else {
+      tsvContent = rawBuffer.toString("utf-8")
+      addLog("📄 Report is plain text (not compressed)")
+    }
 
     // Parse
     const lines = tsvContent.split("\n").filter((l: string) => l.trim().length > 0)
