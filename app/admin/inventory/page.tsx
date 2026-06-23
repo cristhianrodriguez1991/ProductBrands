@@ -429,8 +429,8 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
     setLookupMessage("")
   }
 
-  const levelMap: Record<string, string> = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
-  const levelKeys: Record<string, string> = { TOP: "T", MID: "M", BOT: "L", FLOOR: "P" }
+  const levelMap: Record<string, string> = { T: "TOP", M: "MID", L: "BOT", D: "DOCKING", P: "FLOOR" }
+  const levelKeys: Record<string, string> = { TOP: "T", MID: "M", BOT: "L", DOCKING: "D", FLOOR: "P" }
 
   // Auto-generate locationCode
   const locationCode = useMemo(() => {
@@ -672,6 +672,7 @@ function AddProductModal({ open, onClose, onAdded }: { open: boolean; onClose: (
                   <option value="TOP">ARRIBA (T)</option>
                   <option value="MID">MEDIO (M)</option>
                   <option value="BOT">ABAJO (L)</option>
+                  {(form.rack === 'B' || form.rack === 'C') && <option value="DOCKING">DOCKING (D)</option>}
                   <option value="FLOOR">PISO (P)</option>
                 </select>
               </div>
