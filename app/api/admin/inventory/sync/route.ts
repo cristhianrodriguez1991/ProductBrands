@@ -119,8 +119,8 @@ export async function POST() {
         amazonTitle: catalogTitle || title || null,
         amazonImageUrl: catalogImage || null,
         amazonUrl: asin ? `https://www.amazon.com/dp/${asin}` : null,
-        isActive: amzStatus.toLowerCase().includes("active"),
-        amazonStatus: amzStatus || null,
+        isActive: true, // GET_MERCHANT_LISTINGS_DATA only returns active listings
+        amazonStatus: amzStatus || "Active",
         fulfillmentChannel: fulfillmentChannel || null,
         lastSyncedAt: new Date(),
       }
