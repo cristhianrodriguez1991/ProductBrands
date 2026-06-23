@@ -44,7 +44,7 @@ export async function GET(req: Request) {
               fnsku: product?.fnsku || "",
               upc: product?.upc || "",
               asin: product?.asin || "",
-              qtyPerBox: product?.unitsPerCarton || null,
+              qtyPerBox: null,
               totalBoxes: orphan.quantity || null,
               expDate: orphan.expirationDate ? orphan.expirationDate.toISOString().split("T")[0] : "",
               status: "PENDING",
