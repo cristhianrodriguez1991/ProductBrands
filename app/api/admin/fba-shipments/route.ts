@@ -15,6 +15,45 @@ export async function GET(req: Request) {
     const type = searchParams.get("type")
 
     if (type === "pending") {
+      // 1) Auto-sync HOLD pallets from Warehouse Map into FBA Shipments
+      const activeShipment = await prisma.fbaShipment.findFirst({ where: { status: "ACTIVE" } })
+      if (activeShipment) {
+        const holdPallets = await prisma.warehousePallet.findMany({
+          where: { status: "HOLD" }
+        })
+        const existingFbaItems = await prisma.fbaShipmentItem.findMany({
+          where: { 
+            status: { in: ["PENDING", "IN_SHIPMENT"] },
+            location: { not: null }
+          }
+        })
+        const existingLocs = new Set(existingFbaItems.map(i => i.location))
+        
+        const orphans = holdPallets.filter(p => p.locationCode && !existingLocs.has(p.locationCode))
+        
+        for (const orphan of orphans) {
+          // If we can find the matching inventory product to prefill FnSKU/UPC, do it
+          const product = orphan.sku ? await prisma.inventory.findFirst({ where: { sku: orphan.sku } }) : null;
+          
+          await prisma.fbaShipmentItem.create({
+            data: {
+              shipmentId: activeShipment.id,
+              location: orphan.locationCode,
+              description: orphan.productName || orphan.notes || "",
+              sku: orphan.sku || "",
+              fnsku: product?.fnsku || "",
+              upc: product?.upc || "",
+              asin: product?.asin || "",
+              qtyPerBox: product?.unitsPerCarton || null,
+              totalBoxes: orphan.quantity || null,
+              expDate: orphan.expirationDate ? orphan.expirationDate.toISOString().split("T")[0] : "",
+              status: "PENDING",
+            }
+          })
+        }
+      }
+
+      // 2) Return all pending items
       const pendingItems = await prisma.fbaShipmentItem.findMany({
         where: { status: "PENDING" },
         orderBy: { createdAt: "desc" }
