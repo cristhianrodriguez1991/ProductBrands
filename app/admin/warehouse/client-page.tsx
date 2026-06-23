@@ -366,11 +366,21 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
       })
       if (res.ok) {
         const [emptiedSource, filledTarget] = await res.json()
-        setPallets((prev) => prev.map((p) => {
-          if (p.id === emptiedSource.id) return { ...p, ...emptiedSource }
-          if (p.id === filledTarget.id) return { ...p, ...filledTarget }
-          return p
-        }))
+        setPallets((prev) => {
+          let foundTarget = false;
+          const mapped = prev.map((p) => {
+            if (p.id === emptiedSource.id) return { ...p, ...emptiedSource }
+            if (p.id === filledTarget.id) {
+              foundTarget = true;
+              return { ...p, ...filledTarget }
+            }
+            return p
+          });
+          if (!foundTarget) {
+            mapped.push(filledTarget);
+          }
+          return mapped;
+        })
         setFormOpen(false)
         setMoveRack(""); setMoveLevel(""); setMovePosition("")
         toast({ title: "Movido", description: `${selectedPallet.locationCode} → ${targetLocCode}` })
@@ -408,11 +418,21 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
       })
       if (res.ok) {
         const [emptiedSource, filledTarget] = await res.json()
-        setPallets((prev) => prev.map((p) => {
-          if (p.id === emptiedSource.id) return { ...p, ...emptiedSource }
-          if (p.id === filledTarget.id) return { ...p, ...filledTarget }
-          return p
-        }))
+        setPallets((prev) => {
+          let foundTarget = false;
+          const mapped = prev.map((p) => {
+            if (p.id === emptiedSource.id) return { ...p, ...emptiedSource }
+            if (p.id === filledTarget.id) {
+              foundTarget = true;
+              return { ...p, ...filledTarget }
+            }
+            return p
+          });
+          if (!foundTarget) {
+            mapped.push(filledTarget);
+          }
+          return mapped;
+        })
         toast({ title: "Movido", description: `${sourceLocCode} → ${targetLocCode}` })
       } else {
         const errText = await res.text()
@@ -549,7 +569,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
 
   // ── Render Cell (2 pallets) ──
   // ── Render Cell (2 pallets) - Reversed for Right-to-Left physical look ──
-  const Cell = ({ loc1, loc2, p1Num, p2Num }: { loc1: string; loc2: string; p1Num: number; p2Num: number }) => (
+  const Cell = ({ loc1, loc2, p1Num, p2Num }: { loc1: string; loc2: string; p1Num: number | string; p2Num: number | string }) => (
     <div className="flex gap-1 border-b-2 border-slate-200 pb-1 px-1 min-w-[124px]">
       {/* Left Pallet (p2) */}
       {loc2 ? (
