@@ -76,6 +76,9 @@ export async function PATCH(
             })
             if (fallbackPallets.length > 0) {
               matchedPallets.push(...fallbackPallets)
+            } else if (palletsAtLoc.length === 1) {
+              // Fallback: If there's exactly 1 pallet at the location, assume it's the correct one even if name/sku have typos
+              matchedPallets.push(palletsAtLoc[0])
             }
           }
 
@@ -176,6 +179,9 @@ export async function DELETE(
             })
             if (fallbackPallets.length > 0) {
               matchedPallets.push(...fallbackPallets)
+            } else if (palletsAtLoc.length === 1) {
+              // Fallback: If there's exactly 1 pallet at the location, assume it's the correct one even if name/sku have typos
+              matchedPallets.push(palletsAtLoc[0])
             }
           }
 
