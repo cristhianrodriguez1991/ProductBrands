@@ -33,7 +33,7 @@ export async function GET(req: Request) {
         
         for (const orphan of orphans) {
           // If we can find the matching inventory product to prefill FnSKU/UPC, do it
-          const product = orphan.sku ? await prisma.inventory.findFirst({ where: { sku: orphan.sku } }) : null;
+          const product = orphan.sku ? await prisma.inventoryItem.findFirst({ where: { sku: orphan.sku } }) : null;
           
           await prisma.fbaShipmentItem.create({
             data: {
