@@ -1035,6 +1035,9 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
                     >
                       <option value="">Nivel...</option>
                       {LEVELS.map((lvl) => {
+                        const num = parseInt(movePosition || "1", 10)
+                        if (lvl.key === "D" && (moveRack === "A" || num > 3)) return null
+
                         const locCode = `${moveRack}${movePosition}${lvl.key}`
                         const isTaken = pallets.find(p => p.locationCode === locCode && p.status !== "AVAILABLE")
                         if (isTaken) return null

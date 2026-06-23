@@ -332,7 +332,11 @@ const LocationPicker = ({ value, onChange, setConfirm, warehousePositions }: { v
               title="Nivel"
             >
               {LEVELS_CONFIG.map(l => {
-                const locCode = `${rack || "A"}${num || "1"}${l.key}`
+                const currentRack = rack || "A";
+                const currentNum = parseInt(num || "1", 10);
+                if (l.key === "D" && (currentRack === "A" || currentNum > 3)) return null;
+
+                const locCode = `${currentRack}${currentNum}${l.key}`
                 const isOccupied = warehousePositions?.find((p: any) => p.locationCode === locCode && isOccupiedWarehousePosition(p))
                 const isMine = locations.includes(locCode)
                 return <option key={l.key} value={l.key} className={isOccupied && !isMine ? "text-amber-600" : undefined}>{isOccupied && !isMine ? `${l.key} (Ocupado)` : l.key}</option>
