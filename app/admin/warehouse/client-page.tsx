@@ -478,13 +478,24 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
     const secondProductColorClass = secondPallet ? (STATUS_COLORS[secondPallet.status] || "bg-slate-400") : firstProductColorClass
     const borderBg = isMixed ? "" : (STATUS_BG[pallet.status] || "bg-slate-50 border-slate-200")
 
-    const isDragOver = dragSourceId !== null && dragSourceId !== pallet.id && !occupied
+    const isBeingDragged = dragSourceId === locationCode
+    const isDragOver = dragSourceId !== null && dragSourceId !== locationCode && !occupied
 
     return (
       <div
-        onClick={() => openPalletForm(pallet, locationPallets)}
+        draggable={occupied}
+        onDragStart={(e) => {
+          if (!occupied) { e.preventDefault(); return }
+          setDragSourceId(locationCode)
+          e.dataTransfer.setData("text/plain", locationCode)
+          e.dataTransfer.effectAllowed = "move"
+          // Create a small drag image for better UX
+          const el = e.currentTarget
+          e.dataTransfer.setDragImage(el, 29, 24)
+        }}
+        onDragEnd={() => setDragSourceId(null)}
         onDragOver={(e) => {
-          if (dragSourceId && !occupied) {
+          if (dragSourceId && dragSourceId !== locationCode && !occupied) {
             e.preventDefault()
             e.dataTransfer.dropEffect = "move"
           }
@@ -497,25 +508,21 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
           }
           setDragSourceId(null)
         }}
-        className={`w-[58px] h-[48px] rounded-lg border-2 flex flex-col items-center justify-center gap-0 cursor-pointer hover:scale-110 hover:shadow-xl hover:z-20 relative select-none group overflow-hidden ${isMixed ? "border-amber-500 ring-2 ring-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.3)]" : borderBg} ${isDragOver ? "ring-2 ring-blue-400 ring-offset-1 scale-110 !bg-blue-50 !border-blue-300" : ""} ${dragSourceId === pallet.id ? "opacity-40 scale-95" : ""}`}
+        onClick={() => openPalletForm(pallet, locationPallets)}
+        className={`w-[58px] h-[48px] rounded-lg border-2 flex flex-col items-center justify-center gap-0 relative select-none group overflow-hidden transition-all duration-150 ${occupied ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"} ${isMixed ? "border-amber-500 ring-2 ring-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.3)]" : borderBg} ${isDragOver ? "ring-2 ring-blue-400 ring-offset-1 scale-110 !bg-blue-50 !border-blue-300 !border-dashed" : "hover:scale-110 hover:shadow-xl hover:z-20"} ${isBeingDragged ? "opacity-30 scale-90" : ""}`}
         title={`${locationCode}${occupied ? `\n${occupiedPallets.map(p => p.productName || p.sku).join(" + ")}` : "\nVacío — suelta un pallet aquí"}`}
       >
-        {/* Drag handle — only visible on hover for occupied pallets */}
+        {/* Drag indicator icon — visible on hover for occupied */}
         {occupied && (
-          <div
-            draggable
-            onDragStart={(e) => {
-              e.stopPropagation()
-              setDragSourceId(pallet.id)
-              e.dataTransfer.setData("text/plain", locationCode)
-              e.dataTransfer.effectAllowed = "move"
-            }}
-            onDragEnd={() => setDragSourceId(null)}
-            onClick={(e) => e.stopPropagation()}
-            className="absolute -top-2 -left-2 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-20 shadow-md hover:bg-blue-700 hover:scale-110"
-            title="Arrastra para mover"
-          >
-            <Move className="h-3 w-3 text-white" />
+          <div className="absolute -top-1 -left-1 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 shadow-md pointer-events-none">
+            <Move className="h-2.5 w-2.5 text-white" />
+          </div>
+        )}
+
+        {/* Drop zone indicator */}
+        {isDragOver && (
+          <div className="absolute inset-0 flex items-center justify-center z-30 bg-blue-100/60 rounded-lg">
+            <Move className="h-5 w-5 text-blue-500 animate-bounce" />
           </div>
         )}
 

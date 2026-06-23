@@ -125,6 +125,7 @@ const LEVELS_CONFIG = [
   { key: "T", label: "ARRIBA (T)" },
   { key: "M", label: "MEDIO (M)" },
   { key: "L", label: "ABAJO (L)" },
+  { key: "D", label: "DOCKING (D)" },
   { key: "P", label: "PISO (P)" },
 ]
 
