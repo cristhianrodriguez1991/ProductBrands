@@ -54,6 +54,18 @@ export async function GET() {
     where: { status: "PENDING" },
     select: { id: true, location: true, name: true }
   })
+
+  const inventoryItems = await prisma.inventoryItem.findMany({
+    take: 10,
+    orderBy: { createdAt: "desc" },
+    select: { location: true, name: true, sku: true, amazonStatus: true }
+  })
+
+  const inventoryLocations = await prisma.inventoryItem.groupBy({
+    by: ['location'],
+    _count: true,
+    where: { location: { not: null } }
+  })
   
   return NextResponse.json({
     activeShipment: activeShipment ? { id: activeShipment.id, name: activeShipment.name } : null,
@@ -63,5 +75,7 @@ export async function GET() {
     occupiedPallets: occupiedPallets.map(p => ({ loc: p.locationCode, status: p.status, name: p.productName, sku: p.sku })),
     existingFbaItemLocs: existingFbaItems.map(i => ({ loc: i.location, status: i.status })),
     pendingFbaItems: pendingFbaItems,
+    inventoryItems: inventoryItems,
+    inventoryLocations: inventoryLocations,
   })
 }
