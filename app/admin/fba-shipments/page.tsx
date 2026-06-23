@@ -1701,40 +1701,40 @@ export default function FbaShipmentsPage() {
               </Card>
 
               {/* GLOBAL PENDING SECTION */}
-              {globalPendingItems.length > 0 && (
-                <div className="no-print bg-amber-50/40 rounded-3xl p-10 border border-amber-100/50 shadow-inner mt-10 mb-20">
-                  <h2 className="text-2xl font-black text-amber-900 mb-8 flex items-center gap-3">
-                    <MousePointer2 className="h-6 w-6" /> Palets en Espera (Global)
-                    <span className="text-[10px] font-black bg-amber-600 text-white px-3 py-1 rounded-full uppercase tracking-tighter">Disponible para este envío</span>
-                  </h2>
-                  <div className="overflow-x-auto rounded-none border border-amber-200 bg-white shadow-xl p-0">
-                    <table className="text-left w-[2240px] min-w-[2240px] table-fixed border-collapse" style={{ tableLayout: "fixed", width: "2240px" }}>
-                      {renderShipmentColGroup()}
-                      <thead>
-                        <tr className="bg-amber-800 text-white text-[11px] uppercase font-black tracking-widest leading-none">
-                          <th className="py-6 px-1 w-[35px] text-center bg-amber-900"></th>
-                          <th className="py-6 px-3 w-[110px] text-center">Location</th>
-                          <th className="py-6 px-3 w-[130px] text-center">Cajas</th>
-                          <th className="py-6 px-3 w-[130px] text-center">Fotos</th>
-                          <th className="py-6 px-5 w-[300px]">PRODUCTO PENDIENTE</th>
-                          <th className="py-6 px-3 w-[180px] text-center whitespace-nowrap">FnSKU</th>
-                          <th className="py-6 px-3 w-[180px] text-center whitespace-nowrap">UPC</th>
-                          <th className="py-6 px-3 w-[160px] text-center whitespace-nowrap">SKU</th>
-                          <th className="py-6 px-3 w-[160px] text-center whitespace-nowrap">ASIN</th>
-                          <th className="py-6 px-3 w-[85px] text-center">U/C</th>
-                          <th className="py-6 px-3 w-[105px] text-center leading-tight bg-amber-900/40">Cajas<br /><span className="text-[9px] text-amber-200">({globalPendingItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</span></th>
-                          <th className="py-6 px-3 w-[115px] text-center leading-tight bg-amber-900/40">Unds<br /><span className="text-[9px] text-amber-200">({globalPendingItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalUnits) || 0), 0)})</span></th>
-                          <th className="py-6 px-3 w-[115px] text-center">Exp. Date</th>
-                          <th className="py-6 px-2 w-[55px] text-center">L</th>
-                          <th className="py-6 px-2 w-[55px] text-center">A</th>
-                          <th className="py-6 px-2 w-[55px] text-center">H</th>
-                          <th className="py-6 px-4 w-[90px] text-center">Peso</th>
-                          <th className="py-6 px-6 w-[300px]">Descripción</th>
-                          <th className="py-6 px-3 w-[70px] text-center">Acc</th>
-                        </tr>
-                      </thead>
-                      <Reorder.Group axis="y" as="tbody" layoutScroll={false} values={globalPendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
-                        {globalPendingItems.map((item: any, index: number) => (
+              <div className="no-print bg-amber-50/40 rounded-3xl p-10 border border-amber-100/50 shadow-inner mt-10 mb-20">
+                <h2 className="text-2xl font-black text-amber-900 mb-8 flex items-center gap-3">
+                  <MousePointer2 className="h-6 w-6" /> Palets en Espera (Global)
+                  <span className="text-[10px] font-black bg-amber-600 text-white px-3 py-1 rounded-full uppercase tracking-tighter">Disponible para este envío</span>
+                </h2>
+                <div className="overflow-x-auto rounded-none border border-amber-200 bg-white shadow-xl p-0">
+                  <table className="text-left w-[2240px] min-w-[2240px] table-fixed border-collapse" style={{ tableLayout: "fixed", width: "2240px" }}>
+                    {renderShipmentColGroup()}
+                    <thead>
+                      <tr className="bg-amber-800 text-white text-[11px] uppercase font-black tracking-widest leading-none">
+                        <th className="py-6 px-1 w-[35px] text-center bg-amber-900"></th>
+                        <th className="py-6 px-3 w-[110px] text-center">Location</th>
+                        <th className="py-6 px-3 w-[130px] text-center">Cajas</th>
+                        <th className="py-6 px-3 w-[130px] text-center">Fotos</th>
+                        <th className="py-6 px-5 w-[300px]">PRODUCTO PENDIENTE</th>
+                        <th className="py-6 px-3 w-[180px] text-center whitespace-nowrap">FnSKU</th>
+                        <th className="py-6 px-3 w-[180px] text-center whitespace-nowrap">UPC</th>
+                        <th className="py-6 px-3 w-[160px] text-center whitespace-nowrap">SKU</th>
+                        <th className="py-6 px-3 w-[160px] text-center whitespace-nowrap">ASIN</th>
+                        <th className="py-6 px-3 w-[85px] text-center">U/C</th>
+                        <th className="py-6 px-3 w-[105px] text-center leading-tight bg-amber-900/40">Cajas<br /><span className="text-[9px] text-amber-200">({globalPendingItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalBoxes) || 0), 0)})</span></th>
+                        <th className="py-6 px-3 w-[115px] text-center leading-tight bg-amber-900/40">Unds<br /><span className="text-[9px] text-amber-200">({globalPendingItems.reduce((acc: number, i: any) => acc + (parseInt(i.totalUnits) || 0), 0)})</span></th>
+                        <th className="py-6 px-3 w-[115px] text-center">Exp. Date</th>
+                        <th className="py-6 px-2 w-[55px] text-center">L</th>
+                        <th className="py-6 px-2 w-[55px] text-center">A</th>
+                        <th className="py-6 px-2 w-[55px] text-center">H</th>
+                        <th className="py-6 px-4 w-[90px] text-center">Peso</th>
+                        <th className="py-6 px-6 w-[300px]">Descripción</th>
+                        <th className="py-6 px-3 w-[70px] text-center">Acc</th>
+                      </tr>
+                    </thead>
+                    <Reorder.Group axis="y" as="tbody" layoutScroll={false} values={globalPendingItems} onReorder={(v) => handleDragReorder(v, "PENDING")}>
+                      {globalPendingItems.length > 0 ? (
+                        globalPendingItems.map((item: any, index: number) => (
                           <StandaloneRow
                             key={item.id} item={item} index={index} isPending={true}
                             updateItem={updateItem}
@@ -1749,12 +1749,18 @@ export default function FbaShipmentsPage() {
                             warehousePositions={warehousePositions}
                             onOpenScanner={openScanner}
                           />
-                        ))}
-                      </Reorder.Group>
-                    </table>
-                  </div>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={19} className="py-12 text-center text-amber-600/60 font-black tracking-widest uppercase text-sm">
+                            No hay palets en espera actualmente
+                          </td>
+                        </tr>
+                      )}
+                    </Reorder.Group>
+                  </table>
                 </div>
-              )}
+              </div>
             </div>
           ) : null}
         </div>
