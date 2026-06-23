@@ -13,12 +13,23 @@ export const dynamic = "force-dynamic";
  * Uses GET_MERCHANT_LISTINGS_DATA report which only returns
  * currently active listings (both FBA and FBM), not old/deleted ones.
  */
+export async function GET(req: Request) {
+  const authHeader = req.headers.get("authorization")
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized cron request" }, { status: 401 })
+  }
+  return executeSync()
+}
+
 export async function POST() {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as any)?.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
+  return executeSync()
+}
 
+async function executeSync() {
   if (!process.env.AMAZON_SPAPI_CLIENT_ID) {
     return NextResponse.json({
       error: "SP-API credentials not configured in .env",

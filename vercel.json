@@ -3,6 +3,11 @@
   "devCommand": "npm run dev",
   "installCommand": "rm -rf node_modules/.prisma && npm install",
   "framework": "nextjs",
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "crons": [
+    {
+      "path": "/api/admin/inventory/sync",
+      "schedule": "0 4 * * *"
+    }
+  ]
 }
-
