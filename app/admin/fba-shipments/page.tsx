@@ -809,8 +809,9 @@ export default function FbaShipmentsPage() {
       const itemsToSync = tab.items.filter((i: any) => i.location && i.location !== "ENVIADO" && (i.status === "IN_SHIPMENT" || i.status === "PENDING"))
       const levelMap: any = { T: "TOP", M: "MID", L: "BOT", P: "FLOOR" }
 
-      // ── Step 1: Scrub Ghost Pallets ──
-      // Find all valid locations across ALL active shipments to avoid overwriting another tab's items
+      // ── Step 1: Scrub Ghost Pallets (DISABLED TO PREVENT DATA LOSS) ──
+      // We no longer delete HOLD or OUTBOUND pallets from the warehouse during sync
+      // to avoid accidentally deleting manually entered pending pallets.
       const allActiveLocations = new Set<string>()
       tabs.forEach(t => {
         t.items.forEach((i: any) => {
@@ -819,21 +820,6 @@ export default function FbaShipmentsPage() {
           }
         })
       })
-
-      // Fetch current warehouse state to find ghosts
-      const warehouseRes = await fetch("/api/admin/warehouse")
-      if (warehouseRes.ok) {
-        const currentPallets = await warehouseRes.json()
-        const ghostPallets = currentPallets.filter((p: any) => 
-          (p.status === "OUTBOUND" || p.status === "HOLD") && !allActiveLocations.has(p.locationCode)
-        )
-        // Clear ghosts
-        for (const ghost of ghostPallets) {
-          await fetch(`/api/admin/warehouse/${ghost.id}`, {
-            method: "DELETE"
-          })
-        }
-      }
 
       // ── Step 2: Perform batch-like sequential updates for current tab ──
       for (const item of itemsToSync) {
