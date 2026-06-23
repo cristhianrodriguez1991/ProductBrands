@@ -3,23 +3,34 @@ import { prisma } from "@/lib/prisma"
 
 export async function GET() {
   const map = {
-    'W-1': 'BD1L',
-    'W-2': 'BD2L',
-    'W-3': 'BD3L',
-    'W-4': 'CD1L',
-    'W-5': 'CD2L',
-    'W-6': 'CD3L'
+    'BD1L': 'B1D',
+    'BD2L': 'B2D',
+    'BD3L': 'B3D',
+    'CD1L': 'C1D',
+    'CD2L': 'C2D',
+    'CD3L': 'C3D',
+    // Fallbacks just in case the previous migration didn't run for some
+    'W-1': 'B1D',
+    'W-2': 'B2D',
+    'W-3': 'B3D',
+    'W-4': 'C1D',
+    'W-5': 'C2D',
+    'W-6': 'C3D'
   };
   
   const results = [];
   
   for (const [oldLoc, newLoc] of Object.entries(map)) {
+    // 1. Update existing pallets
     await prisma.warehousePallet.updateMany({
       where: { locationCode: oldLoc },
-      data: { locationCode: newLoc }
+      data: { 
+        locationCode: newLoc,
+        level: 'DOCKING' 
+      }
     });
     
-    // Also update FBA shipments referencing this location
+    // 2. Also update FBA shipments referencing this location
     const items = await prisma.fbaShipmentItem.findMany({
       where: { location: { contains: oldLoc } }
     });

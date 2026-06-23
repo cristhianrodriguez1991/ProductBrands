@@ -826,11 +826,11 @@ function WarehouseScene({
         <group>
           <Floor3D position={[-1.4 * S, 0, -0.1 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} reverseOrder={true} />
           <Rack3D position={[-1.4 * S, 0, 0.8 * S]} rotation={[0, Math.PI, 0]} rackName="B" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} reverseOrder={true} />
-          {/* Extra B negative positions to the left of B1L */}
+          {/* Docking positions for Rack B */}
           <ExtraLevel3D
             position={[-1.4 * S + (5 * 0.95 * S / 2) + (3 * 0.95 * S / 2) + 0.05 * S, 0.15 * S, 0.8 * S]}
             rotation={[0, Math.PI, 0]}
-            extraKeys={["W-1", "W-2", "W-3"]}
+            extraKeys={["B1D", "B2D", "B3D"]}
             palletMap={palletMap}
             onSelect={onSelect}
             moveSourceId={moveSourceId}
@@ -844,10 +844,10 @@ function WarehouseScene({
         <group>
           <Rack3D position={[-1.4 * S, 0, 1.4 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
           <Floor3D position={[-1.4 * S, 0, 2.3 * S]} rackName="C" cellCount={5} palletMap={palletMap} onSelect={onSelect} moveSourceId={moveSourceId} onMoveClick={onMoveClick} />
-          {/* Extra C negative positions to the left of C1L */}
+          {/* Docking positions for Rack C */}
           <ExtraLevel3D
             position={[-1.4 * S + (5 * 0.95 * S / 2) + (3 * 0.95 * S / 2) + 0.05 * S, 0.15 * S, 1.4 * S]}
-            extraKeys={["W-4", "W-5", "W-6"]}
+            extraKeys={["C1D", "C2D", "C3D"]}
             palletMap={palletMap}
             onSelect={onSelect}
             moveSourceId={moveSourceId}

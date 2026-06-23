@@ -39,6 +39,7 @@ const LEVELS = [
   { key: "T", label: "ARRIBA", maxHeight: 80, order: 0 },
   { key: "M", label: "MEDIO", maxHeight: 56, order: 1 },
   { key: "L", label: "ABAJO", maxHeight: 40, order: 2 },
+  { key: "D", label: "DOCKING", maxHeight: 80, order: 3 },
 ] as const
 
 const STATUSES = ["AVAILABLE", "DAMAGED", "HOLD", "INBOUND", "OUTBOUND"] as const
@@ -1011,16 +1012,6 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
                           if (!hasFreeLevel) return null
                           return <option key={num} value={String(num)}>{num}</option>
                         })
-
-                        if (moveRack === "B" || moveRack === "C") {
-                          ["D1", "D2", "D3"].forEach(num => {
-                            const loc = `${moveRack}${num}L`
-                            const p = pallets.find(p => p.locationCode === loc)
-                            if (!p || p.status === "AVAILABLE") {
-                              options.push(<option key={num} value={num}>{num}</option>)
-                            }
-                          })
-                        }
                         return options
                       })()}
                     </select>
@@ -1037,15 +1028,12 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
                     >
                       <option value="">Nivel...</option>
                       {LEVELS.map((lvl) => {
-                        if (movePosition.startsWith("D") && lvl.key !== "L") return null
-                        
                         const locCode = `${moveRack}${movePosition}${lvl.key}`
                         const isTaken = pallets.find(p => p.locationCode === locCode && p.status !== "AVAILABLE")
                         if (isTaken) return null
                         return <option key={lvl.key} value={lvl.key}>{lvl.label} ({lvl.key})</option>
                       })}
                       {(() => {
-                        if (movePosition.startsWith("D")) return null
                         const locCode = `${moveRack}${movePosition}P`
                         const isTaken = pallets.find(p => p.locationCode === locCode && p.status !== "AVAILABLE")
                         if (isTaken) return null
