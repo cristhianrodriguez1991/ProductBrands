@@ -297,9 +297,13 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
 
       if (res.ok) {
         const updated = await res.json()
-        setPallets((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated, expirationDate: updated.expirationDate || null, createdAt: updated.createdAt, updatedAt: updated.updatedAt } : p)))
+        if (updated.deleted) {
+          setPallets((prev) => prev.filter((p) => p.id !== updated.id))
+        } else {
+          setPallets((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated, expirationDate: updated.expirationDate || null, createdAt: updated.createdAt, updatedAt: updated.updatedAt } : p)))
+        }
         setFormOpen(false)
-        toast({ title: "Guardado", description: `Posición ${selectedPallet.locationCode} actualizada.` })
+        toast({ title: updated.deleted ? "Vaciado" : "Guardado", description: `Posición ${selectedPallet.locationCode} actualizada.` })
       } else {
         const err = await res.json()
         toast({ title: "Error de validación", description: err.error || "No se pudo guardar.", variant: "destructive" })
@@ -323,7 +327,11 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
           const res = await fetch(`/api/admin/warehouse/${selectedPallet.id}`, { method: "DELETE" })
           if (res.ok) {
             const updated = await res.json()
-            setPallets((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated, expirationDate: null, createdAt: updated.createdAt, updatedAt: updated.updatedAt } : p)))
+            if (updated.deleted) {
+              setPallets((prev) => prev.filter((p) => p.id !== updated.id))
+            } else {
+              setPallets((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated, expirationDate: null, createdAt: updated.createdAt, updatedAt: updated.updatedAt } : p)))
+            }
             setFormOpen(false)
             toast({ title: "Vaciado", description: `Posición ${selectedPallet.locationCode} limpiada.` })
           }

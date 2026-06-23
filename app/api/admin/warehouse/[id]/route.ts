@@ -13,6 +13,34 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     const body = await req.json()
 
+    // If quantity is exactly 0, interpret this as "clear/empty the pallet" completely
+    if (body.quantity === 0) {
+      const result = await prisma.$transaction(async (tx) => {
+        const existing = await tx.warehousePallet.findUnique({ where: { id: params.id } })
+        if (!existing) throw new Error("Pallet no encontrado.")
+
+        const locationCode = existing.locationCode
+        await tx.warehousePallet.delete({ where: { id: params.id } })
+
+        const itemsToUpdate = await tx.fbaShipmentItem.findMany({
+          where: { location: { contains: locationCode } }
+        })
+
+        for (const item of itemsToUpdate) {
+          if (item.location) {
+            const locs = item.location.split(' + ').filter(Boolean)
+            const newLocs = locs.filter(l => l !== locationCode)
+            await tx.fbaShipmentItem.update({
+              where: { id: item.id },
+              data: { location: newLocs.join(' + ') }
+            })
+          }
+        }
+        return { id: params.id, locationCode, deleted: true }
+      })
+      return NextResponse.json(result)
+    }
+
     // Height validation
     const HEIGHT_LIMITS: Record<string, number> = { TOP: 80, MID: 56, BOT: 40 }
 
