@@ -901,7 +901,11 @@ export default function Warehouse3D({
       const res = await fetch("/api/admin/warehouse/move", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceId: moveSourceId, targetId: target.id }),
+        body: JSON.stringify({ 
+          sourceId: moveSourceId, 
+          targetId: target.id,
+          targetLocCode: target.locationCode 
+        }),
       })
       if (res.ok) {
         setMoveStatus(`✅ Movido a ${target.locationCode}`)
