@@ -52,12 +52,14 @@ export async function getActiveListings(): Promise<any[]> {
 
   // 1. Try to fetch a recent successful report first to avoid timeouts and rate limits
   try {
+    const createdSince = new Date(Date.now() - 15 * 60 * 1000).toISOString() // Only reuse if less than 15 mins old
     const recentReportsRes: any = await client.callAPI({
       operation: "getReports",
       endpoint: "reports",
       query: {
         reportTypes: [reportType],
         processingStatuses: ["DONE"],
+        createdSince,
         pageSize: 1,
       },
     })
@@ -150,12 +152,14 @@ export async function getFbaQuantities(): Promise<Map<string, { fulfillable: num
   const quantityMap = new Map<string, { fulfillable: number; reserved: number; fnsku: string | null }>()
 
   // 1. Try to fetch a recent successful report first to avoid the 30-min throttle limit
+  const createdSince = new Date(Date.now() - 30 * 60 * 1000).toISOString() // Max 30 mins old for FBA quantities
   const recentReportsRes: any = await client.callAPI({
     operation: "getReports",
     endpoint: "reports",
     query: {
       reportTypes: ["GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA"],
       processingStatuses: ["DONE"],
+      createdSince,
       pageSize: 1,
     },
   })
