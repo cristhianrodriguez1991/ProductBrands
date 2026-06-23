@@ -48,13 +48,43 @@ function getClient(): any {
 export async function getActiveListings(): Promise<any[]> {
   const client: any = getClient()
   const usMarketplaceId = "ATVPDKIKX0DER"
+  const reportType = "GET_MERCHANT_LISTINGS_DATA" // Active listings only (generates much faster)
 
-  // Step 1: Request the report
+  // 1. Try to fetch a recent successful report first to avoid timeouts and rate limits
+  try {
+    const recentReportsRes: any = await client.callAPI({
+      operation: "getReports",
+      endpoint: "reports",
+      query: {
+        reportTypes: [reportType],
+        processingStatuses: ["DONE"],
+        pageSize: 1,
+      },
+    })
+    if (recentReportsRes?.reports && recentReportsRes.reports.length > 0) {
+      const recentDocId = recentReportsRes.reports[0].reportDocumentId
+      console.log(`[SYNC] Reusing recent ${reportType} to bypass throttling. Document ID: ${recentDocId}`)
+      const docRes: any = await client.callAPI({
+        operation: "getReportDocument",
+        endpoint: "reports",
+        path: { reportDocumentId: recentDocId },
+      })
+      const downloadRes = await fetch(docRes.url)
+      const tsvContent = await downloadRes.text()
+      const allItems = parseTSV(tsvContent)
+      console.log(`[SYNC] Reused report returned ${allItems.length} active items.`)
+      return allItems
+    }
+  } catch (e: any) {
+    console.warn("[SYNC] Could not fetch recent reports, creating a new one...", e.message)
+  }
+
+  // 2. Request a new report if none exists
   const createRes: any = await client.callAPI({
     operation: "createReport",
     endpoint: "reports",
     body: {
-      reportType: "GET_MERCHANT_LISTINGS_ALL_DATA",
+      reportType,
       marketplaceIds: [usMarketplaceId],
     },
   })
@@ -64,12 +94,12 @@ export async function getActiveListings(): Promise<any[]> {
     throw new Error("Failed to create report — no reportId returned")
   }
 
-  // Step 2: Poll until report is DONE (max ~2 mins)
+  // Step 2: Poll until report is DONE
   let reportStatus = "IN_QUEUE"
   let reportDocumentId: string | null = null
   let attempts = 0
 
-  while (reportStatus !== "DONE" && attempts < 24) {
+  while (reportStatus !== "DONE" && attempts < 50) {
     await new Promise((r) => setTimeout(r, 5000)) // wait 5s between polls
     attempts++
 
