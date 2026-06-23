@@ -20,7 +20,26 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         if (!existing) throw new Error("Pallet no encontrado.")
 
         const locationCode = existing.locationCode
-        await tx.warehousePallet.delete({ where: { id: params.id } })
+
+        const palletsAtLoc = await tx.warehousePallet.findMany({ where: { locationCode } })
+        let finalPallet = null;
+        if (palletsAtLoc.length > 1) {
+          await tx.warehousePallet.delete({ where: { id: params.id } })
+        } else {
+          finalPallet = await tx.warehousePallet.update({
+            where: { id: params.id },
+            data: {
+              sku: null,
+              productName: null,
+              quantity: null,
+              lotNumber: null,
+              expirationDate: null,
+              palletHeightIn: null,
+              status: "AVAILABLE",
+              notes: null
+            }
+          })
+        }
 
         const itemsToUpdate = await tx.fbaShipmentItem.findMany({
           where: { location: { contains: locationCode } }
@@ -36,6 +55,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
             })
           }
         }
+        
+        if (finalPallet) return finalPallet;
         return { id: params.id, locationCode, deleted: true }
       })
       return NextResponse.json(result)
@@ -152,8 +173,26 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 
       const locationCode = existing.locationCode
 
-      // Delete the pallet record entirely (supports mixed pallets — other products at same location remain)
-      await tx.warehousePallet.delete({ where: { id: params.id } })
+      // Delete the pallet record entirely ONLY if it's a mixed pallet. Otherwise, clear it.
+      const palletsAtLoc = await tx.warehousePallet.findMany({ where: { locationCode } })
+      let finalPallet = null;
+      if (palletsAtLoc.length > 1) {
+        await tx.warehousePallet.delete({ where: { id: params.id } })
+      } else {
+        finalPallet = await tx.warehousePallet.update({
+          where: { id: params.id },
+          data: {
+            sku: null,
+            productName: null,
+            quantity: null,
+            lotNumber: null,
+            expirationDate: null,
+            palletHeightIn: null,
+            status: "AVAILABLE",
+            notes: null
+          }
+        })
+      }
 
       // Two-way sync: Update FBA shipments referencing this location
       const itemsToUpdate = await tx.fbaShipmentItem.findMany({
@@ -172,6 +211,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
           })
         }
       }
+      if (finalPallet) return finalPallet;
       return { id: params.id, locationCode, deleted: true }
     })
 

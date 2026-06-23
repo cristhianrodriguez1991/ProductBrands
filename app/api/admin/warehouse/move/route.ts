@@ -10,20 +10,40 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const { sourceId, targetId } = await req.json()
-    if (!sourceId || !targetId) {
-      return new NextResponse("Missing source or target", { status: 400 })
-    }
+    const { sourceId, targetId, targetLocCode, targetRack, targetLevel, targetPosition } = await req.json()
+    if (!sourceId) return new NextResponse("Missing source", { status: 400 })
 
-    // Use transaction to move pallet (supports mixed pallets — target can already have products)
     const result = await prisma.$transaction(async (tx) => {
       const source = await tx.warehousePallet.findUnique({ where: { id: sourceId } })
-      const target = await tx.warehousePallet.findUnique({ where: { id: targetId } })
+      if (!source) throw new Error("Pallet origen no encontrado.")
 
-      if (!source || !target) throw new Error("Pallet no encontrado.")
+      let target = null
+      if (targetId && !targetId.startsWith("dummy-")) {
+        target = await tx.warehousePallet.findUnique({ where: { id: targetId } })
+      }
 
-      // Determine the actual target record to update
-      let finalTargetId = targetId
+      if (!target && targetLocCode) {
+        // Self-heal: Target location is completely empty in DB. Create placeholder.
+        const rackCode = targetRack || targetLocCode.charAt(0)
+        const lvlCode = targetLevel || "TOP"
+        const cellNum = targetPosition ? Math.ceil(targetPosition / 2) : 1
+        const posNum = targetPosition ? (targetPosition % 2 === 0 ? 2 : 1) : 1
+
+        target = await tx.warehousePallet.create({
+          data: {
+            locationCode: targetLocCode,
+            rack: rackCode,
+            level: lvlCode,
+            cellNumber: cellNum,
+            palletPosition: posNum,
+            status: "AVAILABLE",
+          }
+        })
+      }
+
+      if (!target) throw new Error("Pallet destino no pudo ser resuelto.")
+
+      let finalTargetId = target.id
       const isTargetOccupied = !!target.productName || !!target.sku
 
       if (isTargetOccupied && source.locationCode !== target.locationCode) {

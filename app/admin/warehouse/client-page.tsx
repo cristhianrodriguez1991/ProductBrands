@@ -347,17 +347,22 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
     if (!selectedPallet || !moveRack || !moveLevel || !movePosition) return
     const targetLocCode = `${moveRack}${movePosition}${moveLevel}`
     const targetPallets = palletsByLocation[targetLocCode]
-    if (!targetPallets || targetPallets.length === 0) {
-      toast({ title: "Error", description: "Posición destino no encontrada.", variant: "destructive" })
-      return
-    }
-    const targetPallet = targetPallets[0]
+    // Target pallets might be empty if the location was completely deleted, 
+    // but the backend will self-heal and create it.
+    const targetId = targetPallets && targetPallets.length > 0 ? targetPallets[0].id : undefined
     setMoving(true)
     try {
       const res = await fetch("/api/admin/warehouse/move", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceId: selectedPallet.id, targetId: targetPallet.id }),
+        body: JSON.stringify({ 
+          sourceId: selectedPallet.id, 
+          targetId,
+          targetLocCode,
+          targetRack: moveRack,
+          targetLevel: moveLevel,
+          targetPosition: parseInt(movePosition)
+        }),
       })
       if (res.ok) {
         const [emptiedSource, filledTarget] = await res.json()
@@ -384,16 +389,22 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
   const handleDragMovePallet = async (sourceLocCode: string, targetLocCode: string) => {
     const sourcePallets = palletsByLocation[sourceLocCode]
     const targetPallets = palletsByLocation[targetLocCode]
-    if (!sourcePallets || sourcePallets.length === 0 || !targetPallets || targetPallets.length === 0) return
+    if (!sourcePallets || sourcePallets.length === 0) return
     const sourcePallet = sourcePallets.find(p => isOccupied(p)) || sourcePallets[0]
-    const targetPallet = targetPallets[0]
+    
+    const targetId = targetPallets && targetPallets.length > 0 ? targetPallets[0].id : undefined
+
     if (!isOccupied(sourcePallet)) return
     // Mixed pallets allowed — removing the occupied target block
     try {
       const res = await fetch("/api/admin/warehouse/move", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceId: sourcePallet.id, targetId: targetPallet.id }),
+        body: JSON.stringify({ 
+          sourceId: sourcePallet.id, 
+          targetId,
+          targetLocCode
+        }),
       })
       if (res.ok) {
         const [emptiedSource, filledTarget] = await res.json()
