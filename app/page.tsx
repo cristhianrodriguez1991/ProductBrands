@@ -4,390 +4,296 @@ import Link from "next/link"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowRight, CheckCircle, Package, Tag, Truck, Shield, Factory, Award, Globe, Users } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowRight, Factory, Shield, Globe, Package, Tag } from "lucide-react"
 import { Navbar } from "@/components/navbar"
 import { CustomerLogosCarousel } from "@/components/customer-logos"
+import { LenisProvider } from "@/components/lenis-provider"
+import { CinematicStorytelling } from "@/components/cinematic-storytelling"
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-screen bg-white">
-      <Navbar />
-      {/* Hero Section - Banner Image */}
-      <section className="relative w-full overflow-hidden -mt-1">
-        <div className="w-full">
-          <div className="relative w-full h-[60vh] md:h-[65vh] lg:h-[70vh] min-h-[500px] md:min-h-[550px] lg:min-h-[600px]">
-            <Image
-              src="/images/hero/pivate-label-hero.png"
-              alt="Custom Private Label Products Manufacturer & Supplier"
-              fill
-              className="object-contain object-center"
-              priority
-              quality={75}
-              sizes="100vw"
-            />
-            {/* Buttons Overlay */}
-            <div className="absolute inset-0 flex items-end justify-center lg:justify-start pb-6 md:pb-8 lg:pb-12 px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-              <div className="flex flex-col gap-3 md:gap-4 w-full max-w-md lg:max-w-none lg:flex-row">
-                <Link href="/quote" className="w-full lg:w-auto">
-                  <Button size="lg" className="w-full lg:w-auto text-base px-6 md:px-8 py-5 md:py-6 bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
-                    Request a Quote
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </Link>
-                <Link href="/contact" className="w-full lg:w-auto">
-                  <Button size="lg" variant="outline" className="w-full lg:w-auto text-base px-6 md:px-8 py-5 md:py-6 bg-white/95 hover:bg-white border-2 border-gray-300 shadow-lg">
-                    Contact Us
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+    <LenisProvider>
+      <div className="flex flex-col min-h-screen bg-[#F8F9FA] text-gray-900 selection:bg-blue-600 selection:text-white">
+        <Navbar />
 
-      {/* Transition Element */}
-      <div className="relative h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent w-full my-2"></div>
+        {/* Ultra-Premium Awwwards-Level Cinematic Storytelling Experience */}
+        <CinematicStorytelling />
 
-      {/* Private Label Products - Staggered Layout */}
-      <section className="pt-2 pb-12 md:pb-16 bg-white w-full">
-        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <div className="text-center mb-4 mt-8 md:mt-12">
-            <div className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-2 inline-flex items-baseline gap-2">
-              <span className="text-blue-600 inline-block opacity-0 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>You Design.</span>
-              <span className="text-orange-500 inline-block opacity-0 animate-fade-in-up" style={{ animationDelay: '0.5s' }}>We Make.</span>
-            </div>
-          </div>
+        {/* Transition Divider */}
+        <div className="relative h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent w-full my-4" />
 
-          {/* Product 1 - Text Left, Image Right */}
-          <motion.div 
-            className="mb-12 md:mb-16"
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-6 items-center">
-              {/* Text Content */}
-              <motion.div 
-                className="order-2 lg:order-1 lg:col-span-2 p-4 lg:p-6"
-                initial={{ opacity: 0, x: -30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                <h3 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900 uppercase tracking-wide">
-                  Custom Pillow Bags
-                </h3>
-                <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-4">
-                  We offer ready-to-use pillow-style bags that can be customized with your brand and product. These bags are perfect for snacks, nuts, coffee, candy, pet treats, and many other dry products.
-                </p>
-                <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-4">
-                  We handle the packaging so you can focus on growing your brand—simple, reliable, and designed to scale as you grow.
-                </p>
-                <p className="text-base md:text-lg text-gray-700 font-semibold leading-relaxed">
-                  You choose the product. We package it with your brand.
-                </p>
-              </motion.div>
-              {/* Image */}
-              <motion.div 
-                className="order-1 lg:order-2 lg:col-span-3 relative h-[400px] md:h-[450px] lg:h-[500px] rounded-lg overflow-hidden bg-white p-4 lg:p-6"
-                initial={{ opacity: 0, x: 30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                <Image
-                  src="/images/products/Product1.png"
-                  alt="Custom Pillow Bags - Private Label Packaging"
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
-              </motion.div>
-            </div>
-          </motion.div>
-
-          {/* Product 2 - Image Left, Text Right (Staggered) */}
-          <motion.div 
-            className="mb-12 md:mb-16"
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-6 items-center">
-              {/* Image */}
-              <motion.div 
-                className="lg:col-span-3 relative h-[300px] md:h-[350px] lg:h-[400px] rounded-lg overflow-hidden bg-white p-4 lg:p-6"
-                initial={{ opacity: 0, x: -30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                <Image
-                  src="/images/products/Product2.png"
-                  alt="Stand-Up Pouches (Doypack Bags) - Private Label Packaging"
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
-              </motion.div>
-              {/* Text Content */}
-              <motion.div 
-                className="lg:col-span-2 p-4 lg:p-6"
-                initial={{ opacity: 0, x: 30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                <h3 className="text-2xl md:text-3xl font-bold mb-3 text-gray-900 uppercase tracking-wide">
-                  Stand-Up Pouches (Doypack Bags)
-                </h3>
-                <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-3">
-                  We offer stand-up pouch bags (Doypack) with zipper and non-zipper options, designed to showcase your brand with a premium look. These bags are ideal for snacks, coffee, powders, supplements, pet food, and many other products.
-                </p>
-                <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-3">
-                  Doypack bags stand upright on shelves, offer great product visibility, and can include features like resealable zippers or clear windows—making them perfect for both retail and online sales.
-                </p>
-                <p className="text-base md:text-lg text-gray-700 font-semibold leading-relaxed">
-                  Modern packaging. Flexible options. Your brand in front.
-                </p>
-              </motion.div>
-            </div>
-          </motion.div>
-
-          {/* Product 3 - Text Left, Image Right */}
-          <motion.div 
-            className="mb-12 md:mb-16"
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-12 items-center">
-              {/* Text Content */}
-              <motion.div 
-                className="order-2 lg:order-1 lg:col-span-2 p-4 lg:p-6"
-                initial={{ opacity: 0, x: -30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                <h3 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900 uppercase tracking-wide">
-                  Plastic Containers
-                </h3>
-                <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-4">
-                  We offer plastic containers in round and square formats, designed for custom private label packaging. These containers are ideal for snacks, powders, supplements, candy, dry foods, personal care products, and more.
-                </p>
-                <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-4">
-                  Available in multiple sizes and styles, our containers provide a clean, professional look while keeping your product protected and easy to use. Perfect for retail shelves, e-commerce, and subscription brands.
-                </p>
-                <p className="text-base md:text-lg text-gray-700 font-semibold leading-relaxed">
-                  Simple packaging. Strong presentation. Your brand inside.
-                </p>
-              </motion.div>
-              {/* Image */}
-              <motion.div 
-                className="order-1 lg:order-2 lg:col-span-3 relative h-[400px] md:h-[450px] lg:h-[500px] rounded-lg overflow-hidden bg-white p-4 lg:p-6"
-                initial={{ opacity: 0, x: 30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                <Image
-                  src="/images/products/Product3.png"
-                  alt="Plastic Containers - Private Label Packaging"
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
-              </motion.div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Customers / Logos Slider */}
-      <section className="py-16 md:py-20 bg-white border-t w-full">
-        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <div className="w-full mb-10 text-center">
-            <span className="text-[10px] md:text-xs font-semibold tracking-[0.3em] text-slate-500 uppercase">
-              brands we&apos;ve worked with
-            </span>
-            <div className="mt-2 text-3xl md:text-4xl lg:text-5xl font-semibold text-slate-900 tracking-[0.12em] uppercase">
-              Customers
-            </div>
-            <h2 className="mt-4 text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-[0.18em] text-slate-100 uppercase select-none">
-              PRIVATE LABEL
-            </h2>
-          </div>
-          <CustomerLogosCarousel />
-        </div>
-      </section>
-
-      {/* Why Choose Us - Factory/Company Info */}
-      <section className="py-16 md:py-20 bg-gray-50 w-full">
-        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <div className="w-full">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">Top-class Service</h2>
-              <p className="text-lg text-gray-600">
-                Your Trusted Private Label Partner & Supplier
+        {/* Private Label Products Showcase */}
+        <section className="py-16 md:py-24 bg-white w-full">
+          <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <span className="text-xs font-mono font-bold tracking-[0.3em] uppercase text-blue-600 mb-2 block">
+                Catalog & Solutions
+              </span>
+              <h2 className="text-4xl md:text-6xl font-black text-gray-900 tracking-tight mb-4">
+                You Design. <span className="text-blue-600">We Manufacture.</span>
+              </h2>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                Comprehensive packaging options tailored to your product category.
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <Card className="text-center bg-white">
+
+            {/* Product 1 - Custom Pillow Bags */}
+            <motion.div
+              className="mb-16 md:mb-24"
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-12 items-center bg-gray-50/80 rounded-3xl p-6 md:p-10 border border-gray-200/80 shadow-sm">
+                <div className="order-2 lg:order-1 lg:col-span-2">
+                  <span className="text-xs font-mono font-semibold uppercase text-blue-600 tracking-wider mb-2 block">
+                    01 // Snack & Dry Packaging
+                  </span>
+                  <h3 className="text-3xl font-bold mb-4 text-gray-900 tracking-tight">
+                    Custom Pillow Bags
+                  </h3>
+                  <p className="text-base text-gray-600 leading-relaxed mb-4">
+                    Ready-to-use pillow-style bags customized with your brand artwork, matte/gloss finish, and protective barrier seals. Perfect for snacks, coffee, candy, pet treats, and dry goods.
+                  </p>
+                  <p className="text-sm font-semibold text-gray-800 mb-6">
+                    You choose the product. We package it with your brand.
+                  </p>
+                  <Link href="/quote">
+                    <Button className="bg-gray-900 hover:bg-black text-white px-6 py-5 rounded-full">
+                      Request Pillow Bag Quote
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+                <div className="order-1 lg:order-2 lg:col-span-3 relative h-[350px] md:h-[420px] rounded-2xl overflow-hidden bg-white p-4">
+                  <Image
+                    src="/images/products/Product1.png"
+                    alt="Custom Pillow Bags - Private Label Packaging"
+                    fill
+                    className="object-contain"
+                    unoptimized
+                  />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Product 2 - Stand-Up Pouches */}
+            <motion.div
+              className="mb-16 md:mb-24"
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-12 items-center bg-gray-50/80 rounded-3xl p-6 md:p-10 border border-gray-200/80 shadow-sm">
+                <div className="lg:col-span-3 relative h-[350px] md:h-[420px] rounded-2xl overflow-hidden bg-white p-4">
+                  <Image
+                    src="/images/products/Product2.png"
+                    alt="Stand-Up Pouches (Doypack Bags) - Private Label Packaging"
+                    fill
+                    className="object-contain"
+                    unoptimized
+                  />
+                </div>
+                <div className="lg:col-span-2">
+                  <span className="text-xs font-mono font-semibold uppercase text-orange-600 tracking-wider mb-2 block">
+                    02 // Premium Retail Showcase
+                  </span>
+                  <h3 className="text-3xl font-bold mb-4 text-gray-900 tracking-tight">
+                    Stand-Up Pouches (Doypack)
+                  </h3>
+                  <p className="text-base text-gray-600 leading-relaxed mb-4">
+                    Resealable zipper Doypack bags designed to stand upright on retail shelves. Ideal for powders, supplements, specialty coffee, and organic foods.
+                  </p>
+                  <p className="text-sm font-semibold text-gray-800 mb-6">
+                    Modern packaging. Flexible options. Your brand in front.
+                  </p>
+                  <Link href="/quote">
+                    <Button className="bg-gray-900 hover:bg-black text-white px-6 py-5 rounded-full">
+                      Request Doypack Quote
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Product 3 - Rigid Plastic Containers */}
+            <motion.div
+              className="mb-12"
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-12 items-center bg-gray-50/80 rounded-3xl p-6 md:p-10 border border-gray-200/80 shadow-sm">
+                <div className="order-2 lg:order-1 lg:col-span-2">
+                  <span className="text-xs font-mono font-semibold uppercase text-red-600 tracking-wider mb-2 block">
+                    03 // Industrial Rigid Containers
+                  </span>
+                  <h3 className="text-3xl font-bold mb-4 text-gray-900 tracking-tight">
+                    Rigid Plastic Containers
+                  </h3>
+                  <p className="text-base text-gray-600 leading-relaxed mb-4">
+                    Round and square plastic containers with tamper-evident seals and custom shrink-sleeve labeling. Designed for heavy-duty protection and e-commerce distribution.
+                  </p>
+                  <p className="text-sm font-semibold text-gray-800 mb-6">
+                    Simple packaging. Strong presentation. Your brand inside.
+                  </p>
+                  <Link href="/quote">
+                    <Button className="bg-gray-900 hover:bg-black text-white px-6 py-5 rounded-full">
+                      Request Container Quote
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+                <div className="order-1 lg:order-2 lg:col-span-3 relative h-[350px] md:h-[420px] rounded-2xl overflow-hidden bg-white p-4">
+                  <Image
+                    src="/images/products/Product3.png"
+                    alt="Plastic Containers - Private Label Packaging"
+                    fill
+                    className="object-contain"
+                    unoptimized
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Customer Logos Carousel */}
+        <section className="py-16 md:py-20 bg-[#F8F9FA] border-t border-b border-gray-200/80 w-full">
+          <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 max-w-7xl mx-auto">
+            <div className="w-full mb-10 text-center">
+              <span className="text-xs font-mono font-semibold tracking-[0.3em] text-gray-500 uppercase">
+                Trusted Manufacturing Partner
+              </span>
+              <div className="mt-2 text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
+                Brands We Work With
+              </div>
+            </div>
+            <CustomerLogosCarousel />
+          </div>
+        </section>
+
+        {/* Factory Capabilities & Quality Guarantee */}
+        <section className="py-20 bg-white w-full">
+          <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl md:text-5xl font-extrabold mb-4 text-gray-900">
+                Top-Class Manufacturing Facility
+              </h2>
+              <p className="text-lg text-gray-600 max-w-xl mx-auto">
+                End-to-end production control from raw sourcing to final palletization.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+              <Card className="text-center bg-gray-50/80 border border-gray-200 p-6 rounded-2xl shadow-sm">
                 <CardHeader>
                   <Factory className="h-12 w-12 mx-auto mb-4 text-blue-600" />
-                  <CardTitle>Self-owned Facilities</CardTitle>
+                  <CardTitle className="text-xl font-bold">Self-Owned Facilities</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600">
-                    Modern production facilities with quality control at every step
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Modern high-speed production lines with strict quality assurance checkpoints.
                   </p>
                 </CardContent>
               </Card>
-              <Card className="text-center bg-white">
+              <Card className="text-center bg-gray-50/80 border border-gray-200 p-6 rounded-2xl shadow-sm">
                 <CardHeader>
                   <Shield className="h-12 w-12 mx-auto mb-4 text-green-600" />
-                  <CardTitle>Certified & Compliant</CardTitle>
+                  <CardTitle className="text-xl font-bold">FDA & ISO Certified</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600">
-                    FDA, ISO, and regulatory compliance for all product categories
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Full regulatory compliance across food-grade, cosmetics, and supplement packaging.
                   </p>
                 </CardContent>
               </Card>
-              <Card className="text-center bg-white">
+              <Card className="text-center bg-gray-50/80 border border-gray-200 p-6 rounded-2xl shadow-sm">
                 <CardHeader>
                   <Globe className="h-12 w-12 mx-auto mb-4 text-orange-600" />
-                  <CardTitle>Global Reach</CardTitle>
+                  <CardTitle className="text-xl font-bold">Global Fulfillment</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600">
-                    Serving clients worldwide with reliable shipping and support
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Direct shipping to Amazon FBA, retail distribution hubs, and global warehouses.
                   </p>
                 </CardContent>
               </Card>
             </div>
-            <div className="bg-white rounded-lg p-8 border-2">
-              <p className="text-gray-700 text-center leading-relaxed">
-                Being one of the most equipped private label manufacturers, we offer our clients the best quality products at competitive prices. Our streamlined processes ensure on-time delivery and consistent quality, helping you deliver the value your products need, on-time and on-budget.
-              </p>
-            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Custom Made Easy Section */}
-      <section className="py-16 md:py-20 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="w-full text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900">Custom Made Easy</h2>
-            <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-              As an experienced private label manufacturer, we offer one-stop custom solutions for brand owners, manufacturers, suppliers and wholesalers. We walk the journey with you to ensure that we help you better define what you want and realize your brand's perfect packaging solutions.
+        {/* Final CTA Banner */}
+        <section className="py-20 bg-gray-900 text-white w-full">
+          <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 text-center max-w-4xl mx-auto">
+            <h2 className="text-4xl md:text-6xl font-black mb-6 tracking-tight">
+              Ready to Launch Your Brand?
+            </h2>
+            <p className="text-lg md:text-xl mb-10 text-gray-300 max-w-2xl mx-auto leading-relaxed">
+              Get a custom quotation within 12 hours from our dedicated packaging experts.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="text-center">
-                <div className="h-16 w-16 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Package className="h-8 w-8 text-blue-600" />
-                </div>
-                <h3 className="font-semibold mb-2">One-stop Service</h3>
-                <p className="text-sm text-gray-600">Complete solutions from concept to delivery</p>
-              </div>
-              <div className="text-center">
-                <div className="h-16 w-16 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Factory className="h-8 w-8 text-green-600" />
-                </div>
-                <h3 className="font-semibold mb-2">Advanced Facilities</h3>
-                <p className="text-sm text-gray-600">Modern production and quality control</p>
-              </div>
-              <div className="text-center">
-                <div className="h-16 w-16 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Tag className="h-8 w-8 text-orange-600" />
-                </div>
-                <h3 className="font-semibold mb-2">Competitive Pricing</h3>
-                <p className="text-sm text-gray-600">Best value for your investment</p>
-              </div>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/quote">
+                <Button size="lg" className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-base rounded-full shadow-xl">
+                  Request a Quote
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              <Link href="/contact">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto border-gray-700 hover:bg-gray-800 text-white px-8 py-6 text-base rounded-full">
+                  Contact Us
+                </Button>
+              </Link>
             </div>
-            <Link href="/quote">
-              <Button size="lg" className="text-base px-8 py-6">
-                Contact Now
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <p className="text-sm text-gray-500 mt-4">
-              Share your custom needs and artwork design, our one-to-one packaging expert will send you quotation within 12 hours.
-            </p>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* CTA Section */}
-      <section className="py-16 bg-blue-600 text-white w-full">
-        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Start Your Project?</h2>
-          <p className="text-lg mb-8 max-w-2xl mx-auto opacity-90">
-            Get a free quote today and see how we can help bring your private label vision to life.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/quote">
-              <Button size="lg" variant="secondary" className="text-base px-8 py-6">
-                Request a Quote
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/contact">
-              <Button size="lg" variant="outline" className="text-base px-8 py-6 border-white text-black hover:bg-white hover:text-blue-600">
-                Contact Us
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t bg-gray-50 w-full">
-        <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="font-bold text-lg mb-4">ProductBrands</h3>
-              <p className="text-sm text-gray-600">
-                Custom private label manufacturer and supplier. Helping brands grow with quality products and packaging solutions.
-              </p>
+        {/* Footer */}
+        <footer className="border-t border-gray-200 bg-white w-full">
+          <div className="w-full px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 py-12 max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+              <div>
+                <h3 className="font-bold text-lg mb-4 text-gray-900">ProductBrands</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Custom private label manufacturer and packaging supplier. Transforming ideas into market-ready retail products.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4 text-gray-900">Products & Services</h4>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li><Link href="/services" className="hover:text-blue-600">Sourcing</Link></li>
+                  <li><Link href="/services" className="hover:text-blue-600">Branding</Link></li>
+                  <li><Link href="/services" className="hover:text-blue-600">Packaging</Link></li>
+                  <li><Link href="/services" className="hover:text-blue-600">Fulfillment</Link></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4 text-gray-900">Company</h4>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li><Link href="/process" className="hover:text-blue-600">Our Process</Link></li>
+                  <li><Link href="/contact" className="hover:text-blue-600">Contact</Link></li>
+                  <li><Link href="/faq" className="hover:text-blue-600">FAQ</Link></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4 text-gray-900">Support</h4>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li><Link href="/quote" className="hover:text-blue-600">Get a Quote</Link></li>
+                  <li><Link href="/terms" className="hover:text-blue-600">Terms</Link></li>
+                  <li><Link href="/privacy" className="hover:text-blue-600">Privacy</Link></li>
+                </ul>
+              </div>
             </div>
-            <div>
-              <h4 className="font-semibold mb-4">Products & Services</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><Link href="/services" className="hover:text-primary">Sourcing</Link></li>
-                <li><Link href="/services" className="hover:text-primary">Branding</Link></li>
-                <li><Link href="/services" className="hover:text-primary">Packaging</Link></li>
-                <li><Link href="/services" className="hover:text-primary">Fulfillment</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><Link href="/process" className="hover:text-primary">Our Process</Link></li>
-                <li><Link href="/contact" className="hover:text-primary">Contact</Link></li>
-                <li><Link href="/faq" className="hover:text-primary">FAQ</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Support</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><Link href="/quote" className="hover:text-primary">Get a Quote</Link></li>
-                <li><Link href="/terms" className="hover:text-primary">Terms</Link></li>
-                <li><Link href="/privacy" className="hover:text-primary">Privacy</Link></li>
-              </ul>
+            <div className="mt-12 pt-8 border-t border-gray-100 text-center text-sm text-gray-500">
+              © {new Date().getFullYear()} ProductBrands. All rights reserved.
             </div>
           </div>
-          <div className="mt-8 pt-8 border-t text-center text-sm text-gray-600">
-            © {new Date().getFullYear()} ProductBrands. All rights reserved.
-          </div>
-        </div>
-      </footer>
-    </div>
+        </footer>
+      </div>
+    </LenisProvider>
   )
 }
