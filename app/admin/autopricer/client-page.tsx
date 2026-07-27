@@ -26,10 +26,20 @@ import {
   HelpCircle,
   Percent,
   Package,
+  Zap,
+  Calendar,
+  TrendingDown,
+  Key,
+  Activity,
+  Clock,
+  ShieldAlert,
 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { PRICE_INTELLIGENCE_CONFIG, MarketplaceCode, RecommendedActionCode } from "@/config/price-intelligence.config"
 import Image from "next/image"
+import { KeepaSettings } from "./keepa-settings"
+import { KeepaChart } from "./keepa-chart"
+import { KeepaAnalytics } from "./keepa-analytics"
 
 interface MonitoredProduct {
   id: string
@@ -57,6 +67,17 @@ interface MonitoredProduct {
   recommendationReason: string | null
   confidenceScore: number | null
   lastAnalyzedAt: string | null
+  targetRankMin?: number
+  targetRankMax?: number
+  warningRank?: number
+  criticalRank?: number
+  defaultAdjustmentSize?: number
+  maxAdjustmentSize?: number
+  cooldownHours?: number
+  refreshIntervalHours?: number
+  keepaLastSyncedAt?: string | null
+  keepaSyncStatus?: string | null
+  keepaTokensConsumed?: number | null
   priceHistory?: PriceChangeLog[]
   calculated?: {
     referralFee: number
@@ -75,6 +96,11 @@ interface PriceChangeLog {
   recommendedAction: string
   reason: string | null
   status: string
+  isTemporary?: boolean
+  expiresAt?: string | null
+  restorePrice?: number | null
+  scheduledFor?: string | null
+  isRestored?: boolean
   requestedAt: string
   approvedAt: string | null
   approvedByUserId: string | null
@@ -95,7 +121,21 @@ export default function AutopricerClient() {
   const [analyzing, setAnalyzing] = useState(false)
   const [seedingDemo, setSeedingDemo] = useState(false)
   const [syncingAmazon, setSyncingAmazon] = useState(false)
-  const [activeTab, setActiveTab] = useState<"dashboard" | "approvals" | "simulator" | "audit">("dashboard")
+  const [syncingKeepa, setSyncingKeepa] = useState(false)
+  const [activeTab, setActiveTab] = useState<"dashboard" | "approvals" | "keepa" | "settings" | "simulator" | "audit">("dashboard")
+
+  // Keepa Intelligence State
+  const [selectedProductForKeepa, setSelectedProductForKeepa] = useState<string | null>(null)
+  const [keepaHistoryData, setKeepaHistoryData] = useState<any | null>(null)
+  const [keepaLoading, setKeepaLoading] = useState(false)
+
+  // Enhanced Approval State
+  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
+  const [approvingChange, setApprovingChange] = useState<PriceChangeLog | null>(null)
+  const [approvalModifiedPrice, setApprovalModifiedPrice] = useState("")
+  const [approvalIsTemporary, setApprovalIsTemporary] = useState(false)
+  const [approvalRestorePrice, setApprovalRestorePrice] = useState("")
+  const [approvalExpiresHours, setApprovalExpiresHours] = useState("24")
 
   // Filters
   const [search, setSearch] = useState("")
@@ -216,6 +256,100 @@ export default function AutopricerClient() {
       console.error(e)
     } finally {
       setSyncingAmazon(false)
+    }
+  }
+
+  // Sync Keepa Historical Time-Series
+  const handleSyncKeepa = async (productId?: string) => {
+    try {
+      setSyncingKeepa(true)
+      const res = await fetch("/api/admin/autopricer/keepa/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(productId ? { productId } : {}),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        alert(data.message || "Synced Keepa historical time series!")
+        await fetchProducts()
+        if (selectedProductForKeepa && productId === selectedProductForKeepa) {
+          await fetchKeepaHistory(selectedProductForKeepa)
+        }
+      } else {
+        alert(`Keepa sync failed: ${data.error}`)
+      }
+    } catch (e) {
+      console.error(e)
+      alert("Error triggering Keepa sync.")
+    } finally {
+      setSyncingKeepa(false)
+    }
+  }
+
+  // Fetch Keepa History Data
+  const fetchKeepaHistory = async (prodId: string) => {
+    try {
+      setKeepaLoading(true)
+      const res = await fetch(`/api/admin/autopricer/keepa/history/${prodId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setKeepaHistoryData(data)
+      } else {
+        const err = await res.json()
+        alert(`Failed to load Keepa intelligence: ${err.error}`)
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setKeepaLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "keepa" && !selectedProductForKeepa && products.length > 0) {
+      const firstId = products[0].id
+      setSelectedProductForKeepa(firstId)
+      fetchKeepaHistory(firstId)
+    }
+  }, [activeTab, products, selectedProductForKeepa])
+
+  // Open Enhanced Approval Modal
+  const handleOpenApprovalModal = (change: PriceChangeLog) => {
+    setApprovingChange(change)
+    setApprovalModifiedPrice(String(change.newPrice))
+    setApprovalIsTemporary(false)
+    setApprovalRestorePrice(String(change.oldPrice))
+    setApprovalExpiresHours("24")
+    setIsApprovalModalOpen(true)
+  }
+
+  // Confirm Enhanced Approval
+  const handleConfirmEnhancedApproval = async () => {
+    if (!approvingChange) return
+    try {
+      const res = await fetch("/api/admin/autopricer/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          logIds: [approvingChange.id],
+          action: "APPROVE",
+          modifiedPrice: Number(approvalModifiedPrice),
+          isTemporary: approvalIsTemporary,
+          restorePrice: Number(approvalRestorePrice),
+          expiresAt: approvalIsTemporary
+            ? new Date(Date.now() + Number(approvalExpiresHours) * 3600 * 1000).toISOString()
+            : undefined,
+        }),
+      })
+      if (res.ok) {
+        setIsApprovalModalOpen(false)
+        setApprovingChange(null)
+        await fetchProducts()
+      } else {
+        alert("Failed to process enhanced approval.")
+      }
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -518,6 +652,15 @@ export default function AutopricerClient() {
           </Button>
           <Button
             size="sm"
+            onClick={() => handleSyncKeepa()}
+            disabled={syncingKeepa || loading}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-md font-medium"
+          >
+            <Zap className={`h-4 w-4 mr-1.5 ${syncingKeepa ? "animate-spin text-amber-300" : ""}`} />
+            {syncingKeepa ? "Syncing Keepa..." : "Sync Keepa Intelligence"}
+          </Button>
+          <Button
+            size="sm"
             onClick={() => {
               setIsImportModalOpen(true)
               fetchCatalog()
@@ -635,6 +778,24 @@ export default function AutopricerClient() {
               {kpis.pendingApprovalsCount}
             </span>
           )}
+        </Button>
+        <Button
+          variant={activeTab === "keepa" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setActiveTab("keepa")}
+          className={`font-medium ${activeTab === "keepa" ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "text-emerald-500 dark:text-emerald-400"}`}
+        >
+          <TrendingUp className="h-4 w-4 mr-2" />
+          Keepa Intelligence
+        </Button>
+        <Button
+          variant={activeTab === "settings" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setActiveTab("settings")}
+          className="font-medium"
+        >
+          <Key className="h-4 w-4 mr-2" />
+          Keepa API Settings
         </Button>
       </div>
 
@@ -784,17 +945,31 @@ export default function AutopricerClient() {
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="bg-slate-100/50 dark:bg-slate-950/50 p-2.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+                    <div className="bg-slate-100/50 dark:bg-slate-950/50 p-2.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-1">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => openSimulator(p)}
-                        className="w-full text-xs h-8 bg-white dark:bg-slate-900 font-semibold text-indigo-600 dark:text-indigo-400 border-indigo-500/30 hover:bg-indigo-50 dark:hover:bg-indigo-950/50"
+                        className="flex-1 text-xs h-8 bg-white dark:bg-slate-900 font-semibold text-indigo-600 dark:text-indigo-400 border-indigo-500/30 hover:bg-indigo-50 dark:hover:bg-indigo-950/50"
                       >
-                        <Sliders className="h-3.5 w-3.5 mr-1.5" />
-                        Simulate & Analyze
+                        <Sliders className="h-3.5 w-3.5 mr-1" />
+                        Simulate
                       </Button>
-                      <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedProductForKeepa(p.id)
+                          fetchKeepaHistory(p.id)
+                          setActiveTab("keepa")
+                        }}
+                        className="text-xs h-8 bg-white dark:bg-slate-900 font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 px-2"
+                        title="View Keepa Intelligence Chart & Heatmaps"
+                      >
+                        <TrendingUp className="h-3.5 w-3.5 mr-1" />
+                        Keepa
+                      </Button>
+                      <div className="flex items-center">
                         <Button
                           size="icon"
                           variant="ghost"
@@ -942,11 +1117,11 @@ export default function AutopricerClient() {
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"
-                            onClick={() => handleApprovalAction([log.id], "APPROVE")}
+                            onClick={() => handleOpenApprovalModal(log)}
                             className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs h-8 shadow-sm"
                           >
                             <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                            Approve Change
+                            Review & Approve
                           </Button>
                           <Button
                             size="sm"
@@ -965,6 +1140,182 @@ export default function AutopricerClient() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ── TAB: KEEPA INTELLIGENCE ── */}
+      {activeTab === "keepa" && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800 text-white">
+            <div className="flex items-center gap-3">
+              <TrendingUp className="h-5 w-5 text-emerald-400" />
+              <div>
+                <h3 className="font-bold text-sm">Select Monitored Product for Keepa Analysis:</h3>
+                <p className="text-xs text-slate-400">View time-series charts, inverted Sales Rank, and day-of-week heatmaps.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedProductForKeepa || ""}
+                onChange={(e) => {
+                  setSelectedProductForKeepa(e.target.value)
+                  fetchKeepaHistory(e.target.value)
+                }}
+                className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-sm text-white font-medium min-w-[240px]"
+              >
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.productName} ({p.asin})
+                  </option>
+                ))}
+              </select>
+              <Button
+                size="sm"
+                onClick={() => selectedProductForKeepa && handleSyncKeepa(selectedProductForKeepa)}
+                disabled={syncingKeepa || !selectedProductForKeepa}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shrink-0"
+              >
+                <Zap className={`h-4 w-4 mr-1.5 ${syncingKeepa ? "animate-spin" : ""}`} />
+                Refresh ASIN
+              </Button>
+            </div>
+          </div>
+
+          {keepaLoading ? (
+            <div className="h-80 flex items-center justify-center text-slate-400 bg-slate-900 rounded-xl border border-slate-800 animate-pulse">
+              Loading Keepa historical time series & weekday analysis...
+            </div>
+          ) : keepaHistoryData ? (
+            <div className="space-y-6">
+              <KeepaChart
+                observations={keepaHistoryData.observations || []}
+                productName={keepaHistoryData.product?.productName || "Selected Product"}
+                asin={keepaHistoryData.product?.asin || ""}
+                targetRankMin={keepaHistoryData.product?.targetRankMin}
+                targetRankMax={keepaHistoryData.product?.targetRankMax}
+              />
+              <KeepaAnalytics
+                weekdayProfiles={keepaHistoryData.weekdayProfiles || []}
+                heatmap={keepaHistoryData.weekdayHeatmap || []}
+                overallMedianRank={keepaHistoryData.overallMedianRank || 3000}
+                trendAnalysis={keepaHistoryData.trendAnalysis}
+              />
+            </div>
+          ) : (
+            <div className="h-80 flex flex-col items-center justify-center text-slate-500 bg-slate-900 rounded-xl border border-slate-800">
+              <p>Please select a product from the dropdown above to view Keepa intelligence.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB: KEEPA API SETTINGS ── */}
+      {activeTab === "settings" && <KeepaSettings />}
+
+      {/* ── ENHANCED APPROVAL MODAL ── */}
+      {isApprovalModalOpen && approvingChange && (
+        <Dialog open={isApprovalModalOpen} onOpenChange={setIsApprovalModalOpen}>
+          <DialogContent className="max-w-lg bg-slate-900 text-white border-slate-800">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl text-amber-400">
+                <ShieldCheck className="h-6 w-6" />
+                Review & Confirm Price Change
+              </DialogTitle>
+              <DialogDescription className="text-slate-400">
+                You are approving a pricing update for <strong>{approvingChange.monitoredProduct?.productName || "Selected Product"}</strong>.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Current Price:</span>
+                  <span className="font-semibold text-slate-200">${approvingChange.oldPrice.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Recommended Price:</span>
+                  <span className="font-bold text-emerald-400">${approvingChange.newPrice.toFixed(2)}</span>
+                </div>
+                <div className="text-xs text-slate-400 pt-1 border-t border-slate-800">
+                  <strong>Reason:</strong> {approvingChange.reason}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 mb-1 block">
+                  Final Approved Price ($) (Modify if desired):
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={approvalModifiedPrice}
+                  onChange={(e) => setApprovalModifiedPrice(e.target.value)}
+                  className="bg-slate-950 border-slate-700 text-white font-bold"
+                />
+              </div>
+
+              <div className="pt-2 border-t border-slate-800">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={approvalIsTemporary}
+                    onChange={(e) => setApprovalIsTemporary(e.target.checked)}
+                    className="rounded bg-slate-950 border-slate-700 text-indigo-600 focus:ring-0 w-4 h-4"
+                  />
+                  <span>Temporary Approval (Scheduled Price Restoration)</span>
+                </label>
+
+                {approvalIsTemporary && (
+                  <div className="mt-3 pl-6 space-y-3 border-l-2 border-indigo-500/50">
+                    <div>
+                      <label className="text-xs font-medium text-slate-400 mb-1 block">
+                        Restore Price Back To ($):
+                      </label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={approvalRestorePrice}
+                        onChange={(e) => setApprovalRestorePrice(e.target.value)}
+                        className="bg-slate-950 border-slate-700 text-white h-8 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-400 mb-1 block">
+                        Duration Before Automatic Restoration:
+                      </label>
+                      <select
+                        value={approvalExpiresHours}
+                        onChange={(e) => setApprovalExpiresHours(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-md p-1.5 text-xs text-white"
+                      >
+                        <option value="6">6 Hours (Weekend / Overnight Flash)</option>
+                        <option value="12">12 Hours (Half Day Promo)</option>
+                        <option value="24">24 Hours (1 Day Test)</option>
+                        <option value="48">48 Hours (2 Day Weekend Test)</option>
+                        <option value="168">7 Days (Full Week Sprint)</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter className="flex gap-2 justify-end pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsApprovalModalOpen(false)}
+                className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmEnhancedApproval}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+              >
+                Confirm & Apply Price
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* ── TAB 3: UNIT ECONOMICS SIMULATOR ── */}

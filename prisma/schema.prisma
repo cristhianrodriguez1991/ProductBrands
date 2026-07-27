@@ -1016,10 +1016,27 @@ model MonitoredProduct {
   confidenceScore     Int?
   lastAnalyzedAt      DateTime?
 
+  // Keepa & Target Rank Corridor Settings
+  targetRankMin       Int      @default(1500)
+  targetRankMax       Int      @default(3000)
+  warningRank         Int      @default(4000)
+  criticalRank        Int      @default(6000)
+  defaultAdjustmentSize Float  @default(0.10)
+  maxAdjustmentSize   Float    @default(0.50)
+  cooldownHours       Int      @default(24)
+  refreshIntervalHours Int     @default(6)
+
+  // Keepa Sync Status
+  keepaLastSyncedAt   DateTime?
+  keepaSyncStatus     String?  // "SUCCESS", "ERROR", "PENDING"
+  keepaTokensConsumed Int?
+
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
   priceHistory        PriceChangeLog[]
+  keepaHistory        KeepaProductHistory[]
+  keepaEvaluations    KeepaEvaluationJob[]
 
   @@index([asin])
   @@index([sku])
@@ -1039,6 +1056,13 @@ model PriceChangeLog {
   reason              String?  @db.Text
   status              String   @default("PENDING_APPROVAL") // "PENDING_APPROVAL", "APPROVED", "REJECTED", "APPLIED"
 
+  // Temporary & Scheduled Approvals
+  isTemporary         Boolean  @default(false)
+  expiresAt           DateTime?
+  restorePrice        Float?
+  scheduledFor        DateTime?
+  isRestored          Boolean  @default(false)
+
   requestedAt         DateTime @default(now())
   approvedAt          DateTime?
   approvedByUserId    String?
@@ -1048,4 +1072,72 @@ model PriceChangeLog {
   @@index([status])
   @@index([requestedAt])
 }
+
+model KeepaConfig {
+  id                  String   @id @default("default_keepa_config")
+  apiKey              String?  @db.Text // Encrypted API key
+  tokensLeft          Int?     @default(300)
+  refillRate          Int?     @default(12) // Tokens per minute
+  lastCheckedAt       DateTime?
+  connectionStatus    String?  // "CONNECTED", "ERROR", "TEST_MODE"
+  auditLogs           String?  @db.Text // JSON string of recent API checks/consumption
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model KeepaProductHistory {
+  id                  String   @id @default(cuid())
+  monitoredProductId  String
+  monitoredProduct    MonitoredProduct @relation(fields: [monitoredProductId], references: [id], onDelete: Cascade)
+  asin                String
+  timestamp           DateTime // Normalized UTC timestamp
+  keepaTimestamp      Int      // Original Keepa minutes elapsed since Jan 1, 2011
+  
+  // Historical data streams (from Keepa CSV indices)
+  salesRank           Int?     // Index 3
+  buyBoxPrice         Float?   // Index 18
+  amazonPrice         Float?   // Index 0
+  newPrice            Float?   // Index 1
+  newFbaPrice         Float?   // Index 10
+  newFbmPrice         Float?   // Index 7
+  offerCount          Int?     // Index 11
+  
+  // Filtering distorted data
+  isAvailable         Boolean  @default(true)
+  isExcluded          Boolean  @default(false)
+  exclusionReason     String?  // "LIGHTNING_DEAL", "PRIME_DAY", "OUT_OF_STOCK", "LOST_BUY_BOX", etc.
+
+  createdAt           DateTime @default(now())
+
+  @@unique([monitoredProductId, keepaTimestamp])
+  @@index([monitoredProductId, timestamp])
+  @@index([asin, timestamp])
+}
+
+model KeepaEvaluationJob {
+  id                  String   @id @default(cuid())
+  monitoredProductId  String
+  monitoredProduct    MonitoredProduct @relation(fields: [monitoredProductId], references: [id], onDelete: Cascade)
+  priceChangeLogId    String?  
+  
+  oldPrice            Float
+  newPrice            Float
+  appliedAt           DateTime @default(now())
+  
+  // Evaluated rank & profit outcomes at checkpoints
+  rankBefore          Int?
+  rank6h              Int?
+  rank12h             Int?
+  rank24h             Int?
+  rank3d              Int?
+  rank7d              Int?
+  
+  status              String   @default("IN_PROGRESS") // "IN_PROGRESS", "COMPLETED", "ANOMALY"
+  findings            String?  @db.Text
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([monitoredProductId, appliedAt])
+}
+
 
