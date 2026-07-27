@@ -21,6 +21,7 @@ export const PERMISSIONS = {
   INVOICES: 'invoices',
   CHAT: 'chat',
   SETTINGS: 'settings',
+  AUTOPRICER: 'autopricer',
 } as const
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]
@@ -38,6 +39,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     PERMISSIONS.ORDERS,
     PERMISSIONS.CONTACT,
     PERMISSIONS.CHAT,
+    PERMISSIONS.AUTOPRICER,
   ],
   [UserRole.OPS]: [
     PERMISSIONS.DASHBOARD,
@@ -47,6 +49,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     PERMISSIONS.MACHINES,
     PERMISSIONS.CLEANING_LOGS,
     PERMISSIONS.SUPPLIERS,
+    PERMISSIONS.AUTOPRICER,
   ],
   [UserRole.SUPPORT]: [
     PERMISSIONS.DASHBOARD,
@@ -137,6 +140,7 @@ export const ROUTE_PERMISSIONS: Record<string, Permission> = {
   '/admin/invoices': PERMISSIONS.INVOICES,
   '/admin/chat': PERMISSIONS.CHAT,
   '/admin/settings': PERMISSIONS.SETTINGS,
+  '/admin/autopricer': PERMISSIONS.AUTOPRICER,
 }
 
 /**

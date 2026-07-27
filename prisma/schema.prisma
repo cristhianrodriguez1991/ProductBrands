@@ -977,3 +977,74 @@ model ShipmentLog {
   @@index([shippedAt])
   @@index([productName])
 }
+
+// ─────────────────────────────────────────────────────────────
+// AMAZON PRICE INTELLIGENCE (AUTOPRICER)
+// ─────────────────────────────────────────────────────────────
+
+model MonitoredProduct {
+  id                  String   @id @default(cuid())
+  asin                String
+  sku                 String
+  marketplace         String   @default("US") // e.g. "US", "CA", "UK", "DE", etc.
+  productName         String
+  imageUrl            String?
+  category            String?
+
+  // Seller Financial & Pricing Boundaries
+  currentPrice        Float
+  unitCost            Float
+  fulfillmentMethod   String   @default("FBA") // "FBA" | "FBM"
+  minPrice            Float    // Floor acceptable price
+  maxPrice            Float    // Ceiling acceptable price
+  minMarginPercent    Float    @default(25.0) // Desired minimum net profit margin %
+  referralFeePercent  Float    @default(15.0) // Amazon referral fee %
+  fbaFee              Float    @default(0.0)  // Pick, pack, and ship fee
+
+  // Status & Market Intelligence
+  status              String   @default("ACTIVE") // "ACTIVE", "PAUSED", "ARCHIVED"
+  currentBuyBoxPrice  Float?
+  buyBoxWinRate       Float?
+  competitorCount     Int?
+  velocityDaily       Float?
+
+  // Recommendation Engine State
+  recommendedAction   String   @default("MAINTAIN") // "RAISE", "LOWER", "MAINTAIN", "NEEDS_REVIEW"
+  recommendedPrice    Float?
+  recommendationReason String? @db.Text
+  confidenceScore     Int?
+  lastAnalyzedAt      DateTime?
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  priceHistory        PriceChangeLog[]
+
+  @@index([asin])
+  @@index([sku])
+  @@index([marketplace])
+  @@index([status])
+  @@index([recommendedAction])
+}
+
+model PriceChangeLog {
+  id                  String   @id @default(cuid())
+  monitoredProductId  String
+  monitoredProduct    MonitoredProduct @relation(fields: [monitoredProductId], references: [id], onDelete: Cascade)
+
+  oldPrice            Float
+  newPrice            Float
+  recommendedAction   String   // "RAISE", "LOWER", "MAINTAIN", "MANUAL"
+  reason              String?  @db.Text
+  status              String   @default("PENDING_APPROVAL") // "PENDING_APPROVAL", "APPROVED", "REJECTED", "APPLIED"
+
+  requestedAt         DateTime @default(now())
+  approvedAt          DateTime?
+  approvedByUserId    String?
+  notes               String?  @db.Text
+
+  @@index([monitoredProductId])
+  @@index([status])
+  @@index([requestedAt])
+}
+

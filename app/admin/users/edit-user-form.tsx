@@ -35,6 +35,7 @@ const PERMISSION_LABELS: Record<Permission, string> = {
   invoices: "Invoices",
   chat: "Live Chat",
   settings: "Site Settings",
+  autopricer: "Autopricer",
 }
 
 interface EditUserFormProps {
