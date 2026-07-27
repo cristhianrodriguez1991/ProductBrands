@@ -17,12 +17,19 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // Get all occupied pallets (have product or SKU)
+    // Get all occupied pallets (have product or SKU) that are not available or sent
     const pallets = await prisma.warehousePallet.findMany({
       where: {
-        OR: [
-          { productName: { not: null } },
-          { sku: { not: null } },
+        AND: [
+          {
+            OR: [
+              { productName: { not: null } },
+              { sku: { not: null } },
+            ],
+          },
+          {
+            status: { notIn: ["AVAILABLE", "ENVIADO"] },
+          },
         ],
       },
       orderBy: { locationCode: "asc" },
@@ -215,21 +222,34 @@ export async function POST(req: Request) {
             }
           })
         : await (async () => {
-            // Support mixed pallets without overwriting different products when SKU is empty
-            const existingPallet = await prisma.warehousePallet.findFirst({
-              where: {
-                locationCode: finalLocationCode,
-                OR: normalizedSku
-                  ? [{ sku: normalizedSku }]
-                  : normalizedProductName
-                    ? [{ sku: null, productName: normalizedProductName }]
-                    : [{ sku: null, productName: null }],
-              }
+            const allLocPallets = await prisma.warehousePallet.findMany({
+              where: { locationCode: finalLocationCode }
             })
+
+            // 1. Try exact match
+            let existingPallet = allLocPallets.find(p => {
+              const pSku = (p.sku || "").trim().toLowerCase()
+              const pName = (p.productName || "").trim().toLowerCase()
+              if (normalizedSku && pSku === normalizedSku.toLowerCase()) return true
+              if (normalizedProductName && pName === normalizedProductName.toLowerCase()) return true
+              return false
+            })
+
+            // 2. Available match
+            if (!existingPallet) {
+              existingPallet = allLocPallets.find(p => p.status === "AVAILABLE" || (!p.productName && !p.sku))
+            }
+
+            // 3. Fallback to first record at location if not adding mixed
+            if (!existingPallet && allLocPallets.length > 0 && !body.allowMixed) {
+              existingPallet = allLocPallets[0]
+            }
+
             if (existingPallet) {
               return prisma.warehousePallet.update({
                 where: { id: existingPallet.id },
                 data: {
+                  sku: normalizedSku || null,
                   productName,
                   quantity: quantity ? parseInt(quantity) : null,
                   lotNumber: lotNumber || null,

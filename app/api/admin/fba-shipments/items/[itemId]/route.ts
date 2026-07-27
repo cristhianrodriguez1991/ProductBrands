@@ -48,42 +48,35 @@ export async function PATCH(
         const oldLocs = existing.location.split(' + ').filter(Boolean)
         const newLocs = (updates.location || "").split(' + ').filter(Boolean)
         
-        // Find locations that were removed
+        // Find locations that were removed (or marked ENVIADO)
         const removedLocs = oldLocs.filter(l => !newLocs.includes(l) && l !== "ENVIADO")
         
-        // Clear removed locations in warehouse — only delete the pallet matching this item's SKU/Name robustly
+        // Completely clear removed/sent locations in warehouse map
         for (const loc of removedLocs) {
-          const itemSku = (existing.sku || "").trim().toLowerCase()
-          const itemName = (existing.name || "").trim().toLowerCase()
-
           const palletsAtLoc = await tx.warehousePallet.findMany({
             where: { locationCode: loc }
           })
 
-          const matchedPallets = palletsAtLoc.filter(p => {
-            const pSku = (p.sku || "").trim().toLowerCase()
-            const pName = (p.productName || "").trim().toLowerCase()
-            if (itemSku) return pSku === itemSku
-            if (itemName) return pSku === "" && pName === itemName
-            return pSku === "" && pName === ""
-          })
-
-          if (matchedPallets.length === 0) {
-            const fallbackPallets = palletsAtLoc.filter(p => {
-              const pSku = (p.sku || "").trim().toLowerCase()
-              const pName = (p.productName || "").trim().toLowerCase()
-              return (itemSku && pSku === itemSku) || (itemName && pName === itemName)
+          if (palletsAtLoc.length > 1) {
+            // Delete all extra pallet rows at this location
+            await tx.warehousePallet.deleteMany({
+              where: { locationCode: loc }
             })
-            if (fallbackPallets.length > 0) {
-              matchedPallets.push(...fallbackPallets)
-            } else if (palletsAtLoc.length === 1) {
-              // Fallback: If there's exactly 1 pallet at the location, assume it's the correct one even if name/sku have typos
-              matchedPallets.push(palletsAtLoc[0])
-            }
-          }
-
-          for (const match of matchedPallets) {
-            await tx.warehousePallet.delete({ where: { id: match.id } })
+          } else if (palletsAtLoc.length === 1) {
+            // Reset position to AVAILABLE
+            await tx.warehousePallet.update({
+              where: { id: palletsAtLoc[0].id },
+              data: {
+                sku: null,
+                productName: null,
+                quantity: null,
+                lotNumber: null,
+                expirationDate: null,
+                palletHeightIn: null,
+                status: "AVAILABLE",
+                notes: null,
+              }
+            })
           }
         }
       }
@@ -156,37 +149,28 @@ export async function DELETE(
       if (existing.location) {
         const locs = existing.location.split(' + ').filter(Boolean).filter(l => l !== "ENVIADO")
         for (const loc of locs) {
-          const itemSku = (existing.sku || "").trim().toLowerCase()
-          const itemName = (existing.name || "").trim().toLowerCase()
-
           const palletsAtLoc = await tx.warehousePallet.findMany({
             where: { locationCode: loc }
           })
 
-          const matchedPallets = palletsAtLoc.filter(p => {
-            const pSku = (p.sku || "").trim().toLowerCase()
-            const pName = (p.productName || "").trim().toLowerCase()
-            if (itemSku) return pSku === itemSku
-            if (itemName) return pSku === "" && pName === itemName
-            return pSku === "" && pName === ""
-          })
-
-          if (matchedPallets.length === 0) {
-            const fallbackPallets = palletsAtLoc.filter(p => {
-              const pSku = (p.sku || "").trim().toLowerCase()
-              const pName = (p.productName || "").trim().toLowerCase()
-              return (itemSku && pSku === itemSku) || (itemName && pName === itemName)
+          if (palletsAtLoc.length > 1) {
+            await tx.warehousePallet.deleteMany({
+              where: { locationCode: loc }
             })
-            if (fallbackPallets.length > 0) {
-              matchedPallets.push(...fallbackPallets)
-            } else if (palletsAtLoc.length === 1) {
-              // Fallback: If there's exactly 1 pallet at the location, assume it's the correct one even if name/sku have typos
-              matchedPallets.push(palletsAtLoc[0])
-            }
-          }
-
-          for (const match of matchedPallets) {
-            await tx.warehousePallet.delete({ where: { id: match.id } })
+          } else if (palletsAtLoc.length === 1) {
+            await tx.warehousePallet.update({
+              where: { id: palletsAtLoc[0].id },
+              data: {
+                sku: null,
+                productName: null,
+                quantity: null,
+                lotNumber: null,
+                expirationDate: null,
+                palletHeightIn: null,
+                status: "AVAILABLE",
+                notes: null,
+              }
+            })
           }
         }
       }

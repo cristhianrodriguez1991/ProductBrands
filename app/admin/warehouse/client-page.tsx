@@ -467,7 +467,14 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
 
     const primaryPallet = locationPallets.find(p => isOccupied(p)) || locationPallets[0]
     const occupiedPallets = locationPallets.filter(p => isOccupied(p))
-    const isMixed = occupiedPallets.length > 1
+    const distinctProducts = Array.from(
+      new Set(
+        occupiedPallets
+          .map(p => (p.sku || p.productName || "").trim().toLowerCase())
+          .filter(Boolean)
+      )
+    )
+    const isMixed = distinctProducts.length > 1
 
     const pallet = primaryPallet
     const occupied = isOccupied(pallet)
