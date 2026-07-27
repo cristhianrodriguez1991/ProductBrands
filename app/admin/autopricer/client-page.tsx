@@ -25,6 +25,7 @@ import {
   Layers,
   HelpCircle,
   Percent,
+  Package,
 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { PRICE_INTELLIGENCE_CONFIG, MarketplaceCode, RecommendedActionCode } from "@/config/price-intelligence.config"
@@ -105,6 +106,13 @@ export default function AutopricerClient() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<MonitoredProduct | null>(null)
+  
+  // Catalog Import State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [catalogItems, setCatalogItems] = useState<any[]>([])
+  const [catalogLoading, setCatalogLoading] = useState(false)
+  const [catalogSearch, setCatalogSearch] = useState("")
+  const [importingId, setImportingId] = useState<string | null>(null)
 
   // Simulator State
   const [simulatedPrice, setSimulatedPrice] = useState<number>(0)
@@ -289,6 +297,82 @@ export default function AutopricerClient() {
     }
   }
 
+  // Fetch Live Amazon & Warehouse Catalog
+  const fetchCatalog = async () => {
+    try {
+      setCatalogLoading(true)
+      const res = await fetch("/api/admin/autopricer/import-catalog")
+      if (res.ok) {
+        const data = await res.json()
+        setCatalogItems(data.catalog || [])
+      }
+    } catch (e) {
+      console.error("Failed to fetch catalog:", e)
+    } finally {
+      setCatalogLoading(false)
+    }
+  }
+
+  // One-Click Import from Catalog
+  const handleOneClickImport = async (item: any) => {
+    try {
+      setImportingId(item.id)
+      const res = await fetch("/api/admin/autopricer/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          asin: item.asin,
+          sku: item.sku,
+          marketplace: "US",
+          productName: item.name,
+          category: item.category || "General",
+          imageUrl: item.imageUrl || "",
+          currentPrice: item.currentPrice.toString(),
+          unitCost: item.unitCost.toString(),
+          fulfillmentMethod: item.fulfillmentMethod,
+          minPrice: (Math.round(item.unitCost * 1.3 * 100) / 100).toString(),
+          maxPrice: (Math.round(item.unitCost * 4.0 * 100) / 100).toString(),
+          minMarginPercent: PRICE_INTELLIGENCE_CONFIG.DEFAULTS.MIN_DESIRED_MARGIN_PERCENT.toString(),
+          referralFeePercent: PRICE_INTELLIGENCE_CONFIG.DEFAULTS.REFERRAL_FEE_PERCENT.toString(),
+          fbaFee: PRICE_INTELLIGENCE_CONFIG.DEFAULTS.ESTIMATED_FBA_FEE_USD.toString(),
+        }),
+      })
+      if (res.ok) {
+        await fetchCatalog()
+        await fetchProducts()
+      } else {
+        const text = await res.text()
+        alert(`Failed to import: ${text}`)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setImportingId(null)
+    }
+  }
+
+  // Customize from Catalog
+  const openCustomizeFromCatalog = (item: any) => {
+    setFormData({
+      asin: item.asin,
+      sku: item.sku,
+      marketplace: "US",
+      productName: item.name,
+      category: item.category || "General",
+      imageUrl: item.imageUrl || "",
+      currentPrice: item.currentPrice.toString(),
+      unitCost: item.unitCost.toString(),
+      fulfillmentMethod: item.fulfillmentMethod,
+      minPrice: (Math.round(item.unitCost * 1.3 * 100) / 100).toString(),
+      maxPrice: (Math.round(item.unitCost * 4.0 * 100) / 100).toString(),
+      minMarginPercent: PRICE_INTELLIGENCE_CONFIG.DEFAULTS.MIN_DESIRED_MARGIN_PERCENT.toString(),
+      referralFeePercent: PRICE_INTELLIGENCE_CONFIG.DEFAULTS.REFERRAL_FEE_PERCENT.toString(),
+      fbaFee: PRICE_INTELLIGENCE_CONFIG.DEFAULTS.ESTIMATED_FBA_FEE_USD.toString(),
+    })
+    setIsImportModalOpen(false)
+    setIsAddModalOpen(true)
+  }
+
   // Open Edit Modal
   const openEdit = (p: MonitoredProduct) => {
     setSelectedProduct(p)
@@ -395,6 +479,17 @@ export default function AutopricerClient() {
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${analyzing ? "animate-spin" : ""}`} />
             {analyzing ? "Analyzing Intelligence..." : "Run Intelligence Analysis"}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              setIsImportModalOpen(true)
+              fetchCatalog()
+            }}
+            className="bg-blue-600 hover:bg-blue-500 text-white shadow-md font-medium"
+          >
+            <Package className="h-4 w-4 mr-1.5" />
+            Import from Inventory
           </Button>
           <Button
             size="sm"
@@ -1207,6 +1302,139 @@ export default function AutopricerClient() {
                 </Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ── IMPORT FROM INVENTORY MODAL ── */}
+      {isImportModalOpen && (
+        <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <Package className="h-6 w-6 text-blue-600" />
+                Import from Live Amazon & Warehouse Inventory
+              </DialogTitle>
+              <DialogDescription>
+                Select active products from your Amazon seller catalog or warehouse pallets to monitor their unit economics and price elasticity.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search live catalog by ASIN, SKU, or Product Name..."
+                  value={catalogSearch}
+                  onChange={(e) => setCatalogSearch(e.target.value)}
+                  className="pl-9 bg-white dark:bg-slate-950 text-sm h-10"
+                />
+              </div>
+
+              {catalogLoading ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                  <p className="text-sm text-muted-foreground mt-3 font-medium">Loading Amazon & Warehouse Catalog...</p>
+                </div>
+              ) : catalogItems.length === 0 ? (
+                <div className="text-center py-12 bg-slate-50 dark:bg-slate-900/30 rounded-xl border border-dashed border-slate-300 dark:border-slate-800">
+                  <Package className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-50" />
+                  <p className="font-semibold text-sm">No inventory items found</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Ensure you have synced products in the Inventory or Warehouse tabs.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
+                  {catalogItems
+                    .filter(
+                      (item) =>
+                        item.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+                        item.asin.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+                        item.sku.toLowerCase().includes(catalogSearch.toLowerCase())
+                    )
+                    .map((item) => (
+                      <div
+                        key={item.id}
+                        className={`p-3 rounded-xl border flex flex-col justify-between gap-3 transition-all ${
+                          item.isAlreadyMonitored
+                            ? "bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-75"
+                            : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-blue-500/50 hover:shadow-md"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="h-12 w-12 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 overflow-hidden border border-slate-200 dark:border-slate-700">
+                            {item.imageUrl ? (
+                              <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <Package className="h-6 w-6 text-slate-400" />
+                            )}
+                          </div>
+                          <div className="space-y-1 overflow-hidden">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span
+                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                  item.source === "AMAZON"
+                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                    : "bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                                }`}
+                              >
+                                {item.source}
+                              </span>
+                              <span className="font-mono text-xs font-bold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 rounded text-slate-700 dark:text-slate-300">
+                                {item.asin}
+                              </span>
+                            </div>
+                            <h4 className="font-bold text-xs line-clamp-1 text-slate-900 dark:text-white" title={item.name}>
+                              {item.name}
+                            </h4>
+                            <div className="text-[11px] text-muted-foreground font-mono flex items-center gap-2">
+                              <span>SKU: {item.sku}</span>
+                              <span>•</span>
+                              <span className="font-semibold text-slate-700 dark:text-slate-300">Stock: {item.quantity}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                          <span className="text-xs text-muted-foreground font-medium">
+                            Est. Cost: <strong className="text-slate-900 dark:text-white">${item.unitCost.toFixed(2)}</strong>
+                          </span>
+                          {item.isAlreadyMonitored ? (
+                            <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg font-bold text-xs flex items-center gap-1">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Monitored
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openCustomizeFromCatalog(item)}
+                                className="h-7 text-xs px-2 border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800 font-semibold"
+                              >
+                                Customize
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={importingId === item.id}
+                                onClick={() => handleOneClickImport(item)}
+                                className="h-7 text-xs px-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-sm"
+                              >
+                                {importingId === item.id ? "Importing..." : "⚡ 1-Click Import"}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsImportModalOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
