@@ -44,11 +44,10 @@ export async function analyzePricingWithGLM(
   weekdayProfiles: WeekdayProfile[],
   customApiKey?: string
 ): Promise<AIStrategicAssessment> {
-  // BigModel cloud API key. The previously hardcoded key is expired (HTTP 401 on
-  // every model) so it was removed — set a valid key via GLM_API_KEY env var
-  // (locally in .env.local, and in Vercel project env vars for production).
-  const apiKey = customApiKey || process.env.GLM_API_KEY || ""
-  const cloudModel = process.env.GLM_MODEL || "glm-4" // BigModel cloud model
+  // OpenAI cloud API key. Set via OPENAI_API_KEY env var (.env.local for local
+  // dev, Vercel project env vars for production). Never hardcode keys in source.
+  const apiKey = customApiKey || process.env.OPENAI_API_KEY || ""
+  const cloudModel = process.env.OPENAI_MODEL || "gpt-4o-mini" // OpenAI cloud model
   // Local Ollama (only works when the app runs on the same machine as Ollama,
   // e.g. `npm run dev` on your Mac — NOT on the Vercel deployment).
   const ollamaBaseUrl = process.env.OLLAMA_BASE_URL // e.g. http://localhost:11434
@@ -163,12 +162,12 @@ async function callLLM(
   userPrompt: string,
   cfg: { ollamaBaseUrl?: string; ollamaModel: string; cloudApiKey: string; cloudModel: string }
 ): Promise<{ content: string; modelUsed: string } | null> {
-  // 1) BigModel cloud API — primary. Works on Vercel and locally. Needs a valid
-  //    GLM_API_KEY (the one in code is expired → 401; set a fresh key via env).
+  // 1) OpenAI cloud API — primary. Works on Vercel and locally. Needs a valid
+  //    OPENAI_API_KEY with quota/billing enabled.
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 15000)
-    const res = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
+    const timeout = setTimeout(() => controller.abort(), 20000)
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -181,6 +180,7 @@ async function callLLM(
           { role: "user", content: userPrompt },
         ],
         temperature: 0.2,
+        response_format: { type: "json_object" },
       }),
       signal: controller.signal,
     })
@@ -189,14 +189,15 @@ async function callLLM(
       const data = await res.json()
       const content = data?.choices?.[0]?.message?.content
       if (content) {
-        console.log(`[AI] Using BigModel cloud model: ${cfg.cloudModel}`)
-        return { content, modelUsed: `GLM cloud (${cfg.cloudModel})` }
+        console.log(`[AI] Using OpenAI cloud model: ${cfg.cloudModel}`)
+        return { content, modelUsed: `OpenAI ${cfg.cloudModel} (cloud)` }
       }
     } else {
-      console.warn(`[AI] BigModel cloud responded HTTP ${res.status}`)
+      const errBody = await res.text().catch(() => "")
+      console.warn(`[AI] OpenAI cloud responded HTTP ${res.status}: ${errBody.slice(0, 200)}`)
     }
   } catch (e: any) {
-    console.warn(`[AI] BigModel cloud call failed:`, e?.message)
+    console.warn(`[AI] OpenAI cloud call failed:`, e?.message)
   }
 
   // 2) Local Ollama — fallback when the cloud API is unavailable/unconfigured.
