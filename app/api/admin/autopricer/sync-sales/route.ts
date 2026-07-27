@@ -28,7 +28,9 @@ export async function GET(request: Request) {
       },
     })
 
-    if (!res || !res.payload || !Array.isArray(res.payload.Orders)) {
+    const orders = res.Orders || res.payload?.Orders
+    
+    if (!orders || !Array.isArray(orders)) {
       return NextResponse.json({ 
         success: false, 
         error: "No orders found or API error", 
@@ -36,7 +38,6 @@ export async function GET(request: Request) {
       }, { status: 400 })
     }
 
-    const orders = res.payload.Orders
     console.log(`[SYNC-SALES] Fetched ${orders.length} recent orders. Aggregating by SKU and Date...`)
 
     // Fetch Monitored Products to map
