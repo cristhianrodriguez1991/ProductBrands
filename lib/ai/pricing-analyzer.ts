@@ -42,7 +42,8 @@ export async function analyzePricingWithGLM(
   product: MonitoredProduct & { calculated?: any },
   dailySales: DailySalesObservation[],
   weekdayProfiles: WeekdayProfile[],
-  customApiKey?: string
+  customApiKey?: string,
+  salesDiagnostic?: { sku: string; asin?: string | null; totalRecordsForSku: number; totalRecordsForAsin: number; latestSaleDate?: string | null }
 ): Promise<AIStrategicAssessment> {
   // OpenAI cloud API key. Set via OPENAI_API_KEY env var (.env.local for local
   // dev, Vercel project env vars for production). Never hardcode keys in source.
@@ -52,6 +53,13 @@ export async function analyzePricingWithGLM(
   // e.g. `npm run dev` on your Mac — NOT on the Vercel deployment).
   const ollamaBaseUrl = process.env.OLLAMA_BASE_URL // e.g. http://localhost:11434
   const ollamaModel = process.env.OLLAMA_MODEL || "glm4" // Ollama has no "glm 5.2"; glm4 is the closest available
+
+  // ── No-data guard: don't fabricate a rank analysis on empty sales data ────
+  // If the DB has zero sales records for this SKU (and ASIN), we cannot infer
+  // velocity/rank dynamics. Surface the cause + remedy instead of hallucinating.
+  if (salesDiagnostic && salesDiagnostic.totalRecordsForSku === 0 && salesDiagnostic.totalRecordsForAsin === 0) {
+    return noSalesDataAssessment(product, salesDiagnostic)
+  }
 
   // ── Aggregate sales velocity ──────────────────────────────────────────────
   const last7 = dailySales.slice(0, 7)
@@ -396,4 +404,41 @@ function formatCents(cents: number): string {
   const sign = cents > 0 ? "+" : "-"
   if (abs < 100) return `${sign}${abs}¢`
   return `${sign}$${(abs / 100).toFixed(2)}`
+}
+
+/**
+ * Honest "no data" assessment. Returned when there are zero synced sales records
+ * for the product's SKU and ASIN, so we never fabricate a rank analysis on empty
+ * data. Tells the user the two real causes (never sold vs SKU/ASIN mismatch) and
+ * the remedy, and recommends a small cent-level cut to stimulate first sales.
+ */
+function noSalesDataAssessment(
+  product: MonitoredProduct & { calculated?: any },
+  diag: { sku: string; asin?: string | null; totalRecordsForSku: number; totalRecordsForAsin: number; latestSaleDate?: string | null }
+): AIStrategicAssessment {
+  const asinTxt = diag.asin ? ` / ASIN ${diag.asin}` : ""
+  return {
+    modelUsed: "No sales data — sync required (rank analysis skipped)",
+    timestamp: new Date().toISOString(),
+    strategicSummary:
+      `NO SALES DATA for "${product.productName || product.sku}" (SKU ${diag.sku}${asinTxt}). ` +
+      `The database has 0 synced sales records for this product, so every day shows 0 units. ` +
+      `A rank-first analysis cannot run on empty data — the table is not "0 sales", it is "no data".`,
+    detectedLagEffect:
+      `Rank inertia cannot be assessed without sales data. Once sales are synced, the engine will ` +
+      `detect day-to-day rank carryover and lag-affected days.`,
+    recommendedAction: "MAINTAIN",
+    proposedPrice: product.currentPrice,
+    confidenceScore: 0,
+    keyTakeaways: [
+      `No synced sales data exists in the DB for SKU ${diag.sku}${asinTxt}.`,
+      `If this product HAS sold on Amazon in the last 30 days: run Sync Sales. The stored SKU/ASIN likely does not match Amazon's order report (e.g. a different fulfillment SKU, or the product is missing its ASIN). Check the sync result's unmatchedSkusSample / unmatchedAsinsSample.`,
+      `If this product has NOT sold in the last 30 days: the 0 units are real. To drive first sales and lower rank, consider a small cent-level price cut and verify the listing is Buy Box-eligible.`,
+    ],
+    weekdayStrategy: undefined,
+    adjustmentCents: 0,
+    velocitySnapshot: {
+      totalUnits30d: 0, totalUnits7d: 0, avgUnitsPerDay: 0, weekdayUnits: 0, weekendUnits: 0, netMarginPct: 0,
+    },
+  }
 }

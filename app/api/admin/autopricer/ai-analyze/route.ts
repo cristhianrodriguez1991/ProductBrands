@@ -70,17 +70,45 @@ export async function POST(req: Request) {
     // 3. Fetch Amazon SP-API Daily Unit Sales & Revenue (30 days)
     const dailySales = await getDailySalesAndTrafficBySku(product.sku, 30, product.currentPrice)
 
-    // 4. Run Ollama / GLM-5.2 Deep Reasoning Engine
+    // 3b. Diagnose how much sales data actually exists in the DB for this product,
+    // so the analyzer can tell "no data synced (mismatch?)" apart from "real zeros".
+    const [totalForSku, totalForAsin, latestSale] = await Promise.all([
+      prisma.amazonDailySales.count({
+        where: { sku: { equals: product.sku, mode: "insensitive" } },
+      }),
+      product.asin
+        ? prisma.amazonDailySales.count({
+            where: { asin: { equals: product.asin, mode: "insensitive" } },
+          })
+        : Promise.resolve(0),
+      prisma.amazonDailySales.findFirst({
+        where: { sku: { equals: product.sku, mode: "insensitive" } },
+        orderBy: { date: "desc" },
+        select: { date: true, unitsOrdered: true },
+      }),
+    ])
+    const salesDiagnostic = {
+      sku: product.sku,
+      asin: product.asin,
+      totalRecordsForSku: totalForSku,
+      totalRecordsForAsin: totalForAsin,
+      latestSaleDate: latestSale?.date ?? null,
+    }
+
+    // 4. Run the rank-first AI engine (skips the LLM call when there is no data)
     const assessment = await analyzePricingWithGLM(
       product,
       dailySales,
-      weekdayAnalysis.profiles
+      weekdayAnalysis.profiles,
+      undefined,
+      salesDiagnostic
     )
 
     return NextResponse.json({
       success: true,
       assessment,
       dailySales,
+      salesDiagnostic,
       weekdayProfiles: weekdayAnalysis.profiles,
       heatmap: weekdayAnalysis.heatmap,
     })
