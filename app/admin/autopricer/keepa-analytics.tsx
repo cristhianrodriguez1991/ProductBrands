@@ -212,7 +212,14 @@ export function KeepaAnalytics({
             </div>
             <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
               <div className="space-y-1">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">Recommended Weekend / Monday Positioning:</span>
+                <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  Strategy &amp; Engine Signals
+                  {aiAssessment.weekdayStrategy && (
+                    <span className="text-[10px] font-mono font-normal normal-case tracking-normal text-indigo-300 bg-indigo-950/70 px-1.5 py-0.5 rounded border border-indigo-700/40">
+                      today: {aiAssessment.weekdayStrategy}
+                    </span>
+                  )}
+                </span>
                 <div className="flex flex-wrap gap-2 pt-1">
                   {aiAssessment.keyTakeaways?.map((t: string, idx: number) => (
                     <span key={idx} className="text-[11px] bg-slate-800 text-slate-200 px-2.5 py-1 rounded-md border border-slate-700">
@@ -225,16 +232,40 @@ export function KeepaAnalytics({
                 <span className="text-xs text-slate-300 font-semibold">Recommended Action:</span>
                 <span className="text-sm font-extrabold text-emerald-400 font-mono tracking-wide">
                   {aiAssessment.recommendedAction} ({aiAssessment.proposedPrice ? `$${aiAssessment.proposedPrice}` : "Current Price"})
+                  {typeof aiAssessment.adjustmentCents === "number" && aiAssessment.adjustmentCents !== 0 && (
+                    <span className="ml-1 text-[10px] text-slate-400 font-normal">
+                      ({aiAssessment.adjustmentCents > 0 ? "+" : ""}{aiAssessment.adjustmentCents}¢)
+                    </span>
+                  )}
                 </span>
               </div>
             </div>
           </CardContent>
         )}
-        {showDailySales && dailySales && dailySales.length > 0 && (
+        {showDailySales && dailySales && dailySales.length > 0 && (() => {
+          // Data-driven performance band: compare each day's units to the real
+          // average across the displayed window — NOT a generic weekday assumption.
+          const soldDays = dailySales.filter((d) => d.unitsOrdered > 0)
+          const avgUnits = soldDays.length
+            ? soldDays.reduce((s, d) => s + d.unitsOrdered, 0) / soldDays.length
+            : 0
+
+          const bandFor = (units: number) => {
+            if (units <= 0) return { label: "No Sales", cls: "bg-slate-500/15 text-slate-400 border-slate-600/40" }
+            if (avgUnits > 0 && units >= avgUnits * 1.5) return { label: "Surge", cls: "bg-emerald-500/25 text-emerald-300 border-emerald-500/40" }
+            if (avgUnits > 0 && units >= avgUnits) return { label: "Above Avg", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" }
+            if (avgUnits > 0 && units >= avgUnits * 0.5) return { label: "Average", cls: "bg-sky-500/15 text-sky-300 border-sky-500/30" }
+            return { label: "Soft", cls: "bg-amber-500/15 text-amber-300 border-amber-500/30" }
+          }
+
+          return (
           <div className="p-4 bg-slate-950 border-t border-slate-800">
             <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
               <ShoppingCart className="h-4 w-4 text-emerald-400" />
               Amazon SP-API Daily Units Ordered & Revenue (Last {dailySales.length} Days)
+              <span className="ml-2 text-[10px] font-normal text-slate-500 normal-case tracking-normal">
+                avg {avgUnits.toFixed(1)} units/day on selling days
+              </span>
             </h4>
             <div className="overflow-x-auto max-h-60 rounded-lg border border-slate-800">
               <table className="w-full text-left border-collapse text-xs">
@@ -245,31 +276,34 @@ export function KeepaAnalytics({
                     <th className="py-2 px-3 text-right">Units Ordered</th>
                     <th className="py-2 px-3 text-right">Avg Selling Price</th>
                     <th className="py-2 px-3 text-right">Ordered Revenue</th>
-                    <th className="py-2 px-3 text-center">Office Pattern</th>
+                    <th className="py-2 px-3 text-center">Performance</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800 text-slate-300">
-                  {dailySales.map((d, idx) => (
-                    <tr key={idx} className={d.isWeekend ? "bg-rose-950/20 text-rose-200" : "hover:bg-slate-900/50"}>
+                  {dailySales.map((d, idx) => {
+                    const band = bandFor(d.unitsOrdered)
+                    return (
+                    <tr key={idx} className="hover:bg-slate-900/50">
                       <td className="py-1.5 px-3 font-mono">{d.date}</td>
-                      <td className="py-1.5 px-3 font-semibold">{d.dayOfWeek}</td>
+                      <td className="py-1.5 px-3 font-semibold">
+                        {d.dayOfWeek}
+                        {d.isWeekend && <span className="ml-1 text-[9px] text-slate-500 font-normal">(wknd)</span>}
+                      </td>
                       <td className="py-1.5 px-3 text-right font-bold text-white">{d.unitsOrdered}</td>
                       <td className="py-1.5 px-3 text-right font-mono">${d.avgSellingPrice.toFixed(2)}</td>
                       <td className="py-1.5 px-3 text-right font-mono text-emerald-400 font-semibold">${d.orderedProductSales.toFixed(2)}</td>
                       <td className="py-1.5 px-3 text-center">
-                        {d.isWeekend ? (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30">Weekend Drop</span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Corporate Rush</span>
-                        )}
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] border ${band.cls}`}>{band.label}</span>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
-        )}
+          )
+        })()}
       </Card>
 
       {/* ── 1. Sustained Rank Trend Summary ── */}
