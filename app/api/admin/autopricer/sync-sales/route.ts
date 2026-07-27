@@ -131,26 +131,31 @@ export async function GET(request: Request) {
     // ──────────────────────────────────────────────────────
     // STEP 1: Check for existing DONE reports from the last 12 hours
     // ──────────────────────────────────────────────────────
-    const createdSince = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
-    const recentReportsRes: any = await client.callAPI({
-      operation: "getReports",
-      endpoint: "reports",
-      query: {
-        reportTypes: ["GET_FLAT_FILE_ALL_ORDERS_DATA_BY_ORDER_DATE_GENERAL"],
-        processingStatuses: ["DONE"],
-        createdSince,
-        pageSize: 1,
-      },
-    })
+    // Allow explicit force parameter to bypass report caching if fresh sync is requested
+    const forceNew = url.searchParams.get("force") === "true"
 
-    const recentReports = recentReportsRes?.reports || recentReportsRes?.Reports || []
-    if (recentReports.length > 0) {
-      const recentDocId = recentReports[0].reportDocumentId
-      return NextResponse.json({
-        success: true,
-        message: `Found recent DONE report. Call again with ?reportDocumentId=${recentDocId}`,
-        reportDocumentId: recentDocId
+    if (!forceNew) {
+      const createdSince = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
+      const recentReportsRes: any = await client.callAPI({
+        operation: "getReports",
+        endpoint: "reports",
+        query: {
+          reportTypes: ["GET_FLAT_FILE_ALL_ORDERS_DATA_BY_ORDER_DATE_GENERAL"],
+          processingStatuses: ["DONE"],
+          createdSince,
+          pageSize: 1,
+        },
       })
+
+      const recentReports = recentReportsRes?.reports || recentReportsRes?.Reports || []
+      if (recentReports.length > 0) {
+        const recentDocId = recentReports[0].reportDocumentId
+        return NextResponse.json({
+          success: true,
+          message: `Found recent DONE report. Call again with ?reportDocumentId=${recentDocId}`,
+          reportDocumentId: recentDocId
+        })
+      }
     }
 
     // ──────────────────────────────────────────────────────
