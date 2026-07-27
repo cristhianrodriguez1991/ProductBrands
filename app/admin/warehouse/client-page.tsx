@@ -99,7 +99,10 @@ interface Pallet {
 
 // ── Helpers ────────────────────────────────────────────────
 function isOccupied(p: Pallet) {
-  return !!p.productName || !!p.sku
+  if (!p) return false
+  if (p.status === "AVAILABLE") return false
+  if (p.quantity === 0) return false
+  return !!(p.productName || p.sku)
 }
 
 function colorFromSeed(seed: string) {
@@ -862,7 +865,7 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
 
       {/* Pallet Edit Dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-xl w-[95vw] max-h-[88vh] overflow-y-auto p-6 sm:p-8 rounded-2xl border-0 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-widest">
               <Package className="h-6 w-6 text-emerald-600" />
@@ -886,19 +889,19 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
             const currentLocPallets = palletsByLocation[selectedPallet?.locationCode || ""]?.filter(isOccupied) || []
             if (currentLocPallets.length <= 1) return null
             return (
-              <div className="mb-6 animate-in slide-in-from-top-2 duration-300">
+              <div className="mb-4 animate-in slide-in-from-top-2 duration-300">
                 <div className="flex items-center gap-2 mb-2 px-1">
                   <LayoutGrid className="h-4 w-4 text-amber-600" />
                   <span className="text-[10px] font-black text-amber-700 uppercase tracking-[0.2em]">
                     Posición Mixta ({currentLocPallets.length} Productos)
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-2 p-2 bg-amber-50/50 rounded-xl border border-amber-100/50 shadow-inner">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 p-2 bg-amber-50/50 rounded-xl border border-amber-100/50 shadow-inner w-full max-h-[180px] overflow-y-auto">
                   {currentLocPallets.map((p, idx) => (
                     <button
                       key={p.id}
                       onClick={() => openPalletForm(p, palletsByLocation[p.locationCode])}
-                      className={`flex-1 min-w-[140px] px-4 py-3 rounded-xl text-left transition-all border-2 ${selectedPallet?.id === p.id
+                      className={`w-full min-w-0 px-3 py-2.5 rounded-xl text-left transition-all border-2 ${selectedPallet?.id === p.id
                         ? "bg-white border-amber-500 shadow-md ring-4 ring-amber-100 scale-[1.02] z-10"
                         : "bg-white/40 border-transparent hover:border-amber-200 opacity-60 hover:opacity-100 grayscale-[0.5] hover:grayscale-0"}`}
                     >
