@@ -45,7 +45,11 @@ export async function analyzePricingWithGLM(
   customApiKey?: string
 ): Promise<AIStrategicAssessment> {
   const apiKey = customApiKey || process.env.GLM_API_KEY || "f0cad4d1346f4de6ac26fe762fe8b7e7.EbtHqdi8pkA-uXOBfw1i0t3U"
-  const modelName = "glm-4" // BigModel standard chat completion model
+  const cloudModel = process.env.GLM_MODEL || "glm-4" // BigModel cloud model
+  // Local Ollama (only works when the app runs on the same machine as Ollama,
+  // e.g. `npm run dev` on your Mac — NOT on the Vercel deployment).
+  const ollamaBaseUrl = process.env.OLLAMA_BASE_URL // e.g. http://localhost:11434
+  const ollamaModel = process.env.OLLAMA_MODEL || "glm4" // Ollama has no "glm 5.2"; glm4 is the closest available
 
   // ── Aggregate sales velocity ──────────────────────────────────────────────
   const last7 = dailySales.slice(0, 7)
@@ -101,17 +105,108 @@ JSON schema:
 }`
 
   try {
+    const llm = await callLLM(systemPrompt, userPrompt, {
+      ollamaBaseUrl, ollamaModel, cloudApiKey: apiKey, cloudModel,
+    })
+
+    if (llm?.content) {
+      const jsonMatch = llm.content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0])
+        const action = (parsed.recommendedAction || "MAINTAIN").toUpperCase()
+        // Clamp the LLM proposal to a small cents move within bounds — never trust
+        // an LLM to respect the "cents only" rule on its own.
+        const clamped = clampToCentsBand(
+          product.currentPrice,
+          Number(parsed.proposedPrice) || product.currentPrice,
+          product.minPrice,
+          product.maxPrice
+        )
+        return {
+          modelUsed: llm.modelUsed,
+          timestamp: new Date().toISOString(),
+          strategicSummary: parsed.strategicSummary || "Rank-first analysis complete.",
+          detectedLagEffect: parsed.detectedLagEffect || "No severe rank carryover distortion detected.",
+          recommendedAction: (["RAISE", "LOWER", "MAINTAIN"].includes(action) ? action : "MAINTAIN") as AIStrategicAssessment["recommendedAction"],
+          proposedPrice: clamped.price,
+          confidenceScore: Math.min(100, Math.max(0, Number(parsed.confidenceScore) || 90)),
+          keyTakeaways: Array.isArray(parsed.keyTakeaways) ? parsed.keyTakeaways : [],
+          weekdayStrategy: todayProfile?.recommendedStrategy,
+          adjustmentCents: clamped.cents,
+          velocitySnapshot: {
+            totalUnits30d, totalUnits7d, avgUnitsPerDay, weekdayUnits, weekendUnits,
+            netMarginPct: Math.round(netMarginPct * 10) / 10,
+          },
+        }
+      }
+    }
+  } catch (error: any) {
+    console.warn(`[AI] LLM call failed, using rank-first local engine:`, error?.message)
+  }
+
+  // ── Rank-first local engine fallback (cents only, engine-driven) ──────────
+  return rankFirstLocalStrategy(product, {
+    totalUnits30d, totalUnits7d, avgUnitsPerDay, weekdayUnits, weekendUnits, netMarginPct,
+  }, weekdayProfiles, todayProfile, todayName, lagDays)
+}
+
+/**
+ * Call an LLM with the given prompts. Prefers a local Ollama instance when
+ * OLLAMA_BASE_URL is configured (dev on your Mac); otherwise falls back to the
+ * BigModel cloud API. Returns { content, modelUsed } or null if both fail.
+ */
+async function callLLM(
+  systemPrompt: string,
+  userPrompt: string,
+  cfg: { ollamaBaseUrl?: string; ollamaModel: string; cloudApiKey: string; cloudModel: string }
+): Promise<{ content: string; modelUsed: string } | null> {
+  // 1) Local Ollama (only reachable when the app runs on the same host as Ollama)
+  if (cfg.ollamaBaseUrl) {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 60000) // local models can be slow on first call
+      const res = await fetch(`${cfg.ollamaBaseUrl.replace(/\/$/, "")}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: cfg.ollamaModel,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          stream: false,
+          options: { temperature: 0.2 },
+        }),
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+      if (res.ok) {
+        const data = await res.json()
+        const content = data?.message?.content
+        if (content) {
+          console.log(`[AI] Using local Ollama model: ${cfg.ollamaModel}`)
+          return { content, modelUsed: `Ollama ${cfg.ollamaModel} (local)` }
+        }
+      } else {
+        console.warn(`[AI] Ollama responded HTTP ${res.status}`)
+      }
+    } catch (e: any) {
+      console.warn(`[AI] Ollama call failed:`, e?.message)
+    }
+  }
+
+  // 2) BigModel cloud API (works on Vercel — needs a valid GLM_API_KEY)
+  try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 15000)
-
-    const response = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
+    const res = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
+        "Authorization": `Bearer ${cfg.cloudApiKey}`,
       },
       body: JSON.stringify({
-        model: modelName,
+        model: cfg.cloudModel,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -120,52 +215,22 @@ JSON schema:
       }),
       signal: controller.signal,
     })
-
     clearTimeout(timeout)
-
-    if (response.ok) {
-      const data = await response.json()
+    if (res.ok) {
+      const data = await res.json()
       const content = data?.choices?.[0]?.message?.content
       if (content) {
-        const jsonMatch = content.match(/\{[\s\S]*\}/)
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0])
-          const action = (parsed.recommendedAction || "MAINTAIN").toUpperCase()
-          // Clamp the GLM proposal to a small cents move within bounds — never trust
-          // an LLM to respect the "cents only" rule on its own.
-          const clamped = clampToCentsBand(
-            product.currentPrice,
-            Number(parsed.proposedPrice) || product.currentPrice,
-            product.minPrice,
-            product.maxPrice
-          )
-          return {
-            modelUsed: `GLM-5.2 (${modelName})`,
-            timestamp: new Date().toISOString(),
-            strategicSummary: parsed.strategicSummary || "Rank-first analysis complete.",
-            detectedLagEffect: parsed.detectedLagEffect || "No severe rank carryover distortion detected.",
-            recommendedAction: (["RAISE", "LOWER", "MAINTAIN"].includes(action) ? action : "MAINTAIN") as AIStrategicAssessment["recommendedAction"],
-            proposedPrice: clamped.price,
-            confidenceScore: Math.min(100, Math.max(0, Number(parsed.confidenceScore) || 90)),
-            keyTakeaways: Array.isArray(parsed.keyTakeaways) ? parsed.keyTakeaways : [],
-            weekdayStrategy: todayProfile?.recommendedStrategy,
-            adjustmentCents: clamped.cents,
-            velocitySnapshot: {
-              totalUnits30d, totalUnits7d, avgUnitsPerDay, weekdayUnits, weekendUnits,
-              netMarginPct: Math.round(netMarginPct * 10) / 10,
-            },
-          }
-        }
+        console.log(`[AI] Using BigModel cloud model: ${cfg.cloudModel}`)
+        return { content, modelUsed: `GLM cloud (${cfg.cloudModel})` }
       }
+    } else {
+      console.warn(`[AI] BigModel cloud responded HTTP ${res.status}`)
     }
-  } catch (error: any) {
-    console.warn(`[GLM] API call failed or timed out, using rank-first local engine:`, error?.message)
+  } catch (e: any) {
+    console.warn(`[AI] BigModel cloud call failed:`, e?.message)
   }
 
-  // ── Rank-first local engine fallback (cents only, engine-driven) ──────────
-  return rankFirstLocalStrategy(product, {
-    totalUnits30d, totalUnits7d, avgUnitsPerDay, weekdayUnits, weekendUnits, netMarginPct,
-  }, weekdayProfiles, todayProfile, todayName, lagDays)
+  return null
 }
 
 /**
