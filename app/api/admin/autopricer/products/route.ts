@@ -225,3 +225,118 @@ export async function POST(req: Request) {
     return new NextResponse("Internal Error", { status: 500 })
   }
 }
+
+// Build the Prisma `where` filter shared by GET and the bulk endpoints
+function buildWhereFilter(searchParams: URLSearchParams) {
+  const marketplace = searchParams.get("marketplace")
+  const status = searchParams.get("status")
+  const action = searchParams.get("action")
+  const search = searchParams.get("search")?.trim()
+
+  const where: any = {}
+  if (marketplace && marketplace !== "ALL") where.marketplace = marketplace
+  if (status && status !== "ALL") where.status = status
+  if (action && action !== "ALL") where.recommendedAction = action
+  if (search) {
+    where.OR = [
+      { asin: { contains: search, mode: "insensitive" } },
+      { sku: { contains: search, mode: "insensitive" } },
+      { productName: { contains: search, mode: "insensitive" } },
+      { category: { contains: search, mode: "insensitive" } },
+    ]
+  }
+  return where
+}
+
+// DELETE: erase all monitored products at once (optionally scoped to the
+// current filters). Requires ?confirm=ERASE_ALL to prevent accidental triggers.
+// Related records (priceHistory, amazonDailySales, etc.) are cascade-deleted
+// per the Prisma schema's onDelete: Cascade.
+export async function DELETE(req: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+    const userRole = (session?.user as any)?.role
+    const customPermissions = (session?.user as any)?.customPermissions || []
+
+    if (!session || !hasEffectivePermission(userRole, customPermissions, PERMISSIONS.AUTOPRICER)) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const { searchParams } = new URL(req.url)
+    if (searchParams.get("confirm") !== "ERASE_ALL") {
+      return NextResponse.json(
+        { success: false, error: "Confirmation required. Pass ?confirm=ERASE_ALL to erase." },
+        { status: 400 }
+      )
+    }
+
+    const scope = searchParams.get("scope") // "filtered" uses current filters; default "all"
+    const where = scope === "filtered" ? buildWhereFilter(searchParams) : {}
+
+    const result = await prisma.monitoredProduct.deleteMany({ where })
+
+    return NextResponse.json({
+      success: true,
+      message: `Erased ${result.count} monitored product(s).`,
+      deletedCount: result.count,
+    })
+  } catch (error) {
+    console.error("[AUTOPRICER_DELETE_ALL]", error)
+    return new NextResponse("Internal Error", { status: 500 })
+  }
+}
+
+// PATCH: bulk-set min/max price guardrails across many products at once so the
+// autopricer never prices below the floor or above the ceiling. Body:
+// { minPrice?, maxPrice?, scope: "all"|"filtered", marketplace?, status?, search? }
+export async function PATCH(req: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+    const userRole = (session?.user as any)?.role
+    const customPermissions = (session?.user as any)?.customPermissions || []
+
+    if (!session || !hasEffectivePermission(userRole, customPermissions, PERMISSIONS.AUTOPRICER)) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const body = await req.json()
+    const minPrice = body.minPrice !== undefined && body.minPrice !== null && body.minPrice !== "" ? Number(body.minPrice) : null
+    const maxPrice = body.maxPrice !== undefined && body.maxPrice !== null && body.maxPrice !== "" ? Number(body.maxPrice) : null
+
+    if (minPrice === null && maxPrice === null) {
+      return NextResponse.json({ success: false, error: "Provide at least minPrice or maxPrice." }, { status: 400 })
+    }
+    if (minPrice !== null && isNaN(minPrice)) {
+      return NextResponse.json({ success: false, error: "minPrice must be a number." }, { status: 400 })
+    }
+    if (maxPrice !== null && isNaN(maxPrice)) {
+      return NextResponse.json({ success: false, error: "maxPrice must be a number." }, { status: 400 })
+    }
+    if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
+      return NextResponse.json({ success: false, error: "minPrice cannot be greater than maxPrice." }, { status: 400 })
+    }
+
+    // Build the same filter shape the UI uses for GET
+    const sp = new URLSearchParams()
+    if (body.marketplace && body.marketplace !== "ALL") sp.set("marketplace", body.marketplace)
+    if (body.status && body.status !== "ALL") sp.set("status", body.status)
+    if (body.action && body.action !== "ALL") sp.set("action", body.action)
+    if (body.search) sp.set("search", body.search)
+    const where = body.scope === "filtered" ? buildWhereFilter(sp) : {}
+
+    const data: any = {}
+    if (minPrice !== null) data.minPrice = minPrice
+    if (maxPrice !== null) data.maxPrice = maxPrice
+
+    const result = await prisma.monitoredProduct.updateMany({ where, data })
+
+    return NextResponse.json({
+      success: true,
+      message: `Updated price guardrails on ${result.count} product(s).`,
+      updatedCount: result.count,
+    })
+  } catch (error) {
+    console.error("[AUTOPRICER_BULK_BOUNDS]", error)
+    return new NextResponse("Internal Error", { status: 500 })
+  }
+}

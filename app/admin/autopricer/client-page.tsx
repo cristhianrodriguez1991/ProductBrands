@@ -179,6 +179,14 @@ export default function AutopricerClient() {
   // Selected for bulk approval
   const [selectedLogIds, setSelectedLogIds] = useState<string[]>([])
 
+  // Bulk "Erase All" + "Set Price Bounds" controls
+  const [showEraseAllDialog, setShowEraseAllDialog] = useState(false)
+  const [eraseConfirmText, setEraseConfirmText] = useState("")
+  const [erasing, setErasing] = useState(false)
+  const [showBoundsDialog, setShowBoundsDialog] = useState(false)
+  const [boundsForm, setBoundsForm] = useState({ minPrice: "", maxPrice: "", scope: "all" as "all" | "filtered" })
+  const [savingBounds, setSavingBounds] = useState(false)
+
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true)
@@ -449,6 +457,76 @@ export default function AutopricerClient() {
       await fetchProducts()
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  // Erase ALL monitored products at once (cascade deletes history/sales).
+  const handleEraseAll = async () => {
+    if (eraseConfirmText !== "ERASE ALL") return
+    try {
+      setErasing(true)
+      const res = await fetch(`/api/admin/autopricer/products?confirm=ERASE_ALL&scope=all`, {
+        method: "DELETE",
+      })
+      if (res.ok) {
+        const data = await res.json()
+        alert(data.message || "All monitored products erased.")
+        setShowEraseAllDialog(false)
+        setEraseConfirmText("")
+        await fetchProducts()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || "Failed to erase products.")
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Failed to erase products.")
+    } finally {
+      setErasing(false)
+    }
+  }
+
+  // Bulk-set min/max price guardrails across all (or filtered) products.
+  const handleSaveBounds = async () => {
+    const min = boundsForm.minPrice === "" ? null : parseFloat(boundsForm.minPrice)
+    const max = boundsForm.maxPrice === "" ? null : parseFloat(boundsForm.maxPrice)
+    if (min === null && max === null) {
+      alert("Enter at least a min or max price.")
+      return
+    }
+    if (min !== null && isNaN(min)) return alert("Min price must be a number.")
+    if (max !== null && isNaN(max)) return alert("Max price must be a number.")
+    if (min !== null && max !== null && min > max) return alert("Min price cannot be greater than max price.")
+
+    try {
+      setSavingBounds(true)
+      const res = await fetch(`/api/admin/autopricer/products`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          minPrice: min,
+          maxPrice: max,
+          scope: boundsForm.scope,
+          marketplace: selectedMarketplace,
+          status: "ALL",
+          action: selectedAction,
+          search,
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        alert(data.message || "Price guardrails updated.")
+        setShowBoundsDialog(false)
+        await fetchProducts()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || "Failed to update guardrails.")
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Failed to update guardrails.")
+    } finally {
+      setSavingBounds(false)
     }
   }
 
@@ -836,6 +914,26 @@ export default function AutopricerClient() {
                 <option value="LOWER">🔴 Lower Price</option>
                 <option value="MAINTAIN">⚪ Maintain Price</option>
               </select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowBoundsDialog(true)}
+                className="h-9 font-medium"
+                title="Set a floor and ceiling price the autopricer will never cross, applied to all (or filtered) products."
+              >
+                <Sliders className="h-4 w-4 mr-1.5" />
+                Set Min/Max Price
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowEraseAllDialog(true)}
+                className="h-9 font-medium text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                title="Erase ALL monitored products at once. This cannot be undone."
+              >
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                Erase All
+              </Button>
             </div>
           </div>
 
@@ -1866,6 +1964,110 @@ export default function AutopricerClient() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* ── Erase All Monitored Products ── */}
+      <Dialog open={showEraseAllDialog} onOpenChange={setShowEraseAllDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+              <ShieldAlert className="h-5 w-5" /> Erase ALL Monitored Products
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete every monitored product and all of its history
+              (price changes, daily sales, Keepa data). This action <strong>cannot be undone</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              To confirm, type <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono">ERASE ALL</code> below:
+            </p>
+            <Input
+              value={eraseConfirmText}
+              onChange={(e) => setEraseConfirmText(e.target.value)}
+              placeholder="ERASE ALL"
+              className="font-mono"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowEraseAllDialog(false); setEraseConfirmText("") }}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={eraseConfirmText !== "ERASE ALL" || erasing}
+              onClick={handleEraseAll}
+            >
+              {erasing ? "Erasing..." : "Erase Everything"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Set Min/Max Price Guardrails (bulk) ── */}
+      <Dialog open={showBoundsDialog} onOpenChange={setShowBoundsDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sliders className="h-5 w-5" /> Set Min/Max Price Guardrails
+            </DialogTitle>
+            <DialogDescription>
+              Set a floor (min) and ceiling (max) price the autopricer will never cross.
+              Leave a field blank to keep it unchanged. Applied to{" "}
+              {boundsForm.scope === "filtered" ? "the products matching the current filters" : "ALL monitored products"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Min Price (Floor) $</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={boundsForm.minPrice}
+                  onChange={(e) => setBoundsForm({ ...boundsForm, minPrice: e.target.value })}
+                  placeholder="e.g. 8.00"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Max Price (Ceiling) $</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={boundsForm.maxPrice}
+                  onChange={(e) => setBoundsForm({ ...boundsForm, maxPrice: e.target.value })}
+                  placeholder="e.g. 25.00"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={boundsForm.scope === "all"}
+                  onChange={() => setBoundsForm({ ...boundsForm, scope: "all" })}
+                />
+                All products
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={boundsForm.scope === "filtered"}
+                  onChange={() => setBoundsForm({ ...boundsForm, scope: "filtered" })}
+                />
+                Only current filter ({products.length})
+              </label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBoundsDialog(false)}>Cancel</Button>
+            <Button disabled={savingBounds} onClick={handleSaveBounds}>
+              {savingBounds ? "Saving..." : "Apply Guardrails"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
