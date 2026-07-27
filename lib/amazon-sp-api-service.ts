@@ -422,19 +422,14 @@ export async function getDailySalesAndTrafficBySku(sku: string, days: number = 3
   const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
   
   try {
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - days)
-    const startDateStr = startDate.toISOString().split("T")[0]
-
     // Import prisma dynamically since this is a utility file
     const { PrismaClient } = require('@prisma/client')
     const prisma = new PrismaClient()
 
-    // Fetch exact synced sales data from database
+    // Fetch all synced sales data for this SKU
     const dbSales = await prisma.amazonDailySales.findMany({
       where: {
-        sku: { equals: sku, mode: "insensitive" },
-        date: { gte: startDateStr }
+        sku: { equals: sku, mode: "insensitive" }
       },
       orderBy: { date: "asc" }
     })
@@ -445,10 +440,25 @@ export async function getDailySalesAndTrafficBySku(sku: string, days: number = 3
       dateMap.set(record.date, record)
     }
 
-    // Build the exact day-by-day array to ensure there are no gaps
+    // Determine target anchor date: use latest DB date if current calendar window has 0 matches
+    let anchorDate = new Date()
+    if (dbSales.length > 0) {
+      const latestDbDateStr = dbSales[dbSales.length - 1].date
+      const latestDbDate = new Date(latestDbDateStr + "T12:00:00Z")
+      
+      // Check if current 30-day window contains any db sales
+      const now = new Date()
+      const thirtyDaysAgo = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+      const hasRecentInWindow = dbSales.some((s: any) => new Date(s.date + "T12:00:00Z") >= thirtyDaysAgo)
+      
+      if (!hasRecentInWindow) {
+        anchorDate = latestDbDate
+      }
+    }
+
+    // Build day-by-day array up to anchorDate
     for (let i = days - 1; i >= 0; i--) {
-      const d = new Date()
-      d.setDate(d.getDate() - i)
+      const d = new Date(anchorDate.getTime() - i * 24 * 60 * 60 * 1000)
       const dateStr = d.toISOString().split("T")[0]
       const dayName = daysOfWeek[d.getDay()]
       const isWeekend = d.getDay() === 0 || d.getDay() === 6
