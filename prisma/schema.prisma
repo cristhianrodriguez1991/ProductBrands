@@ -916,6 +916,7 @@ model InventoryItem {
   quantityReserved Int            @default(0)
   reorderPoint    Int             @default(0)
   unitCost        Float?
+  sellingPrice    Float?          // From Amazon Reports price column
   fulfillmentChannel String?      // AMAZON (FBA) or MERCHANT (FBM)
 
   // Status

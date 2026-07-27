@@ -87,6 +87,8 @@ async function executeSync() {
       const title = item["item-name"] || item["product-name"] || item["Title"] || ""
       const amzStatus = item["status"] || item["item-status"] || ""
       const fulfillmentChannel = item["fulfillment-channel"] || item["fulfillment_channel"] || ""
+      const rawPrice = item["price"] || item["listing-price"] || ""
+      const parsedPrice = parseFloat(rawPrice) > 0 ? parseFloat(rawPrice) : null
 
       // Extract quantities AND fnsku from FBA response (using SKU as primary key for FBA)
       const fbaQty = fbaQtyMap.get(sku)
@@ -130,6 +132,7 @@ async function executeSync() {
         amazonTitle: catalogTitle || title || null,
         amazonImageUrl: catalogImage || null,
         amazonUrl: asin ? `https://www.amazon.com/dp/${asin}` : null,
+        sellingPrice: parsedPrice,
         isActive: true, // GET_MERCHANT_LISTINGS_DATA only returns active listings
         amazonStatus: amzStatus || "Active",
         fulfillmentChannel: fulfillmentChannel || null,

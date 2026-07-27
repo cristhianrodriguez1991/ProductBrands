@@ -94,6 +94,7 @@ export default function AutopricerClient() {
   const [loading, setLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
   const [seedingDemo, setSeedingDemo] = useState(false)
+  const [syncingAmazon, setSyncingAmazon] = useState(false)
   const [activeTab, setActiveTab] = useState<"dashboard" | "approvals" | "simulator" | "audit">("dashboard")
 
   // Filters
@@ -195,6 +196,26 @@ export default function AutopricerClient() {
       console.error(err)
     } finally {
       setSeedingDemo(false)
+    }
+  }
+
+  // Sync Live Amazon Pricing & Fees
+  const handleSyncAmazon = async () => {
+    try {
+      setSyncingAmazon(true)
+      const res = await fetch("/api/admin/autopricer/sync-amazon", { method: "POST" })
+      if (res.ok) {
+        const data = await res.json()
+        alert(data.message || "Synced Amazon pricing & fees!")
+        await fetchProducts()
+      } else {
+        const err = await res.text()
+        alert(`Sync failed: ${err}`)
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSyncingAmazon(false)
     }
   }
 
@@ -315,6 +336,12 @@ export default function AutopricerClient() {
 
   // One-Click Import from Catalog
   const handleOneClickImport = async (item: any) => {
+    let finalCost = item.unitCost
+    if (!item.hasCost) {
+      const input = prompt(`⚠️ "${item.name}" does not have a saved Manufacturing Unit Cost (COGS) yet.\n\nPlease enter your actual Unit Cost ($) to import:`, "12.00")
+      if (!input || isNaN(parseFloat(input))) return
+      finalCost = parseFloat(input)
+    }
     try {
       setImportingId(item.id)
       const res = await fetch("/api/admin/autopricer/products", {
@@ -328,10 +355,10 @@ export default function AutopricerClient() {
           category: item.category || "General",
           imageUrl: item.imageUrl || "",
           currentPrice: item.currentPrice.toString(),
-          unitCost: item.unitCost.toString(),
+          unitCost: finalCost.toString(),
           fulfillmentMethod: item.fulfillmentMethod,
-          minPrice: (Math.round(item.unitCost * 1.3 * 100) / 100).toString(),
-          maxPrice: (Math.round(item.unitCost * 4.0 * 100) / 100).toString(),
+          minPrice: (Math.round(finalCost * 1.3 * 100) / 100).toString(),
+          maxPrice: (Math.round(finalCost * 4.0 * 100) / 100).toString(),
           minMarginPercent: PRICE_INTELLIGENCE_CONFIG.DEFAULTS.MIN_DESIRED_MARGIN_PERCENT.toString(),
           referralFeePercent: PRICE_INTELLIGENCE_CONFIG.DEFAULTS.REFERRAL_FEE_PERCENT.toString(),
           fbaFee: PRICE_INTELLIGENCE_CONFIG.DEFAULTS.ESTIMATED_FBA_FEE_USD.toString(),
@@ -479,6 +506,15 @@ export default function AutopricerClient() {
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${analyzing ? "animate-spin" : ""}`} />
             {analyzing ? "Analyzing Intelligence..." : "Run Intelligence Analysis"}
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleSyncAmazon}
+            disabled={syncingAmazon || loading}
+            className="bg-purple-600 hover:bg-purple-500 text-white shadow-md font-medium"
+          >
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${syncingAmazon ? "animate-spin" : ""}`} />
+            {syncingAmazon ? "Syncing Amazon..." : "Sync Amazon Pricing & Fees"}
           </Button>
           <Button
             size="sm"

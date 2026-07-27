@@ -85,8 +85,9 @@ export async function GET() {
       addedKeys.add(key)
 
       const isMonitored = monitoredSet.has(`asin:${asin.toLowerCase()}`) || monitoredSet.has(`sku:${sku.toLowerCase()}`)
-      const cost = item.unitCost && item.unitCost > 0 ? item.unitCost : 6.50
-      const price = Math.round((cost * 2.6) * 100) / 100
+      const hasCost = Boolean(item.unitCost && item.unitCost > 0)
+      const cost = hasCost ? item.unitCost! : 6.50
+      const price = item.sellingPrice && item.sellingPrice > 0 ? item.sellingPrice : Math.round((cost * 2.6) * 100) / 100
 
       catalog.push({
         id: item.id,
@@ -101,6 +102,7 @@ export async function GET() {
         fulfillmentMethod: item.fulfillmentChannel === "MERCHANT" ? "FBM" : "FBA",
         quantity: item.quantityOnHand || 0,
         isAlreadyMonitored: isMonitored,
+        hasCost,
       })
     }
 
@@ -135,6 +137,7 @@ export async function GET() {
         fulfillmentMethod: "FBA",
         quantity: w.totalQuantity,
         isAlreadyMonitored: isMonitored,
+        hasCost: false,
       })
     }
 

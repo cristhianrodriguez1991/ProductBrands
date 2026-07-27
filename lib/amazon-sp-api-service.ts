@@ -308,3 +308,98 @@ export async function getCatalogItemsByAsins(asins: string[]): Promise<any[]> {
 
   return results
 }
+
+/**
+ * Query Amazon SP-API for exact live FBA fulfillment fees and referral fee estimates.
+ */
+export async function getFbaFeeEstimate(
+  sku: string,
+  price: number,
+  isFba: boolean
+): Promise<{ fbaFee: number; referralFeePct: number; totalFee: number } | null> {
+  const client: any = getClient()
+  const usMarketplaceId = "ATVPDKIKX0DER"
+
+  try {
+    const res: any = await client.callAPI({
+      operation: "getMyFeesEstimateForSKU",
+      endpoint: "productFees",
+      path: { SellerSKU: sku },
+      body: {
+        FeesEstimateRequest: {
+          MarketplaceId: usMarketplaceId,
+          IsAmazonFulfilled: isFba,
+          PriceToEstimateFees: {
+            ListingPrice: { CurrencyCode: "USD", Amount: price },
+          },
+          Identifier: sku,
+        },
+      },
+    })
+
+    const estimate = res?.FeesEstimateResult?.FeesEstimate || res?.payload?.FeesEstimateResult?.FeesEstimate
+    if (!estimate || !estimate.FeeDetailList) return null
+
+    let fbaFee = 0
+    let referralFeeAmount = 0
+    let totalFee = estimate.TotalFeesEstimate?.Amount || 0
+
+    for (const detail of estimate.FeeDetailList) {
+      const type = detail.FeeType || ""
+      const amount = detail.FeeAmount?.Amount || 0
+      if (type.includes("FBA") || type.includes("Fulfillment")) {
+        fbaFee += amount
+      } else if (type.includes("Referral")) {
+        referralFeeAmount += amount
+      }
+    }
+
+    const referralFeePct = price > 0 ? Math.round((referralFeeAmount / price) * 1000) / 10 : 15.0
+    return { fbaFee: Math.round(fbaFee * 100) / 100, referralFeePct, totalFee }
+  } catch (e: any) {
+    console.warn(`[SP-API] Fee estimate failed for SKU ${sku}:`, e?.message)
+    return null
+  }
+}
+
+/**
+ * Query Amazon SP-API for live Buy Box / Competitive Pricing by ASINs.
+ */
+export async function getCompetitivePricingByAsins(asins: string[]): Promise<Map<string, { buyBoxPrice: number; competitorCount: number }>> {
+  const map = new Map<string, { buyBoxPrice: number; competitorCount: number }>()
+  if (asins.length === 0) return map
+
+  const client: any = getClient()
+  const usMarketplaceId = "ATVPDKIKX0DER"
+
+  const chunkSize = 20
+  for (let i = 0; i < asins.length; i += chunkSize) {
+    const chunk = asins.slice(i, i + chunkSize)
+    try {
+      const res: any = await client.callAPI({
+        operation: "getCompetitivePricing",
+        endpoint: "productPricing",
+        query: {
+          MarketplaceId: usMarketplaceId,
+          Asins: chunk,
+          ItemType: "Asin",
+        },
+      })
+      const list = Array.isArray(res) ? res : res?.payload || []
+      for (const item of list) {
+        const asin = item?.ASIN || item?.asin
+        const pricing = item?.Product?.CompetitivePricing?.CompetitivePrices?.[0]?.Price
+        const amount = pricing?.LandedPrice?.Amount || pricing?.ListingPrice?.Amount
+        const count = item?.Product?.CompetitivePricing?.NumberOfOfferListings?.length || 3
+        if (asin && amount) {
+          map.set(asin, { buyBoxPrice: parseFloat(amount), competitorCount: count })
+        }
+      }
+    } catch (e: any) {
+      console.warn(`[SP-API] Competitive pricing lookup failed for chunk:`, e?.message)
+    }
+  }
+
+  return map
+}
+
