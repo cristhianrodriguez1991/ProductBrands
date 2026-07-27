@@ -322,22 +322,24 @@ export default function WarehouseClient({ initialPallets }: { initialPallets: Pa
   // ── Clear pallet ──
   const clearPallet = async () => {
     if (!selectedPallet) return
+    const locCode = selectedPallet.locationCode
     setConfirmDialog({
       isOpen: true,
       title: "¿Vaciar Posición?",
-      message: `¿Estás seguro de que deseas limpiar la posición ${selectedPallet.locationCode}? Se borrarán el producto, el SKU y las unidades de forma permanente.`,
+      message: `¿Estás seguro de que deseas limpiar la posición ${locCode}? Se borrarán el producto, el SKU y las unidades de forma permanente.`,
       onConfirm: async () => {
         try {
           const res = await fetch(`/api/admin/warehouse/${selectedPallet.id}`, { method: "DELETE" })
           if (res.ok) {
-            const updated = await res.json()
-            if (updated.deleted) {
-              setPallets((prev) => prev.filter((p) => p.id !== updated.id))
+            const freshRes = await fetch("/api/admin/warehouse")
+            if (freshRes.ok) {
+              const freshData = await freshRes.json()
+              setPallets(freshData)
             } else {
-              setPallets((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated, expirationDate: null, createdAt: updated.createdAt, updatedAt: updated.updatedAt } : p)))
+              setPallets((prev) => prev.filter((p) => p.id !== selectedPallet.id))
             }
             setFormOpen(false)
-            toast({ title: "Vaciado", description: `Posición ${selectedPallet.locationCode} limpiada.` })
+            toast({ title: "Vaciado", description: `Posición ${locCode} limpiada.` })
           }
         } catch {
           toast({ title: "Error", variant: "destructive" })

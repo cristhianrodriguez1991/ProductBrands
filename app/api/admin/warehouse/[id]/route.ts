@@ -172,35 +172,60 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       if (!existing) throw new Error("Pallet no encontrado.")
 
       const locationCode = existing.locationCode
-
-      // Delete the pallet record entirely ONLY if it's a mixed pallet. Otherwise, clear it.
       const palletsAtLoc = await tx.warehousePallet.findMany({ where: { locationCode } })
-      let finalPallet = null;
-      if (palletsAtLoc.length > 1) {
-        await tx.warehousePallet.delete({ where: { id: params.id } })
-      } else {
-        finalPallet = await tx.warehousePallet.update({
-          where: { id: params.id },
+
+      // Delete the targeted pallet record first
+      await tx.warehousePallet.delete({ where: { id: params.id } })
+
+      // Check remaining pallets at location
+      const remaining = palletsAtLoc.filter(p => p.id !== params.id)
+      const remainingOccupied = remaining.filter(p => p.status !== "AVAILABLE" && p.quantity !== 0 && (p.productName || p.sku))
+
+      if (remainingOccupied.length === 0) {
+        // No remaining occupied pallets at this location! Clean up all records at this location code
+        await tx.warehousePallet.deleteMany({ where: { locationCode } })
+
+        // Re-create a clean single AVAILABLE slot for this location
+        const cleanAvailable = await tx.warehousePallet.create({
           data: {
+            locationCode,
+            rack: existing.rack,
+            level: existing.level,
+            cellNumber: existing.cellNumber,
+            palletPosition: existing.palletPosition,
+            status: "AVAILABLE",
             sku: null,
             productName: null,
             quantity: null,
             lotNumber: null,
             expirationDate: null,
             palletHeightIn: null,
-            status: "AVAILABLE",
-            notes: null
+            notes: null,
           }
         })
+
+        // Two-way sync: Update FBA shipments referencing this location
+        const itemsToUpdate = await tx.fbaShipmentItem.findMany({
+          where: { location: { contains: locationCode } }
+        })
+        for (const item of itemsToUpdate) {
+          if (item.location) {
+            const locs = item.location.split(' + ').filter(Boolean)
+            const newLocs = locs.filter(l => l !== locationCode)
+            await tx.fbaShipmentItem.update({
+              where: { id: item.id },
+              data: { location: newLocs.join(' + ') }
+            })
+          }
+        }
+
+        return { id: params.id, locationCode, deleted: true, clearedAll: true, pallet: cleanAvailable }
       }
 
-      // Two-way sync: Update FBA shipments referencing this location
+      // Two-way sync for FBA items
       const itemsToUpdate = await tx.fbaShipmentItem.findMany({
-        where: {
-          location: { contains: locationCode }
-        }
+        where: { location: { contains: locationCode } }
       })
-
       for (const item of itemsToUpdate) {
         if (item.location) {
           const locs = item.location.split(' + ').filter(Boolean)
@@ -211,8 +236,8 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
           })
         }
       }
-      if (finalPallet) return finalPallet;
-      return { id: params.id, locationCode, deleted: true }
+
+      return { id: params.id, locationCode, deleted: true, remainingCount: remainingOccupied.length }
     })
 
     return NextResponse.json(result)
