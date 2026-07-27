@@ -902,8 +902,30 @@ export default function AutopricerClient() {
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">Unit Cost (+Fees):</span>
+                          <span className="text-muted-foreground flex items-center gap-1.5">
+                            Unit Cost:
+                            <button
+                              type="button"
+                              onClick={() => openEdit(p)}
+                              className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 font-semibold bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-1.5 py-0.5 rounded transition-all hover:scale-105"
+                              title="Click to edit Unit Cost"
+                            >
+                              <Edit3 className="h-2.5 w-2.5" /> Edit
+                            </button>
+                          </span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">
+                            {mp.symbol}{p.unitCost.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Fees (Referral + FBA):</span>
                           <span className="text-slate-600 dark:text-slate-400">
+                            {mp.symbol}{((p.calculated?.referralFee ?? 0) + p.fbaFee).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs border-t border-slate-200/80 dark:border-slate-800/80 pt-1 font-semibold">
+                          <span className="text-slate-700 dark:text-slate-300">Total Cost + Fees:</span>
+                          <span className="text-slate-900 dark:text-white font-bold">
                             {mp.symbol}{(p.unitCost + (p.calculated?.referralFee ?? 0) + p.fbaFee).toFixed(2)}
                           </span>
                         </div>
@@ -1378,7 +1400,20 @@ export default function AutopricerClient() {
                     
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between items-center pb-1 border-b border-slate-100 dark:border-slate-800">
-                        <span className="text-muted-foreground">1. Unit Cost (COGS):</span>
+                        <span className="text-muted-foreground flex items-center gap-1.5">
+                          1. Unit Cost (COGS):
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsSimulatorOpen(false)
+                              openEdit(selectedProduct)
+                            }}
+                            className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 font-semibold bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-1.5 py-0.5 rounded transition-all hover:scale-105"
+                            title="Click to edit Unit Cost"
+                          >
+                            <Edit3 className="h-2.5 w-2.5" /> Edit
+                          </button>
+                        </span>
                         <span className="font-mono font-semibold">${selectedProduct.unitCost.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between items-center pb-1 border-b border-slate-100 dark:border-slate-800">
@@ -1388,6 +1423,10 @@ export default function AutopricerClient() {
                       <div className="flex justify-between items-center pb-1 border-b border-slate-100 dark:border-slate-800">
                         <span className="text-muted-foreground">3. FBA Fulfillment Fee:</span>
                         <span className="font-mono font-semibold text-rose-500">-${selectedProduct.fulfillmentMethod === "FBA" ? selectedProduct.fbaFee.toFixed(2) : "0.00"}</span>
+                      </div>
+                      <div className="flex justify-between items-center pb-1 border-b border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-slate-200">
+                        <span>Total Cost + Fees:</span>
+                        <span className="font-mono font-bold">${(selectedProduct.unitCost + simMetrics.referralFee + (selectedProduct.fulfillmentMethod === "FBA" ? selectedProduct.fbaFee : 0)).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between items-center pt-1 font-bold text-base">
                         <span>Net Profit Per Unit:</span>
