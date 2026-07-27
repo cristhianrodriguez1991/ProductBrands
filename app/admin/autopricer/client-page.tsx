@@ -187,6 +187,10 @@ export default function AutopricerClient() {
   const [boundsForm, setBoundsForm] = useState({ minPrice: "", maxPrice: "", scope: "all" as "all" | "filtered" })
   const [savingBounds, setSavingBounds] = useState(false)
 
+  // One-click Sync Sales (requests report -> polls until DONE -> downloads & saves)
+  const [syncingSales, setSyncingSales] = useState(false)
+  const [syncStatus, setSyncStatus] = useState("")
+
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true)
@@ -527,6 +531,77 @@ export default function AutopricerClient() {
       alert("Failed to update guardrails.")
     } finally {
       setSavingBounds(false)
+    }
+  }
+
+  // One-click Sync Sales: orchestrates the 3-step report flow without manual URLs.
+  // Polling is client-side so Vercel's serverless timeout is never hit.
+  const handleSyncSales = async () => {
+    try {
+      setSyncingSales(true)
+      setSyncStatus("Requesting sales report from Amazon...")
+
+      // Step 1: request a report (or reuse a recent DONE one).
+      let res = await fetch(`/api/admin/autopricer/sync-sales`)
+      let data = await res.json()
+
+      // If a recent DONE report was reused, it returns reportDocumentId directly.
+      if (data.reportDocumentId) {
+        await downloadAndSave(data.reportDocumentId)
+        return
+      }
+
+      // Otherwise a new report was created -> poll by reportId until DONE.
+      const reportId = data.reportId
+      if (!reportId) throw new Error(data.error || "No reportId returned by sync-sales")
+
+      setSyncStatus(`Amazon is generating the report (${reportId}). This can take 2-15 min for 30 days of orders. Waiting...`)
+      let attempts = 0
+      const MAX_ATTEMPTS = 90 // ~15 min at 10s intervals
+      let finished = false
+
+      while (!finished && attempts < MAX_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, 10000))
+        attempts++
+        const pr = await fetch(`/api/admin/autopricer/sync-sales?reportId=${reportId}`)
+        const pd = await pr.json()
+
+        if (pd.reportDocumentId) {
+          setSyncStatus("Report ready. Downloading & saving sales data...")
+          await downloadAndSave(pd.reportDocumentId)
+          finished = true
+        } else if (pd.error && /CANCELLED|FATAL/i.test(pd.error)) {
+          setSyncStatus(`Report failed: ${pd.error}`)
+          finished = true
+        } else {
+          setSyncStatus(`Waiting for Amazon... status: ${pd.processingStatus || "PROCESSING"} (attempt ${attempts}/${MAX_ATTEMPTS})`)
+        }
+      }
+      if (!finished) {
+        setSyncStatus("Timed out waiting for the report. The button will keep the report running on Amazon's side — click Sync Sales again in a few minutes to pick it up.")
+      }
+    } catch (e: any) {
+      console.error(e)
+      setSyncStatus("Sync failed: " + (e?.message || e))
+    } finally {
+      setSyncingSales(false)
+    }
+  }
+
+  // Step 3 helper: download the report document and save sales to the DB.
+  const downloadAndSave = async (reportDocumentId: string) => {
+    const dl = await fetch(`/api/admin/autopricer/sync-sales?reportDocumentId=${reportDocumentId}`)
+    const d = await dl.json()
+    if (d.success) {
+      const det = d.details || {}
+      setSyncStatus(
+        `Done. Synced ${det.matchedToMonitoredProducts ?? 0} daily-sales records ` +
+        `(${det.matchedBySku ?? 0} by SKU, ${det.matchedByAsin ?? 0} by ASIN` +
+        `${det.unmatchedSkuCount ? `, ${det.unmatchedSkuCount} unmatched SKUs` : ""}).`
+      )
+      await fetchProducts()
+    } else {
+      setSyncStatus("Download failed: " + (d.error || "unknown error"))
     }
   }
 
@@ -925,6 +1000,17 @@ export default function AutopricerClient() {
                 Set Min/Max Price
               </Button>
               <Button
+                variant="default"
+                size="sm"
+                onClick={handleSyncSales}
+                disabled={syncingSales}
+                className="h-9 font-medium bg-indigo-600 hover:bg-indigo-500 text-white"
+                title="Download the last 30 days of Amazon orders and sync daily sales per SKU/ASIN. This is what feeds the AI rank analysis."
+              >
+                <RefreshCw className={`h-4 w-4 mr-1.5 ${syncingSales ? "animate-spin" : ""}`} />
+                {syncingSales ? "Syncing..." : "Sync Sales"}
+              </Button>
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowEraseAllDialog(true)}
@@ -936,6 +1022,14 @@ export default function AutopricerClient() {
               </Button>
             </div>
           </div>
+
+          {/* Sync Sales status line */}
+          {syncStatus && (
+            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 bg-slate-100/60 dark:bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800">
+              <RefreshCw className={`h-3.5 w-3.5 ${syncingSales ? "animate-spin text-indigo-500" : "text-emerald-500"}`} />
+              <span>{syncStatus}</span>
+            </div>
+          )}
 
           {/* Products Grid / Table */}
           {loading ? (
