@@ -121,25 +121,41 @@ Respond ONLY with a valid JSON object matching this schema:
 
   let summary = `Análisis de Inteligencia GLM-5.2 (Enfoque en Volumen y Ranking): El producto "${product.productName || product.sku}" mantiene una salud de margen robusta (~${Math.max(15, Math.round(marginPct))}%). El objetivo prioritario es impulsar la velocidad de ventas y desplomar el ranking de Amazon para dominar la categoría.`
   let lagText = `Efecto Arrastre de Ranking (Inercia A9): Se confirmó que los fines de semana muestran una caída natural de volumen por cierre de oficinas o menor tráfico. El arrastre temporal altera el rank del lunes (#${weekdayProfiles[1]?.medianRank || 22890}), pero la demanda se recupera con fuerza durante el martes y miércoles.`
-  const takeaways = [
-    "Prioridad estratégica: Enfoque 100% en capturar máximo volumen de ventas y reducir el Sales Rank (Bajar ranking = Más visibilidad orgánica).",
-    "Protección de velocidad: Con un margen de ganancia saludable (>= 15%), NO se recomienda subir el precio. Subir el precio frenaría el impulso de ventas y perjudicaría el ranking.",
-    "Acción recomendada: Mantener el precio actual ($" + product.currentPrice.toFixed(2) + ") para consolidar el 85%+ de Buy Box Win Rate y maximizar la rotación de inventario."
-  ]
 
-  // Only suggest lowering price if win rate is suffering and margin allows
-  if ((product as any).buyBoxWinRatePercent !== undefined && (product as any).buyBoxWinRatePercent < 70 && marginPct >= 15) {
-    action = "LOWER"
-    proposedPrice = Math.max(product.minPrice, Math.round((product.currentPrice - 0.15) * 100) / 100)
-    takeaways.push(`Estimulación de volumen: Al aplicar un micro-descuento estratégico a $${proposedPrice.toFixed(2)}, se recupera el 100% de la Buy Box y se acelera la caída del ranking.`)
-  } else if (product.currentPrice < product.minPrice) {
+  // Decide the action FIRST, then build takeaways that are coherent with it
+  // (the previous version always said "maintain, don't raise" and then appended a
+  // contradictory "RAISE to floor" note when currentPrice < minPrice).
+  const winRate = (product as any).buyBoxWinRatePercent
+  const belowFloor = product.currentPrice < product.minPrice
+
+  if (belowFloor) {
     action = "RAISE"
     proposedPrice = product.minPrice
-    takeaways.push(`Ajuste por piso de precio: El precio actual estaba por debajo del precio mínimo configurado ($${product.minPrice.toFixed(2)}).`)
+  } else if (winRate !== undefined && winRate < 70 && marginPct >= 15) {
+    action = "LOWER"
+    proposedPrice = Math.max(product.minPrice, Math.round((product.currentPrice - 0.15) * 100) / 100)
+  } else {
+    action = "MAINTAIN"
+    proposedPrice = product.currentPrice
+  }
+
+  const takeaways: string[] = [
+    "Prioridad estratégica: Enfoque 100% en capturar máximo volumen de ventas y reducir el Sales Rank (Bajar ranking = Más visibilidad orgánica).",
+  ]
+
+  if (action === "RAISE") {
+    takeaways.push(`Ajuste por piso de precio: El precio actual ($${product.currentPrice.toFixed(2)}) estaba por debajo del precio mínimo configurado ($${product.minPrice.toFixed(2)}). Se sube al piso para proteger el margen mínimo.`)
+    takeaways.push(`Acción recomendada: Subir el precio a $${proposedPrice.toFixed(2)} (piso de precio configurado).`)
+  } else if (action === "LOWER") {
+    takeaways.push(`Estimulación de volumen: Al aplicar un micro-descuento estratégico a $${proposedPrice.toFixed(2)}, se recupera el 100% de la Buy Box y se acelera la caída del ranking.`)
+    takeaways.push(`Acción recomendada: Bajar el precio a $${proposedPrice.toFixed(2)} para consolidar el 85%+ de Buy Box Win Rate y maximizar la rotación de inventario.`)
+  } else {
+    takeaways.push("Protección de velocidad: Con un margen de ganancia saludable (>= 15%), NO se recomienda subir el precio. Subir el precio frenaría el impulso de ventas y perjudicaría el ranking.")
+    takeaways.push(`Acción recomendada: Mantener el precio actual ($${product.currentPrice.toFixed(2)}) para consolidar el 85%+ de Buy Box Win Rate y maximizar la rotación de inventario.`)
   }
 
   return {
-    modelUsed: "Ollama GLM-5.2 (Deep Reasoning Engine - Volume Growth Focus)",
+    modelUsed: "Local Heuristic Fallback (GLM API unavailable — volume-growth rules engine)",
     timestamp: new Date().toISOString(),
     strategicSummary: summary,
     detectedLagEffect: lagText,

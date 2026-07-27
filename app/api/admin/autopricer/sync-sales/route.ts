@@ -19,8 +19,52 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url)
     const reportDocumentId = url.searchParams.get("reportDocumentId")
+    const reportId = url.searchParams.get("reportId")
     const client: any = getClient()
     const usMarketplaceId = "ATVPDKIKX0DER"
+
+    // ──────────────────────────────────────────────────────
+    // STEP 2b: Poll the status of a specific report we already created.
+    // This prevents creating a NEW report on every reload while Amazon
+    // is still generating the previous one (30-day all-orders reports can
+    // take 5–15+ minutes, not 2–3).
+    // ──────────────────────────────────────────────────────
+    if (reportId && !reportDocumentId) {
+      console.log(`[SYNC-SALES] Polling report status: ${reportId}`)
+      const statusRes: any = await client.callAPI({
+        operation: "getReport",
+        endpoint: "reports",
+        path: { reportId },
+      })
+
+      const status = statusRes?.processingStatus
+      if (status === "DONE") {
+        const docId = statusRes?.reportDocumentId
+        return NextResponse.json({
+          success: true,
+          message: `Report is DONE. Call again with ?reportDocumentId=${docId}`,
+          reportDocumentId: docId,
+          reportId,
+        })
+      }
+
+      if (status === "CANCELLED" || status === "FATAL") {
+        return NextResponse.json({
+          success: false,
+          error: `Report ${reportId} failed with status: ${status}. Reload without reportId to create a new one.`,
+          reportId,
+        }, { status: 400 })
+      }
+
+      // Still IN_QUEUE / PROCESSING — return the SAME reportId so the caller
+      // keeps polling this one instead of spawning a new report.
+      return NextResponse.json({
+        success: true,
+        message: `Report is still processing (status: ${status || "UNKNOWN"}). Wait a bit and reload this page.`,
+        reportId,
+        processingStatus: status,
+      })
+    }
 
     // ──────────────────────────────────────────────────────
     // STEP 3: If reportDocumentId is provided, download and parse
@@ -56,23 +100,46 @@ export async function GET(request: Request) {
         }, { status: 400 })
       }
 
-      // Fetch all MonitoredProducts to map sku -> product
-      const products = await prisma.monitoredProduct.findMany({ 
-        select: { id: true, sku: true, asin: true } 
+      // Fetch all MonitoredProducts to map sku -> product AND asin -> product
+      const products = await prisma.monitoredProduct.findMany({
+        select: { id: true, sku: true, asin: true }
       })
       const skuMap = new Map<string, any>()
+      const asinMap = new Map<string, any>()
       for (const p of products) {
-        skuMap.set(p.sku.toLowerCase(), p)
+        if (p.sku) skuMap.set(p.sku.trim().toLowerCase(), p)
+        if (p.asin) asinMap.set(p.asin.trim().toLowerCase(), p)
       }
 
-      // Aggregate by SKU + Date
-      const dailyAggregations = new Map<string, { units: number, sales: number, asin: string, productId: string }>()
+      // Aggregate by product-id + Date (keyed on productId so SKU/ASIN matches merge)
+      const dailyAggregations = new Map<string, { units: number, sales: number, asin: string, productId: string, sku: string }>()
+
+      // Diagnostics: track how each order line matched (or didn't)
+      let matchedBySku = 0
+      let matchedByAsin = 0
+      const unmatchedSkus = new Set<string>()
+      const unmatchedAsins = new Set<string>()
 
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split("\t")
         const sku = (cols[skuIdx] || "").trim().toLowerCase()
-        const product = skuMap.get(sku)
-        if (!product) continue // Only track monitored products
+        const rowAsin = (cols[asinIdx] || "").trim().toLowerCase()
+
+        // Match by SKU first, then fall back to ASIN. Amazon order rows sometimes
+        // use a different/child SKU than what's stored on the monitored product,
+        // but the ASIN is stable — so ASIN fallback recovers those sales.
+        let product = sku ? skuMap.get(sku) : null
+        if (product) {
+          matchedBySku++
+        } else if (rowAsin) {
+          product = asinMap.get(rowAsin)
+          if (product) matchedByAsin++
+        }
+        if (!product) {
+          if (sku) unmatchedSkus.add(sku)
+          if (rowAsin) unmatchedAsins.add(rowAsin)
+          continue // Only track monitored products
+        }
 
         const dateRaw = (cols[dateIdx] || "").trim()
         const dateStr = dateRaw.split("T")[0] // "2026-06-28T21:41:17+00:00" → "2026-06-28"
@@ -82,32 +149,31 @@ export async function GET(request: Request) {
         const price = parseFloat(cols[priceIdx] || "0") || 0
         const asin = (cols[asinIdx] || product.asin || "").trim()
 
-        const key = `${sku}__${dateStr}`
-        const current = dailyAggregations.get(key) || { units: 0, sales: 0, asin, productId: product.id }
+        const key = `${product.id}__${dateStr}`
+        const current = dailyAggregations.get(key) || { units: 0, sales: 0, asin, productId: product.id, sku: product.sku }
         dailyAggregations.set(key, {
           units: current.units + qty,
           sales: current.sales + price,
           asin: asin || current.asin,
-          productId: product.id
+          productId: product.id,
+          sku: product.sku
         })
       }
 
       // Upsert into database
       let savedCount = 0
       for (const [key, data] of dailyAggregations.entries()) {
-        const [sku, dateStr] = key.split("__")
-        const product = skuMap.get(sku)
-        if (!product) continue
+        const [_productId, dateStr] = key.split("__")
 
         await prisma.amazonDailySales.upsert({
-          where: { sku_date: { sku: product.sku, date: dateStr } },
+          where: { sku_date: { sku: data.sku, date: dateStr } },
           update: {
             unitsOrdered: data.units,
             orderedProductSales: data.sales,
           },
           create: {
             monitoredProductId: data.productId,
-            sku: product.sku,
+            sku: data.sku,
             asin: data.asin,
             date: dateStr,
             unitsOrdered: data.units,
@@ -117,13 +183,22 @@ export async function GET(request: Request) {
         savedCount++
       }
 
-      return NextResponse.json({ 
-        success: true, 
+      console.log(`[SYNC-SALES] Matched: ${matchedBySku} by SKU, ${matchedByAsin} by ASIN. Unmatched SKUs: ${unmatchedSkus.size}, Unmatched ASINs: ${unmatchedAsins.size}`)
+
+      return NextResponse.json({
+        success: true,
         message: `Successfully synced ${savedCount} daily sales records from flat file orders report.`,
         details: {
           totalOrderLines: lines.length - 1,
           matchedToMonitoredProducts: savedCount,
-          monitoredSkus: [...skuMap.keys()]
+          matchedBySku,
+          matchedByAsin,
+          unmatchedSkuCount: unmatchedSkus.size,
+          unmatchedAsinCount: unmatchedAsins.size,
+          unmatchedSkusSample: [...unmatchedSkus].slice(0, 20),
+          unmatchedAsinsSample: [...unmatchedAsins].slice(0, 20),
+          monitoredSkus: [...skuMap.keys()],
+          monitoredAsins: [...asinMap.keys()]
         }
       })
     }
@@ -175,11 +250,11 @@ export async function GET(request: Request) {
       },
     })
 
-    const reportId = createRes?.reportId || createRes?.ReportId
+    const newReportId = createRes?.reportId || createRes?.ReportId
     return NextResponse.json({
       success: true,
-      message: "Report requested for the last 30 days. Wait 2-3 minutes, then reload this page.",
-      reportId
+      message: "Report requested for the last 30 days. Wait a few minutes, then reload with ?reportId=<reportId> to check status.",
+      reportId: newReportId
     })
 
   } catch (error: any) {
