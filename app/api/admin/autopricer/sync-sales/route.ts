@@ -29,7 +29,11 @@ export async function GET(request: Request) {
     })
 
     if (!res || !res.payload || !Array.isArray(res.payload.Orders)) {
-      return NextResponse.json({ success: false, error: "No orders found or API error" }, { status: 400 })
+      return NextResponse.json({ 
+        success: false, 
+        error: "No orders found or API error", 
+        debugResponse: res 
+      }, { status: 400 })
     }
 
     const orders = res.payload.Orders
