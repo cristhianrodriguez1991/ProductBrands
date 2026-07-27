@@ -21,11 +21,15 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const openAiKey = process.env.OPENAI_API_KEY || ""
+    const rawOpenAiKey = process.env.OPENAI_API_KEY || ""
+    // Strip whitespace/newlines — Vercel often stores a line-wrapped pasted key.
+    const openAiKey = rawOpenAiKey.replace(/\s+/g, "")
     const openAiModel = process.env.OPENAI_MODEL || "gpt-4o-mini"
     const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || ""
     const ollamaModel = process.env.OLLAMA_MODEL || "glm4"
     const glmKey = process.env.GLM_API_KEY || "" // legacy, should be empty
+
+    const hasWhitespace = rawOpenAiKey.length !== rawOpenAiKey.replace(/\s+/g, "").length
 
     // Attempt a minimal live OpenAI call (only if a key is present)
     let liveCall: any = null
@@ -62,7 +66,9 @@ export async function GET() {
       success: true,
       env: {
         OPENAI_API_KEY_set: !!openAiKey,
-        OPENAI_API_KEY_length: openAiKey.length,
+        OPENAI_API_KEY_raw_length: rawOpenAiKey.length,
+        OPENAI_API_KEY_clean_length: openAiKey.length,
+        OPENAI_API_KEY_has_whitespace: hasWhitespace,
         OPENAI_API_KEY_prefix: openAiKey ? openAiKey.slice(0, 7) : "(empty)", // "sk-proj" expected
         OPENAI_MODEL: openAiModel,
         OLLAMA_BASE_URL_set: !!ollamaBaseUrl,
@@ -72,7 +78,7 @@ export async function GET() {
       },
       liveOpenAiCall: liveCall,
       note:
-        "If OPENAI_API_KEY_set is false, Vercel did not receive the var (check the exact name/spelling and that it is applied to the Production environment, then redeploy). If liveOpenAiCall.status is 401 the key value is wrong; 429 means no quota; 200 means it works.",
+        "If OPENAI_API_KEY_has_whitespace is true, the pasted key had line breaks/spaces (now stripped automatically). If liveOpenAiCall.status is 401 the key value is wrong; 429 means no quota; 200 means it works.",
     })
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error?.message || "Unknown error" }, { status: 500 })

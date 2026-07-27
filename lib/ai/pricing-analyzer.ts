@@ -47,7 +47,11 @@ export async function analyzePricingWithGLM(
 ): Promise<AIStrategicAssessment> {
   // OpenAI cloud API key. Set via OPENAI_API_KEY env var (.env.local for local
   // dev, Vercel project env vars for production). Never hardcode keys in source.
-  const apiKey = customApiKey || process.env.OPENAI_API_KEY || ""
+  // Strip ALL whitespace (newlines/spaces) — Vercel often stores a line-wrapped
+  // pasted key, which breaks the Authorization header. OpenAI keys never contain
+  // whitespace, so this is always safe.
+  const rawApiKey = customApiKey || process.env.OPENAI_API_KEY || ""
+  const apiKey = rawApiKey.replace(/\s+/g, "")
   const cloudModel = process.env.OPENAI_MODEL || "gpt-4o-mini" // OpenAI cloud model
   // Local Ollama (only works when the app runs on the same machine as Ollama,
   // e.g. `npm run dev` on your Mac — NOT on the Vercel deployment).
