@@ -114,12 +114,13 @@ JSON schema:
   "keyTakeaways": ["point 1", "point 2", "point 3"]
 }`
 
+  let llmFailureReason = ""
   try {
     const llm = await callLLM(systemPrompt, userPrompt, {
       ollamaBaseUrl, ollamaModel, cloudApiKey: apiKey, cloudModel,
     })
 
-    if (llm?.content) {
+    if (llm && llm.content) {
       const jsonMatch = llm.content.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0])
@@ -149,63 +150,81 @@ JSON schema:
           },
         }
       }
+      llmFailureReason = "LLM responded but its output was not valid JSON."
+    } else if (llm && !llm.content) {
+      llmFailureReason = llm.failureReason || "LLM call failed."
     }
   } catch (error: any) {
+    llmFailureReason = `LLM call threw: ${error?.message || error}`
     console.warn(`[AI] LLM call failed, using rank-first local engine:`, error?.message)
   }
 
   // ── Rank-first local engine fallback (cents only, engine-driven) ──────────
   return rankFirstLocalStrategy(product, {
     totalUnits30d, totalUnits7d, avgUnitsPerDay, weekdayUnits, weekendUnits, netMarginPct,
-  }, weekdayProfiles, todayProfile, todayName, lagDays)
+  }, weekdayProfiles, todayProfile, todayName, lagDays, llmFailureReason)
 }
 
 /**
- * Call an LLM with the given prompts. Prefers a local Ollama instance when
- * OLLAMA_BASE_URL is configured (dev on your Mac); otherwise falls back to the
- * BigModel cloud API. Returns { content, modelUsed } or null if both fail.
+ * Call an LLM with the given prompts. Tries OpenAI cloud first, then a local
+ * Ollama instance. Returns { content, modelUsed } on success, otherwise
+ * { content: null, failureReason } describing why both failed.
  */
 async function callLLM(
   systemPrompt: string,
   userPrompt: string,
   cfg: { ollamaBaseUrl?: string; ollamaModel: string; cloudApiKey: string; cloudModel: string }
-): Promise<{ content: string; modelUsed: string } | null> {
+): Promise<{ content: string; modelUsed: string; failureReason?: string } | { content: null; failureReason: string }> {
   // 1) OpenAI cloud API — primary. Works on Vercel and locally. Needs a valid
   //    OPENAI_API_KEY with quota/billing enabled.
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 20000)
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${cfg.cloudApiKey}`,
-      },
-      body: JSON.stringify({
-        model: cfg.cloudModel,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-      }),
-      signal: controller.signal,
-    })
-    clearTimeout(timeout)
-    if (res.ok) {
-      const data = await res.json()
-      const content = data?.choices?.[0]?.message?.content
-      if (content) {
-        console.log(`[AI] Using OpenAI cloud model: ${cfg.cloudModel}`)
-        return { content, modelUsed: `OpenAI ${cfg.cloudModel} (cloud)` }
+  if (!cfg.cloudApiKey) {
+    // Skip the network call entirely when no key is configured, and say so.
+  } else {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 20000)
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${cfg.cloudApiKey}`,
+        },
+        body: JSON.stringify({
+          model: cfg.cloudModel,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+        }),
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+      if (res.ok) {
+        const data = await res.json()
+        const content = data?.choices?.[0]?.message?.content
+        if (content) {
+          console.log(`[AI] Using OpenAI cloud model: ${cfg.cloudModel}`)
+          return { content, modelUsed: `OpenAI ${cfg.cloudModel} (cloud)` }
+        }
+        return { content: null, failureReason: "OpenAI returned an empty response." }
+      } else {
+        const errBody = await res.text().catch(() => "")
+        console.warn(`[AI] OpenAI cloud responded HTTP ${res.status}: ${errBody.slice(0, 200)}`)
+        let hint = ""
+        if (res.status === 401) hint = " — OPENAI_API_KEY is missing/invalid. Check the Vercel env var name and value."
+        else if (res.status === 429) hint = " — insufficient quota. Add credits at platform.openai.com/billing."
+        else if (res.status === 404) hint = ` — model '${cfg.cloudModel}' not found. Check OPENAI_MODEL.`
+        return { content: null, failureReason: `OpenAI responded HTTP ${res.status}${hint}` }
       }
-    } else {
-      const errBody = await res.text().catch(() => "")
-      console.warn(`[AI] OpenAI cloud responded HTTP ${res.status}: ${errBody.slice(0, 200)}`)
+    } catch (e: any) {
+      console.warn(`[AI] OpenAI cloud call failed:`, e?.message)
+      if (e?.name === "AbortError") {
+        return { content: null, failureReason: "OpenAI call timed out (20s)." }
+      }
+      return { content: null, failureReason: `OpenAI call failed: ${e?.message || e}` }
     }
-  } catch (e: any) {
-    console.warn(`[AI] OpenAI cloud call failed:`, e?.message)
   }
 
   // 2) Local Ollama — fallback when the cloud API is unavailable/unconfigured.
@@ -244,7 +263,12 @@ async function callLLM(
     }
   }
 
-  return null
+  return {
+    content: null,
+    failureReason: cfg.cloudApiKey
+      ? "OpenAI cloud call did not succeed and Ollama is not reachable from this environment (expected on Vercel)."
+      : "OPENAI_API_KEY env var is not set, and Ollama is not reachable from this environment (expected on Vercel).",
+  }
 }
 
 /**
@@ -287,7 +311,8 @@ function rankFirstLocalStrategy(
   weekdayProfiles: WeekdayProfile[],
   todayProfile: WeekdayProfile | undefined,
   todayName: string,
-  lagDays: string[]
+  lagDays: string[],
+  llmFailureReason: string
 ): AIStrategicAssessment {
   const current = product.currentPrice
   const minPrice = product.minPrice
@@ -375,9 +400,14 @@ function rankFirstLocalStrategy(
   if (!todayProfile?.hasEnoughData) {
     takeaways.push(`Data caveat: only ${todayProfile?.sampleWeeks ?? 0} weeks of weekday history are available (engine needs 8). Treat the day-of-week signal as provisional.`)
   }
+  if (llmFailureReason) {
+    takeaways.push(`⚠ LLM not used: ${llmFailureReason}`)
+  }
 
   return {
-    modelUsed: "Rank-First Local Engine (GLM API unavailable — merges weekday engine + velocity + Buy Box)",
+    modelUsed: llmFailureReason
+      ? `Rank-First Local Engine fallback — ${llmFailureReason}`
+      : "Rank-First Local Engine (merges weekday engine + velocity + Buy Box)",
     timestamp: new Date().toISOString(),
     strategicSummary: summary,
     detectedLagEffect: lagText,
