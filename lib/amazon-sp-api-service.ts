@@ -504,70 +504,10 @@ export async function getDailySalesAndTrafficBySku(sku: string, days: number = 3
       }
     }
   } catch (e: any) {
-    console.warn(`[SP-API] Daily sales lookup fallback to realistic model for ${sku}:`, e?.message)
+    console.warn(`[SP-API] Daily sales lookup failed for ${sku}. Returning empty real data instead of mock data:`, e?.message)
   }
 
-  // Generate realistic B2B office product daily sales curve matching real volume (~7 units/day on weekdays)
-  // Weekdays (Mon-Fri): Typical corporate restock volume (5 - 9 units/day, averaging ~7 units)
-  // Weekends (Sat-Sun): Sharp drop-off (0 - 1 units/day, office closure)
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    const dateStr = d.toISOString().split("T")[0]
-    const dayIdx = d.getDay()
-    const dayName = daysOfWeek[dayIdx]
-    const isWeekend = dayIdx === 0 || dayIdx === 6
-    
-    // Pseudo-random deterministic variation based on date string hash
-    const hash = dateStr.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    let units = 0
-
-    const isPeanuts = (sku || "").toUpperCase().includes("AF-X9K7") || (sku || "").toUpperCase().includes("B0FNRSHLFQ")
-
-    if (isPeanuts) {
-      // Peanuts volume (~26 units/day avg, 794 last 30 days)
-      if (isWeekend) {
-        units = 15 + (hash % 10)
-      } else {
-        units = 25 + (hash % 15)
-      }
-      
-      // Explicit match for June 28th based on official Amazon Sales data
-      if (dateStr.endsWith("-06-28")) {
-        units = 21
-      }
-    } else {
-      // Standard office product (sugar) volume (~7 units/day on weekdays)
-      if (isWeekend) {
-        // Sat/Sun: 0 to 1 unit (offices closed)
-        units = hash % 2
-      } else if (dayIdx === 1 || dayIdx === 5) {
-        // Monday (restock) & Friday (end of week): 6 to 9 units (averaging around 7)
-        units = 6 + (hash % 4)
-      } else {
-        // Tue, Wed, Thu: 5 to 8 units (averaging around 7)
-        units = 5 + (hash % 4)
-      }
-
-      // Explicit check for June 28 to ensure exactly 7 units for the sugar
-      if (dateStr.endsWith("-06-28")) {
-        units = 7
-      }
-    }
-
-    const priceVariation = ((hash % 10) - 5) * 0.05 // slight cents variation
-    const price = Math.round((basePrice + priceVariation) * 100) / 100
-    const sales = Math.round(units * price * 100) / 100
-
-    results.push({
-      date: dateStr,
-      unitsOrdered: units,
-      orderedProductSales: sales,
-      avgSellingPrice: price,
-      dayOfWeek: dayName,
-      isWeekend,
-    })
-  }
-
+  // Si no hay conexión SP-API real, devolver un arreglo vacío en lugar de inventar números.
+  // El usuario solicitó explícitamente usar los números exactos de Amazon.
   return results
 }
