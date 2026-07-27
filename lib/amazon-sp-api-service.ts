@@ -6,7 +6,7 @@ import { gunzipSync } from "zlib"
  * Download an Amazon report and decompress if gzipped.
  * Amazon SP-API often returns reports as gzip-compressed data.
  */
-async function downloadReport(url: string): Promise<string> {
+export async function downloadReport(url: string): Promise<string> {
   const res = await fetch(url)
   const buffer = Buffer.from(await res.arrayBuffer())
   
@@ -23,7 +23,7 @@ async function downloadReport(url: string): Promise<string> {
 /**
  * Initializes the Amazon Selling Partner API (SP-API) client.
  */
-function getClient(): any {
+export function getClient(): any {
   const {
     AMAZON_SPAPI_REGION = "na",
     AMAZON_SPAPI_CLIENT_ID,
@@ -422,92 +422,53 @@ export async function getDailySalesAndTrafficBySku(sku: string, days: number = 3
   const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
   
   try {
-    const client: any = getClient()
-    const usMarketplaceId = "ATVPDKIKX0DER"
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
+    const startDateStr = startDate.toISOString().split("T")[0]
+
+    // Import prisma dynamically since this is a utility file
+    const { PrismaClient } = require('@prisma/client')
+    const prisma = new PrismaClient()
+
+    // Fetch exact synced sales data from database
+    const dbSales = await prisma.amazonDailySales.findMany({
+      where: {
+        sku: { equals: sku, mode: "insensitive" },
+        date: { gte: startDateStr }
+      },
+      orderBy: { date: "asc" }
+    })
     
-    // Attempt live SP-API Orders lookup if client is real and configured
-    if (!process.env.SPAPI_MOCK_MODE && client) {
-      const res: any = await client.callAPI({
-        operation: "getOrders",
-        endpoint: "orders",
-        query: {
-          MarketplaceIds: [usMarketplaceId],
-          CreatedAfter: startDate.toISOString(),
-          OrderStatuses: ["Unshipped", "PartiallyShipped", "Shipped"],
-        },
+    // Map existing db entries for fast lookup
+    const dateMap = new Map<string, any>()
+    for (const record of dbSales) {
+      dateMap.set(record.date, record)
+    }
+
+    // Build the exact day-by-day array to ensure there are no gaps
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      const dateStr = d.toISOString().split("T")[0]
+      const dayName = daysOfWeek[d.getDay()]
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6
+      
+      const found = dateMap.get(dateStr)
+      const units = found?.unitsOrdered || 0
+      const sales = found?.orderedProductSales || 0
+
+      results.push({
+        date: dateStr,
+        unitsOrdered: units,
+        orderedProductSales: Math.round(sales * 100) / 100,
+        avgSellingPrice: units > 0 ? Math.round((sales / units) * 100) / 100 : basePrice,
+        dayOfWeek: dayName,
+        isWeekend,
       })
-      if (res && res.payload && Array.isArray(res.payload.Orders) && res.payload.Orders.length > 0) {
-        // Parse and aggregate live orders by date, filtering order items for matching SKU/ASIN
-        const dateMap = new Map<string, { units: number; sales: number }>()
-        const recentOrders = res.payload.Orders.slice(0, 40) // Process up to 40 most recent orders
-
-        for (const order of recentOrders) {
-          const dateStr = order.PurchaseDate ? order.PurchaseDate.split("T")[0] : ""
-          if (!dateStr || !order.AmazonOrderId) continue
-
-          try {
-            const itemsRes: any = await client.callAPI({
-              operation: "getOrderItems",
-              endpoint: "orders",
-              path: { orderId: order.AmazonOrderId },
-            })
-            const items = itemsRes?.payload?.OrderItems || []
-            let matchedUnits = 0
-            let matchedSales = 0
-
-            for (const item of items) {
-              const itemSku = (item.SellerSKU || "").toLowerCase()
-              const itemAsin = (item.ASIN || "").toLowerCase()
-              const targetSku = (sku || "").toLowerCase()
-              // Match if SKU or ASIN aligns, or if target is generic
-              if (itemSku.includes(targetSku) || targetSku.includes(itemSku) || itemAsin === targetSku || targetSku.includes("y5-ryhv")) {
-                const qty = parseInt(item.QuantityOrdered || "1", 10)
-                const price = parseFloat(item.ItemPrice?.Amount || String(basePrice))
-                matchedUnits += qty
-                matchedSales += (price * qty)
-              }
-            }
-
-            if (matchedUnits > 0) {
-              const current = dateMap.get(dateStr) || { units: 0, sales: 0 }
-              dateMap.set(dateStr, { units: current.units + matchedUnits, sales: current.sales + matchedSales })
-            }
-          } catch (itemErr) {
-            // If item level lookup fails, check total order fallback
-            const total = parseFloat(order.OrderTotal?.Amount || "0")
-            const current = dateMap.get(dateStr) || { units: 0, sales: 0 }
-            dateMap.set(dateStr, { units: current.units + 1, sales: current.sales + (total > 0 ? total : basePrice) })
-          }
-        }
-        
-        if (dateMap.size > 0) {
-          for (let i = days - 1; i >= 0; i--) {
-            const d = new Date()
-            d.setDate(d.getDate() - i)
-            const dateStr = d.toISOString().split("T")[0]
-            const dayName = daysOfWeek[d.getDay()]
-            const isWeekend = d.getDay() === 0 || d.getDay() === 6
-            const found = dateMap.get(dateStr) || { units: 0, sales: 0 }
-            results.push({
-              date: dateStr,
-              unitsOrdered: found.units,
-              orderedProductSales: Math.round(found.sales * 100) / 100,
-              avgSellingPrice: found.units > 0 ? Math.round((found.sales / found.units) * 100) / 100 : basePrice,
-              dayOfWeek: dayName,
-              isWeekend,
-            })
-          }
-          return results
-        }
-      }
     }
   } catch (e: any) {
-    console.warn(`[SP-API] Daily sales lookup failed for ${sku}. Returning empty real data instead of mock data:`, e?.message)
+    console.error(`[SP-API] Error querying local DailySales DB for ${sku}:`, e?.message)
   }
 
-  // Si no hay conexión SP-API real, devolver un arreglo vacío en lugar de inventar números.
-  // El usuario solicitó explícitamente usar los números exactos de Amazon.
   return results
 }

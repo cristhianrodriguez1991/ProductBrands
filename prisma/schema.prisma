@@ -1037,6 +1037,7 @@ model MonitoredProduct {
   priceHistory        PriceChangeLog[]
   keepaHistory        KeepaProductHistory[]
   keepaEvaluations    KeepaEvaluationJob[]
+  amazonDailySales    AmazonDailySales[]
 
   @@index([asin])
   @@index([sku])
@@ -1138,6 +1139,28 @@ model KeepaEvaluationJob {
   updatedAt           DateTime @updatedAt
 
   @@index([monitoredProductId, appliedAt])
+}
+
+/// SP-API Sales and Traffic Report daily sync table
+/// Holds exact unit and revenue data downloaded via GET_SALES_AND_TRAFFIC_REPORT
+model AmazonDailySales {
+  id                  String   @id @default(cuid())
+  monitoredProductId  String
+  sku                 String
+  asin                String
+  date                String   // YYYY-MM-DD
+  unitsOrdered        Int      // Exact units from Amazon
+  orderedProductSales Float    // Exact revenue from Amazon
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  monitoredProduct    MonitoredProduct @relation(fields: [monitoredProductId], references: [id], onDelete: Cascade)
+
+  @@unique([sku, date])
+  @@index([monitoredProductId])
+  @@index([asin])
+  @@index([date])
 }
 
 
