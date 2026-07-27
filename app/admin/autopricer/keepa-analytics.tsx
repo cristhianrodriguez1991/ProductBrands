@@ -153,7 +153,7 @@ export function KeepaAnalytics({
               </div>
               <div>
                 <CardTitle className="text-lg font-extrabold flex items-center gap-2 text-white">
-                  Ollama GLM-5.2 Deep Reasoning & SP-API Daily Sales
+                  AI Rank Analysis & SP-API Daily Sales
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
                     Lag-Aware Engine
                   </span>
@@ -186,7 +186,7 @@ export function KeepaAnalytics({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="h-4 w-4 text-amber-300" /> Run AI GLM-5.2 Analysis
+                    <Sparkles className="h-4 w-4 text-amber-300" /> Run AI Rank Analysis
                   </>
                 )}
               </button>
@@ -202,6 +202,11 @@ export function KeepaAnalytics({
                   <span className="text-emerald-400 font-mono font-bold">{aiAssessment.confidenceScore}% Confidence</span>
                 </span>
                 <p className="text-xs text-slate-200 leading-relaxed">{aiAssessment.strategicSummary}</p>
+                {aiAssessment.modelUsed && (
+                  <span className="inline-block text-[10px] font-mono text-slate-400 bg-slate-950/80 px-2 py-0.5 rounded border border-slate-800">
+                    model: {aiAssessment.modelUsed}
+                  </span>
+                )}
               </div>
               <div className="bg-slate-900/90 p-3.5 rounded-xl border border-amber-500/30 space-y-1.5 md:col-span-2">
                 <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -374,7 +379,7 @@ export function KeepaAnalytics({
                 Weekly Strategy Calendar (AI + Algorithmic Engine Synergy)
               </CardTitle>
               <CardDescription className="text-slate-400">
-                Day-of-week learning engine combining historical Keepa time series statistical corridors with AI GLM-5.2 corporate demand and weekend lag reasoning.
+                Day-of-week learning engine combining historical Keepa time series statistical corridors with AI corporate demand and weekend lag reasoning.
               </CardDescription>
             </div>
             <span className="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-semibold">
