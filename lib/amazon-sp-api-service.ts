@@ -482,3 +482,161 @@ export async function getDailySalesAndTrafficBySku(sku: string, days: number = 3
 
   return results
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * PRICE WRITE-BACK (Listings price feed)
+ *
+ * Used by the autopricer "Review & Approve" flow to push an approved price
+ * change to the live Amazon catalog. We use the classic
+ * POST_FLAT_FILE_PRICEANDQUANTITYONLY_UPDATE_DATA feed (the same mechanism
+ * Seller Central's "Price & Quantity" template uses) because it is robust
+ * across every product type (FBA / FBM, any category) and only needs a
+ * SKU + price TSV — no product-type-specific attribute JSON to get wrong.
+ *
+ * Flow:  createFeedDocument → PUT the TSV → createFeed → poll getFeedSubmission
+ *        until processingStatus === "DONE" → download & parse the result doc.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+// Marketplace code (as stored on MonitoredProduct.marketplace) → SP-API marketplaceId
+const MARKETPLACE_ID_BY_CODE: Record<string, string> = {
+  US: "ATVPDKIKX0DER", // amazon.com
+  CA: "A2EUQ1WTGCTBG2", // amazon.ca
+  UK: "A1F83G8C2ARO7P", // amazon.co.uk
+  DE: "A1PA6795UKMFR9", // amazon.de
+  FR: "A13V1IB3VIYZZH", // amazon.fr
+  IT: "APJ6JRA9NG5V4", // amazon.it
+  ES: "A1RKKUPIHCS9HS", // amazon.es
+  MX: "A1AM78C64UM0Y8", // amazon.com.mx
+  JP: "A1VC38T7YXB528", // amazon.co.jp
+  AU: "A39IBJ37TRP1C6", // amazon.com.au
+}
+
+export function marketplaceIdForCode(code: string | null | undefined): string {
+  if (!code) return MARKETPLACE_ID_BY_CODE.US
+  return MARKETPLACE_ID_BY_CODE[code.toUpperCase()] || MARKETPLACE_ID_BY_CODE.US
+}
+
+/**
+ * Submit a price-only update feed for one or more SKUs.
+ * Returns the feedSubmissionId Amazon assigned (processing is asynchronous).
+ */
+export async function submitPriceUpdateFeed(
+  items: { sku: string; price: number }[],
+  marketplaceCode = "US"
+): Promise<{ feedSubmissionId: string }> {
+  const client: any = getClient()
+  const marketplaceId = marketplaceIdForCode(marketplaceCode)
+
+  if (!items.length) throw new Error("submitPriceUpdateFeed: no items provided")
+
+  // 1. Create a feed document (Amazon gives us a pre-signed PUT URL)
+  const feedDoc: any = await client.callAPI({
+    operation: "createFeedDocument",
+    endpoint: "feeds",
+    body: { contentType: "text/tab-separated-values; charset=UTF-8" },
+  })
+
+  // 2. Build the price/quantity TSV. Required columns: sku, price, quantity.
+  //    We send quantity as empty (no change) so only price is touched.
+  const header = "sku\tprice\tquantity"
+  const rows = items.map((it) => `${it.sku}\t${Number(it.price).toFixed(2)}\t`)
+  const tsv = [header, ...rows].join("\n")
+
+  const up = await fetch(feedDoc.url, {
+    method: "PUT",
+    headers: { "Content-Type": "text/tab-separated-values; charset=UTF-8" },
+    body: Buffer.from(tsv, "utf-8"),
+  })
+  if (!up.ok) {
+    const errTxt = await up.text().catch(() => "")
+    throw new Error(`Failed to upload price feed document (HTTP ${up.status}): ${errTxt.slice(0, 200)}`)
+  }
+
+  // 3. Create the feed (kicks off processing on Amazon's side)
+  const feed: any = await client.callAPI({
+    operation: "createFeed",
+    endpoint: "feeds",
+    body: {
+      feedType: "POST_FLAT_FILE_PRICEANDQUANTITYONLY_UPDATE_DATA",
+      marketplaceIds: [marketplaceId],
+      inputFeedDocumentId: feedDoc.feedDocumentId,
+    },
+  })
+
+  return { feedSubmissionId: feed.feedSubmissionId }
+}
+
+/**
+ * Parse a flat-file feed result document for errors. The result is a TSV;
+ * error rows contain the word "Error" (case-insensitive) somewhere. We surface
+ * those lines verbatim so the seller sees Amazon's exact message.
+ */
+function parseFeedErrors(resultText: string): string[] {
+  const lines = resultText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  const errors: string[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    // Skip header row
+    if (i === 0 && /result/i.test(line)) continue
+    const firstCol = line.split("\t")[0]?.trim() || ""
+    if (firstCol.toUpperCase() === "ERROR" || /\berror\b/i.test(line)) {
+      errors.push(line)
+    }
+  }
+  return errors
+}
+
+export interface PriceFeedResult {
+  processingStatus: string // "IN_PROGRESS" | "DONE" | "CANCELLED" | "FATAL"
+  done: boolean
+  accepted: boolean
+  errors: string[]
+  feedSubmissionId: string
+  resultPreview?: string
+}
+
+/**
+ * Check the status of a previously submitted price feed. When processing is
+ * DONE, downloads and parses the result document. This is safe to call
+ * repeatedly (idempotent) — use it to poll.
+ */
+export async function getPriceFeedResult(feedSubmissionId: string): Promise<PriceFeedResult> {
+  const client: any = getClient()
+
+  const sub: any = await client.callAPI({
+    operation: "getFeedSubmission",
+    endpoint: "feeds",
+    path: { feedSubmissionId },
+  })
+
+  const status: string = sub?.processingStatus || "IN_PROGRESS"
+  const base: PriceFeedResult = {
+    processingStatus: status,
+    done: false,
+    accepted: false,
+    errors: [],
+    feedSubmissionId,
+  }
+
+  if (status !== "DONE") return base
+  base.done = true
+
+  if (!sub?.resultFeedDocumentId) {
+    // No result document → treat as accepted (no errors reported).
+    base.accepted = true
+    return base
+  }
+
+  const resultDoc: any = await client.callAPI({
+    operation: "getFeedDocument",
+    endpoint: "feeds",
+    path: { feedDocumentId: sub.resultFeedDocumentId },
+  })
+
+  const text = await downloadReport(resultDoc.url)
+  const errors = parseFeedErrors(text)
+  base.errors = errors
+  base.accepted = errors.length === 0
+  base.resultPreview = text.slice(0, 400)
+  return base
+}

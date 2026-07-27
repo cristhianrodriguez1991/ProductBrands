@@ -191,6 +191,13 @@ export default function AutopricerClient() {
   const [syncingSales, setSyncingSales] = useState(false)
   const [syncStatus, setSyncStatus] = useState("")
 
+  // Live Amazon price push on Approve. Dry-run is ON by default so the first
+  // approval is a safe preview (no Amazon call, no DB change) — uncheck to push
+  // the price to the live Amazon listing.
+  const [approvalDryRun, setApprovalDryRun] = useState(true)
+  const [approvingLive, setApprovingLive] = useState(false)
+  const [amazonFeedback, setAmazonFeedback] = useState<{ ok: boolean; text: string } | null>(null)
+
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true)
@@ -332,12 +339,39 @@ export default function AutopricerClient() {
     setApprovalIsTemporary(false)
     setApprovalRestorePrice(String(change.oldPrice))
     setApprovalExpiresHours("24")
+    setAmazonFeedback(null)
     setIsApprovalModalOpen(true)
+  }
+
+  // Poll the feed-status endpoint until Amazon finishes processing the price
+  // feed, then return the final result. Same client-poll pattern as sync-sales
+  // so we never hit Vercel's serverless timeout.
+  const resolveFeedStatus = async (feedSubmissionId: string): Promise<{ accepted: boolean; errors: string[] } | null> => {
+    const MAX_ATTEMPTS = 60 // 60 * 5s = up to 5 min
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        const res = await fetch(`/api/admin/autopricer/approve/feed-status?feedSubmissionId=${encodeURIComponent(feedSubmissionId)}`)
+        if (!res.ok) return null
+        const data = await res.json()
+        if (data.status === "DONE") {
+          return { accepted: data.accepted, errors: data.errors || [] }
+        }
+        if (data.status === "IN_PROGRESS") {
+          setAmazonFeedback({ ok: true, text: `Amazon is still processing the price feed… (check ${attempt + 1}/${MAX_ATTEMPTS})` })
+        }
+      } catch (e) {
+        // network blip — keep polling
+      }
+      await new Promise((r) => setTimeout(r, 5000))
+    }
+    return null // timed out
   }
 
   // Confirm Enhanced Approval
   const handleConfirmEnhancedApproval = async () => {
     if (!approvingChange) return
+    setApprovingLive(true)
+    setAmazonFeedback(null)
     try {
       const res = await fetch("/api/admin/autopricer/approve", {
         method: "POST",
@@ -351,37 +385,138 @@ export default function AutopricerClient() {
           expiresAt: approvalIsTemporary
             ? new Date(Date.now() + Number(approvalExpiresHours) * 3600 * 1000).toISOString()
             : undefined,
+          dryRun: approvalDryRun,
         }),
       })
-      if (res.ok) {
+      const data = await res.json().catch(() => ({}))
+
+      // DRY RUN — preview only, nothing changed. Keep the modal open so the
+      // seller can review the exact payload, then uncheck Dry Run to push live.
+      if (data?.dryRun) {
+        const lines: string[] = []
+        for (const it of data.items || []) {
+          lines.push(`• ${it.productName} (${it.sku}): $${it.currentPrice.toFixed(2)} → $${it.finalPrice.toFixed(2)}${it.clamped ? ` — ${it.clampNote}` : ""}`)
+        }
+        setAmazonFeedback({
+          ok: true,
+          text: `DRY RUN PREVIEW — nothing was sent to Amazon. Would push:\n${lines.join("\n")}\n\nTo actually change the live Amazon price, uncheck "Dry Run" and click Confirm again.`,
+        })
+        return
+      }
+
+      if (!res.ok) {
+        setAmazonFeedback({ ok: false, text: data?.error || "Failed to submit price change to Amazon." })
+        return
+      }
+
+      // Amazon accepted the submission. If still processing, poll until done.
+      if (data.status === "PROCESSING" && data.feedSubmissionId) {
+        setAmazonFeedback({ ok: true, text: "Price feed submitted to Amazon. Waiting for it to finish processing…" })
+        const final = await resolveFeedStatus(data.feedSubmissionId)
+        if (!final) {
+          setAmazonFeedback({ ok: false, text: "Amazon is still processing the feed after several minutes. It will finish on its own — refresh the panel shortly to see the updated price." })
+          await fetchProducts()
+          return
+        }
+        if (final.accepted) {
+          setAmazonFeedback({ ok: true, text: "✅ Amazon accepted the price update. The live listing price has been changed." })
+        } else {
+          setAmazonFeedback({ ok: false, text: `⚠️ Amazon rejected the update:\n${(final.errors || []).join("\n")}` })
+        }
+        await fetchProducts()
+        return
+      }
+
+      // Server already got the final result within its poll window.
+      if (data.status === "DONE") {
+        if (data.accepted) {
+          setAmazonFeedback({ ok: true, text: "✅ Amazon accepted the price update. The live listing price has been changed." })
+        } else {
+          setAmazonFeedback({ ok: false, text: `⚠️ Amazon rejected the update:\n${(data.errors || []).join("\n")}` })
+        }
         setIsApprovalModalOpen(false)
         setApprovingChange(null)
         await fetchProducts()
-      } else {
-        alert("Failed to process enhanced approval.")
+        return
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
+      setAmazonFeedback({ ok: false, text: err?.message || "Network error while submitting the price change." })
+    } finally {
+      setApprovingLive(false)
     }
   }
 
-  // Handle Approve / Reject
+  // Handle Approve / Reject (bulk). Approve now pushes live to Amazon (or
+  // previews when Dry Run is checked).
   const handleApprovalAction = async (logIds: string[], action: "APPROVE" | "REJECT") => {
     if (logIds.length === 0) return
+    setApprovingLive(true)
+    setAmazonFeedback(null)
     try {
       const res = await fetch("/api/admin/autopricer/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ logIds, action }),
+        body: JSON.stringify({ logIds, action, dryRun: action === "APPROVE" ? approvalDryRun : false }),
       })
-      if (res.ok) {
+      const data = await res.json().catch(() => ({}))
+
+      if (action === "REJECT") {
+        if (res.ok) {
+          setSelectedLogIds([])
+          setAmazonFeedback({ ok: true, text: `Rejected ${data.processedCount || logIds.length} price change(s).` })
+          await fetchProducts()
+        } else {
+          setAmazonFeedback({ ok: false, text: "Failed to process rejection." })
+        }
+        return
+      }
+
+      // APPROVE
+      if (data?.dryRun) {
+        const lines: string[] = (data.items || []).map((it: any) => `• ${it.productName} (${it.sku}): $${it.currentPrice.toFixed(2)} → $${it.finalPrice.toFixed(2)}${it.clamped ? ` — ${it.clampNote}` : ""}`)
+        setAmazonFeedback({ ok: true, text: `DRY RUN PREVIEW — nothing was sent to Amazon. Would push ${data.items?.length || 0} change(s):\n${lines.join("\n")}\n\nUncheck "Dry Run" to push live.` })
+        return
+      }
+
+      if (!res.ok) {
+        setAmazonFeedback({ ok: false, text: data?.error || "Failed to submit price changes to Amazon." })
+        return
+      }
+
+      if (data.status === "PROCESSING" && data.feedSubmissionId) {
+        setAmazonFeedback({ ok: true, text: `Price feed submitted to Amazon for ${data.processedCount || logIds.length} SKU(s). Waiting for processing…` })
+        const final = await resolveFeedStatus(data.feedSubmissionId)
+        if (!final) {
+          setAmazonFeedback({ ok: false, text: "Amazon is still processing the feed after several minutes. Refresh the panel shortly to see updated prices." })
+          await fetchProducts()
+          return
+        }
+        if (final.accepted) {
+          setAmazonFeedback({ ok: true, text: `✅ Amazon accepted the price updates for ${logIds.length} SKU(s). Live prices changed.` })
+        } else {
+          setAmazonFeedback({ ok: false, text: `⚠️ Amazon reported errors:\n${(final.errors || []).join("\n")}` })
+        }
         setSelectedLogIds([])
         await fetchProducts()
-      } else {
-        alert("Failed to process approval action.")
+        return
       }
-    } catch (err) {
+
+      if (data.status === "DONE") {
+        if (data.accepted) {
+          setAmazonFeedback({ ok: true, text: `✅ Amazon accepted the price updates for ${logIds.length} SKU(s). Live prices changed.` })
+        } else {
+          setAmazonFeedback({ ok: false, text: `⚠️ Amazon reported errors:\n${(data.errors || []).join("\n")}` })
+        }
+        setSelectedLogIds([])
+        await fetchProducts()
+        return
+      }
+    } catch (err: any) {
       console.error(err)
+      setAmazonFeedback({ ok: false, text: err?.message || "Network error while submitting price changes." })
+    } finally {
+      setApprovingLive(false)
     }
   }
 
@@ -1238,40 +1373,66 @@ export default function AutopricerClient() {
           ) : (
             <div className="space-y-4">
               {/* Bulk Approval Strip */}
-              <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedLogIds.length === pendingApprovalsList.length}
-                    onChange={(e) => {
-                      if (e.target.checked) setSelectedLogIds(pendingApprovalsList.map((l) => l.id))
-                      else setSelectedLogIds([])
-                    }}
-                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span className="text-sm font-semibold">
-                    Select All ({selectedLogIds.length}/{pendingApprovalsList.length})
-                  </span>
+              <div className="flex flex-col gap-3 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedLogIds.length === pendingApprovalsList.length}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedLogIds(pendingApprovalsList.map((l) => l.id))
+                          else setSelectedLogIds([])
+                        }}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm font-semibold">
+                        Select All ({selectedLogIds.length}/{pendingApprovalsList.length})
+                      </span>
+                    </div>
+                    <label className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer" title="When checked, Approve only previews the Amazon feed without changing live prices.">
+                      <input
+                        type="checkbox"
+                        checked={approvalDryRun}
+                        onChange={(e) => setApprovalDryRun(e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      Dry Run (preview only)
+                    </label>
+                  </div>
+                  {selectedLogIds.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleApprovalAction(selectedLogIds, "APPROVE")}
+                        disabled={approvingLive}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs disabled:opacity-60"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                        {approvingLive ? "Pushing…" : approvalDryRun ? "Preview Selected" : "Approve & Push Selected"} ({selectedLogIds.length})
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleApprovalAction(selectedLogIds, "REJECT")}
+                        disabled={approvingLive}
+                        className="text-rose-600 border-rose-300 hover:bg-rose-50 text-xs font-semibold disabled:opacity-60"
+                      >
+                        <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                        Reject Selected
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                {selectedLogIds.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleApprovalAction(selectedLogIds, "APPROVE")}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-                      Approve Selected ({selectedLogIds.length})
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleApprovalAction(selectedLogIds, "REJECT")}
-                      className="text-rose-600 border-rose-300 hover:bg-rose-50 text-xs font-semibold"
-                    >
-                      <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                      Reject Selected
-                    </Button>
+                {amazonFeedback && (
+                  <div
+                    className={`text-xs whitespace-pre-wrap rounded-lg px-3 py-2 border ${
+                      amazonFeedback.ok
+                        ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300"
+                        : "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300"
+                    }`}
+                  >
+                    {amazonFeedback.text}
                   </div>
                 )}
               </div>
@@ -1515,19 +1676,57 @@ export default function AutopricerClient() {
               </div>
             </div>
 
+            {/* Dry Run toggle + Amazon push feedback */}
+            <div className="pt-3 border-t border-slate-800 space-y-3">
+              <label className="flex items-start gap-2 text-sm font-medium text-slate-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={approvalDryRun}
+                  onChange={(e) => setApprovalDryRun(e.target.checked)}
+                  className="rounded bg-slate-950 border-slate-700 text-indigo-600 focus:ring-0 w-4 h-4 mt-0.5"
+                />
+                <span>
+                  Dry Run (safe preview)
+                  <span className="block text-xs font-normal text-slate-400">
+                    {approvalDryRun
+                      ? "On — clicking Confirm only previews the Amazon price feed. Nothing is sent. Uncheck to push the live price to Amazon."
+                      : "Off — clicking Confirm WILL change the live price on Amazon for this product."}
+                  </span>
+                </span>
+              </label>
+
+              {amazonFeedback && (
+                <div
+                  className={`text-xs whitespace-pre-wrap rounded-lg px-3 py-2 border ${
+                    amazonFeedback.ok
+                      ? "bg-emerald-950/40 border-emerald-800 text-emerald-300"
+                      : "bg-rose-950/40 border-rose-800 text-rose-300"
+                  }`}
+                >
+                  {amazonFeedback.text}
+                </div>
+              )}
+            </div>
+
             <DialogFooter className="flex gap-2 justify-end pt-2">
               <Button
                 variant="outline"
                 onClick={() => setIsApprovalModalOpen(false)}
+                disabled={approvingLive}
                 className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleConfirmEnhancedApproval}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                disabled={approvingLive}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold disabled:opacity-60"
               >
-                Confirm & Apply Price
+                {approvingLive
+                  ? "Pushing to Amazon…"
+                  : approvalDryRun
+                  ? "Preview (Dry Run)"
+                  : "Confirm & Push to Amazon"}
               </Button>
             </DialogFooter>
           </DialogContent>
