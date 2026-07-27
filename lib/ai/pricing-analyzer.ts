@@ -44,7 +44,10 @@ export async function analyzePricingWithGLM(
   weekdayProfiles: WeekdayProfile[],
   customApiKey?: string
 ): Promise<AIStrategicAssessment> {
-  const apiKey = customApiKey || process.env.GLM_API_KEY || "f0cad4d1346f4de6ac26fe762fe8b7e7.EbtHqdi8pkA-uXOBfw1i0t3U"
+  // BigModel cloud API key. The previously hardcoded key is expired (HTTP 401 on
+  // every model) so it was removed — set a valid key via GLM_API_KEY env var
+  // (locally in .env.local, and in Vercel project env vars for production).
+  const apiKey = customApiKey || process.env.GLM_API_KEY || ""
   const cloudModel = process.env.GLM_MODEL || "glm-4" // BigModel cloud model
   // Local Ollama (only works when the app runs on the same machine as Ollama,
   // e.g. `npm run dev` on your Mac — NOT on the Vercel deployment).
@@ -160,42 +163,8 @@ async function callLLM(
   userPrompt: string,
   cfg: { ollamaBaseUrl?: string; ollamaModel: string; cloudApiKey: string; cloudModel: string }
 ): Promise<{ content: string; modelUsed: string } | null> {
-  // 1) Local Ollama (only reachable when the app runs on the same host as Ollama)
-  if (cfg.ollamaBaseUrl) {
-    try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 60000) // local models can be slow on first call
-      const res = await fetch(`${cfg.ollamaBaseUrl.replace(/\/$/, "")}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: cfg.ollamaModel,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          stream: false,
-          options: { temperature: 0.2 },
-        }),
-        signal: controller.signal,
-      })
-      clearTimeout(timeout)
-      if (res.ok) {
-        const data = await res.json()
-        const content = data?.message?.content
-        if (content) {
-          console.log(`[AI] Using local Ollama model: ${cfg.ollamaModel}`)
-          return { content, modelUsed: `Ollama ${cfg.ollamaModel} (local)` }
-        }
-      } else {
-        console.warn(`[AI] Ollama responded HTTP ${res.status}`)
-      }
-    } catch (e: any) {
-      console.warn(`[AI] Ollama call failed:`, e?.message)
-    }
-  }
-
-  // 2) BigModel cloud API (works on Vercel — needs a valid GLM_API_KEY)
+  // 1) BigModel cloud API — primary. Works on Vercel and locally. Needs a valid
+  //    GLM_API_KEY (the one in code is expired → 401; set a fresh key via env).
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 15000)
@@ -228,6 +197,42 @@ async function callLLM(
     }
   } catch (e: any) {
     console.warn(`[AI] BigModel cloud call failed:`, e?.message)
+  }
+
+  // 2) Local Ollama — fallback when the cloud API is unavailable/unconfigured.
+  //    Only reachable when the app runs on the same host as Ollama (local dev).
+  if (cfg.ollamaBaseUrl) {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 60000) // local models can be slow on first call
+      const res = await fetch(`${cfg.ollamaBaseUrl.replace(/\/$/, "")}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: cfg.ollamaModel,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          stream: false,
+          options: { temperature: 0.2 },
+        }),
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+      if (res.ok) {
+        const data = await res.json()
+        const content = data?.message?.content
+        if (content) {
+          console.log(`[AI] Using local Ollama model: ${cfg.ollamaModel}`)
+          return { content, modelUsed: `Ollama ${cfg.ollamaModel} (local)` }
+        }
+      } else {
+        console.warn(`[AI] Ollama responded HTTP ${res.status}`)
+      }
+    } catch (e: any) {
+      console.warn(`[AI] Ollama call failed:`, e?.message)
+    }
   }
 
   return null
