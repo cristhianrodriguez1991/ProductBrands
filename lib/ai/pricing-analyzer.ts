@@ -305,10 +305,10 @@ function rankFirstLocalStrategy(
     reason = `Buy Box win rate is ${winRate}% (<70%). Reclaiming it with a ${formatCents(-step)} cut protects velocity and drives rank down.`
   } else if (todayWeak && canLower) {
     action = "LOWER"
-    reason = `The weekday engine flags ${todayName} as a weak-rank day (relative ${todayProfile?.relativePerformancePercent > 0 ? "+" : ""}${todayProfile?.relativePerformancePercent}% vs the week). A ${formatCents(-step)} micro-cut stimulates velocity exactly when rank is softest.`
+    reason = `The weekday engine flags ${todayName} as a weak-rank day (relative ${((todayProfile?.relativePerformancePercent ?? 0) > 0 ? "+" : "")}${todayProfile?.relativePerformancePercent ?? 0}% vs the week). A ${formatCents(-step)} micro-cut stimulates velocity exactly when rank is softest.`
   } else if (todayStrong && canRaise) {
     action = "RAISE"
-    reason = `The weekday engine flags ${todayName} as a strong-rank day (relative ${todayProfile?.relativePerformancePercent > 0 ? "+" : ""}${todayProfile?.relativePerformancePercent}% vs the week). Demand absorbs a ${formatCents(step)} micro-increase without materially hurting rank.`
+    reason = `The weekday engine flags ${todayName} as a strong-rank day (relative ${((todayProfile?.relativePerformancePercent ?? 0) > 0 ? "+" : "")}${todayProfile?.relativePerformancePercent ?? 0}% vs the week). Demand absorbs a ${formatCents(step)} micro-increase without materially hurting rank.`
   } else {
     action = "MAINTAIN"
     reason = `No velocity-rescue signal this cycle. Holding at $${current.toFixed(2)} protects sales velocity, which is the dominant lever for driving Sales Rank down.`
@@ -347,7 +347,7 @@ function rankFirstLocalStrategy(
         `Today (${todayName}) is ${todayProfile?.isLagAffected ? "lag-affected — keep the price steady and avoid reactive cuts" : "not lag-affected"}.`
       : `No severe A9 rank-inertia / lag-carryover distortion was detected across the week. ` +
         `Today (${todayName}) engine signal: "${todayProfile?.recommendedStrategy || "Insufficient data"}" ` +
-        `(relative rank ${todayProfile?.relativePerformancePercent > 0 ? "+" : ""}${todayProfile?.relativePerformancePercent ?? 0}% vs the weekly baseline).`
+        `(relative rank ${((todayProfile?.relativePerformancePercent ?? 0) > 0 ? "+" : "")}${todayProfile?.relativePerformancePercent ?? 0}% vs the weekly baseline).`
 
   const takeaways: string[] = [
     `Rank-first objective: drive Sales Rank DOWN (numerically lower = better visibility = more organic sales). Velocity is the lever — protect it.`,
