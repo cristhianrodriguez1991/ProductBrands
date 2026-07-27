@@ -155,7 +155,9 @@ const parseSyncDate = (val: string) => {
 
 const isOccupiedWarehousePosition = (p: any) => {
   if (!p) return false
-  return !!p.productName || !!p.sku || p.status !== "AVAILABLE"
+  if (p.status === "AVAILABLE" || p.status === "ENVIADO") return false
+  if (p.quantity === 0) return false
+  return !!(p.productName || p.sku)
 }
 
 const colorFromSeed = (seed: string) => {

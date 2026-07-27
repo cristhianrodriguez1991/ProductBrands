@@ -1059,7 +1059,9 @@ function WarehouseInventoryTab({ amazonItems = [] }: { amazonItems?: InventoryIt
   const occupiedLocationCodes = useMemo(() => {
     const set = new Set<string>()
     products.forEach(p => p.locations.forEach(loc => {
-      set.add(loc.locationCode)
+      if (loc.status !== "AVAILABLE" && loc.status !== "ENVIADO" && loc.quantity !== 0) {
+        set.add(loc.locationCode)
+      }
     }))
     return set
   }, [products])
