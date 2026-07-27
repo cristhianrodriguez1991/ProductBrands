@@ -61,7 +61,8 @@ export async function GET(request: Request) {
           endpoint: "orders",
           path: { orderId: order.AmazonOrderId },
         })
-        const items = itemsRes?.payload?.OrderItems || []
+        // SP-API returns at root level (not under payload)
+        const items = itemsRes?.OrderItems || itemsRes?.payload?.OrderItems || []
         
         for (const item of items) {
           const itemSku = (item.SellerSKU || "").toLowerCase()
@@ -108,7 +109,16 @@ export async function GET(request: Request) {
       savedCount++
     }
 
-    return NextResponse.json({ success: true, message: `Successfully aggregated and synced ${savedCount} daily sales records for the last 30 days.` })
+    return NextResponse.json({ 
+      success: true, 
+      message: `Successfully aggregated and synced ${savedCount} daily sales records for the last 30 days.`,
+      debug: savedCount === 0 ? {
+        ordersProcessed: orders.length,
+        aggregationsFound: dailyAggregations.size,
+        monitoredSkus: [...skuMap.keys()].slice(0, 10),
+        hint: "If aggregationsFound is 0, SKUs in orders don't match monitoredSkus"
+      } : undefined
+    })
 
   } catch (error: any) {
     console.error("[SYNC-SALES] Error:", error?.message || error)
