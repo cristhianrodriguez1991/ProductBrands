@@ -2,7 +2,9 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getClient } from "@/lib/amazon-sp-api-service"
 
+export const dynamic = 'force-dynamic' // Never pre-render at build time
 export const maxDuration = 300 // allow up to 5 minutes
+
 
 export async function GET(request: Request) {
   try {
