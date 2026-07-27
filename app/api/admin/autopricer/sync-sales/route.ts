@@ -76,6 +76,15 @@ export async function GET(request: Request) {
         savedCount++
       }
       
+      if (savedCount === 0) {
+        return NextResponse.json({ 
+          success: false, 
+          message: "Successfully synced 0 daily sales records. The report structure might not match expectations.",
+          debugAsin: salesByAsin[0] || null,
+          debugDate: data?.salesAndTrafficByDate?.[0] || null
+        })
+      }
+
       return NextResponse.json({ success: true, message: `Successfully synced ${savedCount} daily sales records across up to 2 years.` })
     }
 
