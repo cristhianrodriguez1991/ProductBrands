@@ -27,7 +27,7 @@ export const PRICE_INTELLIGENCE_CONFIG = {
 
   // Default Pricing Guardrails & Thresholds
   DEFAULTS: {
-    MIN_DESIRED_MARGIN_PERCENT: 25.0, // Default 25% minimum net profit margin target
+    MIN_DESIRED_MARGIN_PERCENT: 15.0, // Default 15% minimum net profit margin target (prioritizing high sales volume & rank reduction)
     REFERRAL_FEE_PERCENT: 15.0,
     FBM_FEE: 0.0,
     ESTIMATED_FBA_FEE_USD: 5.45, // Default estimated pick, pack & ship fee for standard packages

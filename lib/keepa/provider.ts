@@ -24,17 +24,30 @@ export function utcDateToKeepaTime(date: Date): number {
  * Unpack a Keepa CSV paired array [time1, val1, time2, val2, ...] into a map of keepaTime -> value.
  * Prices in Keepa are stored in cents (divide by 100). Rank and counts are integers.
  */
-function unpackCsvArray(rawArray?: number[] | null, isPrice = false): Map<number, number | null> {
+function unpackCsvArray(rawArray?: number[] | null, isPrice = false, isTriplet = false): Map<number, number | null> {
   const map = new Map<number, number | null>()
-  if (!rawArray || !Array.isArray(rawArray) || rawArray.length < 2) return map
+  if (!rawArray || !Array.isArray(rawArray) || rawArray.length < (isTriplet ? 3 : 2)) return map
 
-  for (let i = 0; i < rawArray.length; i += 2) {
+  const step = isTriplet ? 3 : 2
+
+  for (let i = 0; i < rawArray.length; i += step) {
     const time = rawArray[i]
+    if (time <= 0 || time > 15000000) continue // ignore invalid timestamps or keepa metadata placeholders like -1 or 0
+
     const rawVal = rawArray[i + 1]
-    if (rawVal === undefined || rawVal === -1) {
+    if (rawVal === undefined || rawVal === -1 || rawVal < 0) {
       map.set(time, null)
     } else {
-      map.set(time, isPrice ? Math.round((rawVal / 100) * 100) / 100 : rawVal)
+      let finalVal = isPrice ? Math.round((rawVal / 100) * 100) / 100 : rawVal
+      if (isTriplet && isPrice) {
+        const shipping = rawArray[i + 2]
+        if (shipping !== undefined && shipping > 0 && shipping !== -1) {
+          finalVal = Math.round((finalVal + (shipping / 100)) * 100) / 100
+        }
+      }
+      if (isPrice && finalVal > 2000) continue // sanity check for price anomalies
+
+      map.set(time, finalVal)
     }
   }
   return map
@@ -46,26 +59,26 @@ function unpackCsvArray(rawArray?: number[] | null, isPrice = false): Map<number
 export function mergeKeepaCsvStreams(csvObject: any): KeepaObservation[] {
   if (!csvObject || typeof csvObject !== "object") return []
 
-  const amazonMap = unpackCsvArray(csvObject[KEEPA_CSV_INDICES.AMAZON], true)
-  const newMap = unpackCsvArray(csvObject[KEEPA_CSV_INDICES.NEW], true)
-  const rankMap = unpackCsvArray(csvObject[KEEPA_CSV_INDICES.SALES_RANK], false)
-  const fbmMap = unpackCsvArray(csvObject[KEEPA_CSV_INDICES.NEW_FBM_SHIPPING], true)
-  const fbaMap = unpackCsvArray(csvObject[KEEPA_CSV_INDICES.NEW_FBA], true)
-  const countMap = unpackCsvArray(csvObject[KEEPA_CSV_INDICES.COUNT_NEW], false)
-  const buyBoxMap = unpackCsvArray(csvObject[KEEPA_CSV_INDICES.BUY_BOX_SHIPPING], true)
+  const amazonMap = unpackCsvArray(csvObject[KEEPA_CSV_INDICES.AMAZON], true, false)
+  const newMap = unpackCsvArray(csvObject[KEEPA_CSV_INDICES.NEW], true, false)
+  const rankMap = unpackCsvArray(csvObject[KEEPA_CSV_INDICES.SALES_RANK], false, false)
+  const fbmMap = unpackCsvArray(csvObject[KEEPA_CSV_INDICES.NEW_FBM_SHIPPING], true, true)
+  const fbaMap = unpackCsvArray(csvObject[KEEPA_CSV_INDICES.NEW_FBA], true, false)
+  const countMap = unpackCsvArray(csvObject[KEEPA_CSV_INDICES.COUNT_NEW], false, false)
+  const buyBoxMap = unpackCsvArray(csvObject[KEEPA_CSV_INDICES.BUY_BOX_SHIPPING], true, true)
 
-  // Collect all unique Keepa timestamps across all streams
+  // Collect all unique Keepa timestamps across all streams (filtering invalid/placeholder timestamps)
   const allTimes = new Set<number>([
-    ...amazonMap.keys(),
-    ...newMap.keys(),
-    ...rankMap.keys(),
-    ...fbmMap.keys(),
-    ...fbaMap.keys(),
-    ...countMap.keys(),
-    ...buyBoxMap.keys(),
+    ...Array.from(amazonMap.keys()),
+    ...Array.from(newMap.keys()),
+    ...Array.from(rankMap.keys()),
+    ...Array.from(fbmMap.keys()),
+    ...Array.from(fbaMap.keys()),
+    ...Array.from(countMap.keys()),
+    ...Array.from(buyBoxMap.keys()),
   ])
 
-  const sortedTimes = Array.from(allTimes).sort((a, b) => a - b)
+  const sortedTimes = Array.from(allTimes).filter(t => t > 0 && t <= 15000000).sort((a, b) => a - b)
   const observations: KeepaObservation[] = []
 
   // Track running latest values for forward fill

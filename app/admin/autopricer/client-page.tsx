@@ -931,7 +931,7 @@ export default function AutopricerClient() {
                         </div>
                         <div className="border-t border-slate-200 dark:border-slate-800 pt-1.5 flex items-center justify-between text-xs font-semibold">
                           <span>Net Profit Margin:</span>
-                          <span className={`px-2 py-0.5 rounded ${margin >= p.minMarginPercent ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/10 text-rose-600 dark:text-rose-400"}`}>
+                          <span className={`px-2 py-0.5 rounded font-bold ${margin >= Math.min(p.minMarginPercent ?? 15, 15) ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : margin >= 10 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"}`}>
                             {mp.symbol}{p.calculated?.grossProfit.toFixed(2)} ({margin.toFixed(1)}%)
                           </span>
                         </div>
@@ -1216,6 +1216,8 @@ export default function AutopricerClient() {
                 targetRankMax={keepaHistoryData.product?.targetRankMax}
               />
               <KeepaAnalytics
+                key={keepaHistoryData.product?.id || selectedProductForKeepa || "default"}
+                product={keepaHistoryData.product || products.find(p => p.id === selectedProductForKeepa)}
                 weekdayProfiles={keepaHistoryData.weekdayProfiles || []}
                 heatmap={keepaHistoryData.weekdayHeatmap || []}
                 overallMedianRank={keepaHistoryData.overallMedianRank || 3000}
