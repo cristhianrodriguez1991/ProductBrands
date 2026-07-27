@@ -14,6 +14,8 @@ export interface WeekdayProfile {
   rankImprovementFreq: number // percentage 0-100
   rankDeteriorationFreq: number // percentage 0-100
   relativePerformancePercent: number // negative = better than weekly average, positive = worse (e.g. +18% worse on Saturday)
+  intraDayRankDelta: number // positive (>0) means rank degraded/worsened from morning to night (e.g., +4000 positions)
+  isLagAffected: boolean // true if day looks typical/strong in morning due to previous day momentum but deteriorates sharply by night
   recommendedStrategy: "Maintain" | "Consider small reduction" | "Protect margin" | "Test small increase" | "Reevaluate" | "Insufficient data"
 }
 
@@ -82,6 +84,8 @@ export function analyzeWeekdayBehavior(observations: KeepaObservation[]): {
         rankImprovementFreq: 0,
         rankDeteriorationFreq: 0,
         relativePerformancePercent: 0,
+        intraDayRankDelta: 0,
+        isLagAffected: false,
         recommendedStrategy: "Insufficient data",
       })
       continue
@@ -92,6 +96,16 @@ export function analyzeWeekdayBehavior(observations: KeepaObservation[]): {
     const medianRank = calculateMedian(ranks)
     const averageRank = Math.round(ranks.reduce((a, b) => a + b, 0) / ranks.length)
     const medianBuyBoxPrice = calculateMedian(prices) || 0
+
+    // Calculate intra-day momentum (morning 00-06h rank vs night 18-24h rank)
+    const morningObs = dayObs.filter((o) => o.timestamp.getHours() < 6)
+    const nightObs = dayObs.filter((o) => o.timestamp.getHours() >= 18)
+    const morningRank = calculateMedian(morningObs.map((o) => o.salesRank!)) || medianRank
+    const nightRank = calculateMedian(nightObs.map((o) => o.salesRank!)) || medianRank
+    const intraDayRankDelta = Math.round(nightRank - morningRank) // positive means rank increased (worsened) across the day
+    
+    // Check if day is lag affected (starts with strong rank from previous day, but deteriorates by >10% by night)
+    const isLagAffected = morningRank < overallMedianRank && intraDayRankDelta > (overallMedianRank * 0.08)
 
     // Volatility
     const variance = ranks.reduce((a, b) => a + Math.pow(b - averageRank, 2), 0) / ranks.length
@@ -120,7 +134,10 @@ export function analyzeWeekdayBehavior(observations: KeepaObservation[]): {
       warningMessage = `There is not enough historical data to conclude that this product performs differently on ${dayName}s (only ${sampleWeeks} weeks available; minimum 8 required).`
       recommendedStrategy = "Insufficient data"
     } else {
-      if (relativePerformancePercent > 15) {
+      if (isLagAffected) {
+        // Day has deceptive momentum carryover from previous day -> Reevaluate or Protect margin without false price cuts
+        recommendedStrategy = "Maintain"
+      } else if (relativePerformancePercent > 15) {
         // e.g., 18% worse rank on Saturday -> Consider small reduction
         recommendedStrategy = "Consider small reduction"
       } else if (relativePerformancePercent < -15) {
@@ -146,6 +163,8 @@ export function analyzeWeekdayBehavior(observations: KeepaObservation[]): {
       rankImprovementFreq,
       rankDeteriorationFreq,
       relativePerformancePercent,
+      intraDayRankDelta,
+      isLagAffected,
       recommendedStrategy,
     })
   }

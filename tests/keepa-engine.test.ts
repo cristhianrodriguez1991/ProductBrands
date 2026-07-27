@@ -69,3 +69,56 @@ describe("Pricing Engine & Candidate Evaluation", () => {
     expect(evaluation.confidence).toBeGreaterThan(0)
   })
 })
+
+describe("Lag-Aware Weekday Engine & AI Momentum Analysis (Ollama GLM-5.2)", () => {
+  it("detects when Saturday starts with good rank from Friday momentum but deteriorates by night (Delta-Rank lag effect)", async () => {
+    const { analyzeWeekdayBehavior } = await import("../lib/keepa/analytics/weekday-engine")
+    const now = new Date("2026-07-25T12:00:00Z") // Saturday
+    const obs: any[] = []
+
+    // Create 10 weeks of Saturday observations where morning rank is #18,000 (Friday momentum) and night rank is #23,000
+    for (let w = 0; w < 10; w++) {
+      const satMorning = new Date(2026, 5, 6 + w * 7, 3, 0, 0) // Saturday 3 AM
+      const satNight = new Date(2026, 5, 6 + w * 7, 21, 0, 0) // Saturday 9 PM
+      obs.push({ timestamp: satMorning, salesRank: 18000, buyBoxPrice: 28.68, isAvailable: true })
+      obs.push({ timestamp: satNight, salesRank: 23000, buyBoxPrice: 28.68, isAvailable: true })
+    }
+
+    const result = analyzeWeekdayBehavior(obs)
+    const satProfile = result.profiles.find((p) => p.dayName === "Saturday")
+    expect(satProfile).toBeDefined()
+    expect(satProfile?.intraDayRankDelta).toBeGreaterThan(0) // Worsened across the day
+    expect(satProfile?.isLagAffected).toBe(true)
+  })
+
+  it("analyzes pricing with GLM-5.2 / deep reasoning engine and outputs weekend lag diagnosis", async () => {
+    const { analyzePricingWithGLM } = await import("../lib/ai/pricing-analyzer")
+    const mockProduct: any = {
+      id: "test-1",
+      sku: "Y5-RYHV-Z8SR",
+      asin: "B0DSJT1NP4",
+      productName: "Office Roast Variety Pack",
+      currentPrice: 28.68,
+      unitCost: 14.00,
+      minPrice: 20.00,
+      maxPrice: 35.00,
+      fulfillmentMethod: "FBA",
+      buyBoxWinRate: 88,
+    }
+    const mockDailySales: any[] = [
+      { date: "2026-07-27", unitsOrdered: 30, orderedProductSales: 860, avgSellingPrice: 28.68, dayOfWeek: "Monday", isWeekend: false },
+      { date: "2026-07-26", unitsOrdered: 1, orderedProductSales: 28.68, avgSellingPrice: 28.68, dayOfWeek: "Sunday", isWeekend: true },
+      { date: "2026-07-25", unitsOrdered: 2, orderedProductSales: 57.36, avgSellingPrice: 28.68, dayOfWeek: "Saturday", isWeekend: true },
+    ]
+    const mockProfiles: any[] = [
+      { dayName: "Saturday", medianRank: 18500, relativePerformancePercent: -10, intraDayRankDelta: 4500, isLagAffected: true },
+      { dayName: "Monday", medianRank: 23500, relativePerformancePercent: 12, intraDayRankDelta: -3000, isLagAffected: false },
+    ]
+
+    const assessment = await analyzePricingWithGLM(mockProduct, mockDailySales, mockProfiles)
+    expect(assessment.modelUsed).toContain("Ollama GLM-5.2")
+    expect(assessment.confidenceScore).toBeGreaterThanOrEqual(80)
+    expect(assessment.detectedLagEffect).toContain("Arrastre")
+    expect(assessment.keyTakeaways.length).toBeGreaterThan(0)
+  })
+})

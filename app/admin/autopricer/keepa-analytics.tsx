@@ -14,12 +14,18 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Minus,
+  Brain,
+  Sparkles,
+  BarChart2,
+  RefreshCw,
+  ShoppingCart,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { WeekdayProfile, WeekdayHeatmapCell } from "@/lib/keepa/analytics/weekday-engine"
 import { RankTrendAnalysis } from "@/lib/keepa/analytics/rank-trend"
 
 interface KeepaAnalyticsProps {
+  product?: any
   weekdayProfiles: WeekdayProfile[]
   heatmap: WeekdayHeatmapCell[]
   overallMedianRank: number
@@ -27,12 +33,44 @@ interface KeepaAnalyticsProps {
 }
 
 export function KeepaAnalytics({
+  product,
   weekdayProfiles = [],
   heatmap = [],
   overallMedianRank = 3000,
   trendAnalysis,
 }: KeepaAnalyticsProps) {
   const [metric, setMetric] = useState<"rank" | "buybox" | "offers">("rank")
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [aiAssessment, setAiAssessment] = useState<any>(null)
+  const [dailySales, setDailySales] = useState<any[]>([])
+  const [showDailySales, setShowDailySales] = useState(false)
+
+  const runAiAnalysis = async () => {
+    setIsAnalyzing(true)
+    try {
+      const res = await fetch("/api/admin/autopricer/ai-analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sku: (product as any)?.sku || "Y5-RYHV-Z8SR-stickerless",
+          asin: (product as any)?.asin || "B0DSJT1NP4",
+          id: (product as any)?.id,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setAiAssessment(data.assessment)
+        if (data.dailySales) setDailySales(data.dailySales)
+        setShowDailySales(true)
+      } else {
+        alert("Error in AI analysis: " + data.error)
+      }
+    } catch (e: any) {
+      alert("AI analysis request failed: " + e.message)
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
 
   const getStrategyBadge = (strategy: WeekdayProfile["recommendedStrategy"], warning?: string) => {
     switch (strategy) {
@@ -98,6 +136,136 @@ export function KeepaAnalytics({
 
   return (
     <div className="space-y-6">
+      {/* ── 0. AI GLM-5.2 & Amazon SP-API Deep Analysis Panel ── */}
+      <Card className="bg-gradient-to-r from-indigo-950 via-slate-900 to-purple-950 border-indigo-500/40 text-white shadow-2xl relative overflow-hidden">
+        <div className="absolute -right-10 -top-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+        <CardHeader className="pb-3 border-b border-indigo-500/20">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400">
+                <Brain className="h-6 w-6 animate-pulse" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-extrabold flex items-center gap-2 text-white">
+                  Ollama GLM-5.2 Deep Reasoning & SP-API Daily Sales
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    Lag-Aware Engine
+                  </span>
+                </CardTitle>
+                <CardDescription className="text-slate-300 text-xs">
+                  Correlates Keepa time-series momentum with actual daily unit sales ordered from Amazon SP-API to diagnose ranking lag inertia.
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {dailySales.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowDailySales(!showDailySales)}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5"
+                >
+                  <BarChart2 className="h-3.5 w-3.5 text-indigo-400" />
+                  {showDailySales ? "Hide Daily Sales" : "View Daily Sales"}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={runAiAnalysis}
+                disabled={isAnalyzing}
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition disabled:opacity-50"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" /> Analyzing A9 Momentum...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 text-amber-300" /> Run AI GLM-5.2 Analysis
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </CardHeader>
+        {aiAssessment && (
+          <CardContent className="p-4 space-y-4 bg-slate-950/60">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
+                <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Strategic AI Assessment</span>
+                  <span className="text-emerald-400 font-mono font-bold">{aiAssessment.confidenceScore}% Confidence</span>
+                </span>
+                <p className="text-xs text-slate-200 leading-relaxed">{aiAssessment.strategicSummary}</p>
+              </div>
+              <div className="bg-slate-900/90 p-3.5 rounded-xl border border-amber-500/30 space-y-1.5 md:col-span-2">
+                <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Activity className="h-3.5 w-3.5" /> A9 Sales Rank Inertia & Lag Diagnosis
+                </span>
+                <p className="text-xs text-slate-300 leading-relaxed font-medium">{aiAssessment.detectedLagEffect}</p>
+              </div>
+            </div>
+            <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">Recommended Weekend / Monday Positioning:</span>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {aiAssessment.keyTakeaways?.map((t: string, idx: number) => (
+                    <span key={idx} className="text-[11px] bg-slate-800 text-slate-200 px-2.5 py-1 rounded-md border border-slate-700">
+                      • {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-indigo-950/80 px-4 py-2 rounded-lg border border-indigo-500/30 self-stretch md:self-auto justify-between md:justify-center">
+                <span className="text-xs text-slate-300 font-semibold">Recommended Action:</span>
+                <span className="text-sm font-extrabold text-emerald-400 font-mono tracking-wide">
+                  {aiAssessment.recommendedAction} ({aiAssessment.proposedPrice ? `$${aiAssessment.proposedPrice}` : "Current Price"})
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        )}
+        {showDailySales && dailySales && dailySales.length > 0 && (
+          <div className="p-4 bg-slate-950 border-t border-slate-800">
+            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4 text-emerald-400" />
+              Amazon SP-API Daily Units Ordered & Revenue (Last {dailySales.length} Days)
+            </h4>
+            <div className="overflow-x-auto max-h-60 rounded-lg border border-slate-800">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="bg-slate-900 sticky top-0 text-slate-400 font-semibold border-b border-slate-800">
+                  <tr>
+                    <th className="py-2 px-3">Date</th>
+                    <th className="py-2 px-3">Day of Week</th>
+                    <th className="py-2 px-3 text-right">Units Ordered</th>
+                    <th className="py-2 px-3 text-right">Avg Selling Price</th>
+                    <th className="py-2 px-3 text-right">Ordered Revenue</th>
+                    <th className="py-2 px-3 text-center">Office Pattern</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800 text-slate-300">
+                  {dailySales.map((d, idx) => (
+                    <tr key={idx} className={d.isWeekend ? "bg-rose-950/20 text-rose-200" : "hover:bg-slate-900/50"}>
+                      <td className="py-1.5 px-3 font-mono">{d.date}</td>
+                      <td className="py-1.5 px-3 font-semibold">{d.dayOfWeek}</td>
+                      <td className="py-1.5 px-3 text-right font-bold text-white">{d.unitsOrdered}</td>
+                      <td className="py-1.5 px-3 text-right font-mono">${d.avgSellingPrice.toFixed(2)}</td>
+                      <td className="py-1.5 px-3 text-right font-mono text-emerald-400 font-semibold">${d.orderedProductSales.toFixed(2)}</td>
+                      <td className="py-1.5 px-3 text-center">
+                        {d.isWeekend ? (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30">Weekend Drop</span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Corporate Rush</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </Card>
+
       {/* ── 1. Sustained Rank Trend Summary ── */}
       {trendAnalysis && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
