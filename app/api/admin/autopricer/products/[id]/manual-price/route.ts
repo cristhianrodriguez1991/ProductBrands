@@ -133,7 +133,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         reason: "User initiated manual inline price override from dashboard.",
         status: "APPLIED",
         approvedAt: new Date(),
-        approvedByUserId: session.user.id,
+        approvedByUserId: (session?.user as any)?.id || "admin",
       },
     })
 
