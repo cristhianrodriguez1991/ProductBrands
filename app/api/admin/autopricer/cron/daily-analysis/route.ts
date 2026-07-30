@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { PERMISSIONS, hasEffectivePermission } from "@/lib/permissions"
 import { analyzePricingWithGLM } from "@/lib/ai/pricing-analyzer"
 import { getDailySalesAndTrafficBySku } from "@/lib/amazon-sp-api-service"
 import { analyzeWeekdayBehavior } from "@/lib/keepa/analytics/weekday-engine"
@@ -10,16 +7,15 @@ import { analyzeWeekdayBehavior } from "@/lib/keepa/analytics/weekday-engine"
 export const dynamic = "force-dynamic"
 export const maxDuration = 300 // 5 minutes max duration on Vercel Pro
 
-export async function POST(req: Request) {
+export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    const userRole = (session?.user as any)?.role
-    const customPermissions = (session?.user as any)?.customPermissions || []
-
-    if (!session || !hasEffectivePermission(userRole, customPermissions, PERMISSIONS.AUTOPRICER)) {
+    // 1. Verify Cron Secret to prevent unauthorized access
+    const authHeader = req.headers.get("authorization")
+    if (process.env.NODE_ENV === "production" && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
+    // 2. Fetch all active monitored products
     const products = await prisma.monitoredProduct.findMany({
       where: { status: "ACTIVE" },
       include: {
@@ -141,7 +137,7 @@ export async function POST(req: Request) {
             oldPrice: prod.currentPrice,
             newPrice: assessment.proposedPrice,
             recommendedAction: assessment.recommendedAction,
-            reason: assessment.strategicSummary + "\n\nKey Takeaways:\n" + assessment.keyTakeaways.map((t: string) => "- " + t).join("\n"),
+            reason: assessment.strategicSummary + "\n\nKey Takeaways:\n" + assessment.keyTakeaways.map(t => "- " + t).join("\n"),
             status: "PENDING_APPROVAL",
           },
         })
@@ -153,11 +149,11 @@ export async function POST(req: Request) {
       success: true,
       analyzedCount,
       recommendationsGenerated,
-      message: `Successfully analyzed ${analyzedCount} products. Generated ${recommendationsGenerated} pending price approval requests.`,
+      message: `Daily analysis complete. Analyzed ${analyzedCount} products, generated ${recommendationsGenerated} new price change recommendations.`,
     })
+
   } catch (error) {
-    console.error("[AUTOPRICER_ANALYZE]", error)
+    console.error("[CRON_DAILY_ANALYSIS]", error)
     return new NextResponse("Internal Error", { status: 500 })
   }
 }
-

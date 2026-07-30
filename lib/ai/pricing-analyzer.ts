@@ -43,7 +43,8 @@ export async function analyzePricingWithGLM(
   dailySales: DailySalesObservation[],
   weekdayProfiles: WeekdayProfile[],
   customApiKey?: string,
-  salesDiagnostic?: { sku: string; asin?: string | null; totalRecordsForSku: number; totalRecordsForAsin: number; latestSaleDate?: string | null }
+  salesDiagnostic?: { sku: string; asin?: string | null; totalRecordsForSku: number; totalRecordsForAsin: number; latestSaleDate?: string | null },
+  recentChangeContext?: { hasRecentChange: boolean; daysSinceChange: number; oldPrice: number; newPrice: number; rankBefore?: number | null; rankNow?: number | null; evaluationStatus?: string }
 ): Promise<AIStrategicAssessment> {
   // OpenAI cloud API key. Set via OPENAI_API_KEY env var (.env.local for local
   // dev, Vercel project env vars for production). Never hardcode keys in source.
@@ -91,7 +92,16 @@ STRATEGIC NORTH STAR: The seller's #1 goal is AGGRESSIVE SALES RANK REDUCTION. O
 VELOCITY RULE: Sales velocity is the dominant lever for rank. Raising price slows velocity and hurts rank; lowering price (or holding) protects velocity and drives rank down.
 CHANGE SIZE RULE: Every price change must be SMALL — a few CENTS, never dollars. Cap any single adjustment at $0.15. Never propose jumping to a price floor/ceiling in one step.
 ENGINE RULE: You are given a per-weekday engine analysis with its own recommended strategy for each day. You MUST incorporate that engine signal into your final recommendation and explain how it shaped your decision.
+HOLD & TEST RULE: If a price change was made recently (within the last 3-7 days), you are currently in an active test period. You MUST output MAINTAIN (HOLD) to let the A9 algorithm react, UNLESS the rank is catastrophically crashing or the Buy Box is lost. Do not spam daily price changes.
 Margin is still a guardrail: do not bleed cash, but when margin is healthy (>= 15%) prefer holding or micro-lowering to protect velocity over squeezing extra profit.`
+
+  let testContextText = "No recent price changes detected. The product is ready for a new strategic move."
+  if (recentChangeContext?.hasRecentChange) {
+    const r = recentChangeContext
+    const rankDelta = (r.rankBefore && r.rankNow) ? (r.rankNow - r.rankBefore) : 0
+    const rankMsg = rankDelta < 0 ? `improved by ${Math.abs(rankDelta)} positions` : rankDelta > 0 ? `worsened by ${rankDelta} positions` : "remained stable"
+    testContextText = `ACTIVE TEST RUNNING: Price was changed from $${r.oldPrice.toFixed(2)} to $${r.newPrice.toFixed(2)} exactly ${Math.round(r.daysSinceChange)} days ago. Since then, the Sales Rank has ${rankMsg} (Before: ${r.rankBefore || 'N/A'}, Now: ${r.rankNow || 'N/A'}). Status: ${r.evaluationStatus}. Unless rank is severely crashing, you should MAINTAIN to let the test complete.`
+  }
 
   const userPrompt = `Analyze this Amazon product and respond with ONLY a valid JSON object.
 Product: "${product.productName || product.sku}" (SKU: ${product.sku}, ASIN: ${product.asin})
@@ -102,6 +112,8 @@ Sales velocity (last 7 days): ${totalUnits7d} units (avg ${avgUnitsPerDay}/day).
 Weekday vs Weekend split: weekdays ${weekdayUnits} units vs weekends ${weekendUnits} units.
 Today is ${todayName}. The weekday engine's signal for today: ${todayProfile?.recommendedStrategy || "Insufficient data"} (relative rank performance ${todayProfile?.relativePerformancePercent ?? 0}% vs the week; lag-affected: ${todayProfile?.isLagAffected ? "YES" : "no"}).
 Lag-affected days detected by the engine: ${lagDays.length > 0 ? lagDays.join(", ") : "none"}.
+
+${testContextText}
 
 Weekday engine profiles (median Sales Rank; relative % = positive means WORSE/higher rank, negative means BETTER/lower rank; engine strategy):
 ${weekdayProfiles.map((p) => `- ${p.dayName}: median rank #${(p.medianRank || 0).toLocaleString()}, relative ${p.relativePerformancePercent > 0 ? "+" : ""}${p.relativePerformancePercent}%, engine says "${p.recommendedStrategy}"${p.isLagAffected ? " (lag-affected)" : ""}`).join("\n")}
@@ -166,7 +178,7 @@ JSON schema:
   // ── Rank-first local engine fallback (cents only, engine-driven) ──────────
   return rankFirstLocalStrategy(product, {
     totalUnits30d, totalUnits7d, avgUnitsPerDay, weekdayUnits, weekendUnits, netMarginPct,
-  }, weekdayProfiles, todayProfile, todayName, lagDays, llmFailureReason)
+  }, weekdayProfiles, todayProfile, todayName, lagDays, llmFailureReason, recentChangeContext)
 }
 
 /**
@@ -316,7 +328,8 @@ function rankFirstLocalStrategy(
   todayProfile: WeekdayProfile | undefined,
   todayName: string,
   lagDays: string[],
-  llmFailureReason: string
+  llmFailureReason: string,
+  recentChangeContext?: { hasRecentChange: boolean; daysSinceChange: number; oldPrice: number; newPrice: number; rankBefore?: number | null; rankNow?: number | null; evaluationStatus?: string }
 ): AIStrategicAssessment {
   const current = product.currentPrice
   const minPrice = product.minPrice
@@ -340,6 +353,10 @@ function rankFirstLocalStrategy(
   if (losingBuyBox && canLower) {
     action = "LOWER"
     reason = `Buy Box win rate is ${winRate}% (<70%). Reclaiming it with a ${formatCents(-step)} cut protects velocity and drives rank down.`
+  } else if (recentChangeContext?.hasRecentChange && recentChangeContext.daysSinceChange < 3 && (!recentChangeContext.rankNow || !recentChangeContext.rankBefore || recentChangeContext.rankNow < recentChangeContext.rankBefore + 5000)) {
+    // HOLD & TEST Logic: If changed recently and rank isn't crashing by 5000+ spots, hold.
+    action = "MAINTAIN"
+    reason = `Active test running: price was changed to $${recentChangeContext.newPrice.toFixed(2)} just ${Math.round(recentChangeContext.daysSinceChange)} days ago. Holding steady to allow A9 Sales Rank to fully digest the change.`
   } else if (todayWeak && canLower) {
     action = "LOWER"
     reason = `The weekday engine flags ${todayName} as a weak-rank day (relative ${((todayProfile?.relativePerformancePercent ?? 0) > 0 ? "+" : "")}${todayProfile?.relativePerformancePercent ?? 0}% vs the week). A ${formatCents(-step)} micro-cut stimulates velocity exactly when rank is softest.`
