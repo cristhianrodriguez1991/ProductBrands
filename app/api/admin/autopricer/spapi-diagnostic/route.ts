@@ -61,6 +61,7 @@ export async function GET() {
       
       let feedTest: any = null
       let createFeedTest: any = null
+      let patchListingsTest: any = null
       try {
         const client: any = getClient()
         const feedDoc = await client.callAPI({
@@ -97,6 +98,34 @@ export async function GET() {
             }
           }
         }
+        
+        // Test Listings Items API (patchListingsItem)
+        try {
+          const patchRes = await client.callAPI({
+            operation: "patchListingsItem",
+            endpoint: "listingsItems",
+            path: { sellerId: live?.storeId || "A123456789", sku: "TEST-SKU-123" },
+            query: { marketplaceIds: ["ATVPDKIKX0DER"] },
+            body: {
+              productType: "PRODUCT",
+              patches: [
+                {
+                  op: "replace",
+                  path: "/attributes/purchasable_offer",
+                  value: [{ marketplace_id: "ATVPDKIKX0DER", currency: "USD", our_price: [{ schedule: [{ value_with_tax: 19.99 }] }] }]
+                }
+              ]
+            },
+            options: { raw_result: true }
+          })
+          patchListingsTest = { ok: true, data: patchRes }
+        } catch (err: any) {
+          patchListingsTest = { 
+            ok: false, 
+            error: err?.message || String(err),
+            details: err?.response?.data || err?.response || err
+          }
+        }
       } catch (e: any) {
         feedTest = { 
           ok: false, 
@@ -109,7 +138,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       env: {
-        AMAZON_SPAPI_CLIENT_ID: clientId || "(empty)", // public identifier, not a secret
+        AMAZON_SPAPI_CLIENT_ID: clientId || "(empty)",
         clientIdGuid: guid,
         AMAZON_SPAPI_CLIENT_SECRET_set: !!process.env.AMAZON_SPAPI_CLIENT_SECRET,
         AMAZON_SPAPI_REFRESH_TOKEN_set: !!process.env.AMAZON_SPAPI_REFRESH_TOKEN,
@@ -118,6 +147,7 @@ export async function GET() {
       liveMarketplaceParticipations: live,
       feedTest,
       createFeedTest,
+      patchListingsTest,
       note:
         "Compare clientIdGuid to the GUID in your Seller Central app's amzn1.sp.solution.<guid> — if they match, that is the app being used. The Pricing role must be added to THIS app in Developer Central, then re-authorize to get a new refresh token carrying Pricing scope.",
     })
