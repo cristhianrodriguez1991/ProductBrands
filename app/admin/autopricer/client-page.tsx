@@ -33,6 +33,8 @@ import {
   Activity,
   Clock,
   ShieldAlert,
+  Target,
+  Brain,
 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { PRICE_INTELLIGENCE_CONFIG, MarketplaceCode, RecommendedActionCode } from "@/config/price-intelligence.config"
