@@ -408,12 +408,16 @@ export function KeepaAnalytics({
                   const isMonday = p.dayNumber === 1
                   const isFriday = p.dayNumber === 5
 
+                  const prodNameSnippet = (product as any)?.productName 
+                    ? `for ${(product as any).productName.substring(0, 30)}...` 
+                    : "for this product"
+
                   let badge = (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-950/80 text-blue-300 border border-blue-500/40 text-xs font-bold">
                       🎯 Margin Harvest Sync (AI + Engine)
                     </span>
                   )
-                  let rationale = "Stable mid-week corporate demand. Algorithmic corridor & AI confirm price elasticity is optimal."
+                  let rationale = `Stable mid-week demand ${prodNameSnippet}. Algorithmic corridor & AI confirm price elasticity is optimal.`
 
                   if (isWeekend) {
                     badge = (
@@ -422,29 +426,29 @@ export function KeepaAnalytics({
                       </span>
                     )
                     rationale = aiAssessment?.detectedLagEffect
-                      ? "AI detected office closure & Friday lag carryover. Engine locks price against volume-chasing price cuts."
-                      : "Corporate office closure pattern. Algorithmic engine & AI prevent unnecessary price reductions during low traffic."
+                      ? `AI detected weekend traffic changes & Friday lag carryover. Engine locks price against volume-chasing price cuts.`
+                      : `Weekend traffic pattern ${prodNameSnippet}. Algorithmic engine & AI prevent unnecessary price reductions during low traffic periods.`
                   } else if (isMonday) {
                     badge = (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 text-xs font-bold">
-                        🚀 Corporate Restock Harvest (AI + Engine)
+                        🚀 Start-of-Week Harvest (AI + Engine)
                       </span>
                     )
-                    rationale = "High B2B purchasing volume as offices reopen. AI & Engine align to capture premium margins."
+                    rationale = `High start-of-week purchasing volume ${prodNameSnippet}. AI & Engine align to capture premium margins.`
                   } else if (isFriday) {
                     badge = (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-950/80 text-indigo-300 border border-indigo-500/40 text-xs font-bold">
                         ⚡ Momentum Preparation (AI + Engine)
                       </span>
                     )
-                    rationale = "End of week rush before weekend closure. Maintain competitive Buy Box positioning to maximize weekly volume."
+                    rationale = `End of week rush before weekend. Maintain competitive Buy Box positioning to maximize weekly volume.`
                   } else if (isWorse) {
                     badge = (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-950/80 text-rose-300 border border-rose-500/40 text-xs font-bold">
                         📉 Velocity Stimulation (AI + Engine)
                       </span>
                     )
-                    rationale = "Mid-week rank softening detected without lag distortion. AI & Algorithmic corridor recommend micro-discount."
+                    rationale = `Mid-week rank softening detected without lag distortion. AI & Algorithmic corridor recommend micro-discount.`
                   }
 
                   return (
