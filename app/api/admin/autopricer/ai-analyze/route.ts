@@ -47,6 +47,7 @@ export async function POST(req: Request) {
     if (history.length > 0) {
       observations = history.map((h) => ({
         timestamp: h.timestamp,
+        keepaTimestamp: 0,
         salesRank: h.salesRank,
         buyBoxPrice: h.buyBoxPrice,
         amazonPrice: h.amazonPrice,
