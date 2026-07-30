@@ -43,8 +43,8 @@ export async function GET() {
           operation: "getMarketplaceParticipations",
           endpoint: "sellers",
         })
-        // Normalize across library versions
-        const parts = resp?.payload?.marketplaceParticipations || resp?.marketplaceParticipations || []
+        // Normalize across library versions (v1.2.1 returns the array directly, older versions wrapped in payload)
+        const parts = Array.isArray(resp) ? resp : (resp?.payload?.marketplaceParticipations || resp?.marketplaceParticipations || [])
         live = {
           ok: true,
           storeId: parts[0]?.store?.id || "(unknown)", // this is your Seller/Merchant ID
@@ -58,6 +58,40 @@ export async function GET() {
       } catch (e: any) {
         live = { ok: false, error: e?.message || String(e) }
       }
+      
+      let feedTest: any = null
+      try {
+        const client: any = getClient()
+        const feedDoc = await client.callAPI({
+          operation: "createFeedDocument",
+          endpoint: "feeds",
+          body: { contentType: "text/tab-separated-values; charset=UTF-8" },
+          options: { raw_result: true }
+        })
+        feedTest = { ok: true, data: feedDoc }
+      } catch (e: any) {
+        feedTest = { 
+          ok: false, 
+          error: e?.message || String(e),
+          details: e?.response?.data || e?.response || e,
+          stack: e?.stack
+        }
+      }
+
+    return NextResponse.json({
+      success: true,
+      env: {
+        AMAZON_SPAPI_CLIENT_ID: clientId || "(empty)", // public identifier, not a secret
+        clientIdGuid: guid,
+        AMAZON_SPAPI_CLIENT_SECRET_set: !!process.env.AMAZON_SPAPI_CLIENT_SECRET,
+        AMAZON_SPAPI_REFRESH_TOKEN_set: !!process.env.AMAZON_SPAPI_REFRESH_TOKEN,
+        AMAZON_SPAPI_REGION: region,
+      },
+      liveMarketplaceParticipations: live,
+      feedTest,
+      note:
+        "Compare clientIdGuid to the GUID in your Seller Central app's amzn1.sp.solution.<guid> — if they match, that is the app being used. The Pricing role must be added to THIS app in Developer Central, then re-authorize to get a new refresh token carrying Pricing scope.",
+    })
     }
 
     return NextResponse.json({
