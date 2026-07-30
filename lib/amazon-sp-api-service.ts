@@ -591,6 +591,29 @@ export async function submitPriceUpdateFeed(
   // Process sequentially to avoid 5.0 RPS rate limits if batch is large
   for (const item of items) {
     try {
+      // Fetch existing listing to preserve the base list price (our_price)
+      const existingListing: any = await client.callAPI({
+        operation: "getListingsItem",
+        endpoint: "listingsItems",
+        path: { sellerId, sku: item.sku },
+        query: {
+          marketplaceIds: [marketplaceId],
+          includedData: "attributes",
+        },
+      })
+
+      const existingOffer = existingListing?.attributes?.purchasable_offer?.[0]
+      const existingOurPrice = existingOffer?.our_price?.[0]?.schedule?.[0]?.value_with_tax
+
+      // If there's an existing base price, we preserve it. If not, use the new price.
+      const basePrice = existingOurPrice || item.price
+      const newSalePrice = Number(item.price)
+
+      // Start date: now. End date: 5 years from now
+      const now = new Date()
+      const end = new Date()
+      end.setFullYear(now.getFullYear() + 5)
+
       await client.callAPI({
         operation: "patchListingsItem",
         endpoint: "listingsItems",
@@ -610,7 +633,18 @@ export async function submitPriceUpdateFeed(
                     {
                       schedule: [
                         {
-                          value_with_tax: Number(item.price)
+                          value_with_tax: Number(basePrice)
+                        }
+                      ]
+                    }
+                  ],
+                  discounted_price: [
+                    {
+                      schedule: [
+                        {
+                          value_with_tax: newSalePrice,
+                          start_at: now.toISOString(),
+                          end_at: end.toISOString()
                         }
                       ]
                     }
