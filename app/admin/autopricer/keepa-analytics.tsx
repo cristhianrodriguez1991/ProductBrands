@@ -20,6 +20,7 @@ import {
   RefreshCw,
   ShoppingCart,
   History,
+  ArrowRight,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { WeekdayProfile, WeekdayHeatmapCell } from "@/lib/keepa/analytics/weekday-engine"
