@@ -527,21 +527,14 @@ export async function submitPriceUpdateFeed(
 
   if (!items.length) throw new Error("submitPriceUpdateFeed: no items provided")
 
-  // 1. Get dynamic sellerId from MarketplaceParticipations
-  let sellerId = ""
-  try {
-    const resp: any = await client.callAPI({
-      operation: "getMarketplaceParticipations",
-      endpoint: "sellers",
-    })
-    const parts = Array.isArray(resp) ? resp : (resp?.payload?.marketplaceParticipations || resp?.marketplaceParticipations || [])
-    sellerId = parts[0]?.store?.id || ""
-  } catch (err: any) {
-    throw new Error(`Failed to fetch sellerId for Listings API: ${err.message}`)
-  }
-
+  // 1. Get sellerId from environment variable (Listings API requires the Merchant Token)
+  const sellerId = process.env.AMAZON_SPAPI_SELLER_ID?.trim()
   if (!sellerId) {
-    throw new Error("Could not determine Amazon sellerId from getMarketplaceParticipations.")
+    throw new Error(
+      "Missing AMAZON_SPAPI_SELLER_ID in environment variables. " +
+      "Please go to Amazon Seller Central > Settings > Account Info > Merchant Token, " +
+      "and add that value as AMAZON_SPAPI_SELLER_ID in Vercel."
+    )
   }
 
   const errors: string[] = []
