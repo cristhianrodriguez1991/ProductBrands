@@ -496,3 +496,91 @@ function noSalesDataAssessment(
     },
   }
 }
+
+export interface AIPriceImpactPrediction {
+  projectedRank: number
+  projectedSales30d: number
+  reasoning: string
+}
+
+/**
+ * Connect to GLM (or OpenAI fallback) to predict the Sales Rank and Sales Volume
+ * impact of a simulated price change, based on the last 30 days of performance.
+ */
+export async function predictPriceImpactWithGLM(
+  product: MonitoredProduct,
+  simulatedPrice: number,
+  dailySales: DailySalesObservation[],
+  recentKeepaHistory: any[]
+): Promise<AIPriceImpactPrediction> {
+  const rawApiKey = process.env.OPENAI_API_KEY || ""
+  const apiKey = rawApiKey.replace(/\s+/g, "")
+  const cloudModel = process.env.OPENAI_MODEL || "gpt-4o-mini"
+  const ollamaBaseUrl = process.env.OLLAMA_BASE_URL
+  const ollamaModel = process.env.OLLAMA_MODEL || "glm4"
+
+  const totalUnits30d = dailySales.reduce((sum, d) => sum + d.unitsOrdered, 0)
+  
+  // Get median rank from recent history
+  let medianRank = 0
+  if (recentKeepaHistory.length > 0) {
+    const ranks = recentKeepaHistory.map(h => h.salesRank).filter(r => r > 0).sort((a, b) => a - b)
+    medianRank = ranks[Math.floor(ranks.length / 2)] || 0
+  }
+
+  const systemPrompt = `You are an elite Amazon Marketplace Pricing Strategist and A9 Sales Rank data scientist.
+Your task is to predict the resulting Amazon Sales Rank and 30-day Sales Volume if the seller changes their price to a specific simulated price.
+You will be provided with the current performance (30-day sales volume, current price, and current median sales rank).
+
+RULES:
+1. If the simulated price is LOWER than the current price, Sales Volume should generally INCREASE and Sales Rank should numerically DECREASE (improve).
+2. If the simulated price is HIGHER than the current price, Sales Volume should generally DECREASE and Sales Rank should numerically INCREASE (worsen).
+3. The magnitude of the change depends on the percentage change in price. E.g., a $0.50 drop on a $10 item (5%) is significant, but on a $100 item (0.5%) it is negligible.
+4. Output MUST be valid JSON.`
+
+  const userPrompt = `Predict the impact of a price change for this Amazon product.
+Product: "${product.productName || product.sku}"
+Current Price: $${product.currentPrice.toFixed(2)}
+Simulated Target Price: $${simulatedPrice.toFixed(2)}
+
+Past 30 Days Performance:
+- Total Units Sold: ${totalUnits30d}
+- Median Sales Rank: #${medianRank.toLocaleString()}
+
+Calculate the projected 30-day sales volume and the projected sales rank if the price is changed to the Simulated Target Price.
+
+Respond with ONLY a valid JSON object matching this schema:
+{
+  "projectedRank": number (the projected sales rank, e.g. 15000),
+  "projectedSales30d": number (the projected total units sold in a 30-day period, e.g. 120),
+  "reasoning": string (1-2 sentences explaining the logic based on price elasticity and the psychological threshold of the new price vs the old price)
+}`
+
+  try {
+    const llm = await callLLM(systemPrompt, userPrompt, {
+      ollamaBaseUrl, ollamaModel, cloudApiKey: apiKey, cloudModel,
+    })
+
+    if (llm && llm.content) {
+      const jsonMatch = llm.content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0])
+        return {
+          projectedRank: Math.round(Number(parsed.projectedRank)) || medianRank,
+          projectedSales30d: Math.round(Number(parsed.projectedSales30d)) || totalUnits30d,
+          reasoning: parsed.reasoning || "Prediction based on linear price elasticity."
+        }
+      }
+    }
+  } catch (error) {
+    console.warn("[AI] Prediction failed:", error)
+  }
+
+  // Fallback if LLM fails
+  const priceRatio = product.currentPrice / simulatedPrice
+  return {
+    projectedRank: Math.round(medianRank / priceRatio),
+    projectedSales30d: Math.round(totalUnits30d * priceRatio),
+    reasoning: "Fallback linear prediction model used due to AI service unavailability."
+  }
+}

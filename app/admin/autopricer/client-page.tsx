@@ -157,6 +157,8 @@ export default function AutopricerClient() {
 
   // Simulator State
   const [simulatedPrice, setSimulatedPrice] = useState<number>(0)
+  const [isPredicting, setIsPredicting] = useState<boolean>(false)
+  const [predictionData, setPredictionData] = useState<any>(null)
   
   // Inline Price Editing
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null)
@@ -850,9 +852,37 @@ export default function AutopricerClient() {
   }
 
   // Open Simulator
+  const runPrediction = async () => {
+    if (!selectedProduct) return
+    setIsPredicting(true)
+    setPredictionData(null)
+    try {
+      const res = await fetch("/api/admin/autopricer/simulate/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedProduct.id,
+          simulatedPrice
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setPredictionData(data.prediction)
+      } else {
+        alert("Prediction failed: " + data.error)
+      }
+    } catch (e: any) {
+      alert("Error running prediction: " + e.message)
+    } finally {
+      setIsPredicting(false)
+    }
+  }
+
   const openSimulator = (p: MonitoredProduct) => {
     setSelectedProduct(p)
     setSimulatedPrice(p.currentPrice)
+    setIsPredicting(false)
+    setPredictionData(null)
     setIsSimulatorOpen(true)
   }
 
@@ -1951,6 +1981,46 @@ export default function AutopricerClient() {
                   </div>
                 </div>
               )}
+
+              {/* AI Impact Prediction */}
+              <div className="bg-slate-950 p-4 rounded-xl border border-indigo-500/30 text-white space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-5 w-5 text-indigo-400" />
+                    <h4 className="font-bold text-sm text-indigo-100">AI Impact Prediction</h4>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    onClick={runPrediction} 
+                    disabled={isPredicting || simulatedPrice === selectedProduct.currentPrice}
+                    className="h-8 bg-indigo-600 hover:bg-indigo-500 text-white text-xs"
+                  >
+                    {isPredicting ? "Analyzing..." : "Generate AI Prediction"}
+                  </Button>
+                </div>
+                
+                {predictionData ? (
+                  <div className="space-y-3 pt-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg">
+                        <div className="text-[10px] text-slate-400 font-semibold mb-1">Projected Rank</div>
+                        <div className="text-xl font-bold text-emerald-400">#{predictionData.projectedRank.toLocaleString()}</div>
+                      </div>
+                      <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg">
+                        <div className="text-[10px] text-slate-400 font-semibold mb-1">Projected 30d Sales</div>
+                        <div className="text-xl font-bold text-emerald-400">{predictionData.projectedSales30d.toLocaleString()} units</div>
+                      </div>
+                    </div>
+                    <div className="bg-indigo-950/30 border border-indigo-900/50 p-3 rounded-lg text-xs text-indigo-200 leading-relaxed">
+                      <strong>AI Reasoning:</strong> {predictionData.reasoning}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-500 italic pt-2">
+                    Click the button to forecast Sales Rank and 30-day Volume based on the simulated price.
+                  </div>
+                )}
+              </div>
             </div>
 
             <DialogFooter>
