@@ -400,6 +400,54 @@ export async function getCompetitivePricingByAsins(asins: string[]): Promise<Map
   return map
 }
 
+/**
+ * Query Amazon SP-API for Listing Limits (Minimum/Maximum seller allowed prices) by SKUs.
+ * Uses the synchronous Listings Items API.
+ */
+export async function getListingLimitsBySkus(skus: string[]): Promise<Map<string, { minPrice?: number; maxPrice?: number }>> {
+  const map = new Map<string, { minPrice?: number; maxPrice?: number }>()
+  if (skus.length === 0) return map
+
+  const client: any = getClient()
+  const sellerId = process.env.AMAZON_SPAPI_SELLER_ID?.trim()
+  if (!sellerId) return map
+  
+  const usMarketplaceId = "ATVPDKIKX0DER"
+
+  for (const sku of skus) {
+    try {
+      const res: any = await client.callAPI({
+        operation: "getListingsItem",
+        endpoint: "listingsItems",
+        path: { sellerId, sku },
+        query: {
+          marketplaceIds: [usMarketplaceId],
+          includedData: "attributes",
+        },
+      })
+      
+      const attrs = res?.attributes || {}
+      
+      const minPriceAttr = attrs.minimum_seller_allowed_price?.[0]?.value
+      const maxPriceAttr = attrs.maximum_seller_allowed_price?.[0]?.value
+      
+      let minPrice: number | undefined = undefined
+      let maxPrice: number | undefined = undefined
+      
+      if (minPriceAttr) minPrice = parseFloat(minPriceAttr)
+      if (maxPriceAttr) maxPrice = parseFloat(maxPriceAttr)
+      
+      if (minPrice || maxPrice) {
+        map.set(sku, { minPrice, maxPrice })
+      }
+    } catch (e: any) {
+      console.warn(`[SP-API] getListingsItem failed for SKU ${sku}:`, e?.message)
+    }
+  }
+
+  return map
+}
+
 export interface DailySalesObservation {
   date: string // YYYY-MM-DD
   unitsOrdered: number
