@@ -1400,7 +1400,7 @@ export default function AutopricerClient() {
                             <span>{actionConfig.label}</span>
                             {p.recommendedPrice && p.recommendedPrice !== p.currentPrice && (
                               <span className="underline font-bold">
-                                ➔ {mp.symbol}{p.recommendedPrice.toFixed(2)}
+                                ➔ {mp.symbol}{p.recommendedAction === "MAINTAIN" ? p.currentPrice.toFixed(2) : p.recommendedPrice.toFixed(2)}
                               </span>
                             )}
                           </div>
@@ -1832,7 +1832,7 @@ export default function AutopricerClient() {
               )}
             </div>
 
-            <DialogFooter className="flex gap-2 justify-end pt-2">
+            <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => setIsApprovalModalOpen(false)}
