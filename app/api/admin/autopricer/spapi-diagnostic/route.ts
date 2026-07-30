@@ -60,6 +60,7 @@ export async function GET() {
       }
       
       let feedTest: any = null
+      let createFeedTest: any = null
       try {
         const client: any = getClient()
         const feedDoc = await client.callAPI({
@@ -69,6 +70,33 @@ export async function GET() {
           options: { raw_result: true }
         })
         feedTest = { ok: true, data: feedDoc }
+        
+        // Now try createFeed using the feedDocumentId
+        if (feedDoc?.body) {
+          const bodyObj = typeof feedDoc.body === "string" ? JSON.parse(feedDoc.body) : feedDoc.body
+          const feedDocumentId = bodyObj.feedDocumentId || feedDoc.feedDocumentId
+          if (feedDocumentId) {
+            try {
+              const feedRes = await client.callAPI({
+                operation: "createFeed",
+                endpoint: "feeds",
+                body: {
+                  feedType: "POST_FLAT_FILE_PRICEANDQUANTITYONLY_UPDATE_DATA",
+                  marketplaceIds: ["ATVPDKIKX0DER"],
+                  inputFeedDocumentId: feedDocumentId,
+                },
+                options: { raw_result: true }
+              })
+              createFeedTest = { ok: true, data: feedRes }
+            } catch (err: any) {
+              createFeedTest = { 
+                ok: false, 
+                error: err?.message || String(err),
+                details: err?.response?.data || err?.response || err
+              }
+            }
+          }
+        }
       } catch (e: any) {
         feedTest = { 
           ok: false, 
@@ -89,6 +117,7 @@ export async function GET() {
       },
       liveMarketplaceParticipations: live,
       feedTest,
+      createFeedTest,
       note:
         "Compare clientIdGuid to the GUID in your Seller Central app's amzn1.sp.solution.<guid> — if they match, that is the app being used. The Pricing role must be added to THIS app in Developer Central, then re-authorize to get a new refresh token carrying Pricing scope.",
     })
