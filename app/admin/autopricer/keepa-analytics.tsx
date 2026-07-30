@@ -58,9 +58,9 @@ export function KeepaAnalytics({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sku: (product as any)?.sku || "Y5-RYHV-Z8SR-stickerless",
-          asin: (product as any)?.asin || "B0DSJT1NP4",
-          id: (product as any)?.id,
+          sku: product?.sku,
+          asin: product?.asin,
+          id: product?.id,
         }),
       })
       const data = await res.json()
