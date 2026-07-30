@@ -19,6 +19,7 @@ interface SubmittedItem {
   clamped: boolean
   clampNote: string
   productName: string
+  scheduledFor: Date | null
 }
 
 export async function POST(req: Request) {
@@ -111,17 +112,50 @@ export async function POST(req: Request) {
         clamped: clampNote !== "",
         clampNote,
         productName: product.productName,
+        scheduledFor: log.scheduledFor,
+      })
+    }
+
+    // Filter out items scheduled for the future
+    const now = new Date()
+    const immediateItems = items.filter(it => !it.scheduledFor || new Date(it.scheduledFor) <= now)
+    const scheduledItems = items.filter(it => it.scheduledFor && new Date(it.scheduledFor) > now)
+
+    // Handle scheduled items immediately (no Amazon call)
+    if (scheduledItems.length > 0 && !dryRun) {
+      for (const it of scheduledItems) {
+        await prisma.priceChangeLog.update({
+          where: { id: it.logId },
+          data: {
+            status: "APPROVED_SCHEDULED",
+            approvedAt: new Date(),
+            approvedByUserId: userId,
+            notes: notes || `Scheduled for ${new Date(it.scheduledFor!).toDateString()}`,
+            newPrice: it.finalPrice,
+          }
+        })
+      }
+    }
+
+    // If there are no items to submit immediately, we can return early
+    if (immediateItems.length === 0) {
+      return NextResponse.json({
+        success: true,
+        dryRun,
+        status: "DONE",
+        scheduledCount: scheduledItems.length,
+        message: `✅ Scheduled ${scheduledItems.length} price change(s) for future execution. No immediate changes to Amazon.`
       })
     }
 
     // 2. DRY RUN — return a preview, change nothing.
     if (dryRun) {
-      const tsvPreview = ["sku\tprice\tquantity", ...items.map((it) => `${it.sku}\t${it.finalPrice.toFixed(2)}\t`)].join("\n")
+      const tsvPreview = ["sku\tprice\tquantity", ...immediateItems.map((it) => `${it.sku}\t${it.finalPrice.toFixed(2)}\t`)].join("\n")
       return NextResponse.json({
         success: true,
         dryRun: true,
         marketplace: logs[0]?.monitoredProduct?.marketplace || "US",
-        items: items.map((it) => ({
+        items: immediateItems.map((it) => ({
           logId: it.logId,
           productName: it.productName,
           sku: it.sku,
@@ -132,13 +166,13 @@ export async function POST(req: Request) {
           clampNote: it.clampNote,
         })),
         feedTsvPreview: tsvPreview,
-        message: `Dry run: would push ${items.length} price change(s) to Amazon. Nothing was sent or changed.`,
+        message: `Dry run: would push ${immediateItems.length} price change(s) to Amazon (and ${scheduledItems.length} scheduled). Nothing was sent.`,
       })
     }
 
     // 3. LIVE — submit the price feed to Amazon.
     const marketplaceCode = logs[0]?.monitoredProduct?.marketplace || "US"
-    const feedItems = items.map((it) => ({ sku: it.sku, price: it.finalPrice }))
+    const feedItems = immediateItems.map((it) => ({ sku: it.sku, price: it.finalPrice }))
 
     let feedSubmissionId: string
     try {
@@ -154,9 +188,9 @@ export async function POST(req: Request) {
       }, { status: 502 })
     }
 
-    // Mark all logs as SUBMITTED_TO_AMAZON with the feed id + submitted price.
+    // Mark all immediate logs as SUBMITTED_TO_AMAZON with the feed id + submitted price.
     const approvedAt = new Date()
-    for (const it of items) {
+    for (const it of immediateItems) {
       const log = logs.find((l) => l.id === it.logId)!
       const tempRestore = restorePrice && Number(restorePrice) > 0 ? Number(restorePrice) : log.oldPrice
       const tempExpiry = expiresAt ? new Date(expiresAt) : new Date(Date.now() + 24 * 3600 * 1000)
@@ -191,7 +225,7 @@ export async function POST(req: Request) {
     }
 
     if (result.done) {
-      await finalizeFeedResult(feedSubmissionId, result, items, logs)
+      await finalizeFeedResult(feedSubmissionId, result, immediateItems, logs)
       return NextResponse.json({
         success: true,
         dryRun: false,
@@ -200,9 +234,10 @@ export async function POST(req: Request) {
         accepted: result.accepted,
         errors: result.errors,
         resultPreview: result.resultPreview,
-        processedCount: items.length,
+        processedCount: immediateItems.length,
+        scheduledCount: scheduledItems.length,
         message: result.accepted
-          ? `✅ Amazon accepted the price update for ${items.length} SKU(s). Live price updated.`
+          ? `✅ Amazon accepted the price update for ${immediateItems.length} SKU(s). ${scheduledItems.length > 0 ? `(${scheduledItems.length} scheduled).` : ''}`
           : `⚠️ Amazon finished processing but reported ${result.errors.length} error(s). See details.`,
       })
     }
@@ -212,7 +247,8 @@ export async function POST(req: Request) {
       dryRun: false,
       feedSubmissionId,
       status: "PROCESSING",
-      processedCount: items.length,
+      processedCount: immediateItems.length,
+      scheduledCount: scheduledItems.length,
       message: `Price feed submitted to Amazon (id ${feedSubmissionId}). Still processing — the panel will poll until it resolves.`,
     })
   } catch (error: any) {

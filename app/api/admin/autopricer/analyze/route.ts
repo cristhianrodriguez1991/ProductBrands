@@ -7,6 +7,23 @@ import { analyzePricingWithGLM } from "@/lib/ai/pricing-analyzer"
 import { getDailySalesAndTrafficBySku } from "@/lib/amazon-sp-api-service"
 import { analyzeWeekdayBehavior } from "@/lib/keepa/analytics/weekday-engine"
 
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+function getNextDateForDayName(dayName: string): Date {
+  const targetDay = DAY_NAMES.findIndex(d => d.toLowerCase() === dayName.toLowerCase())
+  const today = new Date()
+  if (targetDay === -1) return today // fallback to today if invalid
+  
+  const currentDay = today.getDay()
+  let daysUntil = targetDay - currentDay
+  if (daysUntil <= 0) daysUntil += 7 // If today or past, get *next* occurrence
+
+  const nextDate = new Date(today)
+  nextDate.setDate(today.getDate() + daysUntil)
+  nextDate.setHours(0, 0, 0, 0)
+  return nextDate
+}
+
 export const dynamic = "force-dynamic"
 export const maxDuration = 300 // 5 minutes max duration on Vercel Pro
 
@@ -136,6 +153,11 @@ export async function POST(req: Request) {
           assessment.proposedPrice && 
           Math.abs(assessment.proposedPrice - prod.currentPrice) > 0.01) {
         
+        let scheduledForDate = null
+        if (assessment.scheduledDay) {
+          scheduledForDate = getNextDateForDayName(assessment.scheduledDay)
+        }
+
         await prisma.priceChangeLog.create({
           data: {
             monitoredProductId: prod.id,
@@ -144,6 +166,7 @@ export async function POST(req: Request) {
             recommendedAction: assessment.recommendedAction,
             reason: assessment.strategicSummary + "\n\nKey Takeaways:\n" + assessment.keyTakeaways.map((t: string) => "- " + t).join("\n"),
             status: "PENDING_APPROVAL",
+            scheduledFor: scheduledForDate,
           },
         })
         recommendationsGenerated++

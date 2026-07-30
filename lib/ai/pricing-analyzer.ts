@@ -11,6 +11,7 @@ export interface AIStrategicAssessment {
   proposedPrice?: number
   confidenceScore: number // 0 - 100
   keyTakeaways: string[]
+  scheduledDay?: string // e.g. "Saturday"
   // Enriched, engine-driven context (optional, ignored by older UI)
   weekdayStrategy?: string
   adjustmentCents?: number
@@ -127,7 +128,8 @@ JSON schema:
   "recommendedAction": "MAINTAIN" | "RAISE" | "LOWER",
   "proposedPrice": number,
   "confidenceScore": number 0-100,
-  "keyTakeaways": ["point 1", "point 2", "point 3"]
+  "keyTakeaways": ["point 1", "point 2", "point 3"],
+  "scheduledDay": "Optional day of the week to execute this change, e.g. 'Saturday'. Omit if the change should happen immediately."
 }`
 
   let llmFailureReason = ""
@@ -158,6 +160,7 @@ JSON schema:
           proposedPrice: clamped.price,
           confidenceScore: Math.min(100, Math.max(0, Number(parsed.confidenceScore) || 90)),
           keyTakeaways: Array.isArray(parsed.keyTakeaways) ? parsed.keyTakeaways : [],
+          scheduledDay: parsed.scheduledDay,
           weekdayStrategy: todayProfile?.recommendedStrategy,
           adjustmentCents: clamped.cents,
           velocitySnapshot: {

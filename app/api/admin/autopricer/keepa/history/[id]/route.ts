@@ -22,6 +22,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const { id } = await params
     const product = await prisma.monitoredProduct.findUnique({
       where: { id },
+      include: {
+        keepaEvaluations: {
+          orderBy: { createdAt: 'desc' },
+          take: 50
+        },
+        priceHistory: {
+          orderBy: { requestedAt: 'desc' },
+          take: 50
+        }
+      }
     })
 
     if (!product) {
@@ -116,6 +126,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       weekdayHeatmap: weekdayData.heatmap,
       overallMedianRank: weekdayData.overallMedianRank,
       trendAnalysis,
+      evaluations: product.keepaEvaluations || [],
+      priceHistory: product.priceHistory || [],
     })
   } catch (error: any) {
     console.error("[KEEPA_HISTORY_GET]", error)

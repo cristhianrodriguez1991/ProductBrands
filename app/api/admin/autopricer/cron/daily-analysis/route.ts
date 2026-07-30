@@ -1,8 +1,26 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { submitPriceUpdateFeed } from "@/lib/amazon-sp-api-service"
 import { analyzePricingWithGLM } from "@/lib/ai/pricing-analyzer"
 import { getDailySalesAndTrafficBySku } from "@/lib/amazon-sp-api-service"
 import { analyzeWeekdayBehavior } from "@/lib/keepa/analytics/weekday-engine"
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+function getNextDateForDayName(dayName: string): Date {
+  const targetDay = DAY_NAMES.findIndex(d => d.toLowerCase() === dayName.toLowerCase())
+  const today = new Date()
+  if (targetDay === -1) return today // fallback to today if invalid
+  
+  const currentDay = today.getDay()
+  let daysUntil = targetDay - currentDay
+  if (daysUntil <= 0) daysUntil += 7 // If today or past, get *next* occurrence
+
+  const nextDate = new Date(today)
+  nextDate.setDate(today.getDate() + daysUntil)
+  nextDate.setHours(0, 0, 0, 0)
+  return nextDate
+}
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300 // 5 minutes max duration on Vercel Pro
@@ -132,6 +150,11 @@ export async function GET(req: Request) {
           assessment.proposedPrice && 
           Math.abs(assessment.proposedPrice - prod.currentPrice) > 0.01) {
         
+        let scheduledForDate = null
+        if (assessment.scheduledDay) {
+          scheduledForDate = getNextDateForDayName(assessment.scheduledDay)
+        }
+
         await prisma.priceChangeLog.create({
           data: {
             monitoredProductId: prod.id,
@@ -140,9 +163,57 @@ export async function GET(req: Request) {
             recommendedAction: assessment.recommendedAction,
             reason: assessment.strategicSummary + "\n\nKey Takeaways:\n" + assessment.keyTakeaways.map(t => "- " + t).join("\n"),
             status: "PENDING_APPROVAL",
+            scheduledFor: scheduledForDate,
           },
         })
         recommendationsGenerated++
+      }
+    }
+
+    // 8. Execute Scheduled Approvals
+    let executedScheduledCount = 0
+    const now = new Date()
+    const scheduledLogs = await prisma.priceChangeLog.findMany({
+      where: {
+        status: "APPROVED_SCHEDULED",
+        scheduledFor: { lte: now }
+      },
+      include: { monitoredProduct: true }
+    })
+
+    if (scheduledLogs.length > 0) {
+      // Group by marketplace
+      const byMarketplace: Record<string, typeof scheduledLogs> = {}
+      for (const log of scheduledLogs) {
+        const mp = log.monitoredProduct.marketplace
+        if (!byMarketplace[mp]) byMarketplace[mp] = []
+        byMarketplace[mp].push(log)
+      }
+
+      for (const [marketplaceCode, logs] of Object.entries(byMarketplace)) {
+        const feedItems = logs.map(l => ({ sku: l.monitoredProduct.sku, price: l.newPrice }))
+        try {
+          const submitted = await submitPriceUpdateFeed(feedItems, marketplaceCode)
+          const feedId = submitted.feedSubmissionId
+          
+          for (const log of logs) {
+            await prisma.priceChangeLog.update({
+              where: { id: log.id },
+              data: {
+                status: "SUBMITTED_TO_AMAZON",
+                notes: JSON.stringify({
+                  feedSubmissionId: feedId,
+                  submittedPrice: log.newPrice,
+                  submittedAt: new Date().toISOString(),
+                  wasScheduled: true
+                })
+              }
+            })
+          }
+          executedScheduledCount += logs.length
+        } catch (err: any) {
+          console.error(`[CRON] Failed to submit scheduled price feed for ${marketplaceCode}:`, err)
+        }
       }
     }
 
@@ -150,7 +221,8 @@ export async function GET(req: Request) {
       success: true,
       analyzedCount,
       recommendationsGenerated,
-      message: `Daily analysis complete. Analyzed ${analyzedCount} products, generated ${recommendationsGenerated} new price change recommendations.`,
+      executedScheduledCount,
+      message: `Daily analysis complete. Analyzed ${analyzedCount} products, generated ${recommendationsGenerated} new price change recommendations, executed ${executedScheduledCount} scheduled price changes.`,
     })
 
   } catch (error) {

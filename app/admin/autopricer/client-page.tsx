@@ -157,6 +157,11 @@ export default function AutopricerClient() {
 
   // Simulator State
   const [simulatedPrice, setSimulatedPrice] = useState<number>(0)
+  
+  // Inline Price Editing
+  const [editingPriceId, setEditingPriceId] = useState<string | null>(null)
+  const [editingPriceValue, setEditingPriceValue] = useState<string>("")
+  const [submittingPrice, setSubmittingPrice] = useState(false)
 
   // Form State
   const [formData, setFormData] = useState({
@@ -889,6 +894,30 @@ export default function AutopricerClient() {
     return list
   }, [products])
 
+  // Handle Manual Inline Price Update
+  const handleManualPriceUpdate = async (id: string) => {
+    try {
+      setSubmittingPrice(true)
+      const res = await fetch(`/api/admin/autopricer/products/${id}/manual-price`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPrice: editingPriceValue }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setEditingPriceId(null)
+        await fetchProducts() // Refresh to show new price
+      } else {
+        alert("Failed to update price: " + data.error)
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Error submitting manual price update")
+    } finally {
+      setSubmittingPrice(false)
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       {/* ── Header & Action Strip ── */}
@@ -1230,10 +1259,58 @@ export default function AutopricerClient() {
                       {/* Unit Economics Box */}
                       <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800/60 space-y-2">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">Current Price:</span>
-                          <span className="font-bold text-sm text-slate-900 dark:text-white">
-                            {mp.symbol}{p.currentPrice.toFixed(2)}
+                          <span className="text-muted-foreground flex items-center gap-1.5">
+                            Current Price:
+                            {editingPriceId !== p.id && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingPriceId(p.id)
+                                  setEditingPriceValue(p.currentPrice.toString())
+                                }}
+                                className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 font-semibold bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-1.5 py-0.5 rounded transition-all hover:scale-105"
+                                title="Manually override Amazon price"
+                              >
+                                <Edit3 className="h-2.5 w-2.5" /> Edit
+                              </button>
+                            )}
                           </span>
+                          {editingPriceId === p.id ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-muted-foreground">{mp.symbol}</span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={editingPriceValue}
+                                onChange={(e) => setEditingPriceValue(e.target.value)}
+                                className="w-20 h-6 text-xs px-1.5 py-0 text-right"
+                                autoFocus
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => handleManualPriceUpdate(p.id)}
+                                disabled={submittingPrice}
+                                className="h-6 w-6 p-0 bg-emerald-600 hover:bg-emerald-500 rounded text-white ml-1"
+                                title="Save to Amazon"
+                              >
+                                {submittingPrice ? <RefreshCw className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingPriceId(null)}
+                                disabled={submittingPrice}
+                                className="h-6 w-6 p-0 rounded text-slate-500"
+                                title="Cancel"
+                              >
+                                <XCircle className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="font-bold text-sm text-slate-900 dark:text-white">
+                              {mp.symbol}{p.currentPrice.toFixed(2)}
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-muted-foreground flex items-center gap-1.5">
@@ -1582,6 +1659,8 @@ export default function AutopricerClient() {
                 heatmap={keepaHistoryData.weekdayHeatmap || []}
                 overallMedianRank={keepaHistoryData.overallMedianRank || 3000}
                 trendAnalysis={keepaHistoryData.trendAnalysis}
+                evaluations={keepaHistoryData.evaluations || []}
+                priceHistory={keepaHistoryData.priceHistory || []}
               />
             </div>
           ) : (
@@ -1619,6 +1698,12 @@ export default function AutopricerClient() {
                   <span className="text-slate-400">Recommended Price:</span>
                   <span className="font-bold text-emerald-400">${approvingChange.newPrice.toFixed(2)}</span>
                 </div>
+                {approvingChange.scheduledFor && (
+                  <div className="flex justify-between text-indigo-400 font-bold">
+                    <span>Scheduled Execution:</span>
+                    <span>{new Date(approvingChange.scheduledFor).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+                  </div>
+                )}
                 <div className="text-xs text-slate-400 pt-1 border-t border-slate-800">
                   <strong>Reason:</strong> {approvingChange.reason}
                 </div>

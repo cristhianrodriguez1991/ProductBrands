@@ -19,6 +19,7 @@ import {
   BarChart2,
   RefreshCw,
   ShoppingCart,
+  History,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { WeekdayProfile, WeekdayHeatmapCell } from "@/lib/keepa/analytics/weekday-engine"
@@ -30,6 +31,8 @@ interface KeepaAnalyticsProps {
   heatmap: WeekdayHeatmapCell[]
   overallMedianRank: number
   trendAnalysis?: RankTrendAnalysis
+  evaluations?: any[]
+  priceHistory?: any[]
 }
 
 export function KeepaAnalytics({
@@ -38,6 +41,8 @@ export function KeepaAnalytics({
   heatmap = [],
   overallMedianRank = 3000,
   trendAnalysis,
+  evaluations = [],
+  priceHistory = [],
 }: KeepaAnalyticsProps) {
   const [metric, setMetric] = useState<"rank" | "buybox" | "offers">("rank")
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -577,6 +582,102 @@ export function KeepaAnalytics({
               )
             })}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Price vs Ranking Tracking History ── */}
+      <Card className="bg-slate-900 border-slate-800 text-white shadow-lg overflow-hidden">
+        <CardHeader className="border-b border-slate-800/80 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+              <History className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle className="text-lg font-bold">Price vs Ranking Tracking</CardTitle>
+              <CardDescription className="text-slate-400">
+                History of price changes and the resulting impact on Sales Rank.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {priceHistory.length === 0 ? (
+            <div className="p-8 text-center text-slate-500 text-sm font-medium">
+              No pricing history available for this product yet.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-800/50">
+              {priceHistory.map((log: any) => {
+                const evalObj = evaluations.find((e: any) => e.priceChangeLogId === log.id)
+                const isRaise = log.newPrice > log.oldPrice
+                return (
+                  <div key={log.id} className="p-4 hover:bg-slate-800/20 transition-colors">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                      {/* Left: Change Summary */}
+                      <div className="space-y-2 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${isRaise ? 'bg-indigo-500/20 text-indigo-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                            {log.recommendedAction}
+                          </span>
+                          <span className="text-slate-400 text-xs font-mono">
+                            {new Date(log.requestedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                          {log.status === "APPROVED_SCHEDULED" && log.scheduledFor && (
+                            <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-md font-semibold">
+                              Scheduled for {new Date(log.scheduledFor).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 text-lg font-bold text-slate-200">
+                          <span className="line-through text-slate-500 text-base">${log.oldPrice.toFixed(2)}</span>
+                          <ArrowRight className="h-4 w-4 text-slate-500" />
+                          <span className={isRaise ? 'text-indigo-400' : 'text-emerald-400'}>
+                            ${log.newPrice.toFixed(2)}
+                          </span>
+                        </div>
+                        {log.reason && (
+                          <div className="text-xs text-slate-400 bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/60 leading-relaxed max-w-2xl">
+                            <span className="font-semibold text-slate-300">AI Context: </span>
+                            {log.reason}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Rank Impact / Evaluation */}
+                      <div className="flex-1 md:max-w-xs space-y-2">
+                        {evalObj ? (
+                          <div className={`p-3 rounded-xl border ${evalObj.successScore > 50 ? 'bg-emerald-950/20 border-emerald-900/50' : 'bg-rose-950/20 border-rose-900/50'}`}>
+                            <div className="text-xs font-semibold text-slate-300 mb-2">Rank Impact (7 days after)</div>
+                            <div className="grid grid-cols-2 gap-2 text-sm font-mono mb-2">
+                              <div>
+                                <span className="text-slate-500 text-xs block">Before</span>
+                                <span className="text-slate-300 font-bold">#{evalObj.rankBefore?.toLocaleString() || 'N/A'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 text-xs block">After (3d/7d)</span>
+                                <span className="text-slate-200 font-bold">#{evalObj.rank3d?.toLocaleString() || evalObj.rank7d?.toLocaleString() || 'N/A'}</span>
+                              </div>
+                            </div>
+                            {evalObj.aiFeedback && (
+                              <p className="text-[11px] text-slate-400 leading-tight">
+                                {evalObj.aiFeedback}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-slate-950/40 border border-slate-800/40 rounded-xl flex items-center justify-center h-full text-xs text-slate-500 font-medium">
+                            {log.status === "PENDING_APPROVAL" || log.status === "APPROVED_SCHEDULED" 
+                              ? "Waiting for execution..." 
+                              : "Evaluation pending (requires 7 days)"}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
