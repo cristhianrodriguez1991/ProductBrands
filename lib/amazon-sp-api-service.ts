@@ -401,11 +401,11 @@ export async function getCompetitivePricingByAsins(asins: string[]): Promise<Map
 }
 
 /**
- * Query Amazon SP-API for Listing Limits (Minimum/Maximum seller allowed prices) by SKUs.
+ * Query Amazon SP-API for Listing Details (current price, minimum/maximum allowed prices) by SKUs.
  * Uses the synchronous Listings Items API.
  */
-export async function getListingLimitsBySkus(skus: string[]): Promise<Map<string, { minPrice?: number; maxPrice?: number }>> {
-  const map = new Map<string, { minPrice?: number; maxPrice?: number }>()
+export async function getListingDetailsBySkus(skus: string[]): Promise<Map<string, { minPrice?: number; maxPrice?: number; currentPrice?: number }>> {
+  const map = new Map<string, { minPrice?: number; maxPrice?: number; currentPrice?: number }>()
   if (skus.length === 0) return map
 
   const client: any = getClient()
@@ -433,12 +433,19 @@ export async function getListingLimitsBySkus(skus: string[]): Promise<Map<string
       
       let minPrice: number | undefined = undefined
       let maxPrice: number | undefined = undefined
+      let currentPrice: number | undefined = undefined
       
       if (minPriceAttr) minPrice = parseFloat(minPriceAttr)
       if (maxPriceAttr) maxPrice = parseFloat(maxPriceAttr)
       
-      if (minPrice || maxPrice) {
-        map.set(sku, { minPrice, maxPrice })
+      const existingOffer = attrs?.purchasable_offer?.[0]
+      const discountedPrice = existingOffer?.discounted_price?.[0]?.schedule?.[0]?.value_with_tax
+      const ourPrice = existingOffer?.our_price?.[0]?.schedule?.[0]?.value_with_tax
+      if (discountedPrice !== undefined) currentPrice = Number(discountedPrice)
+      else if (ourPrice !== undefined) currentPrice = Number(ourPrice)
+      
+      if (minPrice !== undefined || maxPrice !== undefined || currentPrice !== undefined) {
+        map.set(sku, { minPrice, maxPrice, currentPrice })
       }
     } catch (e: any) {
       console.warn(`[SP-API] getListingsItem failed for SKU ${sku}:`, e?.message)

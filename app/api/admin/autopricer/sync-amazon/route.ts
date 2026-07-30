@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { PERMISSIONS, hasEffectivePermission } from "@/lib/permissions"
-import { getFbaFeeEstimate, getCompetitivePricingByAsins, getListingLimitsBySkus } from "@/lib/amazon-sp-api-service"
+import { getFbaFeeEstimate, getCompetitivePricingByAsins, getListingDetailsBySkus } from "@/lib/amazon-sp-api-service"
 
 export const maxDuration = 120
 export const dynamic = "force-dynamic"
@@ -46,7 +46,7 @@ export async function POST() {
     try {
       if (process.env.AMAZON_SPAPI_CLIENT_ID) {
         compMap = await getCompetitivePricingByAsins(asins)
-        limitsMap = await getListingLimitsBySkus(skus)
+        limitsMap = await getListingDetailsBySkus(skus)
       }
     } catch (e) {
       console.warn("[SYNC_AMAZON] API batch fetch failed:", e)

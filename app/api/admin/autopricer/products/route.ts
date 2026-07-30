@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { PERMISSIONS, hasEffectivePermission } from "@/lib/permissions"
+import { getListingDetailsBySkus, getFbaFeeEstimate } from "@/lib/amazon-sp-api-service"
 import { PRICE_INTELLIGENCE_CONFIG } from "@/config/price-intelligence.config"
 
 // Helper to calculate unit economics and margin %
@@ -164,13 +165,43 @@ export async function POST(req: Request) {
     }
 
     // Perform initial unit economics evaluation
-    const numPrice = Number(currentPrice)
+    let numPrice = Number(currentPrice)
     const numCost = Number(unitCost)
-    const numMinPrice = Number(minPrice || numCost * 1.3)
-    const numMaxPrice = Number(maxPrice || numCost * 4.0)
+    
+    // Auto-fetch real live Amazon price and limits on import
+    try {
+      if (process.env.AMAZON_SPAPI_CLIENT_ID) {
+        const detailsMap = await getListingDetailsBySkus([sku.trim()])
+        const liveDetails = detailsMap.get(sku.trim())
+        if (liveDetails?.currentPrice) {
+          numPrice = liveDetails.currentPrice
+        }
+        if (liveDetails?.minPrice && !minPrice) {
+          body.minPrice = liveDetails.minPrice
+        }
+        if (liveDetails?.maxPrice && !maxPrice) {
+          body.maxPrice = liveDetails.maxPrice
+        }
+      }
+    } catch (e) {
+      console.warn(`[AUTOPRICER_IMPORT] Failed to fetch live price for ${sku}`, e)
+    }
+
+    const numMinPrice = Number(body.minPrice || numCost * 1.3)
+    const numMaxPrice = Number(body.maxPrice || numCost * 4.0)
     const numMarginTarget = Number(minMarginPercent)
 
-    const { netMarginPct } = calculateUnitEconomics(numPrice, numCost, Number(referralFeePercent), effectiveFbaFee)
+    let actualFbaFee = effectiveFbaFee
+    try {
+      if (process.env.AMAZON_SPAPI_CLIENT_ID && fulfillmentMethod === "FBA") {
+         const feeEst = await getFbaFeeEstimate(sku.trim(), numPrice, true)
+         if (feeEst?.fbaFee) actualFbaFee = feeEst.fbaFee
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    const { netMarginPct } = calculateUnitEconomics(numPrice, numCost, Number(referralFeePercent), actualFbaFee)
 
     let recommendedAction = "MAINTAIN"
     let recommendationReason = "Unit economics look healthy upon initial registration."
@@ -184,7 +215,7 @@ export async function POST(req: Request) {
       // Calculate price needed to achieve margin target: Price = (Cost + FBA) / (1 - (MarginPct + ReferralPct)/100)
       const feeRate = (numMarginTarget + Number(referralFeePercent)) / 100
       if (feeRate < 0.95) {
-        const targetPrice = (numCost + effectiveFbaFee) / (1 - feeRate)
+        const targetPrice = (numCost + actualFbaFee) / (1 - feeRate)
         const cappedPrice = Math.min(Math.round(targetPrice * 100) / 100, numMaxPrice)
         if (cappedPrice > numPrice) {
           recommendedAction = "RAISE"
@@ -209,7 +240,7 @@ export async function POST(req: Request) {
         maxPrice: numMaxPrice,
         minMarginPercent: numMarginTarget,
         referralFeePercent: Number(referralFeePercent),
-        fbaFee: effectiveFbaFee,
+        fbaFee: actualFbaFee,
         status: "ACTIVE",
         recommendedAction,
         recommendedPrice,
