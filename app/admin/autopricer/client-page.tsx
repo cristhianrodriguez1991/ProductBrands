@@ -1083,16 +1083,6 @@ export default function AutopricerClient() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLoadDemo}
-            disabled={seedingDemo || analyzing}
-            className="bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-600"
-          >
-            <Sparkles className="h-4 w-4 mr-2 text-amber-400 animate-pulse" />
-            {seedingDemo ? "Seeding Demo..." : "Load Demo Products"}
-          </Button>
-          <Button
             size="sm"
             onClick={handleRunAnalysis}
             disabled={analyzing || loading}
@@ -1100,24 +1090,6 @@ export default function AutopricerClient() {
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${analyzing ? "animate-spin" : ""}`} />
             {analyzing ? "Analyzing Intelligence..." : "Run Intelligence Analysis"}
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleSyncAmazon}
-            disabled={syncingAmazon || loading}
-            className="bg-purple-600 hover:bg-purple-500 text-white shadow-md font-medium"
-          >
-            <RefreshCw className={`h-4 w-4 mr-1.5 ${syncingAmazon ? "animate-spin" : ""}`} />
-            {syncingAmazon ? "Syncing Amazon..." : "Sync Amazon Pricing & Fees"}
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => handleSyncKeepa()}
-            disabled={syncingKeepa || loading}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-md font-medium"
-          >
-            <Zap className={`h-4 w-4 mr-1.5 ${syncingKeepa ? "animate-spin text-amber-300" : ""}`} />
-            {syncingKeepa ? "Syncing Keepa..." : "Sync Keepa Intelligence"}
           </Button>
           <Button
             size="sm"
@@ -1129,14 +1101,6 @@ export default function AutopricerClient() {
           >
             <Package className="h-4 w-4 mr-1.5" />
             Import from Inventory
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setIsAddModalOpen(true)}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-md font-medium"
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add Monitored Product
           </Button>
         </div>
       </div>
@@ -1316,6 +1280,28 @@ export default function AutopricerClient() {
               >
                 <RefreshCw className={`h-4 w-4 mr-1.5 ${syncingSales ? "animate-spin" : ""}`} />
                 {syncingSales ? "Syncing..." : "Sync Sales"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncAmazon}
+                disabled={syncingAmazon || loading}
+                className="h-9 font-medium border-purple-200 dark:border-purple-900 text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30"
+                title="Synchronize Live Amazon Pricing and FBA Fees for all products."
+              >
+                <RefreshCw className={`h-4 w-4 mr-1.5 ${syncingAmazon ? "animate-spin" : ""}`} />
+                {syncingAmazon ? "Syncing..." : "Sync Amazon Pricing"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSyncKeepa()}
+                disabled={syncingKeepa || loading}
+                className="h-9 font-medium border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+                title="Synchronize Keepa Sales Rank Intelligence for all products."
+              >
+                <Zap className={`h-4 w-4 mr-1.5 ${syncingKeepa ? "animate-spin text-amber-500" : ""}`} />
+                {syncingKeepa ? "Syncing..." : "Sync Keepa"}
               </Button>
               <Button
                 variant="outline"
