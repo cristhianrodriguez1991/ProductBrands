@@ -1402,8 +1402,8 @@ export default function AutopricerClient() {
                                   <Brain className="h-3 w-3" />
                                   {actionConfig.label}
                                 </span>
-                                {p.recommendedPrice && p.recommendedPrice !== p.currentPrice && (
-                                  <span className="font-bold shrink-0">➔ {mp.symbol}{p.recommendedAction === "MAINTAIN" ? p.currentPrice.toFixed(2) : p.recommendedPrice.toFixed(2)}</span>
+                                {p.recommendedPrice && p.recommendedAction !== "MAINTAIN" && p.recommendedPrice !== p.currentPrice && (
+                                  <span className="font-bold shrink-0">➔ {mp.symbol}{p.recommendedPrice.toFixed(2)}</span>
                                 )}
                               </div>
                             </button>
