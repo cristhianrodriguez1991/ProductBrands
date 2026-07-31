@@ -141,7 +141,7 @@ export function KeepaChart({
             <CardDescription className="text-slate-400 flex items-center gap-1.5 mt-1">
               <Info className="h-4 w-4 text-indigo-400 shrink-0" />
               <span>
-                <strong>Note:</strong> Sales Rank scale (left axis) is <strong>inverted</strong> (#1 is top/best). An upward slope indicates ranking improvement!
+                <strong>Note:</strong> Sales Rank scale (left axis) tracks your product's ranking. Lower rank numbers (e.g. #1) mean higher sales volume.
               </span>
             </CardDescription>
           </div>
@@ -176,7 +176,7 @@ export function KeepaChart({
             className="flex items-center gap-1.5 text-emerald-400 hover:opacity-80 font-medium transition-opacity"
           >
             {showRank ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 opacity-50" />}
-            Sales Rank (Inverted)
+            Sales Rank
           </button>
           <button
             type="button"
@@ -226,17 +226,16 @@ export function KeepaChart({
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                 <XAxis dataKey="timeLabel" stroke="#64748b" tick={{ fontSize: 11, fill: "#94a3b8" }} tickMargin={8} />
 
-                {/* Left Y-Axis: Sales Rank (Inverted!) */}
+                {/* Left Y-Axis: Sales Rank */}
                 <YAxis
                   yAxisId="rank"
                   orientation="left"
-                  reversed={true}
                   stroke="#10b981"
                   tick={{ fontSize: 11, fill: "#10b981" }}
                   tickFormatter={(val) => `#${Number(val).toLocaleString()}`}
                   domain={["auto", "auto"]}
                   label={{
-                    value: "Sales Rank (Lower is Better ➔)",
+                    value: "Sales Rank",
                     angle: -90,
                     position: "insideLeft",
                     fill: "#10b981",

@@ -70,6 +70,11 @@ export async function POST(req: Request) {
 
       totalTokens += res.tokensConsumed || 0
 
+      // Clear out any old mixed or mock data to ensure a clean slate of real data
+      await prisma.keepaProductHistory.deleteMany({
+        where: { monitoredProductId: prod.id },
+      })
+
       // Ingest and deduplicate historical observations in PostgreSQL
       for (const obs of res.observations) {
         try {
