@@ -120,18 +120,22 @@ ${testContextText}
 Weekday engine profiles (median Sales Rank; relative % = positive means WORSE/higher rank, negative means BETTER/lower rank; engine strategy):
 ${weekdayProfiles.map((p) => `- ${p.dayName}: median rank #${(p.medianRank || 0).toLocaleString()}, relative ${p.relativePerformancePercent > 0 ? "+" : ""}${p.relativePerformancePercent}%, engine says "${p.recommendedStrategy}"${p.isLagAffected ? " (lag-affected)" : ""}`).join("\n")}
 
-Decide the action (RAISE / LOWER / MAINTAIN) and a proposedPrice that is at most $0.15 away from the current price, respecting minPrice/maxPrice. Favor rank reduction. Then explain explicitly how the weekday engine signal and the velocity data drove the call.
+Decide the action (RAISE / LOWER / MAINTAIN) and a proposedPrice that is at most $0.15 away from the current price, respecting minPrice/maxPrice. Favor rank reduction. Then explain explicitly how the weekday engine signal and the velocity data drove the call. 
+IMPORTANT COMMUNICATION RULES:
+1. Use simple, everyday conversational language.
+2. Avoid confusing exact percentages (like "+57.3% signal"). Use simple trends instead.
+3. When referring to rank, use "improving" when the rank goes DOWN (gets better), and "worsening" or "losing ground" when the rank goes UP. Never use words like "deteriorating".
 
 JSON schema:
 {
-  "strategicSummary": "2-3 sentences. Explicit rank-first overview: state current velocity, whether rank is improving or deteriorating, and the single most important next move.",
-  "detectedLagEffect": "Detailed explanation of day-to-day rank carryover / momentum inertia observed, naming specific days and rank numbers.",
+  "strategicSummary": "2-3 sentences. Simple day-to-day overview: state current velocity, whether rank is 'improving' or 'worsening', and the next move.",
+  "detectedLagEffect": "Simple conversational explanation of day-to-day momentum observed, naming specific days without weird percentages.",
   "recommendedAction": "MAINTAIN" | "RAISE" | "LOWER",
   "proposedPrice": number,
   "confidenceScore": number 0-100,
-  "keyTakeaways": ["point 1", "point 2", "point 3"],
-  "scheduledDay": "The exact day of the week to execute this change, e.g. 'Thursday'. Pick the optimal day based on weekday engine signals.",
-  "testRationale": "Explanation of why this specific day and this specific price were chosen for the weekly test."
+  "keyTakeaways": ["Simple bullet point 1 without complex jargon", "Simple bullet point 2", "Simple bullet point 3"],
+  "scheduledDay": "The exact day of the week to execute this change, e.g. 'Thursday'. Pick the optimal day based on weekday signals.",
+  "testRationale": "Simple, conversational explanation of why this specific day and price were chosen for the weekly test."
 }`
 
   let llmFailureReason = ""
