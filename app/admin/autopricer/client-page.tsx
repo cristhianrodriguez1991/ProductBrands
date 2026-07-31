@@ -217,9 +217,57 @@ export default function AutopricerClient() {
   const [aiAssessment, setAiAssessment] = useState<any>(null)
   const [isAnalyzingAi, setIsAnalyzingAi] = useState(false)
 
+  // Chat State
+  const [chatMessages, setChatMessages] = useState<{role: string, content: string}[]>([])
+  const [chatInput, setChatInput] = useState("")
+  const [isSendingChat, setIsSendingChat] = useState(false)
+
+  const handleChatSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (!chatInput.trim() || !selectedAiProduct || isSendingChat) return
+
+    const userMessage = { role: "user", content: chatInput }
+    const updatedMessages = [...chatMessages, userMessage]
+    setChatMessages(updatedMessages)
+    setChatInput("")
+    setIsSendingChat(true)
+
+    try {
+      const res = await fetch("/api/admin/autopricer/ai-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: updatedMessages,
+          productContext: {
+            productName: selectedAiProduct.productName,
+            asin: selectedAiProduct.asin,
+            currentPrice: selectedAiProduct.currentPrice,
+            unitCost: selectedAiProduct.unitCost,
+            marginPercent: selectedAiProduct.calculated?.netMarginPct,
+            sevenDaySalesTotal: selectedAiProduct.calculated?.sevenDaySalesTotal,
+            currentRank: selectedAiProduct.calculated?.currentRank,
+            aiAssessment
+          }
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setChatMessages([...updatedMessages, { role: "assistant", content: data.reply }])
+      } else {
+        alert("Failed to get reply: " + data.error)
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message)
+    } finally {
+      setIsSendingChat(false)
+    }
+  }
+
   const openAiExplanation = async (p: MonitoredProduct) => {
     setSelectedAiProduct(p)
     setAiAssessment(null)
+    setChatMessages([])
+    setChatInput("")
     setIsAnalyzingAi(true)
     setIsAiModalOpen(true)
     try {
@@ -2542,6 +2590,56 @@ export default function AutopricerClient() {
                     </ul>
                   </div>
                 )}
+
+                {/* Chat Interface */}
+                <div className="mt-6 border-t border-slate-800 pt-6">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                    <Brain className="h-3.5 w-3.5" />
+                    Discuss Strategy with AI
+                  </h4>
+                  
+                  <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden flex flex-col h-64">
+                    {/* Message Log */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                      {chatMessages.length === 0 ? (
+                        <div className="text-center text-slate-500 text-xs mt-10">
+                          Ask the AI strategist about this recommendation...
+                        </div>
+                      ) : (
+                        chatMessages.map((m, i) => (
+                          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                            <div className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${m.role === "user" ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300"}`}>
+                              {m.content}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                      {isSendingChat && (
+                        <div className="flex justify-start">
+                          <div className="bg-slate-800 text-slate-400 rounded-lg px-3 py-2 text-sm flex items-center gap-2">
+                            <div className="h-1.5 w-1.5 bg-slate-500 rounded-full animate-bounce"></div>
+                            <div className="h-1.5 w-1.5 bg-slate-500 rounded-full animate-bounce delay-75"></div>
+                            <div className="h-1.5 w-1.5 bg-slate-500 rounded-full animate-bounce delay-150"></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Chat Input */}
+                    <form onSubmit={handleChatSubmit} className="border-t border-slate-800 bg-slate-950 p-2 flex items-center gap-2">
+                      <Input
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        placeholder="e.g. What if we drop price to $15?"
+                        className="flex-1 bg-slate-900 border-slate-700 text-sm h-9"
+                        disabled={isSendingChat}
+                      />
+                      <Button type="submit" size="sm" className="h-9 px-3 bg-indigo-600 hover:bg-indigo-500" disabled={!chatInput.trim() || isSendingChat}>
+                        Send
+                      </Button>
+                    </form>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="text-center text-slate-400 py-10">
