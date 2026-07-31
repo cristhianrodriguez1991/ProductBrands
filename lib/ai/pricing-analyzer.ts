@@ -12,6 +12,7 @@ export interface AIStrategicAssessment {
   confidenceScore: number // 0 - 100
   keyTakeaways: string[]
   scheduledDay?: string // e.g. "Saturday"
+  testRationale?: string // Why this day and this price
   // Enriched, engine-driven context (optional, ignored by older UI)
   weekdayStrategy?: string
   adjustmentCents?: number
@@ -92,7 +93,7 @@ export async function analyzePricingWithGLM(
 STRATEGIC NORTH STAR: The seller's #1 goal is AGGRESSIVE SALES RANK REDUCTION. On Amazon a NUMERICALLY LOWER Sales Rank (e.g. 10,000 -> 5,000) means IMPROVEMENT and drives more organic sales. Maximizing profit per unit is secondary.
 VELOCITY RULE: Sales velocity is the dominant lever for rank. Raising price slows velocity and hurts rank; lowering price (or holding) protects velocity and drives rank down.
 CHANGE SIZE RULE: Every price change must be SMALL — a few CENTS, never dollars. Cap any single adjustment at $0.15. Never propose jumping to a price floor/ceiling in one step.
-ENGINE RULE: You are given a per-weekday engine analysis with its own recommended strategy for each day. You MUST incorporate that engine signal into your final recommendation and explain how it shaped your decision.
+ENGINE RULE: You are given a per-weekday engine analysis. You MUST identify the SINGLE BEST DAY OF THE WEEK to schedule a price change test to improve rank, and output that exact day. Explain your rationale.
 HOLD & TEST RULE: If a price change was made recently (within the last 3-7 days), you are currently in an active test period. You MUST output MAINTAIN (HOLD) to let the A9 algorithm react, UNLESS the rank is catastrophically crashing or the Buy Box is lost. Do not spam daily price changes.
 Margin is still a guardrail: do not bleed cash, but when margin is healthy (>= 15%) prefer holding or micro-lowering to protect velocity over squeezing extra profit.`
 
@@ -129,7 +130,8 @@ JSON schema:
   "proposedPrice": number,
   "confidenceScore": number 0-100,
   "keyTakeaways": ["point 1", "point 2", "point 3"],
-  "scheduledDay": "Optional day of the week to execute this change, e.g. 'Saturday'. Omit if the change should happen immediately."
+  "scheduledDay": "The exact day of the week to execute this change, e.g. 'Thursday'. Pick the optimal day based on weekday engine signals.",
+  "testRationale": "Explanation of why this specific day and this specific price were chosen for the weekly test."
 }`
 
   let llmFailureReason = ""
@@ -161,6 +163,7 @@ JSON schema:
           confidenceScore: Math.min(100, Math.max(0, Number(parsed.confidenceScore) || 90)),
           keyTakeaways: Array.isArray(parsed.keyTakeaways) ? parsed.keyTakeaways : [],
           scheduledDay: parsed.scheduledDay,
+          testRationale: parsed.testRationale,
           weekdayStrategy: todayProfile?.recommendedStrategy,
           adjustmentCents: clamped.cents,
           velocitySnapshot: {
@@ -377,6 +380,28 @@ function rankFirstLocalStrategy(
   if (action === "RAISE") proposedPrice = Math.min(maxPrice, Math.round((current + step) * 100) / 100)
   const cents = Math.round((proposedPrice - current) * 100)
 
+  // Identify the optimal day for the test
+  let bestDay = todayName
+  let testRationale = ""
+
+  if (action === "LOWER") {
+    // Pick the day with the weakest rank (highest relative performance percentage)
+    const weakestDay = weekdayProfiles.reduce((prev, curr) => (curr.relativePerformancePercent > prev.relativePerformancePercent ? curr : prev), weekdayProfiles[0])
+    if (weakestDay) {
+      bestDay = weakestDay.dayName
+      testRationale = `Selected ${bestDay} for a price test because it exhibits the weakest momentum (relative ${weakestDay.relativePerformancePercent > 0 ? "+" : ""}${weakestDay.relativePerformancePercent}% rank compared to the weekly median). Stimulating velocity on this soft day provides the highest ROI for rank reduction.`
+    }
+  } else if (action === "RAISE") {
+    // Pick the day with the strongest rank (lowest relative performance percentage)
+    const strongestDay = weekdayProfiles.reduce((prev, curr) => (curr.relativePerformancePercent < prev.relativePerformancePercent ? curr : prev), weekdayProfiles[0])
+    if (strongestDay) {
+      bestDay = strongestDay.dayName
+      testRationale = `Selected ${bestDay} for a margin test because it exhibits the strongest momentum (relative ${strongestDay.relativePerformancePercent > 0 ? "+" : ""}${strongestDay.relativePerformancePercent}% rank compared to the weekly median). Demand is highest here and can absorb a micro-increase.`
+    }
+  } else {
+    testRationale = `Holding steady. No specific day test required right now.`
+  }
+
   // ── Explicit English narrative ────────────────────────────────────────────
   const rankTrend = todayProfile
     ? todayProfile.relativePerformancePercent < -5
@@ -439,6 +464,8 @@ function rankFirstLocalStrategy(
     proposedPrice: Math.round(proposedPrice * 100) / 100,
     confidenceScore: 90,
     keyTakeaways: takeaways,
+    scheduledDay: bestDay,
+    testRationale: testRationale,
     weekdayStrategy: todayProfile?.recommendedStrategy,
     adjustmentCents: cents,
     velocitySnapshot: {

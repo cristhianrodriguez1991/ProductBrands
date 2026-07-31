@@ -51,15 +51,15 @@ export function KeepaAnalytics({
   const [dailySales, setDailySales] = useState<any[]>([])
   const [showDailySales, setShowDailySales] = useState(false)
 
-  // Day Prediction State
-  const [dayPredictions, setDayPredictions] = useState<Record<string, any>>({})
-  const [isPredictingDay, setIsPredictingDay] = useState<string | null>(null)
-  const [isSchedulingDay, setIsSchedulingDay] = useState<string | null>(null)
+  // Weekly Strategy State
+  const [isSchedulingWeekly, setIsSchedulingWeekly] = useState(false)
+  const [weeklyScheduled, setWeeklyScheduled] = useState(false)
 
   React.useEffect(() => {
     setAiAssessment(null)
     setDailySales([])
     setShowDailySales(false)
+    setWeeklyScheduled(false)
   }, [(product as any)?.id, (product as any)?.asin])
 
   const runAiAnalysis = async () => {
@@ -89,54 +89,31 @@ export function KeepaAnalytics({
     }
   }
 
-  const runDayPrediction = async (dayName: string, strategy: string) => {
-    if (!product?.id) return
-    setIsPredictingDay(dayName)
-    try {
-      const res = await fetch("/api/admin/autopricer/simulate/day-predict", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: product.id, dayName, strategy })
-      })
-      const data = await res.json()
-      if (data.success) {
-        setDayPredictions(prev => ({ ...prev, [dayName]: data.prediction }))
-      } else {
-        alert("Prediction failed: " + data.error)
-      }
-    } catch (e: any) {
-      alert("Error: " + e.message)
-    } finally {
-      setIsPredictingDay(null)
-    }
-  }
-
-  const scheduleDayPrediction = async (dayName: string, prediction: any) => {
-    if (!product?.id) return
-    setIsSchedulingDay(dayName)
+  const scheduleWeeklyTest = async () => {
+    if (!product?.id || !aiAssessment?.scheduledDay) return
+    setIsSchedulingWeekly(true)
     try {
       const res = await fetch("/api/admin/autopricer/schedule/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productId: product.id,
-          dayName,
-          proposedPrice: prediction.proposedPrice,
-          reasoning: prediction.reasoning
+          dayName: aiAssessment.scheduledDay,
+          proposedPrice: aiAssessment.proposedPrice,
+          reasoning: aiAssessment.testRationale
         })
       })
       const data = await res.json()
       if (data.success) {
         alert(data.message)
-        // Optionally mark as scheduled in UI
-        setDayPredictions(prev => ({ ...prev, [dayName]: { ...prev[dayName], scheduled: true } }))
+        setWeeklyScheduled(true)
       } else {
         alert("Scheduling failed: " + data.error)
       }
     } catch (e: any) {
       alert("Error: " + e.message)
     } finally {
-      setIsSchedulingDay(null)
+      setIsSchedulingWeekly(false)
     }
   }
 
@@ -277,35 +254,70 @@ export function KeepaAnalytics({
                 <p className="text-xs text-slate-300 leading-relaxed font-medium">{aiAssessment.detectedLagEffect}</p>
               </div>
             </div>
-            <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  Strategy &amp; Engine Signals
-                  {aiAssessment.weekdayStrategy && (
-                    <span className="text-[10px] font-mono font-normal normal-case tracking-normal text-indigo-300 bg-indigo-950/70 px-1.5 py-0.5 rounded border border-indigo-700/40">
-                      today: {aiAssessment.weekdayStrategy}
-                    </span>
-                  )}
-                </span>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {aiAssessment.keyTakeaways?.map((t: string, idx: number) => (
-                    <span key={idx} className="text-[11px] bg-slate-800 text-slate-200 px-2.5 py-1 rounded-md border border-slate-700">
-                      • {t}
-                    </span>
-                  ))}
+            <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800/80 space-y-4">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    Engine Takeaways
+                  </span>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {aiAssessment.keyTakeaways?.map((t: string, idx: number) => (
+                      <span key={idx} className="text-[11px] bg-slate-800 text-slate-200 px-2.5 py-1 rounded-md border border-slate-700">
+                        • {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 bg-indigo-950/80 px-4 py-2 rounded-lg border border-indigo-500/30 self-stretch md:self-auto justify-between md:justify-center">
+                  <span className="text-xs text-slate-300 font-semibold">Base Recommended Action:</span>
+                  <span className="text-sm font-extrabold text-emerald-400 font-mono tracking-wide">
+                    {aiAssessment.recommendedAction} ({aiAssessment.proposedPrice ? `$${aiAssessment.proposedPrice}` : "Current Price"})
+                    {typeof aiAssessment.adjustmentCents === "number" && aiAssessment.adjustmentCents !== 0 && (
+                      <span className="ml-1 text-[10px] text-slate-400 font-normal">
+                        ({aiAssessment.adjustmentCents > 0 ? "+" : ""}{aiAssessment.adjustmentCents}¢)
+                      </span>
+                    )}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-indigo-950/80 px-4 py-2 rounded-lg border border-indigo-500/30 self-stretch md:self-auto justify-between md:justify-center">
-                <span className="text-xs text-slate-300 font-semibold">Recommended Action:</span>
-                <span className="text-sm font-extrabold text-emerald-400 font-mono tracking-wide">
-                  {aiAssessment.recommendedAction} ({aiAssessment.proposedPrice ? `$${aiAssessment.proposedPrice}` : "Current Price"})
-                  {typeof aiAssessment.adjustmentCents === "number" && aiAssessment.adjustmentCents !== 0 && (
-                    <span className="ml-1 text-[10px] text-slate-400 font-normal">
-                      ({aiAssessment.adjustmentCents > 0 ? "+" : ""}{aiAssessment.adjustmentCents}¢)
-                    </span>
-                  )}
-                </span>
-              </div>
+
+              {/* Weekly Strategic Test Block */}
+              {aiAssessment.scheduledDay && aiAssessment.testRationale && (
+                <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-indigo-900/40 to-purple-900/40 border border-indigo-500/30">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="space-y-2">
+                      <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-2">
+                        <Calendar className="h-4 w-4" /> Weekly Strategic Price Test
+                      </span>
+                      <p className="text-sm font-semibold text-white">
+                        Optimal Test Day: <span className="text-emerald-400 font-mono text-base">{aiAssessment.scheduledDay}</span>
+                      </p>
+                      <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                        {aiAssessment.testRationale}
+                      </p>
+                    </div>
+                    <button
+                      onClick={scheduleWeeklyTest}
+                      disabled={isSchedulingWeekly || weeklyScheduled}
+                      className="shrink-0 px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition disabled:opacity-50"
+                    >
+                      {weeklyScheduled ? (
+                        <>
+                          <CheckCircle2 className="h-4 w-4" /> Scheduled for {aiAssessment.scheduledDay} at 4 AM
+                        </>
+                      ) : isSchedulingWeekly ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" /> Scheduling...
+                        </>
+                      ) : (
+                        <>
+                          <Clock className="h-4 w-4" /> Accept & Schedule for {aiAssessment.scheduledDay}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         )}
@@ -460,7 +472,6 @@ export function KeepaAnalytics({
                   <th className="py-3 px-3">vs. Weekly Average</th>
                   <th className="py-3 px-3">Combined Strategy (AI + Engine)</th>
                   <th className="py-3 px-3">Synergy Rationale & Why</th>
-                  <th className="py-3 px-3 w-64">AI Prediction & Schedule</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -542,42 +553,6 @@ export function KeepaAnalytics({
                       </td>
                       <td className="py-3 px-3 text-xs text-slate-300 leading-normal max-w-xs">
                         {rationale}
-                      </td>
-                      <td className="py-3 px-3 border-l border-slate-800/80 bg-slate-900/40">
-                        {dayPredictions[p.dayName] ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="font-bold text-emerald-400 font-mono tracking-wide">
-                                ${dayPredictions[p.dayName].proposedPrice?.toFixed(2)}
-                              </span>
-                              <span className="text-slate-400">
-                                Rank: #{dayPredictions[p.dayName].projectedRank?.toLocaleString()}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-slate-400 leading-tight">
-                              {dayPredictions[p.dayName].reasoning}
-                            </p>
-                            <button
-                              onClick={() => scheduleDayPrediction(p.dayName, dayPredictions[p.dayName])}
-                              disabled={isSchedulingDay === p.dayName || dayPredictions[p.dayName].scheduled}
-                              className="w-full mt-1 py-1 px-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold disabled:opacity-50 transition-colors"
-                            >
-                              {dayPredictions[p.dayName].scheduled ? "Scheduled for 4 A.M." : isSchedulingDay === p.dayName ? "Scheduling..." : "Accept & Schedule"}
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => runDayPrediction(p.dayName, isWeekend ? "Defensive Hold" : isMonday ? "Start-of-Week Harvest" : isFriday ? "Momentum Preparation" : isWorse ? "Velocity Stimulation" : "Margin Harvest Sync")}
-                            disabled={isPredictingDay === p.dayName}
-                            className="w-full py-1.5 px-3 rounded-lg border border-slate-700 hover:border-indigo-500 hover:bg-indigo-500/10 text-slate-300 hover:text-indigo-300 text-[11px] font-semibold transition-all disabled:opacity-50"
-                          >
-                            {isPredictingDay === p.dayName ? (
-                              <span className="flex items-center justify-center gap-1.5"><RefreshCw className="h-3 w-3 animate-spin" /> Predicting...</span>
-                            ) : (
-                              <span className="flex items-center justify-center gap-1.5"><Brain className="h-3 w-3" /> Predict Price</span>
-                            )}
-                          </button>
-                        )}
                       </td>
                     </tr>
                   )
