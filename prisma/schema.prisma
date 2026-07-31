@@ -1031,6 +1031,12 @@ model MonitoredProduct {
   keepaSyncStatus     String?  // "SUCCESS", "ERROR", "PENDING"
   keepaTokensConsumed Int?
 
+  // Autopilot Engine Tracking
+  isAutopilot         Boolean  @default(false)
+  autopilotStartedAt  DateTime?
+  autopilotStartRank  Int?
+  autopilotStartPrice Float?
+
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

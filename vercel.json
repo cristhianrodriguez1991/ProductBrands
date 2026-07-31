@@ -18,7 +18,7 @@
       "schedule": "0 5 * * *"
     },
     {
-      "path": "/api/admin/autopricer/cron/execute-scheduled",
+      "path": "/api/admin/autopricer/cron/daily",
       "schedule": "0 8 * * *"
     }
   ]

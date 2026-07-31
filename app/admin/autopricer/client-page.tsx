@@ -35,6 +35,7 @@ import {
   ShieldAlert,
   Target,
   Brain,
+  Bot,
 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { PRICE_INTELLIGENCE_CONFIG, MarketplaceCode, RecommendedActionCode } from "@/config/price-intelligence.config"
@@ -42,7 +43,7 @@ import Image from "next/image"
 import { KeepaSettings } from "./keepa-settings"
 import { KeepaChart } from "./keepa-chart"
 import { KeepaAnalytics } from "./keepa-analytics"
-import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts"
+import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip } from "recharts"
 
 interface MonitoredProduct {
   id: string
@@ -81,6 +82,10 @@ interface MonitoredProduct {
   keepaLastSyncedAt?: string | null
   keepaSyncStatus?: string | null
   keepaTokensConsumed?: number | null
+  isAutopilot?: boolean
+  autopilotStartedAt?: string | null
+  autopilotStartRank?: number | null
+  autopilotStartPrice?: number | null
   priceHistory?: PriceChangeLog[]
   calculated?: {
     referralFee: number
@@ -286,6 +291,28 @@ export default function AutopricerClient() {
       alert("Error: " + e.message)
     } finally {
       setIsAnalyzingAi(false)
+    }
+  }
+
+  const toggleAutopilot = async (p: MonitoredProduct) => {
+    try {
+      const confirmMsg = !p.isAutopilot 
+        ? "WARNING: Enabling Full Autopilot will allow the AI to automatically push price changes to Amazon without manual approval. Continue?"
+        : "Turn off Autopilot?"
+      if (!confirm(confirmMsg)) return
+
+      const res = await fetch(`/api/admin/autopricer/products/${p.id}/autopilot`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isAutopilot: !p.isAutopilot }),
+      })
+      if (res.ok) {
+        await fetchProducts()
+      } else {
+        alert("Failed to toggle autopilot")
+      }
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -1337,6 +1364,7 @@ export default function AutopricerClient() {
                       <th className="px-4 py-3">7-Day Sales</th>
                       <th className="px-4 py-3">Keepa Rank</th>
                       <th className="px-4 py-3">Unit Economics</th>
+                      <th className="px-4 py-3 text-center">Autopilot</th>
                       <th className="px-4 py-3 w-48">Engine Strategy</th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
@@ -1395,6 +1423,19 @@ export default function AutopricerClient() {
                                   <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={p.calculated.sparklineData}>
                                       <YAxis domain={['dataMin', 'dataMax']} reversed hide />
+                                      <Tooltip 
+                                        content={({ active, payload }) => {
+                                          if (active && payload && payload.length) {
+                                            return (
+                                              <div className="bg-slate-900 border border-slate-700 text-white text-[10px] py-1 px-2 rounded shadow-lg">
+                                                Rank: #{payload[0].value?.toLocaleString()}
+                                              </div>
+                                            )
+                                          }
+                                          return null;
+                                        }}
+                                        cursor={{ stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1 }}
+                                      />
                                       <Line type="monotone" dataKey="rank" stroke="#8b5cf6" strokeWidth={1.5} dot={false} isAnimationActive={false} />
                                     </LineChart>
                                   </ResponsiveContainer>
@@ -1438,6 +1479,28 @@ export default function AutopricerClient() {
                                 </span>
                               </div>
                             </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            {p.isAutopilot ? (
+                              <div className="flex flex-col gap-1 items-center bg-indigo-900/20 border border-indigo-500/30 rounded-lg p-2 min-w-[120px]">
+                                <div className="flex items-center gap-1.5">
+                                  <Bot className="h-3.5 w-3.5 text-indigo-400 animate-pulse" />
+                                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Active</span>
+                                </div>
+                                {(p.autopilotStartRank && p.calculated?.currentRank) ? (
+                                  <div className="text-[9px] text-slate-300 font-mono mt-0.5">
+                                    Rank Δ: {p.autopilotStartRank - p.calculated.currentRank > 0 ? "+" : ""}{(p.autopilotStartRank - p.calculated.currentRank).toLocaleString()}
+                                  </div>
+                                ) : null}
+                                <button onClick={() => toggleAutopilot(p)} className="text-[9px] text-slate-500 hover:text-rose-400 mt-1 underline">Turn Off</button>
+                              </div>
+                            ) : (
+                              <div className="flex justify-center">
+                                <Button size="sm" variant="outline" onClick={() => toggleAutopilot(p)} className="h-7 text-[10px] px-2 gap-1.5 text-slate-500 hover:text-indigo-600 hover:border-indigo-600">
+                                  <Bot className="h-3 w-3" /> Enable
+                                </Button>
+                              </div>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             <button
