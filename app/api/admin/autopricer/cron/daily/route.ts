@@ -72,13 +72,53 @@ export async function POST(req: Request) {
         // 3. Sync Sales (SP-API)
         const dailySales = await getDailySalesAndTrafficBySku(product.sku, 30, product.currentPrice)
 
+        // 3.5 Prepare Recent Change Context
+        const lastChange = await prisma.priceChangeLog.findFirst({
+          where: { monitoredProductId: product.id, status: "APPLIED" },
+          orderBy: { requestedAt: "desc" },
+        })
+
+        const recentLogs = await prisma.priceChangeLog.findMany({
+          where: { monitoredProductId: product.id, status: "APPLIED" },
+          orderBy: { requestedAt: "desc" },
+          take: 5
+        })
+
+        let aiActivityLog = ""
+        if (recentLogs.length > 0) {
+          aiActivityLog = recentLogs.map(l => `[${l.requestedAt.toISOString().split('T')[0]}] Action: ${l.recommendedAction} (Price: ${l.oldPrice} -> ${l.newPrice}). Reason: ${l.reason}`).join("\n")
+        }
+
+        let recentChangeContext: any = undefined
+        if (lastChange) {
+          const daysSinceChange = (Date.now() - lastChange.requestedAt.getTime()) / (1000 * 60 * 60 * 24)
+          const rankBeforeRecord = await prisma.keepaProductHistory.findFirst({
+            where: { monitoredProductId: product.id, timestamp: { lte: lastChange.requestedAt } },
+            orderBy: { timestamp: "desc" }
+          })
+          
+          recentChangeContext = {
+            hasRecentChange: true,
+            daysSinceChange,
+            oldPrice: lastChange.oldPrice,
+            newPrice: lastChange.newPrice,
+            rankBefore: rankBeforeRecord?.salesRank,
+            rankNow: observations.length > 0 ? observations[observations.length - 1].salesRank : undefined,
+            evaluationStatus: "ACTIVE",
+            aiActivityLog
+          }
+        } else if (aiActivityLog) {
+          recentChangeContext = { hasRecentChange: false, daysSinceChange: 999, oldPrice: 0, newPrice: 0, aiActivityLog }
+        }
+
         // 4. Run AI Strategist
         const assessment = await analyzePricingWithGLM(
           product,
           dailySales,
           weekdayAnalysis.profiles,
           undefined,
-          { sku: product.sku, totalRecordsForSku: dailySales.length, totalRecordsForAsin: dailySales.length }
+          { sku: product.sku, totalRecordsForSku: dailySales.length, totalRecordsForAsin: dailySales.length },
+          recentChangeContext
         )
 
         // 5. Apply price change if needed

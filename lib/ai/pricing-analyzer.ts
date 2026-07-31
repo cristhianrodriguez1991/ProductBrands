@@ -46,7 +46,7 @@ export async function analyzePricingWithGLM(
   weekdayProfiles: WeekdayProfile[],
   customApiKey?: string,
   salesDiagnostic?: { sku: string; asin?: string | null; totalRecordsForSku: number; totalRecordsForAsin: number; latestSaleDate?: string | null },
-  recentChangeContext?: { hasRecentChange: boolean; daysSinceChange: number; oldPrice: number; newPrice: number; rankBefore?: number | null; rankNow?: number | null; evaluationStatus?: string }
+  recentChangeContext?: { hasRecentChange: boolean; daysSinceChange: number; oldPrice: number; newPrice: number; rankBefore?: number | null; rankNow?: number | null; evaluationStatus?: string; aiActivityLog?: string }
 ): Promise<AIStrategicAssessment> {
   // OpenAI cloud API key. Set via OPENAI_API_KEY env var (.env.local for local
   // dev, Vercel project env vars for production). Never hardcode keys in source.
@@ -92,9 +92,10 @@ export async function analyzePricingWithGLM(
   const systemPrompt = `You are an elite Amazon Marketplace Pricing Strategist and A9 Sales Rank data scientist.
 STRATEGIC NORTH STAR: The seller's #1 goal is AGGRESSIVE SALES RANK REDUCTION. On Amazon a NUMERICALLY LOWER Sales Rank (e.g. 10,000 -> 5,000) means IMPROVEMENT and drives more organic sales. Maximizing profit per unit is secondary.
 VELOCITY RULE: Sales velocity is the dominant lever for rank. Raising price slows velocity and hurts rank; lowering price (or holding) protects velocity and drives rank down.
-CHANGE SIZE RULE: Every price change must be SMALL — a few CENTS, never dollars. Cap any single adjustment at $0.15. Never propose jumping to a price floor/ceiling in one step.
-ENGINE RULE: You are given a per-weekday engine analysis. You MUST identify the SINGLE BEST DAY OF THE WEEK to schedule a price change test to improve rank, and output that exact day. Explain your rationale.
-HOLD & TEST RULE: If a price change was made recently (within the last 3-7 days), you are currently in an active test period. You MUST output MAINTAIN (HOLD) to let the A9 algorithm react, UNLESS the rank is catastrophically crashing or the Buy Box is lost. Do not spam daily price changes.
+CHANGE SIZE RULE: Every price change must be SMALL and INCREMENTAL. Never jump more than $1.00 at a time.
+PSYCHOLOGICAL PRICING RULE: Prices MUST end in psychological numbers like .99, .50, .00, or .49. Do not propose random numbers like 12.37.
+HOLD & TEST RULE: You MUST observe a 5-day cooldown. If a price change was made within the last 5 days, you MUST output MAINTAIN (HOLD) to let the A9 algorithm react, UNLESS the rank is catastrophically crashing. Do not change prices every day as it confuses the algorithm.
+PROFIT-SEEKING TEST RULE: If the product is performing very well (stable or improving rank for 5+ days), you should actively test small price INCREASES to see if higher profit can be achieved without losing rank.
 Margin is still a guardrail: do not bleed cash, but when margin is healthy (>= 15%) prefer holding or micro-lowering to protect velocity over squeezing extra profit.`
 
   let testContextText = "No recent price changes detected. The product is ready for a new strategic move."
@@ -116,6 +117,10 @@ Today is ${todayName}. The weekday engine's signal for today: ${todayProfile?.re
 Lag-affected days detected by the engine: ${lagDays.length > 0 ? lagDays.join(", ") : "none"}.
 
 ${testContextText}
+
+RECENT AI LOG HISTORY:
+If provided, read your own recent logs below to reflect on your previous decisions and their effects on rank.
+${recentChangeContext?.aiActivityLog ? recentChangeContext.aiActivityLog : "No recent AI logs provided."}
 
 Weekday engine profiles (median Sales Rank; relative % = positive means WORSE/higher rank, negative means BETTER/lower rank; engine strategy):
 ${weekdayProfiles.map((p) => `- ${p.dayName}: median rank #${(p.medianRank || 0).toLocaleString()}, relative ${p.relativePerformancePercent > 0 ? "+" : ""}${p.relativePerformancePercent}%, engine says "${p.recommendedStrategy}"${p.isLagAffected ? " (lag-affected)" : ""}`).join("\n")}
@@ -157,13 +162,15 @@ JSON schema:
           product.minPrice,
           product.maxPrice
         )
+        // Apply psychological rounding after clamping
+        const roundedPrice = applyPsychologicalRounding(clamped.price, product.minPrice, product.maxPrice)
         return {
           modelUsed: llm.modelUsed,
           timestamp: new Date().toISOString(),
           strategicSummary: parsed.strategicSummary || "Rank-first analysis complete.",
           detectedLagEffect: parsed.detectedLagEffect || "No severe rank carryover distortion detected.",
           recommendedAction: (["RAISE", "LOWER", "MAINTAIN"].includes(action) ? action : "MAINTAIN") as AIStrategicAssessment["recommendedAction"],
-          proposedPrice: clamped.price,
+          proposedPrice: roundedPrice,
           confidenceScore: Math.min(100, Math.max(0, Number(parsed.confidenceScore) || 90)),
           keyTakeaways: Array.isArray(parsed.keyTakeaways) ? parsed.keyTakeaways : [],
           scheduledDay: parsed.scheduledDay,
@@ -315,6 +322,30 @@ function clampToCentsBand(current: number, proposed: number, minPrice: number, m
 }
 
 /**
+ * Snap price to nearest psychological threshold (.99, .50, .00, .49)
+ * without exceeding min/max bounds.
+ */
+function applyPsychologicalRounding(price: number, minPrice: number, maxPrice: number): number {
+  if (price === minPrice || price === maxPrice) return price // Don't round if it hit a hard wall
+  const integerPart = Math.floor(price)
+  const decimalPart = price - integerPart
+
+  let roundedDecimal = 0.99
+  if (decimalPart <= 0.25) roundedDecimal = 0.00
+  else if (decimalPart <= 0.49) roundedDecimal = 0.49
+  else if (decimalPart <= 0.75) roundedDecimal = 0.50
+  else roundedDecimal = 0.99
+
+  let finalPrice = integerPart + roundedDecimal
+  // If we rounded up past .99, it becomes .00 of next dollar (handled by integer bump if needed, but here we just use .00)
+  
+  if (finalPrice < minPrice) finalPrice = minPrice
+  if (finalPrice > maxPrice) finalPrice = maxPrice
+  
+  return Math.round(finalPrice * 100) / 100
+}
+
+/**
  * Deterministic rank-first local strategy. Merges the weekday engine's per-day
  * signal with sales velocity and buy-box win rate to pick a SMALL (cents) move.
  *
@@ -339,13 +370,14 @@ function rankFirstLocalStrategy(
   todayName: string,
   lagDays: string[],
   llmFailureReason: string,
-  recentChangeContext?: { hasRecentChange: boolean; daysSinceChange: number; oldPrice: number; newPrice: number; rankBefore?: number | null; rankNow?: number | null; evaluationStatus?: string }
+  recentChangeContext?: { hasRecentChange: boolean; daysSinceChange: number; oldPrice: number; newPrice: number; rankBefore?: number | null; rankNow?: number | null; evaluationStatus?: string; aiActivityLog?: string }
 ): AIStrategicAssessment {
   const current = product.currentPrice
   const minPrice = product.minPrice
   const maxPrice = product.maxPrice
 
-  const step = Math.min(0.15, Number((product as any).defaultAdjustmentSize) || 0.05)
+  // Local engine now also supports up to $1.00 jumps for profit seeking, but defaults to small steps.
+  const step = Math.min(1.00, Number((product as any).defaultAdjustmentSize) || 0.50)
   const belowFloor = current < minPrice
   const canLower = current - step >= minPrice // room to lower without breaching floor
   const canRaise = current + step <= maxPrice
@@ -362,17 +394,21 @@ function rankFirstLocalStrategy(
 
   if (losingBuyBox && canLower) {
     action = "LOWER"
-    reason = `Buy Box win rate is ${winRate}% (<70%). Reclaiming it with a ${formatCents(-step)} cut protects velocity and drives rank down.`
-  } else if (recentChangeContext?.hasRecentChange && recentChangeContext.daysSinceChange < 3 && (!recentChangeContext.rankNow || !recentChangeContext.rankBefore || recentChangeContext.rankNow < recentChangeContext.rankBefore + 5000)) {
-    // HOLD & TEST Logic: If changed recently and rank isn't crashing by 5000+ spots, hold.
+    reason = `Buy Box win rate is ${winRate}% (<70%). Reclaiming it with a price cut protects velocity and drives rank down.`
+  } else if (recentChangeContext?.hasRecentChange && recentChangeContext.daysSinceChange < 5 && (!recentChangeContext.rankNow || !recentChangeContext.rankBefore || recentChangeContext.rankNow < recentChangeContext.rankBefore + 5000)) {
+    // HOLD & TEST Logic: Enforce 5-day cooldown.
     action = "MAINTAIN"
-    reason = `Active test running: price was changed to $${recentChangeContext.newPrice.toFixed(2)} just ${Math.round(recentChangeContext.daysSinceChange)} days ago. Holding steady to allow A9 Sales Rank to fully digest the change.`
+    reason = `5-Day Cooldown Active: price was changed to $${recentChangeContext.newPrice.toFixed(2)} exactly ${Math.round(recentChangeContext.daysSinceChange)} days ago. Holding steady to allow A9 Sales Rank to fully digest the change.`
+  } else if (recentChangeContext?.hasRecentChange && recentChangeContext.daysSinceChange >= 5 && recentChangeContext.rankNow && recentChangeContext.rankBefore && recentChangeContext.rankNow <= recentChangeContext.rankBefore + 1000 && canRaise) {
+    // PROFIT-SEEKING TEST: If it's been 5 days and rank is stable or improving, test a raise.
+    action = "RAISE"
+    reason = `Profit-Seeking Test: Rank has been stable or improving for ${Math.round(recentChangeContext.daysSinceChange)} days since the last price change. Slowly raising price to test if we can extract more profit without losing rank.`
   } else if (todayWeak && canLower) {
     action = "LOWER"
-    reason = `The weekday engine flags ${todayName} as a weak-rank day (relative ${((todayProfile?.relativePerformancePercent ?? 0) > 0 ? "+" : "")}${todayProfile?.relativePerformancePercent ?? 0}% vs the week). A ${formatCents(-step)} micro-cut stimulates velocity exactly when rank is softest.`
+    reason = `The weekday engine flags ${todayName} as a weak-rank day (relative ${((todayProfile?.relativePerformancePercent ?? 0) > 0 ? "+" : "")}${todayProfile?.relativePerformancePercent ?? 0}% vs the week). A micro-cut stimulates velocity exactly when rank is softest.`
   } else if (todayStrong && canRaise) {
     action = "RAISE"
-    reason = `The weekday engine flags ${todayName} as a strong-rank day (relative ${((todayProfile?.relativePerformancePercent ?? 0) > 0 ? "+" : "")}${todayProfile?.relativePerformancePercent ?? 0}% vs the week). Demand absorbs a ${formatCents(step)} micro-increase without materially hurting rank.`
+    reason = `The weekday engine flags ${todayName} as a strong-rank day (relative ${((todayProfile?.relativePerformancePercent ?? 0) > 0 ? "+" : "")}${todayProfile?.relativePerformancePercent ?? 0}% vs the week). Demand absorbs a micro-increase without materially hurting rank.`
   } else {
     action = "MAINTAIN"
     reason = `No velocity-rescue signal this cycle. Holding at $${current.toFixed(2)} protects sales velocity, which is the dominant lever for driving Sales Rank down.`
@@ -382,6 +418,8 @@ function rankFirstLocalStrategy(
   let proposedPrice = current
   if (action === "LOWER") proposedPrice = Math.max(minPrice, Math.round((current - step) * 100) / 100)
   if (action === "RAISE") proposedPrice = Math.min(maxPrice, Math.round((current + step) * 100) / 100)
+  
+  proposedPrice = applyPsychologicalRounding(proposedPrice, minPrice, maxPrice)
   const cents = Math.round((proposedPrice - current) * 100)
 
   // Identify the optimal day for the test

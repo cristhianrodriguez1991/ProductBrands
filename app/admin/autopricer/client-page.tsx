@@ -43,6 +43,7 @@ import Image from "next/image"
 import { KeepaSettings } from "./keepa-settings"
 import { KeepaChart } from "./keepa-chart"
 import { KeepaAnalytics } from "./keepa-analytics"
+import { AutopilotInsightsModal } from "./autopilot-insights-modal"
 import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip } from "recharts"
 
 interface MonitoredProduct {
@@ -139,6 +140,9 @@ export default function AutopricerClient() {
   const [selectedProductForKeepa, setSelectedProductForKeepa] = useState<string | null>(null)
   const [keepaHistoryData, setKeepaHistoryData] = useState<any | null>(null)
   const [keepaLoading, setKeepaLoading] = useState(false)
+
+  // Autopilot Insights State
+  const [selectedAutopilotProductId, setSelectedAutopilotProductId] = useState<string | null>(null)
 
   // Enhanced Approval State
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
@@ -1470,7 +1474,7 @@ export default function AutopricerClient() {
                           </td>
                           <td className="px-4 py-3">
                             {p.isAutopilot ? (
-                              <div className="flex flex-col gap-1 items-center bg-indigo-900/20 border border-indigo-500/30 rounded-lg p-2 min-w-[120px]">
+                              <div className="flex flex-col gap-1 items-center bg-indigo-900/20 border border-indigo-500/30 hover:bg-indigo-900/40 cursor-pointer rounded-lg p-2 min-w-[120px] transition-colors" onClick={() => setSelectedAutopilotProductId(p.id)}>
                                 <div className="flex items-center gap-1.5">
                                   <Bot className="h-3.5 w-3.5 text-indigo-400 animate-pulse" />
                                   <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Active</span>
@@ -1480,7 +1484,8 @@ export default function AutopricerClient() {
                                     Rank Δ: {p.autopilotStartRank - p.calculated.currentRank > 0 ? "+" : ""}{(p.autopilotStartRank - p.calculated.currentRank).toLocaleString()}
                                   </div>
                                 ) : null}
-                                <button onClick={() => toggleAutopilot(p)} className="text-[9px] text-slate-500 hover:text-rose-400 mt-1 underline">Turn Off</button>
+
+                                <button onClick={(e) => { e.stopPropagation(); toggleAutopilot(p); }} className="text-[9px] text-slate-500 hover:text-rose-400 mt-1 underline">Turn Off</button>
                               </div>
                             ) : (
                               <div className="flex justify-center">
@@ -2700,6 +2705,13 @@ export default function AutopricerClient() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Autopilot Insights Modal */}
+      <AutopilotInsightsModal 
+        isOpen={!!selectedAutopilotProductId} 
+        onClose={() => setSelectedAutopilotProductId(null)} 
+        productId={selectedAutopilotProductId} 
+      />
     </div>
   )
 }
