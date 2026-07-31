@@ -211,6 +211,36 @@ export default function AutopricerClient() {
   const [approvingLive, setApprovingLive] = useState(false)
   const [amazonFeedback, setAmazonFeedback] = useState<{ ok: boolean; text: string } | null>(null)
 
+  // AI Explanation Modal State
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false)
+  const [selectedAiProduct, setSelectedAiProduct] = useState<MonitoredProduct | null>(null)
+  const [aiAssessment, setAiAssessment] = useState<any>(null)
+  const [isAnalyzingAi, setIsAnalyzingAi] = useState(false)
+
+  const openAiExplanation = async (p: MonitoredProduct) => {
+    setSelectedAiProduct(p)
+    setAiAssessment(null)
+    setIsAnalyzingAi(true)
+    setIsAiModalOpen(true)
+    try {
+      const res = await fetch("/api/admin/autopricer/ai-analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: p.id }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setAiAssessment(data.assessment)
+      } else {
+        alert("Failed to analyze: " + data.error)
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message)
+    } finally {
+      setIsAnalyzingAi(false)
+    }
+  }
+
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true)
@@ -1362,14 +1392,21 @@ export default function AutopricerClient() {
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <div className={`px-2 py-1.5 rounded-lg border text-[11px] font-semibold ${actionConfig.badgeClass}`}>
+                            <button
+                              onClick={() => openAiExplanation(p)}
+                              className={`px-2 py-1.5 rounded-lg border text-[11px] font-semibold w-full text-left transition-all hover:scale-[1.02] hover:shadow-md ${actionConfig.badgeClass}`}
+                              title="Click for full AI Strategy Explanation"
+                            >
                               <div className="flex items-center gap-1.5 justify-between">
-                                <span className="truncate">{actionConfig.label}</span>
+                                <span className="truncate flex items-center gap-1.5">
+                                  <Brain className="h-3 w-3" />
+                                  {actionConfig.label}
+                                </span>
                                 {p.recommendedPrice && p.recommendedPrice !== p.currentPrice && (
                                   <span className="font-bold shrink-0">➔ {mp.symbol}{p.recommendedAction === "MAINTAIN" ? p.currentPrice.toFixed(2) : p.recommendedPrice.toFixed(2)}</span>
                                 )}
                               </div>
-                            </div>
+                            </button>
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1 opacity-60 hover:opacity-100 transition-opacity">
@@ -2450,6 +2487,68 @@ export default function AutopricerClient() {
               {savingBounds ? "Saving..." : "Apply Guardrails"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Strategy Explanation Modal */}
+      <Dialog open={isAiModalOpen} onOpenChange={setIsAiModalOpen}>
+        <DialogContent className="sm:max-w-xl bg-slate-950 border-slate-800 text-slate-200">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <Brain className="h-5 w-5 text-indigo-400" />
+              AI Strategy Explication
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {selectedAiProduct?.productName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {isAnalyzingAi ? (
+              <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                <RefreshCw className="h-8 w-8 text-indigo-500 animate-spin" />
+                <p className="text-sm font-medium animate-pulse text-indigo-300">
+                  Running real-time data analysis...
+                </p>
+              </div>
+            ) : aiAssessment ? (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between bg-slate-900 p-4 rounded-xl border border-slate-800">
+                  <span className="font-semibold text-sm text-slate-400">Recommended Action:</span>
+                  <span className="text-emerald-400 font-bold font-mono text-lg">
+                    {aiAssessment.recommendedAction} 
+                    {aiAssessment.proposedPrice && ` ($${aiAssessment.proposedPrice.toFixed(2)})`}
+                  </span>
+                </div>
+                
+                {aiAssessment.testRationale && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400">Strategic Rationale</h4>
+                    <p className="text-sm leading-relaxed bg-indigo-950/30 p-4 rounded-lg border border-indigo-900/50">
+                      {aiAssessment.testRationale}
+                    </p>
+                  </div>
+                )}
+                
+                {aiAssessment.keyTakeaways && aiAssessment.keyTakeaways.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Key Data Signals</h4>
+                    <ul className="space-y-2">
+                      {aiAssessment.keyTakeaways.map((t: string, i: number) => (
+                        <li key={i} className="flex items-start gap-2 text-sm bg-slate-900 p-3 rounded-lg border border-slate-800/60">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                          <span>{t}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center text-slate-400 py-10">
+                Failed to load explanation.
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
