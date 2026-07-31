@@ -105,6 +105,18 @@ export async function POST(req: Request) {
       salesDiagnostic
     )
 
+    // Sync the fresh live assessment to the database so the table stays consistent with the modal
+    await prisma.monitoredProduct.update({
+      where: { id: product.id },
+      data: {
+        recommendedAction: assessment.recommendedAction,
+        recommendedPrice: assessment.proposedPrice,
+        recommendationReason: assessment.strategicSummary,
+        confidenceScore: assessment.confidenceScore,
+        lastAnalyzedAt: new Date(),
+      }
+    })
+
     return NextResponse.json({
       success: true,
       assessment,

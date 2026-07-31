@@ -284,6 +284,8 @@ export default function AutopricerClient() {
       const data = await res.json()
       if (data.success) {
         setAiAssessment(data.assessment)
+        // Refresh the table so the underlying row matches the fresh AI assessment we just got
+        fetchProducts()
       } else {
         alert("Failed to analyze: " + data.error)
       }
