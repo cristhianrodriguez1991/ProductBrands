@@ -42,6 +42,7 @@ import Image from "next/image"
 import { KeepaSettings } from "./keepa-settings"
 import { KeepaChart } from "./keepa-chart"
 import { KeepaAnalytics } from "./keepa-analytics"
+import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts"
 
 interface MonitoredProduct {
   id: string
@@ -87,6 +88,9 @@ interface MonitoredProduct {
     netMarginPct: number
     hasPendingApproval: boolean
     pendingChange: PriceChangeLog | null
+    sevenDaySalesTotal?: number
+    currentRank?: number
+    sparklineData?: { timestamp: string, rank: number }[]
   }
 }
 
@@ -1246,218 +1250,141 @@ export default function AutopricerClient() {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {products.map((p) => {
-                const actionConfig = PRICE_INTELLIGENCE_CONFIG.ACTIONS[p.recommendedAction as RecommendedActionCode] || PRICE_INTELLIGENCE_CONFIG.ACTIONS.MAINTAIN
-                const mp = PRICE_INTELLIGENCE_CONFIG.MARKETPLACES.find((m) => m.code === p.marketplace) || PRICE_INTELLIGENCE_CONFIG.MARKETPLACES[0]
-                const margin = p.calculated?.netMarginPct ?? 0
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left whitespace-nowrap">
+                  <thead className="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <tr>
+                      <th className="px-4 py-3">Product</th>
+                      <th className="px-4 py-3">7-Day Sales</th>
+                      <th className="px-4 py-3">Keepa Rank</th>
+                      <th className="px-4 py-3">Unit Economics</th>
+                      <th className="px-4 py-3 w-48">Engine Strategy</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {products.map((p) => {
+                      const actionConfig = PRICE_INTELLIGENCE_CONFIG.ACTIONS[p.recommendedAction as RecommendedActionCode] || PRICE_INTELLIGENCE_CONFIG.ACTIONS.MAINTAIN
+                      const mp = PRICE_INTELLIGENCE_CONFIG.MARKETPLACES.find((m) => m.code === p.marketplace) || PRICE_INTELLIGENCE_CONFIG.MARKETPLACES[0]
+                      const margin = p.calculated?.netMarginPct ?? 0
 
-                return (
-                  <Card key={p.id} className="overflow-hidden border-slate-200 dark:border-slate-800 flex flex-col justify-between hover:shadow-lg transition-all bg-white dark:bg-slate-900">
-                    <div className="p-4 space-y-3">
-                      {/* Top Bar: ASIN + Marketplace */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg" title={mp.name}>{mp.flag}</span>
-                          <a 
-                            href={`https://www.amazon.com/dp/${p.asin}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-mono text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2 py-0.5 rounded text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors flex items-center gap-1 group"
-                            title="View on Amazon"
-                          >
-                            {p.asin}
-                            <ExternalLink className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity" />
-                          </a>
-                          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                            {p.fulfillmentMethod}
-                          </span>
-                        </div>
-                        {p.calculated?.hasPendingApproval && (
-                          <span className="text-[10px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-full animate-bounce">
-                            Pending Approval
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Product Name & SKU */}
-                      <div>
-                        <h4 className="font-bold text-sm line-clamp-1 text-slate-900 dark:text-slate-100" title={p.productName}>
-                          {p.productName}
-                        </h4>
-                        <p className="text-xs text-muted-foreground font-mono mt-0.5">SKU: {p.sku}</p>
-                      </div>
-
-                      {/* Unit Economics Box */}
-                      <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800/60 space-y-2">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground flex items-center gap-1.5">
-                            Current Price:
-                            {editingPriceId !== p.id && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingPriceId(p.id)
-                                  setEditingPriceValue(p.currentPrice.toString())
-                                }}
-                                className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 font-semibold bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-1.5 py-0.5 rounded transition-all hover:scale-105"
-                                title="Manually override Amazon price"
-                              >
-                                <Edit3 className="h-2.5 w-2.5" /> Edit
-                              </button>
-                            )}
-                          </span>
-                          {editingPriceId === p.id ? (
-                            <div className="flex items-center gap-1">
-                              <span className="text-muted-foreground">{mp.symbol}</span>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={editingPriceValue}
-                                onChange={(e) => setEditingPriceValue(e.target.value)}
-                                className="w-20 h-6 text-xs px-1.5 py-0 text-right"
-                                autoFocus
-                              />
-                              <Button
-                                size="sm"
-                                onClick={() => handleManualPriceUpdate(p.id)}
-                                disabled={submittingPrice}
-                                className="h-6 w-6 p-0 bg-emerald-600 hover:bg-emerald-500 rounded text-white ml-1"
-                                title="Save to Amazon"
-                              >
-                                {submittingPrice ? <RefreshCw className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setEditingPriceId(null)}
-                                disabled={submittingPrice}
-                                className="h-6 w-6 p-0 rounded text-slate-500"
-                                title="Cancel"
-                              >
-                                <XCircle className="h-3 w-3" />
-                              </Button>
+                      return (
+                        <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
+                          <td className="px-4 py-3 min-w-[250px]">
+                            <div className="flex items-center gap-3">
+                              {p.imageUrl ? (
+                                <div className="h-10 w-10 shrink-0 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700">
+                                  <Image src={p.imageUrl} alt={p.productName} width={40} height={40} className="object-cover" />
+                                </div>
+                              ) : (
+                                <div className="h-10 w-10 shrink-0 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                                  <Package className="h-5 w-5 text-slate-400" />
+                                </div>
+                              )}
+                              <div>
+                                <div className="font-bold text-slate-900 dark:text-slate-100 line-clamp-1 max-w-[200px]" title={p.productName}>
+                                  {p.productName}
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[10px]" title={mp.name}>{mp.flag}</span>
+                                  <a href={`https://www.amazon.com/dp/${p.asin}`} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] font-bold text-indigo-600 hover:underline">
+                                    {p.asin}
+                                  </a>
+                                  <span className="text-[10px] text-slate-500 font-mono">| {p.sku}</span>
+                                  {p.calculated?.hasPendingApproval && (
+                                    <span className="ml-1 text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded-full animate-bounce">
+                                      Pending
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          ) : (
-                            <span className="font-bold text-sm text-slate-900 dark:text-white">
-                              {mp.symbol}{p.currentPrice.toFixed(2)}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground flex items-center gap-1.5">
-                            Unit Cost:
-                            <button
-                              type="button"
-                              onClick={() => openEdit(p)}
-                              className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 font-semibold bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-1.5 py-0.5 rounded transition-all hover:scale-105"
-                              title="Click to edit Unit Cost"
-                            >
-                              <Edit3 className="h-2.5 w-2.5" /> Edit
-                            </button>
-                          </span>
-                          <span className="font-semibold text-slate-700 dark:text-slate-300">
-                            {mp.symbol}{p.unitCost.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">Fees (Referral + FBA):</span>
-                          <span className="text-slate-600 dark:text-slate-400">
-                            {mp.symbol}{((p.calculated?.referralFee ?? 0) + p.fbaFee).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs border-t border-slate-200/80 dark:border-slate-800/80 pt-1 font-semibold">
-                          <span className="text-slate-700 dark:text-slate-300">Total Cost + Fees:</span>
-                          <span className="text-slate-900 dark:text-white font-bold">
-                            {mp.symbol}{(p.unitCost + (p.calculated?.referralFee ?? 0) + p.fbaFee).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="border-t border-slate-200 dark:border-slate-800 pt-1.5 flex items-center justify-between text-xs font-semibold">
-                          <span>Net Profit Margin:</span>
-                          <span className={`px-2 py-0.5 rounded font-bold ${margin >= Math.min(p.minMarginPercent ?? 15, 15) ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : margin >= 10 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"}`}>
-                            {mp.symbol}{p.calculated?.grossProfit.toFixed(2)} ({margin.toFixed(1)}%)
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Buy Box & Recommendation Badge */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground flex items-center gap-1">
-                            Buy Box Price:
-                            <span className="font-semibold text-slate-700 dark:text-slate-300">
-                              {mp.symbol}{p.currentBuyBoxPrice?.toFixed(2) ?? p.currentPrice.toFixed(2)}
-                            </span>
-                          </span>
-                          <span className={`font-semibold ${(p.buyBoxWinRate ?? 80) >= 80 ? "text-emerald-600" : "text-amber-600"}`}>
-                            {p.buyBoxWinRate ?? 85}% Win Rate
-                          </span>
-                        </div>
-
-                        {/* Action Badge */}
-                        <div className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between ${actionConfig.badgeClass}`}>
-                          <div className="flex items-center gap-1.5">
-                            <span>{actionConfig.label}</span>
-                            {p.recommendedPrice && p.recommendedPrice !== p.currentPrice && (
-                              <span className="underline font-bold">
-                                ➔ {mp.symbol}{p.recommendedAction === "MAINTAIN" ? p.currentPrice.toFixed(2) : p.recommendedPrice.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-slate-900 dark:text-slate-100">{p.calculated?.sevenDaySalesTotal?.toLocaleString() ?? "—"}</span>
+                              <span className="text-[10px] text-slate-500 font-medium">units / 7d</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 min-w-[120px]">
+                            <div className="flex flex-col gap-1">
+                              <span className="font-semibold text-xs text-slate-700 dark:text-slate-300">
+                                #{p.calculated?.currentRank ? p.calculated.currentRank.toLocaleString() : "—"}
                               </span>
-                            )}
-                          </div>
-                          <span className="text-[10px] opacity-75 font-mono">{p.confidenceScore ?? 90}% Conf.</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Footer Actions */}
-                    <div className="bg-slate-100/50 dark:bg-slate-950/50 p-2.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openSimulator(p)}
-                        className="flex-1 text-xs h-8 bg-white dark:bg-slate-900 font-semibold text-indigo-600 dark:text-indigo-400 border-indigo-500/30 hover:bg-indigo-50 dark:hover:bg-indigo-950/50"
-                      >
-                        <Sliders className="h-3.5 w-3.5 mr-1" />
-                        Simulate
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedProductForKeepa(p.id)
-                          fetchKeepaHistory(p.id)
-                          setActiveTab("keepa")
-                        }}
-                        className="text-xs h-8 bg-white dark:bg-slate-900 font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 px-2"
-                        title="View Keepa Intelligence Chart & Heatmaps"
-                      >
-                        <TrendingUp className="h-3.5 w-3.5 mr-1" />
-                        Keepa
-                      </Button>
-                      <div className="flex items-center">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => openEdit(p)}
-                          className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                          title="Edit Rules & Cost"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleDeleteProduct(p.id)}
-                          className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                          title="Stop Monitoring"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                )
-              })}
+                              {p.calculated?.sparklineData && p.calculated.sparklineData.length > 1 ? (
+                                <div className="h-6 w-24 opacity-80 mix-blend-multiply dark:mix-blend-lighten">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={p.calculated.sparklineData}>
+                                      <YAxis domain={['dataMin', 'dataMax']} reversed hide />
+                                      <Line type="monotone" dataKey="rank" stroke="#8b5cf6" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                                    </LineChart>
+                                  </ResponsiveContainer>
+                                </div>
+                              ) : (
+                                <div className="h-6 w-24 flex items-center justify-center text-[10px] text-slate-400 bg-slate-50 dark:bg-slate-900/50 rounded">
+                                  No data
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex flex-col border-r border-slate-200 dark:border-slate-700 pr-3">
+                                <span className="text-[10px] text-slate-500 font-semibold mb-0.5">PRICE</span>
+                                {editingPriceId === p.id ? (
+                                  <div className="flex items-center gap-1">
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={editingPriceValue}
+                                      onChange={(e) => setEditingPriceValue(e.target.value)}
+                                      className="w-16 h-6 text-xs px-1 py-0 font-bold"
+                                      autoFocus
+                                    />
+                                    <Button size="sm" onClick={() => handleManualPriceUpdate(p.id)} disabled={submittingPrice} className="h-6 w-6 p-0 bg-emerald-600 hover:bg-emerald-500 rounded text-white"><CheckCircle2 className="h-3 w-3" /></Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setEditingPriceId(null)} disabled={submittingPrice} className="h-6 w-6 p-0 rounded text-slate-500"><XCircle className="h-3 w-3" /></Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 group">
+                                    <span className="font-bold text-slate-900 dark:text-white cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => { setEditingPriceId(p.id); setEditingPriceValue(p.currentPrice.toString()); }}>
+                                      {mp.symbol}{p.currentPrice.toFixed(2)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-[10px] text-slate-500 font-semibold mb-0.5">NET MARGIN</span>
+                                <span className={`font-bold text-xs ${margin >= Math.min(p.minMarginPercent ?? 15, 15) ? "text-emerald-600 dark:text-emerald-400" : margin >= 10 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"}`}>
+                                  {mp.symbol}{p.calculated?.grossProfit.toFixed(2)} <span className="opacity-75 font-medium">({margin.toFixed(1)}%)</span>
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className={`px-2 py-1.5 rounded-lg border text-[11px] font-semibold ${actionConfig.badgeClass}`}>
+                              <div className="flex items-center gap-1.5 justify-between">
+                                <span className="truncate">{actionConfig.label}</span>
+                                {p.recommendedPrice && p.recommendedPrice !== p.currentPrice && (
+                                  <span className="font-bold shrink-0">➔ {mp.symbol}{p.recommendedAction === "MAINTAIN" ? p.currentPrice.toFixed(2) : p.recommendedPrice.toFixed(2)}</span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1 opacity-60 hover:opacity-100 transition-opacity">
+                              <Button size="icon" variant="ghost" onClick={() => openSimulator(p)} className="h-8 w-8 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50" title="Simulate Strategy"><Sliders className="h-4 w-4" /></Button>
+                              <Button size="icon" variant="ghost" onClick={() => { setSelectedProductForKeepa(p.id); fetchKeepaHistory(p.id); setActiveTab("keepa"); }} className="h-8 w-8 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50" title="Keepa Intelligence"><TrendingUp className="h-4 w-4" /></Button>
+                              <Button size="icon" variant="ghost" onClick={() => openEdit(p)} className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:hover:text-white" title="Edit Rules & Cost"><Edit3 className="h-4 w-4" /></Button>
+                              <Button size="icon" variant="ghost" onClick={() => handleDeleteProduct(p.id)} className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30" title="Stop Monitoring"><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

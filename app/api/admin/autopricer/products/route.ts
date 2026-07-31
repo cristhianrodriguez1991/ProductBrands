@@ -44,6 +44,9 @@ export async function GET(req: Request) {
       ]
     }
 
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
     const products = await prisma.monitoredProduct.findMany({
       where,
       orderBy: { updatedAt: "desc" },
@@ -52,6 +55,15 @@ export async function GET(req: Request) {
           where: { status: "PENDING_APPROVAL" },
           orderBy: { requestedAt: "desc" },
           take: 1,
+        },
+        keepaHistory: {
+          orderBy: { timestamp: "desc" },
+          take: 30,
+        },
+        amazonDailySales: {
+          where: {
+            date: { gte: sevenDaysAgo.toISOString().split("T")[0] },
+          },
         },
       },
     })
@@ -73,6 +85,20 @@ export async function GET(req: Request) {
         p.fbaFee
       )
 
+      let sevenDaySalesTotal = 0
+      if (p.amazonDailySales && p.amazonDailySales.length > 0) {
+        sevenDaySalesTotal = p.amazonDailySales.reduce((sum, day) => sum + (day.unitsOrdered || 0), 0)
+      } else {
+        sevenDaySalesTotal = Math.round((p.velocityDaily || 0) * 7)
+      }
+
+      const sparklineData = (p.keepaHistory || [])
+        .filter(k => k.salesRank && k.salesRank > 0)
+        .map(k => ({ timestamp: k.timestamp, rank: k.salesRank as number }))
+        .reverse()
+      
+      const currentRank = sparklineData.length > 0 ? sparklineData[sparklineData.length - 1].rank : 0
+
       if (p.status === "ACTIVE") {
         totalMarginSum += netMarginPct
         activeCountForMargin++
@@ -88,14 +114,20 @@ export async function GET(req: Request) {
         }
       }
 
+      // Remove the large relations from the response to save bandwidth
+      const { keepaHistory, amazonDailySales, ...productWithoutHeavyRelations } = p as any
+
       return {
-        ...p,
+        ...productWithoutHeavyRelations,
         calculated: {
           referralFee,
           grossProfit,
           netMarginPct,
-          hasPendingApproval: (p.priceHistory?.length ?? 0) > 0,
-          pendingChange: p.priceHistory?.[0] || null,
+          hasPendingApproval: (productWithoutHeavyRelations.priceHistory?.length ?? 0) > 0,
+          pendingChange: productWithoutHeavyRelations.priceHistory?.[0] || null,
+          sevenDaySalesTotal,
+          currentRank,
+          sparklineData,
         },
       }
     })
