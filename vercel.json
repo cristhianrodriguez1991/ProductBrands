@@ -16,6 +16,10 @@
     {
       "path": "/api/admin/autopricer/cron/daily-analysis",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/admin/autopricer/cron/execute-scheduled",
+      "schedule": "0 * * * *"
     }
   ]
 }

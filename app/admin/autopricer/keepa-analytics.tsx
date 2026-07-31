@@ -51,6 +51,11 @@ export function KeepaAnalytics({
   const [dailySales, setDailySales] = useState<any[]>([])
   const [showDailySales, setShowDailySales] = useState(false)
 
+  // Day Prediction State
+  const [dayPredictions, setDayPredictions] = useState<Record<string, any>>({})
+  const [isPredictingDay, setIsPredictingDay] = useState<string | null>(null)
+  const [isSchedulingDay, setIsSchedulingDay] = useState<string | null>(null)
+
   React.useEffect(() => {
     setAiAssessment(null)
     setDailySales([])
@@ -81,6 +86,57 @@ export function KeepaAnalytics({
       alert("AI analysis request failed: " + e.message)
     } finally {
       setIsAnalyzing(false)
+    }
+  }
+
+  const runDayPrediction = async (dayName: string, strategy: string) => {
+    if (!product?.id) return
+    setIsPredictingDay(dayName)
+    try {
+      const res = await fetch("/api/admin/autopricer/simulate/day-predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: product.id, dayName, strategy })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setDayPredictions(prev => ({ ...prev, [dayName]: data.prediction }))
+      } else {
+        alert("Prediction failed: " + data.error)
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message)
+    } finally {
+      setIsPredictingDay(null)
+    }
+  }
+
+  const scheduleDayPrediction = async (dayName: string, prediction: any) => {
+    if (!product?.id) return
+    setIsSchedulingDay(dayName)
+    try {
+      const res = await fetch("/api/admin/autopricer/schedule/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: product.id,
+          dayName,
+          proposedPrice: prediction.proposedPrice,
+          reasoning: prediction.reasoning
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        alert(data.message)
+        // Optionally mark as scheduled in UI
+        setDayPredictions(prev => ({ ...prev, [dayName]: { ...prev[dayName], scheduled: true } }))
+      } else {
+        alert("Scheduling failed: " + data.error)
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message)
+    } finally {
+      setIsSchedulingDay(null)
     }
   }
 
@@ -404,6 +460,7 @@ export function KeepaAnalytics({
                   <th className="py-3 px-3">vs. Weekly Average</th>
                   <th className="py-3 px-3">Combined Strategy (AI + Engine)</th>
                   <th className="py-3 px-3">Synergy Rationale & Why</th>
+                  <th className="py-3 px-3 w-64">AI Prediction & Schedule</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -485,6 +542,42 @@ export function KeepaAnalytics({
                       </td>
                       <td className="py-3 px-3 text-xs text-slate-300 leading-normal max-w-xs">
                         {rationale}
+                      </td>
+                      <td className="py-3 px-3 border-l border-slate-800/80 bg-slate-900/40">
+                        {dayPredictions[p.dayName] ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-bold text-emerald-400 font-mono tracking-wide">
+                                ${dayPredictions[p.dayName].proposedPrice?.toFixed(2)}
+                              </span>
+                              <span className="text-slate-400">
+                                Rank: #{dayPredictions[p.dayName].projectedRank?.toLocaleString()}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 leading-tight">
+                              {dayPredictions[p.dayName].reasoning}
+                            </p>
+                            <button
+                              onClick={() => scheduleDayPrediction(p.dayName, dayPredictions[p.dayName])}
+                              disabled={isSchedulingDay === p.dayName || dayPredictions[p.dayName].scheduled}
+                              className="w-full mt-1 py-1 px-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold disabled:opacity-50 transition-colors"
+                            >
+                              {dayPredictions[p.dayName].scheduled ? "Scheduled for 4 A.M." : isSchedulingDay === p.dayName ? "Scheduling..." : "Accept & Schedule"}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => runDayPrediction(p.dayName, isWeekend ? "Defensive Hold" : isMonday ? "Start-of-Week Harvest" : isFriday ? "Momentum Preparation" : isWorse ? "Velocity Stimulation" : "Margin Harvest Sync")}
+                            disabled={isPredictingDay === p.dayName}
+                            className="w-full py-1.5 px-3 rounded-lg border border-slate-700 hover:border-indigo-500 hover:bg-indigo-500/10 text-slate-300 hover:text-indigo-300 text-[11px] font-semibold transition-all disabled:opacity-50"
+                          >
+                            {isPredictingDay === p.dayName ? (
+                              <span className="flex items-center justify-center gap-1.5"><RefreshCw className="h-3 w-3 animate-spin" /> Predicting...</span>
+                            ) : (
+                              <span className="flex items-center justify-center gap-1.5"><Brain className="h-3 w-3" /> Predict Price</span>
+                            )}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   )

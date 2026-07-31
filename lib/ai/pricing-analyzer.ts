@@ -584,3 +584,99 @@ Respond with ONLY a valid JSON object matching this schema:
     reasoning: "Fallback linear prediction model used due to AI service unavailability."
   }
 }
+
+export interface AIDayStrategyPrediction {
+  proposedPrice: number
+  projectedRank: number
+  projectedSales30d: number
+  reasoning: string
+}
+
+/**
+ * Predict the optimal price and its impact for a specific day of the week,
+ * based on the algorithmic strategy engine's recommendation for that day.
+ */
+export async function predictDayStrategyWithGLM(
+  product: any,
+  dayName: string,
+  strategy: string,
+  dailySales: any[],
+  recentKeepaHistory: any[]
+): Promise<AIDayStrategyPrediction> {
+  const rawApiKey = process.env.OPENAI_API_KEY || ""
+  const apiKey = rawApiKey.replace(/\s+/g, "")
+  const cloudModel = process.env.OPENAI_MODEL || "gpt-4o-mini"
+  const ollamaBaseUrl = process.env.OLLAMA_BASE_URL
+  const ollamaModel = process.env.OLLAMA_MODEL || "glm4"
+
+  const totalUnits30d = dailySales.reduce((sum, d) => sum + d.unitsOrdered, 0)
+  
+  let medianRank = 0
+  if (recentKeepaHistory.length > 0) {
+    const ranks = recentKeepaHistory.map(h => h.salesRank).filter(r => r > 0).sort((a, b) => a - b)
+    medianRank = ranks[Math.floor(ranks.length / 2)] || 0
+  }
+
+  const systemPrompt = `You are an elite Amazon Marketplace Pricing Strategist and A9 Sales Rank data scientist.
+Your task is to calculate the optimal exact price (in cents) for a specific day of the week based on an algorithmic strategy goal.
+You will be provided with the current performance (30-day sales volume, current price, median sales rank) and the strategy for the day.
+
+RULES:
+1. "Defensive Hold" or "Margin Harvest Sync": Price should generally stay the same or rise slightly (max $0.15).
+2. "Start-of-Week Harvest": Price should rise slightly to capture premium margins (max $0.15).
+3. "Momentum Preparation" or "Micro Discount": Price should drop slightly (max $0.15) to boost velocity.
+4. Output MUST be valid JSON.`
+
+  const userPrompt = `Predict the optimal price and impact for this Amazon product on a specific day.
+Product: "${product.productName || product.sku}"
+Current Price: $${product.currentPrice.toFixed(2)}
+Floor Price: $${product.minPrice?.toFixed(2) || "N/A"}
+Ceiling Price: $${product.maxPrice?.toFixed(2) || "N/A"}
+Target Day: ${dayName}
+Recommended Strategy: "${strategy}"
+
+Past 30 Days Performance:
+- Total Units Sold: ${totalUnits30d}
+- Median Sales Rank: #${medianRank.toLocaleString()}
+
+Calculate the EXACT proposed price, projected 30-day sales volume, and projected sales rank if this day strategy is executed.
+
+Respond with ONLY a valid JSON object matching this schema:
+{
+  "proposedPrice": number (the exact recommended price, e.g. 19.99),
+  "projectedRank": number (the projected sales rank, e.g. 15000),
+  "projectedSales30d": number (the projected total units sold in a 30-day period, e.g. 120),
+  "reasoning": string (1-2 sentences explaining why this price fits the ${strategy} strategy for ${dayName})
+}`
+
+  try {
+    const llm = await callLLM(systemPrompt, userPrompt, {
+      ollamaBaseUrl, ollamaModel, cloudApiKey: apiKey, cloudModel,
+    })
+
+    if (llm && llm.content) {
+      const jsonMatch = llm.content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0])
+        const rawProposed = Number(parsed.proposedPrice) || product.currentPrice
+        const clamped = clampToCentsBand(product.currentPrice, rawProposed, product.minPrice || 0, product.maxPrice || 9999)
+        return {
+          proposedPrice: clamped.price,
+          projectedRank: Math.round(Number(parsed.projectedRank)) || medianRank,
+          projectedSales30d: Math.round(Number(parsed.projectedSales30d)) || totalUnits30d,
+          reasoning: parsed.reasoning || `Aligned with ${strategy} for ${dayName}.`
+        }
+      }
+    }
+  } catch (error) {
+    console.warn("[AI] Day prediction failed:", error)
+  }
+
+  // Fallback
+  return {
+    proposedPrice: product.currentPrice,
+    projectedRank: medianRank,
+    projectedSales30d: totalUnits30d,
+    reasoning: "Fallback used. Maintain current price."
+  }
+}
