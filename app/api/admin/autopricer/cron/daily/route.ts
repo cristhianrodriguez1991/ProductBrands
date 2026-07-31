@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
   try {
     const products = await prisma.monitoredProduct.findMany({
-      where: { isAutopilot: true, status: "ACTIVE" },
+      where: { status: "ACTIVE" },
     })
 
     if (products.length === 0) {
@@ -126,53 +126,83 @@ export async function POST(req: Request) {
         
         // Only push to Amazon if the price actually changed
         if (requestedPrice !== product.currentPrice && assessment.recommendedAction !== "MAINTAIN") {
-          console.log(`[AUTOPILOT_CRON] Pushing new price $${requestedPrice} to Amazon for SKU ${product.sku}`)
-          
-          // Push to Amazon (we omit this step in development unless keys are fully configured, 
-          // but we leave the code active so it runs in production)
-          let pushSuccess = true
-          let amazonMsg = "Submitted via Autopilot Cron"
-          try {
-             const feedRes = await submitPriceUpdateFeed([
-               { sku: product.sku, price: requestedPrice }
-             ])
-             if (!feedRes || !feedRes.feedSubmissionId) {
-               throw new Error("No feedSubmissionId returned")
-             }
-          } catch (e: any) {
-             pushSuccess = false
-             amazonMsg = e.message || "Failed to submit feed"
-             console.error("[AUTOPILOT_CRON] Amazon Push failed:", e)
+          if (product.isAutopilot) {
+            console.log(`[AUTOPILOT_CRON] Pushing new price $${requestedPrice} to Amazon for SKU ${product.sku}`)
+            
+            // Push to Amazon
+            let pushSuccess = true
+            let amazonMsg = "Submitted via Autopilot Cron"
+            try {
+               const feedRes = await submitPriceUpdateFeed([
+                 { sku: product.sku, price: requestedPrice }
+               ])
+               if (!feedRes || !feedRes.feedSubmissionId) {
+                 throw new Error("No feedSubmissionId returned")
+               }
+            } catch (e: any) {
+               pushSuccess = false
+               amazonMsg = e.message || "Failed to submit feed"
+               console.error("[AUTOPILOT_CRON] Amazon Push failed:", e)
+            }
+
+            // Record Log & Update Product
+            await prisma.priceChangeLog.create({
+              data: {
+                monitoredProductId: product.id,
+                oldPrice: product.currentPrice,
+                newPrice: requestedPrice,
+                recommendedAction: assessment.recommendedAction,
+                reason: `AUTOPILOT: ${assessment.strategicSummary} | Rationale: ${assessment.testRationale}`,
+                status: pushSuccess ? "APPLIED" : "ERROR",
+                notes: amazonMsg,
+                approvedAt: new Date(),
+                approvedByUserId: "AUTOPILOT_ENGINE",
+              }
+            })
+
+            await prisma.monitoredProduct.update({
+              where: { id: product.id },
+              data: {
+                currentPrice: pushSuccess ? requestedPrice : product.currentPrice,
+                recommendedAction: "MAINTAIN", // reset action since we just acted
+                recommendedPrice: requestedPrice,
+                recommendationReason: `AUTOPILOT executed ${assessment.recommendedAction} to $${requestedPrice}. Reason: ${assessment.strategicSummary}`,
+                confidenceScore: assessment.confidenceScore,
+                lastAnalyzedAt: new Date(),
+              }
+            })
+            
+            pushed++
+          } else {
+            // Not on autopilot: Generate manual approval request
+            const pendingApproval = await prisma.priceChangeLog.findFirst({
+              where: { monitoredProductId: product.id, status: "PENDING_APPROVAL" }
+            })
+            
+            if (!pendingApproval) {
+              await prisma.priceChangeLog.create({
+                data: {
+                  monitoredProductId: product.id,
+                  oldPrice: product.currentPrice,
+                  newPrice: requestedPrice,
+                  recommendedAction: assessment.recommendedAction,
+                  reason: assessment.strategicSummary + "\n\nKey Takeaways:\n" + assessment.keyTakeaways.map((t: string) => "- " + t).join("\n"),
+                  status: "PENDING_APPROVAL",
+                }
+              })
+            }
+            
+            await prisma.monitoredProduct.update({
+              where: { id: product.id },
+              data: {
+                recommendedAction: assessment.recommendedAction,
+                recommendedPrice: requestedPrice,
+                recommendationReason: assessment.strategicSummary,
+                confidenceScore: assessment.confidenceScore,
+                lastAnalyzedAt: new Date(),
+              }
+            })
           }
-
-          // 6. Record Log & Update Product
-          await prisma.priceChangeLog.create({
-            data: {
-              monitoredProductId: product.id,
-              oldPrice: product.currentPrice,
-              newPrice: requestedPrice,
-              recommendedAction: assessment.recommendedAction,
-              reason: `AUTOPILOT: ${assessment.strategicSummary} | Rationale: ${assessment.testRationale}`,
-              status: pushSuccess ? "APPLIED" : "ERROR",
-              notes: amazonMsg,
-              approvedAt: new Date(),
-              approvedByUserId: "AUTOPILOT_ENGINE",
-            }
-          })
-
-          await prisma.monitoredProduct.update({
-            where: { id: product.id },
-            data: {
-              currentPrice: pushSuccess ? requestedPrice : product.currentPrice,
-              recommendedAction: "MAINTAIN", // reset action since we just acted
-              recommendedPrice: requestedPrice,
-              recommendationReason: `AUTOPILOT executed ${assessment.recommendedAction} to $${requestedPrice}. Reason: ${assessment.strategicSummary}`,
-              confidenceScore: assessment.confidenceScore,
-              lastAnalyzedAt: new Date(),
-            }
-          })
-          
-          pushed++
         } else {
           // Just update the analysis
           await prisma.monitoredProduct.update({
