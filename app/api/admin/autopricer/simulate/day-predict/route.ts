@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { PERMISSIONS, hasEffectivePermission } from "@/lib/permissions"
 import { predictDayStrategyWithGLM } from "@/lib/ai/pricing-analyzer"
-import { getDailySalesHistory } from "@/lib/amazon-sp-api-service"
+import { getDailySalesAndTrafficBySku } from "@/lib/amazon-sp-api-service"
 
 export const maxDuration = 120
 export const dynamic = "force-dynamic"
@@ -42,18 +42,18 @@ export async function POST(req: Request) {
     })
 
     // Get last 30 days of Amazon SP-API Sales History
-    const spApiSales = product.sku ? await getDailySalesHistory(product.sku, 30) : []
+    const spApiSales = product.sku ? await getDailySalesAndTrafficBySku(product.sku, 30, product.currentPrice) : []
     const dbSales = await prisma.amazonDailySales.findMany({
       where: {
         monitoredProductId: productId,
-        date: { gte: thirtyDaysAgo },
+        date: { gte: thirtyDaysAgo.toISOString().split("T")[0] }, // date is a String YYYY-MM-DD
       },
     })
-    
+
     // Merge sales data
     const dailySalesMap = new Map<string, any>()
     for (const d of dbSales) {
-      dailySalesMap.set(d.date.toISOString().split("T")[0], d)
+      dailySalesMap.set(String(d.date).split("T")[0], d)
     }
     for (const d of spApiSales) {
       dailySalesMap.set(d.date, d)
