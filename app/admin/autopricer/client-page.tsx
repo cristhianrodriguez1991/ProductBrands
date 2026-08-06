@@ -1414,7 +1414,7 @@ export default function AutopricerClient() {
                                 <div className="h-6 w-24 opacity-80 mix-blend-multiply dark:mix-blend-lighten">
                                   <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={p.calculated.sparklineData}>
-                                      <YAxis domain={['dataMin', 'dataMax']} reversed hide />
+                                      <YAxis domain={['dataMin', 'dataMax']} hide />
                                       <Tooltip 
                                         content={({ active, payload }) => {
                                           if (active && payload && payload.length) {
@@ -1709,7 +1709,7 @@ export default function AutopricerClient() {
               <TrendingUp className="h-5 w-5 text-emerald-400" />
               <div>
                 <h3 className="font-bold text-sm">Select Monitored Product for Keepa Analysis:</h3>
-                <p className="text-xs text-slate-400">View time-series charts, inverted Sales Rank, and day-of-week heatmaps.</p>
+                <p className="text-xs text-slate-400">View time-series charts, Sales Rank trends, and day-of-week heatmaps.</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

@@ -137,7 +137,6 @@ export function AutopilotInsightsModal({ isOpen, onClose, productId }: Autopilot
                         yAxisId="rank" 
                         orientation="left" 
                         stroke="#8b5cf6" 
-                        reversed 
                         tickFormatter={(val) => `#${(val / 1000).toFixed(0)}k`}
                         tick={{ fill: '#8b5cf6', fontSize: 12 }} 
                       />
