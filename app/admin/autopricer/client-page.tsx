@@ -2620,7 +2620,9 @@ export default function AutopricerClient() {
                   <span className="font-semibold text-sm text-slate-400">Recommended Action:</span>
                   <span className="text-emerald-400 font-bold font-mono text-lg">
                     {aiAssessment.recommendedAction} 
-                    {aiAssessment.proposedPrice && ` ($${aiAssessment.proposedPrice.toFixed(2)})`}
+                    {aiAssessment.recommendedAction === "MAINTAIN" 
+                      ? ` ($${(selectedAiProduct?.currentPrice ?? aiAssessment.proposedPrice ?? 0).toFixed(2)})`
+                      : aiAssessment.proposedPrice && ` ($${aiAssessment.proposedPrice.toFixed(2)})`}
                   </span>
                 </div>
                 

@@ -154,30 +154,36 @@ JSON schema:
       const jsonMatch = llm.content.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0])
-        const action = (parsed.recommendedAction || "MAINTAIN").toUpperCase()
-        // Clamp the LLM proposal to a small cents move within bounds — never trust
-        // an LLM to respect the "cents only" rule on its own.
-        const clamped = clampToCentsBand(
-          product.currentPrice,
-          Number(parsed.proposedPrice) || product.currentPrice,
-          product.minPrice,
-          product.maxPrice
-        )
-        // Apply psychological rounding after clamping
-        const roundedPrice = applyPsychologicalRounding(clamped.price, product.minPrice, product.maxPrice)
+        const rawAction = (parsed.recommendedAction || "MAINTAIN").toUpperCase()
+        const action = (["RAISE", "LOWER", "MAINTAIN"].includes(rawAction) ? rawAction : "MAINTAIN") as AIStrategicAssessment["recommendedAction"]
+        
+        let roundedPrice = product.currentPrice
+        let centsDelta = 0
+
+        if (action !== "MAINTAIN") {
+          const clamped = clampToCentsBand(
+            product.currentPrice,
+            Number(parsed.proposedPrice) || product.currentPrice,
+            product.minPrice,
+            product.maxPrice
+          )
+          roundedPrice = applyPsychologicalRounding(clamped.price, product.minPrice, product.maxPrice)
+          centsDelta = clamped.cents
+        }
+
         return {
           modelUsed: llm.modelUsed,
           timestamp: new Date().toISOString(),
           strategicSummary: parsed.strategicSummary || "Rank-first analysis complete.",
           detectedLagEffect: parsed.detectedLagEffect || "No severe rank carryover distortion detected.",
-          recommendedAction: (["RAISE", "LOWER", "MAINTAIN"].includes(action) ? action : "MAINTAIN") as AIStrategicAssessment["recommendedAction"],
+          recommendedAction: action,
           proposedPrice: roundedPrice,
           confidenceScore: Math.min(100, Math.max(0, Number(parsed.confidenceScore) || 90)),
           keyTakeaways: Array.isArray(parsed.keyTakeaways) ? parsed.keyTakeaways : [],
           scheduledDay: parsed.scheduledDay,
           testRationale: parsed.testRationale,
           weekdayStrategy: todayProfile?.recommendedStrategy,
-          adjustmentCents: clamped.cents,
+          adjustmentCents: centsDelta,
           velocitySnapshot: {
             totalUnits30d, totalUnits7d, avgUnitsPerDay, weekdayUnits, weekendUnits,
             netMarginPct: Math.round(netMarginPct * 10) / 10,
@@ -420,7 +426,11 @@ function rankFirstLocalStrategy(
   if (action === "LOWER") proposedPrice = Math.max(minPrice, Math.round((current - step) * 100) / 100)
   if (action === "RAISE") proposedPrice = Math.min(maxPrice, Math.round((current + step) * 100) / 100)
   
-  proposedPrice = applyPsychologicalRounding(proposedPrice, minPrice, maxPrice)
+  if (action !== "MAINTAIN") {
+    proposedPrice = applyPsychologicalRounding(proposedPrice, minPrice, maxPrice)
+  } else {
+    proposedPrice = current
+  }
   const cents = Math.round((proposedPrice - current) * 100)
 
   // Identify the optimal day for the test
