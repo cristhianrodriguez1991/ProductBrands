@@ -34,6 +34,7 @@ const PERMISSION_LABELS: Record<Permission, string> = {
   chat: "Live Chat",
   settings: "Site Settings",
   autopricer: "Autopricer",
+  productinfo: "Product Info",
 }
 
 export default async function AdminUsersPage() {

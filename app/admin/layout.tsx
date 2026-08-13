@@ -57,6 +57,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/invoices", label: "Invoices", icon: Receipt, permission: PERMISSIONS.INVOICES },
   { href: "/admin/chat", label: "Live Chat", icon: MessageSquare, permission: PERMISSIONS.CHAT },
   { href: "/admin/autopricer", label: "Autopricer", icon: TrendingUp, permission: PERMISSIONS.AUTOPRICER },
+  { href: "/admin/productinfo", label: "Product Info", icon: Package, permission: PERMISSIONS.PRODUCTINFO },
   { href: "/admin/settings", label: "Site Settings", icon: Settings, permission: PERMISSIONS.SETTINGS },
 ]
 

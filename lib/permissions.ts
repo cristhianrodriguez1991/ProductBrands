@@ -22,6 +22,7 @@ export const PERMISSIONS = {
   CHAT: 'chat',
   SETTINGS: 'settings',
   AUTOPRICER: 'autopricer',
+  PRODUCTINFO: 'productinfo',
 } as const
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]
@@ -40,6 +41,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     PERMISSIONS.CONTACT,
     PERMISSIONS.CHAT,
     PERMISSIONS.AUTOPRICER,
+    PERMISSIONS.PRODUCTINFO,
   ],
   [UserRole.OPS]: [
     PERMISSIONS.DASHBOARD,
@@ -141,6 +143,7 @@ export const ROUTE_PERMISSIONS: Record<string, Permission> = {
   '/admin/chat': PERMISSIONS.CHAT,
   '/admin/settings': PERMISSIONS.SETTINGS,
   '/admin/autopricer': PERMISSIONS.AUTOPRICER,
+  '/admin/productinfo': PERMISSIONS.PRODUCTINFO,
 }
 
 /**

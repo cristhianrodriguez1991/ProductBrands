@@ -1169,4 +1169,18 @@ model AmazonDailySales {
   @@index([date])
 }
 
+model InfoProduct {
+  id          String   @id @default(cuid())
+  slug        String   @unique // The "1", "2", "3" identifier
+  name        String
+  tagline     String?
+  description String?  @db.Text
+  features    Json?    // Array of feature objects: { title, description, icon }
+  mediaUrls   String[] // Array of image/video URLs
+  actionUrl   String?  // Link for the call-to-action button
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 
