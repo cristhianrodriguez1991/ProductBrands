@@ -118,10 +118,11 @@ export default function InfoProductModal({ product, takenSlugs = [], onClose, on
         const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
         const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
         clipPath.setAttribute('id', 'qr-clip');
+        clipPath.setAttribute('clipPathUnits', 'objectBoundingBox');
         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        circle.setAttribute('cx', '100');
-        circle.setAttribute('cy', '100');
-        circle.setAttribute('r', '36');
+        circle.setAttribute('cx', '0.5');
+        circle.setAttribute('cy', '0.5');
+        circle.setAttribute('r', '0.5');
         clipPath.appendChild(circle);
         defs.appendChild(clipPath);
         svg.prepend(defs);
@@ -480,7 +481,7 @@ export default function InfoProductModal({ product, takenSlugs = [], onClose, on
                           y: undefined,
                           height: 72,
                           width: 72,
-                          excavate: true,
+                          excavate: false,
                         } : undefined}
                         ref={qrRef}
                       />
