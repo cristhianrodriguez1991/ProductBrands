@@ -361,8 +361,8 @@ export default function InfoProductModal({ product, takenSlugs = [], onClose, on
                           src: qrLogo,
                           x: undefined,
                           y: undefined,
-                          height: 48,
-                          width: 48,
+                          height: 72,
+                          width: 72,
                           excavate: true,
                         } : undefined}
                         ref={qrRef}
