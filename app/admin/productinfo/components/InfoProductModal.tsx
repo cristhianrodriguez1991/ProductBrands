@@ -33,8 +33,10 @@ export default function InfoProductModal({ product, takenSlugs = [], onClose, on
   })()
 
   const [qrLogo, setQrLogo] = useState("")
-  const [savedLogos, setSavedLogos] = useState<string[]>([])
+  const [savedLogos, setSavedLogos] = useState<{name: string, url: string}[]>([])
   const [isUploading, setIsUploading] = useState(false)
+  const [newLogoName, setNewLogoName] = useState("")
+  const [newLogoUrl, setNewLogoUrl] = useState("")
 
   useEffect(() => {
     const saved = localStorage.getItem("brand_qr_logos")
@@ -42,34 +44,41 @@ export default function InfoProductModal({ product, takenSlugs = [], onClose, on
       try {
         const parsed = JSON.parse(saved)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setSavedLogos(parsed)
-          setQrLogo(parsed[0])
+          const mapped = parsed.map((item: any) => typeof item === "string" ? { name: "Saved Logo", url: item } : item)
+          const unique = mapped.filter((v: any, i: number, a: any[]) => a.findIndex(t => (t.url === v.url)) === i)
+          setSavedLogos(unique)
+          setQrLogo(unique[0]?.url || "")
         }
       } catch(e) {}
     } else {
       // Migrate old single string if exists
       const oldSaved = localStorage.getItem("brand_qr_logo")
       if (oldSaved) {
-        setSavedLogos([oldSaved])
+        const defaultLogo = [{ name: "Saved Logo", url: oldSaved }]
+        setSavedLogos(defaultLogo)
         setQrLogo(oldSaved)
-        localStorage.setItem("brand_qr_logos", JSON.stringify([oldSaved]))
+        localStorage.setItem("brand_qr_logos", JSON.stringify(defaultLogo))
       }
     }
   }, [])
 
-  const saveLogoToList = (url: string) => {
+  const saveLogoToList = (url: string, name: string) => {
     if (!url) return;
     setQrLogo(url)
-    const newLogos = Array.from(new Set([url, ...savedLogos]))
+    const newEntry = { name: name || "Saved Logo", url }
+    const filtered = savedLogos.filter(l => l.url !== url)
+    const newLogos = [newEntry, ...filtered]
     setSavedLogos(newLogos)
     localStorage.setItem("brand_qr_logos", JSON.stringify(newLogos))
+    setNewLogoName("")
+    setNewLogoUrl("")
   }
 
   const removeLogoFromList = (url: string) => {
-    const newLogos = savedLogos.filter(l => l !== url)
+    const newLogos = savedLogos.filter(l => l.url !== url)
     setSavedLogos(newLogos)
     localStorage.setItem("brand_qr_logos", JSON.stringify(newLogos))
-    if (qrLogo === url) setQrLogo(newLogos[0] || "")
+    if (qrLogo === url) setQrLogo(newLogos[0]?.url || "")
   }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,7 +92,7 @@ export default function InfoProductModal({ product, takenSlugs = [], onClose, on
       const res = await fetch("/api/upload", { method: "POST", body: fd })
       const data = await res.json()
       if (data.url) {
-        saveLogoToList(data.url)
+        saveLogoToList(data.url, newLogoName || file.name)
       } else {
         alert(data.error || "Upload failed")
       }
@@ -422,10 +431,10 @@ export default function InfoProductModal({ product, takenSlugs = [], onClose, on
                         >
                           <option value="">-- No Logo --</option>
                           {savedLogos.map(logo => (
-                            <option key={logo} value={logo}>{logo.substring(0, 40)}...</option>
+                            <option key={logo.url} value={logo.url}>{logo.name}</option>
                           ))}
                         </select>
-                        {qrLogo && savedLogos.includes(qrLogo) && (
+                        {qrLogo && savedLogos.some(l => l.url === qrLogo) && (
                           <button type="button" onClick={() => removeLogoFromList(qrLogo)} className="px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 text-xs font-medium border border-red-100">
                             Delete
                           </button>
@@ -434,33 +443,40 @@ export default function InfoProductModal({ product, takenSlugs = [], onClose, on
                     </div>
                   )}
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">Or enter image URL</label>
-                    <div className="flex gap-2">
+                  <div className="space-y-2 border p-3 rounded-md bg-slate-50">
+                    <label className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">Add New Logo</label>
+                    <div className="flex flex-col gap-2">
                       <input
-                        type="url"
-                        value={qrLogo}
-                        onChange={(e) => setQrLogo(e.target.value)}
-                        className="flex-1 p-2 border rounded-md text-xs"
-                        placeholder="https://.../logo.png"
+                        type="text"
+                        value={newLogoName}
+                        onChange={(e) => setNewLogoName(e.target.value)}
+                        className="p-2 border rounded-md text-xs"
+                        placeholder="Company Name (e.g. Office Roast)"
                       />
-                      <button type="button" onClick={() => saveLogoToList(qrLogo)} className="px-3 py-2 bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 text-xs font-medium border">
-                        Save
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">Or Upload File</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileUpload}
-                        disabled={isUploading}
-                        className="flex-1 p-1 border rounded-md text-xs file:mr-2 file:py-1 file:px-2 file:border-0 file:text-xs file:bg-primary file:text-primary-foreground file:rounded-md cursor-pointer disabled:opacity-50"
-                      />
-                      {isUploading && <span className="text-xs text-primary animate-pulse font-medium">Uploading...</span>}
+                      <div className="flex gap-2">
+                        <input
+                          type="url"
+                          value={newLogoUrl}
+                          onChange={(e) => setNewLogoUrl(e.target.value)}
+                          className="flex-1 p-2 border rounded-md text-xs"
+                          placeholder="Image URL (if no file)..."
+                        />
+                        <button type="button" onClick={() => saveLogoToList(newLogoUrl, newLogoName)} className="px-3 py-2 bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 text-xs font-medium">
+                          Save
+                        </button>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] font-bold text-muted-foreground">OR</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          disabled={isUploading}
+                          className="flex-1 p-1 border rounded-md text-xs file:mr-2 file:py-1 file:px-2 file:border-0 file:text-xs file:bg-primary file:text-primary-foreground file:rounded-md cursor-pointer disabled:opacity-50"
+                        />
+                        {isUploading && <span className="text-xs text-primary animate-pulse font-medium">Uploading...</span>}
+                      </div>
                     </div>
                   </div>
                 </div>
