@@ -11,7 +11,7 @@ export default function InfoProductModal({ product, onClose, onSuccess }: { prod
     tagline: product?.tagline || "",
     description: product?.description || "",
     actionUrl: product?.actionUrl || "",
-    isActive: product !== undefined ? product.isActive : true,
+    isActive: product ? product.isActive : true,
     features: product?.features || [],
     mediaUrls: product?.mediaUrls || [],
   })
