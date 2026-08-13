@@ -5,6 +5,20 @@ import { X, Plus, Trash2, Download } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 
 export default function InfoProductModal({ product, onClose, onSuccess }: { product?: any, onClose: () => void, onSuccess: () => void }) {
+  const DEFAULT_FEATURES = [
+    { title: "Product Name", description: "", format: "grid" },
+    { title: "Product Type", description: "", format: "grid" },
+    { title: "Country of Origin", description: "", format: "grid" },
+    { title: "Net Contents", description: "", format: "grid" },
+    { title: "Amount per Stick", description: "", format: "grid" },
+    { title: "Net Weight", description: "", format: "grid" },
+    { title: "Ingredients", description: "", format: "list" },
+    { title: "Recommended Use", description: "", format: "list" },
+    { title: "Storage", description: "", format: "list" },
+    { title: "Packaging", description: "", format: "list" },
+    { title: "Distributed By", description: "", format: "list" }
+  ];
+
   const [formData, setFormData] = useState({
     slug: product?.slug || "",
     name: product?.name || "",
@@ -12,7 +26,7 @@ export default function InfoProductModal({ product, onClose, onSuccess }: { prod
     description: product?.description || "",
     actionUrl: product?.actionUrl || "",
     isActive: product ? product.isActive : true,
-    features: product?.features || [],
+    features: (product?.features && product.features.length > 0) ? product.features : DEFAULT_FEATURES,
     mediaUrls: product?.mediaUrls || [],
   })
   
@@ -74,10 +88,12 @@ export default function InfoProductModal({ product, onClose, onSuccess }: { prod
       // Provide default 'list' format for any features missing it
       const payload = {
         ...formData,
-        features: formData.features.map((f: any) => ({
-          ...f,
-          format: f.format || "list"
-        }))
+        features: formData.features
+          .filter((f: any) => f.title.trim() !== "" || f.description.trim() !== "")
+          .map((f: any) => ({
+            ...f,
+            format: f.format || "list"
+          }))
       }
 
       const res = await fetch(url, {
