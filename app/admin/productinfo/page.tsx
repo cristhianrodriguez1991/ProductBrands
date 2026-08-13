@@ -145,6 +145,7 @@ export default function ProductInfoAdminPage() {
       {modalOpen && (
         <InfoProductModal
           product={editingProduct}
+          takenSlugs={products.map((p) => p.slug)}
           onClose={() => setModalOpen(false)}
           onSuccess={() => {
             setModalOpen(false)

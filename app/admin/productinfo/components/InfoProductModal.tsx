@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { X, Plus, Trash2, Download } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 
-export default function InfoProductModal({ product, onClose, onSuccess }: { product?: any, onClose: () => void, onSuccess: () => void }) {
+export default function InfoProductModal({ product, takenSlugs = [], onClose, onSuccess }: { product?: any, takenSlugs?: string[], onClose: () => void, onSuccess: () => void }) {
   const DEFAULT_FEATURES = [
     { title: "Product Name", description: "", format: "grid" },
     { title: "Product Type", description: "", format: "grid" },
@@ -16,11 +16,36 @@ export default function InfoProductModal({ product, onClose, onSuccess }: { prod
     { title: "Recommended Use", description: "", format: "list" },
     { title: "Storage", description: "", format: "list" },
     { title: "Packaging", description: "", format: "list" },
-    { title: "Distributed By", description: "", format: "list" }
+    { title: "Distributed By", description: "ProductBrands", format: "list" }
   ];
 
+  const availableSlugs = (() => {
+    const available = []
+    let current = 1
+    const takenSet = new Set((takenSlugs || []).filter(s => s !== product?.slug))
+    while (available.length < 50) {
+      if (!takenSet.has(current.toString())) {
+        available.push(current.toString())
+      }
+      current++
+    }
+    return available
+  })()
+
+  const [qrLogo, setQrLogo] = useState("")
+  useEffect(() => {
+    const savedLogo = localStorage.getItem("brand_qr_logo")
+    if (savedLogo) setQrLogo(savedLogo)
+  }, [])
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setQrLogo(val)
+    localStorage.setItem("brand_qr_logo", val)
+  }
+
   const [formData, setFormData] = useState({
-    slug: product?.slug || "",
+    slug: product?.slug || availableSlugs[0] || "",
     name: product?.name || "",
     tagline: product?.tagline || "",
     description: product?.description || "",
@@ -170,16 +195,21 @@ export default function InfoProductModal({ product, onClose, onSuccess }: { prod
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Slug (ID: 1, 2, 3...)</label>
-                  <input
-                    type="text"
+                  <label className="text-sm font-medium">Slug (ID)</label>
+                  <select
                     name="slug"
                     required
                     value={formData.slug}
                     onChange={handleChange}
-                    className="w-full p-2 border rounded-md font-mono"
-                    placeholder="e.g. 1"
-                  />
+                    className="w-full p-2 border rounded-md font-mono bg-white"
+                  >
+                    {product?.slug && !availableSlugs.includes(product.slug) && (
+                      <option value={product.slug}>{product.slug} (Current)</option>
+                    )}
+                    {availableSlugs.map(slug => (
+                      <option key={slug} value={slug}>{slug}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -304,9 +334,18 @@ export default function InfoProductModal({ product, onClose, onSuccess }: { prod
             <div className="lg:col-span-1 border-l lg:pl-8 space-y-6 flex flex-col items-center">
               <div className="text-center w-full">
                 <h3 className="font-semibold mb-2">QR Code Generator</h3>
-                <p className="text-xs text-muted-foreground mb-6">
-                  Updates automatically as you type the Slug.
-                </p>
+                
+                <div className="mb-6 text-left w-full space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Company Logo URL (Optional)</label>
+                  <input
+                    type="url"
+                    value={qrLogo}
+                    onChange={handleLogoChange}
+                    className="w-full p-2 border rounded-md text-xs"
+                    placeholder="https://.../logo.png"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Saves automatically for future QR codes.</p>
+                </div>
                 
                 {formData.slug ? (
                   <div className="flex flex-col items-center space-y-4">
@@ -316,8 +355,16 @@ export default function InfoProductModal({ product, onClose, onSuccess }: { prod
                         size={200}
                         bgColor={"#ffffff"}
                         fgColor={"#000000"}
-                        level={"H"}
+                        level={qrLogo ? "H" : "M"}
                         includeMargin={false}
+                        imageSettings={qrLogo ? {
+                          src: qrLogo,
+                          x: undefined,
+                          y: undefined,
+                          height: 48,
+                          width: 48,
+                          excavate: true,
+                        } : undefined}
                         ref={qrRef}
                       />
                     </div>
