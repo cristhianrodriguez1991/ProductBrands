@@ -33,15 +33,66 @@ export default function InfoProductModal({ product, takenSlugs = [], onClose, on
   })()
 
   const [qrLogo, setQrLogo] = useState("")
+  const [savedLogos, setSavedLogos] = useState<string[]>([])
+  const [isUploading, setIsUploading] = useState(false)
+
   useEffect(() => {
-    const savedLogo = localStorage.getItem("brand_qr_logo")
-    if (savedLogo) setQrLogo(savedLogo)
+    const saved = localStorage.getItem("brand_qr_logos")
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSavedLogos(parsed)
+          setQrLogo(parsed[0])
+        }
+      } catch(e) {}
+    } else {
+      // Migrate old single string if exists
+      const oldSaved = localStorage.getItem("brand_qr_logo")
+      if (oldSaved) {
+        setSavedLogos([oldSaved])
+        setQrLogo(oldSaved)
+        localStorage.setItem("brand_qr_logos", JSON.stringify([oldSaved]))
+      }
+    }
   }, [])
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    setQrLogo(val)
-    localStorage.setItem("brand_qr_logo", val)
+  const saveLogoToList = (url: string) => {
+    if (!url) return;
+    setQrLogo(url)
+    const newLogos = Array.from(new Set([url, ...savedLogos]))
+    setSavedLogos(newLogos)
+    localStorage.setItem("brand_qr_logos", JSON.stringify(newLogos))
+  }
+
+  const removeLogoFromList = (url: string) => {
+    const newLogos = savedLogos.filter(l => l !== url)
+    setSavedLogos(newLogos)
+    localStorage.setItem("brand_qr_logos", JSON.stringify(newLogos))
+    if (qrLogo === url) setQrLogo(newLogos[0] || "")
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    setIsUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (data.url) {
+        saveLogoToList(data.url)
+      } else {
+        alert(data.error || "Upload failed")
+      }
+    } catch (err) {
+      alert("Upload failed")
+    } finally {
+      setIsUploading(false)
+      if (e.target) e.target.value = ''
+    }
   }
 
   const [formData, setFormData] = useState({
@@ -335,16 +386,60 @@ export default function InfoProductModal({ product, takenSlugs = [], onClose, on
               <div className="text-center w-full">
                 <h3 className="font-semibold mb-2">QR Code Generator</h3>
                 
-                <div className="mb-6 text-left w-full space-y-1">
-                  <label className="text-xs font-medium text-gray-700">Company Logo URL (Optional)</label>
-                  <input
-                    type="url"
-                    value={qrLogo}
-                    onChange={handleLogoChange}
-                    className="w-full p-2 border rounded-md text-xs"
-                    placeholder="https://.../logo.png"
-                  />
-                  <p className="text-[10px] text-muted-foreground">Saves automatically for future QR codes.</p>
+                <div className="mb-6 text-left w-full space-y-4">
+                  
+                  {savedLogos.length > 0 && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">Select Saved Logo</label>
+                      <div className="flex gap-2">
+                        <select 
+                          value={qrLogo}
+                          onChange={(e) => setQrLogo(e.target.value)}
+                          className="flex-1 p-2 border rounded-md text-xs bg-white"
+                        >
+                          <option value="">-- No Logo --</option>
+                          {savedLogos.map(logo => (
+                            <option key={logo} value={logo}>{logo.substring(0, 40)}...</option>
+                          ))}
+                        </select>
+                        {qrLogo && savedLogos.includes(qrLogo) && (
+                          <button type="button" onClick={() => removeLogoFromList(qrLogo)} className="px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 text-xs font-medium border border-red-100">
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">Or enter image URL</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={qrLogo}
+                        onChange={(e) => setQrLogo(e.target.value)}
+                        className="flex-1 p-2 border rounded-md text-xs"
+                        placeholder="https://.../logo.png"
+                      />
+                      <button type="button" onClick={() => saveLogoToList(qrLogo)} className="px-3 py-2 bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 text-xs font-medium border">
+                        Save
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">Or Upload File</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        disabled={isUploading}
+                        className="flex-1 p-1 border rounded-md text-xs file:mr-2 file:py-1 file:px-2 file:border-0 file:text-xs file:bg-primary file:text-primary-foreground file:rounded-md cursor-pointer disabled:opacity-50"
+                      />
+                      {isUploading && <span className="text-xs text-primary animate-pulse font-medium">Uploading...</span>}
+                    </div>
+                  </div>
                 </div>
                 
                 {formData.slug ? (
