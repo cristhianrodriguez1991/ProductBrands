@@ -31,7 +31,7 @@ export default function InfoProductModal({ product, onClose, onSuccess }: { prod
   }
 
   const handleAddFeature = () => {
-    setFormData(prev => ({ ...prev, features: [...prev.features, { title: "", description: "" }] }))
+    setFormData(prev => ({ ...prev, features: [...prev.features, { title: "", description: "", format: "grid" }] }))
   }
 
   const handleUpdateFeature = (index: number, field: string, value: string) => {
@@ -71,10 +71,19 @@ export default function InfoProductModal({ product, onClose, onSuccess }: { prod
       const url = product ? `/api/admin/productinfo/${product.id}` : "/api/admin/productinfo"
       const method = product ? "PATCH" : "POST"
 
+      // Provide default 'list' format for any features missing it
+      const payload = {
+        ...formData,
+        features: formData.features.map((f: any) => ({
+          ...f,
+          format: f.format || "list"
+        }))
+      }
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       })
 
       if (!res.ok) {
@@ -184,32 +193,44 @@ export default function InfoProductModal({ product, onClose, onSuccess }: { prod
 
               <div className="space-y-4 border-t pt-4">
                 <div className="flex justify-between items-center">
-                  <label className="text-sm font-medium">Features</label>
+                  <label className="text-sm font-medium">Features & Specifications</label>
                   <button type="button" onClick={handleAddFeature} className="text-xs text-primary flex items-center">
                     <Plus className="h-3 w-3 mr-1" /> Add Feature
                   </button>
                 </div>
                 {formData.features.map((feature: any, i: number) => (
-                  <div key={i} className="flex gap-2 items-start bg-muted/30 p-3 rounded-md">
-                    <div className="flex-1 space-y-2">
-                      <input
-                        type="text"
-                        placeholder="Feature Title"
-                        value={feature.title}
-                        onChange={(e) => handleUpdateFeature(i, "title", e.target.value)}
-                        className="w-full p-2 border rounded-md text-sm"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Feature Description"
-                        value={feature.description}
-                        onChange={(e) => handleUpdateFeature(i, "description", e.target.value)}
-                        className="w-full p-2 border rounded-md text-sm"
-                      />
+                  <div key={i} className="flex flex-col gap-2 bg-muted/30 p-4 rounded-md border border-border/50">
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Title (e.g. Net Weight)"
+                            value={feature.title}
+                            onChange={(e) => handleUpdateFeature(i, "title", e.target.value)}
+                            className="flex-1 p-2 border rounded-md text-sm font-medium"
+                          />
+                          <select
+                            value={feature.format || "list"}
+                            onChange={(e) => handleUpdateFeature(i, "format", e.target.value)}
+                            className="w-40 p-2 border rounded-md text-sm bg-white"
+                          >
+                            <option value="grid">Grid (Top)</option>
+                            <option value="list">List (Bottom)</option>
+                          </select>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Value / Description"
+                          value={feature.description}
+                          onChange={(e) => handleUpdateFeature(i, "description", e.target.value)}
+                          className="w-full p-2 border rounded-md text-sm"
+                        />
+                      </div>
+                      <button type="button" onClick={() => handleRemoveFeature(i)} className="p-2 text-red-500 hover:bg-red-50 rounded-md">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
-                    <button type="button" onClick={() => handleRemoveFeature(i)} className="p-2 text-red-500 hover:bg-red-50 rounded-md">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
                   </div>
                 ))}
               </div>
