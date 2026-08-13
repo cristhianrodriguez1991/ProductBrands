@@ -21,7 +21,11 @@ export default async function ProductInfoSlugPage({ params }: { params: { slug: 
     where: { slug: params.slug }
   })
 
-  if (!product || !product.isActive) {
+  if (!product) {
+    notFound()
+  }
+
+  if (!product.isActive) {
     notFound()
   }
 
