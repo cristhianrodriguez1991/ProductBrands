@@ -111,6 +111,28 @@ export default function InfoProductModal({ product, takenSlugs = [], onClose, on
   
   const qrRef = useRef<SVGSVGElement>(null)
 
+  useEffect(() => {
+    if (qrRef.current && qrLogo) {
+      const svg = qrRef.current;
+      if (!svg.querySelector('#qr-clip')) {
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+        clipPath.setAttribute('id', 'qr-clip');
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', '100');
+        circle.setAttribute('cy', '100');
+        circle.setAttribute('r', '36');
+        clipPath.appendChild(circle);
+        defs.appendChild(clipPath);
+        svg.prepend(defs);
+      }
+      setTimeout(() => {
+        const img = svg.querySelector('image');
+        if (img) img.setAttribute('clip-path', 'url(#qr-clip)');
+      }, 50)
+    }
+  }, [qrLogo, formData.slug])
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
     if (type === "checkbox") {
