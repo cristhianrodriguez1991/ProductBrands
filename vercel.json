@@ -7,19 +7,19 @@
   "crons": [
     {
       "path": "/api/admin/inventory/sync",
-      "schedule": "0 4 * * *"
+      "schedule": "0 7 * * *"
     },
     {
       "path": "/api/admin/autopricer/sync-sales",
-      "schedule": "0 3 * * *"
+      "schedule": "5 7 * * *"
     },
     {
       "path": "/api/admin/autopricer/cron/daily-analysis",
-      "schedule": "0 5 * * *"
+      "schedule": "10 7 * * *"
     },
     {
       "path": "/api/admin/autopricer/cron/daily",
-      "schedule": "0 8 * * *"
+      "schedule": "15 7 * * *"
     }
   ]
 }
