@@ -8,7 +8,7 @@ import { analyzePricingWithGLM } from "@/lib/ai/pricing-analyzer"
 export const dynamic = "force-dynamic"
 export const maxDuration = 300 // allow up to 5 minutes for cron
 
-export async function POST(req: Request) {
+export async function GET(req: Request) {
   // Can be secured via Vercel cron secret in production
   const authHeader = req.headers.get("authorization")
   if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -310,8 +310,12 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true, processed, pushed, errors })
-  } catch (error: any) {
-    console.error("[AUTOPILOT_CRON_FATAL]", error)
-    return NextResponse.json({ success: false, error: error?.message || "Internal error" }, { status: 500 })
+  } catch (err: any) {
+    console.error("[AUTOPILOT_CRON] FATAL ERROR:", err)
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
   }
+}
+
+export async function POST(req: Request) {
+  return GET(req)
 }
