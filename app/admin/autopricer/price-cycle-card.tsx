@@ -29,10 +29,22 @@ interface PriceCycleCardProps {
 
 export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
   const [selectedProductId, setSelectedProductId] = useState<string>("")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   
   const selectedProduct = useMemo(() => {
     return products.find(p => p.id === selectedProductId)
   }, [products, selectedProductId])
+
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery) return products
+    const q = searchQuery.toLowerCase()
+    return products.filter(p => 
+      p.asin.toLowerCase().includes(q) || 
+      p.sku.toLowerCase().includes(q) || 
+      p.productName.toLowerCase().includes(q)
+    )
+  }, [products, searchQuery])
 
   const [regularPrice, setRegularPrice] = useState("12.99")
   const [regularDays, setRegularDays] = useState("14")
@@ -99,16 +111,48 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1.5">Product</label>
-            <select 
-              className="w-full h-10 px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-slate-400"
-              value={selectedProductId}
-              onChange={(e) => setSelectedProductId(e.target.value)}
-            >
-              <option value="">Select a product...</option>
-              {products.map(p => (
-                <option key={p.id} value={p.id}>{p.productName} — {p.sku}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <Input
+                type="text"
+                className="w-full bg-white shadow-sm"
+                placeholder="Search by ASIN, SKU, or Name..."
+                value={isDropdownOpen ? searchQuery : (selectedProduct ? `${selectedProduct.productName} — ${selectedProduct.asin}` : searchQuery)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  if (!isDropdownOpen) setIsDropdownOpen(true)
+                  if (selectedProductId) setSelectedProductId("")
+                }}
+                onFocus={() => setIsDropdownOpen(true)}
+                onBlur={() => {
+                  // Delay blur slightly to allow clicking on dropdown options
+                  setTimeout(() => setIsDropdownOpen(false), 200)
+                }}
+              />
+              {isDropdownOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {filteredProducts.length > 0 ? (
+                    filteredProducts.map(p => (
+                      <div
+                        key={p.id}
+                        className="px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 border-b border-slate-50 last:border-0"
+                        onMouseDown={() => {
+                          setSelectedProductId(p.id)
+                          setSearchQuery("")
+                          setIsDropdownOpen(false)
+                        }}
+                      >
+                        <div className="font-medium text-slate-900 truncate">{p.productName}</div>
+                        <div className="text-xs text-slate-500">ASIN: {p.asin} | SKU: {p.sku}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-3 py-4 text-sm text-center text-slate-500">
+                      No products found.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1.5">Regular price</label>
