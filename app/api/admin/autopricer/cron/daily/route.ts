@@ -26,7 +26,12 @@ export async function POST(req: Request) {
 
   try {
     const products = await prisma.monitoredProduct.findMany({
-      where: { status: "ACTIVE" },
+      where: { 
+        OR: [
+          { status: "ACTIVE" },
+          { status: "PRICE_CYCLE_ONLY" }
+        ]
+      },
     })
 
     if (products.length === 0) {
@@ -106,6 +111,13 @@ export async function POST(req: Request) {
           }
           
           // Bypass AI logic since product is governed by a price cycle
+          processed++
+          continue
+        }
+
+        // 0.5 Skip AI for PRICE_CYCLE_ONLY products even if their cycle is paused
+        if (product.status === "PRICE_CYCLE_ONLY") {
+          console.log(`[AUTOPILOT_CRON] Skipping AI evaluation for PRICE_CYCLE_ONLY product: ${product.sku}`)
           processed++
           continue
         }

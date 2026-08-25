@@ -10,11 +10,38 @@ export async function POST(request: Request) {
       priceCycleDiscountPct, 
       priceCycleRegularDays, 
       priceCycleDiscountDays,
-      priceCycleBasePrice
+      priceCycleBasePrice,
+      newAmazonProduct
     } = body
 
-    if (!productId) {
-      return NextResponse.json({ success: false, error: "Product ID is required" }, { status: 400 })
+    let targetProductId = productId
+
+    if (newAmazonProduct && !targetProductId) {
+      // Find or create the product as PRICE_CYCLE_ONLY
+      let existing = await prisma.monitoredProduct.findFirst({
+        where: { asin: newAmazonProduct.asin }
+      })
+      
+      if (!existing) {
+        existing = await prisma.monitoredProduct.create({
+          data: {
+            asin: newAmazonProduct.asin,
+            sku: newAmazonProduct.sku,
+            productName: newAmazonProduct.productName,
+            currentPrice: newAmazonProduct.currentPrice || 0,
+            unitCost: 0,
+            minPrice: 0,
+            maxPrice: 99999,
+            status: "PRICE_CYCLE_ONLY",
+            isAutopilot: false,
+          }
+        })
+      }
+      targetProductId = existing.id
+    }
+
+    if (!targetProductId) {
+      return NextResponse.json({ success: false, error: "Product ID or new Amazon product details are required" }, { status: 400 })
     }
 
     if (priceCycleEnabled) {
@@ -44,7 +71,7 @@ export async function POST(request: Request) {
     }
 
     const updatedProduct = await prisma.monitoredProduct.update({
-      where: { id: productId },
+      where: { id: targetProductId },
       data: {
         priceCycleEnabled,
         priceCycleStatus: status,

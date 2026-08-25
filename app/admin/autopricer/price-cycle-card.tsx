@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Calendar, Repeat, Play, Pause, XCircle } from "lucide-react"
+import { Calendar, Repeat, Play, Pause, XCircle, Loader2 } from "lucide-react"
 
 interface Product {
   id: string
@@ -29,12 +29,17 @@ interface PriceCycleCardProps {
 
 export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
   const [selectedProductId, setSelectedProductId] = useState<string>("")
+  const [selectedAmazonProduct, setSelectedAmazonProduct] = useState<any>(null)
+  
   const [searchQuery, setSearchQuery] = useState("")
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [amazonResults, setAmazonResults] = useState<any[]>([])
+  const [isSearchingAmazon, setIsSearchingAmazon] = useState(false)
   
   const selectedProduct = useMemo(() => {
+    if (selectedAmazonProduct) return selectedAmazonProduct
     return products.find(p => p.id === selectedProductId)
-  }, [products, selectedProductId])
+  }, [products, selectedProductId, selectedAmazonProduct])
 
   const filteredProducts = useMemo(() => {
     if (!searchQuery) return products
@@ -46,6 +51,30 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
     )
   }, [products, searchQuery])
 
+  useEffect(() => {
+    if (searchQuery.length < 3) {
+      setAmazonResults([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      setIsSearchingAmazon(true)
+      try {
+        const res = await fetch(`/api/admin/amazon/search-inventory?q=${encodeURIComponent(searchQuery)}`)
+        const data = await res.json()
+        if (data.results) {
+          // Filter out results that are already in our local portfolio
+          const localAsins = new Set(products.map(p => p.asin))
+          setAmazonResults(data.results.filter((r: any) => !localAsins.has(r.asin)))
+        }
+      } catch (err) {
+        console.error("Failed to search Amazon", err)
+      } finally {
+        setIsSearchingAmazon(false)
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchQuery, products])
+
   const [regularPrice, setRegularPrice] = useState("12.99")
   const [regularDays, setRegularDays] = useState("14")
   const [discountPct, setDiscountPct] = useState("10")
@@ -56,11 +85,11 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
   // Sync state when product selected
   useMemo(() => {
     if (selectedProduct) {
-      setRegularPrice(selectedProduct.priceCycleBasePrice?.toString() || selectedProduct.currentPrice.toString() || "0")
+      setRegularPrice(selectedProduct.priceCycleBasePrice?.toString() || selectedProduct.price?.toString() || selectedProduct.currentPrice?.toString() || "0")
       setRegularDays(selectedProduct.priceCycleRegularDays?.toString() || "14")
       setDiscountPct(selectedProduct.priceCycleDiscountPct?.toString() || "10")
       setDiscountDays(selectedProduct.priceCycleDiscountDays?.toString() || "7")
-      setRepeatCycle(selectedProduct.priceCycleEnabled)
+      setRepeatCycle(selectedProduct.priceCycleEnabled !== false)
     }
   }, [selectedProduct])
 
@@ -73,22 +102,40 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
   nextDate.setDate(today.getDate() + parseInt(regularDays || "0"))
   
   const handleSave = async () => {
-    if (!selectedProductId) return
+    if (!selectedProductId && !selectedAmazonProduct) return
     setSaving(true)
     try {
+      const payload: any = {
+        priceCycleEnabled: repeatCycle,
+        priceCycleDiscountPct: parseFloat(discountPct),
+        priceCycleRegularDays: parseInt(regularDays),
+        priceCycleDiscountDays: parseInt(discountDays),
+        priceCycleBasePrice: parseFloat(regularPrice)
+      }
+      
+      if (selectedProductId) {
+        payload.productId = selectedProductId
+      } else if (selectedAmazonProduct) {
+        payload.newAmazonProduct = {
+          asin: selectedAmazonProduct.asin,
+          sku: selectedAmazonProduct.sku,
+          productName: selectedAmazonProduct.productName,
+          currentPrice: selectedAmazonProduct.price
+        }
+      }
+
       const res = await fetch("/api/admin/autopricer/price-cycle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: selectedProductId,
-          priceCycleEnabled: repeatCycle,
-          priceCycleDiscountPct: parseFloat(discountPct),
-          priceCycleRegularDays: parseInt(regularDays),
-          priceCycleDiscountDays: parseInt(discountDays),
-          priceCycleBasePrice: parseFloat(regularPrice)
-        })
+        body: JSON.stringify(payload)
       })
       if (!res.ok) throw new Error("Failed to save schedule")
+      
+      // Clear selection so the UI resets
+      setSelectedProductId("")
+      setSelectedAmazonProduct(null)
+      setSearchQuery("")
+      
       onRefresh()
       alert("Schedule saved successfully!")
     } catch (e: any) {
@@ -129,25 +176,56 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                 }}
               />
               {isDropdownOpen && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                  {filteredProducts.length > 0 ? (
-                    filteredProducts.map(p => (
-                      <div
-                        key={p.id}
-                        className="px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 border-b border-slate-50 last:border-0"
-                        onMouseDown={() => {
-                          setSelectedProductId(p.id)
-                          setSearchQuery("")
-                          setIsDropdownOpen(false)
-                        }}
-                      >
-                        <div className="font-medium text-slate-900 truncate">{p.productName}</div>
-                        <div className="text-xs text-slate-500">ASIN: {p.asin} | SKU: {p.sku}</div>
-                      </div>
-                    ))
-                  ) : (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-80 overflow-y-auto">
+                  {/* Local Products */}
+                  {filteredProducts.length > 0 && (
+                    <div className="px-3 py-1 text-xs font-bold text-slate-400 bg-slate-50 uppercase tracking-wider">
+                      Monitored Portfolio
+                    </div>
+                  )}
+                  {filteredProducts.map(p => (
+                    <div
+                      key={p.id}
+                      className="px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 border-b border-slate-50 last:border-0"
+                      onMouseDown={() => {
+                        setSelectedProductId(p.id)
+                        setSelectedAmazonProduct(null)
+                        setSearchQuery("")
+                        setIsDropdownOpen(false)
+                      }}
+                    >
+                      <div className="font-medium text-slate-900 truncate">{p.productName}</div>
+                      <div className="text-xs text-slate-500">ASIN: {p.asin} | SKU: {p.sku} | Base: ${p.priceCycleBasePrice || p.currentPrice}</div>
+                    </div>
+                  ))}
+
+                  {/* Amazon Live Search */}
+                  {searchQuery.length >= 3 && (
+                    <div className="px-3 py-1 text-xs font-bold text-blue-500 bg-blue-50/50 uppercase tracking-wider flex items-center justify-between border-t border-slate-100 mt-1">
+                      <span>Amazon Catalog</span>
+                      {isSearchingAmazon && <Loader2 className="h-3 w-3 animate-spin" />}
+                    </div>
+                  )}
+                  {searchQuery.length >= 3 && amazonResults.map(p => (
+                    <div
+                      key={p.asin}
+                      className="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 border-b border-slate-50 last:border-0"
+                      onMouseDown={() => {
+                        setSelectedProductId("")
+                        setSelectedAmazonProduct(p)
+                        setSearchQuery("")
+                        setIsDropdownOpen(false)
+                      }}
+                    >
+                      <div className="font-medium text-slate-900 truncate">{p.productName}</div>
+                      <div className="text-xs text-slate-500">ASIN: {p.asin} | SKU: {p.sku} | Price: ${p.price}</div>
+                      <div className="text-[10px] text-blue-600 font-medium mt-0.5">Will be added to Price Cycle</div>
+                    </div>
+                  ))}
+
+                  {filteredProducts.length === 0 && amazonResults.length === 0 && !isSearchingAmazon && (
                     <div className="px-3 py-4 text-sm text-center text-slate-500">
-                      No products found.
+                      No products found. {searchQuery.length < 3 && "Type at least 3 characters to search Amazon."}
                     </div>
                   )}
                 </div>
@@ -254,10 +332,10 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="px-6 border-slate-300 text-slate-700 font-medium hover:bg-slate-50" onClick={() => setSelectedProductId("")}>
+            <Button variant="outline" className="px-6 border-slate-300 text-slate-700 font-medium hover:bg-slate-50" onClick={() => { setSelectedProductId(""); setSelectedAmazonProduct(null); }}>
               Cancel
             </Button>
-            <Button className="px-6 bg-[#16a34a] hover:bg-green-700 text-white font-medium shadow-sm" onClick={handleSave} disabled={!selectedProductId || saving}>
+            <Button className="px-6 bg-[#16a34a] hover:bg-green-700 text-white font-medium shadow-sm" onClick={handleSave} disabled={(!selectedProductId && !selectedAmazonProduct) || saving}>
               {saving ? "Saving..." : "Save Schedule"}
             </Button>
           </div>
