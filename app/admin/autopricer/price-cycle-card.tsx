@@ -405,7 +405,10 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                   const isActivePhase = p.priceCycleCurrentPhase === "DISCOUNT"
                   return (
                     <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-slate-900">{p.productName} <span className="text-slate-400 font-normal ml-1">({p.sku})</span></td>
+                      <td className="px-4 py-3 font-medium text-slate-900 max-w-[250px]">
+                        <div className="truncate" title={p.productName}>{p.productName}</div>
+                        <div className="text-slate-400 font-normal text-xs mt-0.5">SKU: {p.sku}</div>
+                      </td>
                       <td className="px-4 py-3">${Number(p.priceCycleBasePrice).toFixed(2)}</td>
                       <td className="px-4 py-3">${salePrice} <span className="text-xs text-emerald-600 ml-1 bg-emerald-50 px-1 rounded">-{p.priceCycleDiscountPct}%</span></td>
                       <td className="px-4 py-3">
