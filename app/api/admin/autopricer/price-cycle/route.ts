@@ -11,7 +11,8 @@ export async function POST(request: Request) {
       priceCycleRegularDays, 
       priceCycleDiscountDays,
       priceCycleBasePrice,
-      newAmazonProduct
+      newAmazonProduct,
+      startPhase
     } = body
 
     let targetProductId = productId
@@ -64,10 +65,16 @@ export async function POST(request: Request) {
 
     if (priceCycleEnabled) {
       status = "Active"
-      phase = "REGULAR" // always start with regular phase
       startDate = new Date()
-      nextDate = new Date()
-      nextDate.setDate(nextDate.getDate() + priceCycleRegularDays)
+      
+      if (startPhase === "DISCOUNT") {
+        phase = "REGULAR" // Set to REGULAR so the very next shift goes to DISCOUNT
+        nextDate = new Date(0) // Date in the past ensures the cron triggers the DISCOUNT shift tonight at 3 AM
+      } else {
+        phase = "REGULAR" 
+        nextDate = new Date()
+        nextDate.setDate(nextDate.getDate() + priceCycleRegularDays)
+      }
     }
 
     const updatedProduct = await prisma.monitoredProduct.update({

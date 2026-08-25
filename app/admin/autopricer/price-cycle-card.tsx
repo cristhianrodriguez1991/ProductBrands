@@ -80,6 +80,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
   const [discountPct, setDiscountPct] = useState("10")
   const [discountDays, setDiscountDays] = useState("7")
   const [repeatCycle, setRepeatCycle] = useState(true)
+  const [startPhase, setStartPhase] = useState<"REGULAR" | "DISCOUNT">("DISCOUNT")
   const [saving, setSaving] = useState(false)
 
   // Sync state when product selected
@@ -90,6 +91,8 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
       setDiscountPct(selectedProduct.priceCycleDiscountPct?.toString() || "10")
       setDiscountDays(selectedProduct.priceCycleDiscountDays?.toString() || "7")
       setRepeatCycle(selectedProduct.priceCycleEnabled !== false)
+      // Infer start phase from the existing schedule logic
+      // If it hasn't started yet (or was paused), it might be tricky to infer, so default to DISCOUNT for new.
     }
   }, [selectedProduct])
 
@@ -99,7 +102,11 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
   // Calculate next date (mock for display)
   const today = new Date()
   const nextDate = new Date(today)
-  nextDate.setDate(today.getDate() + parseInt(regularDays || "0"))
+  if (startPhase === "DISCOUNT") {
+    nextDate.setDate(today.getDate() + parseInt(discountDays || "0"))
+  } else {
+    nextDate.setDate(today.getDate() + parseInt(regularDays || "0"))
+  }
   
   const handleSave = async () => {
     if (!selectedProductId && !selectedAmazonProduct) return
@@ -110,7 +117,8 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
         priceCycleDiscountPct: parseFloat(discountPct),
         priceCycleRegularDays: parseInt(regularDays),
         priceCycleDiscountDays: parseInt(discountDays),
-        priceCycleBasePrice: parseFloat(regularPrice)
+        priceCycleBasePrice: parseFloat(regularPrice),
+        startPhase
       }
       
       if (selectedProductId) {
@@ -247,7 +255,14 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">Start phase</label>
+            <select className="w-full h-10 px-3 bg-white border border-slate-300 rounded-md text-sm shadow-sm font-medium" value={startPhase} onChange={(e: any) => setStartPhase(e.target.value)}>
+              <option value="DISCOUNT">Discount (Starts Tonight)</option>
+              <option value="REGULAR">Regular (Wait {regularDays} Days)</option>
+            </select>
+          </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1.5">Regular-price period</label>
             <select className="w-full h-10 px-3 bg-white border border-slate-300 rounded-md text-sm shadow-sm" value={regularDays} onChange={(e) => setRegularDays(e.target.value)}>
@@ -294,20 +309,41 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
           <h3 className="font-bold text-slate-900 mb-2">{totalDays}-Day Cycle</h3>
           <div className="flex items-center gap-2">
             <div className="flex flex-1 rounded-md overflow-hidden text-center text-sm font-medium text-white shadow-inner">
-              <div 
-                className="bg-[#2563eb] py-4 flex flex-col justify-center items-center"
-                style={{ flex: parseInt(regularDays || "0") }}
-              >
-                <span>Days 1–{regularDays}</span>
-                <span className="text-blue-100 font-normal text-xs">Regular Price · ${parseFloat(regularPrice || "0").toFixed(2)}</span>
-              </div>
-              <div 
-                className="bg-[#16a34a] border-l border-white/20 py-4 flex flex-col justify-center items-center"
-                style={{ flex: parseInt(discountDays || "0") }}
-              >
-                <span>Days {parseInt(regularDays || "0") + 1}–{totalDays}</span>
-                <span className="text-green-100 font-normal text-xs">{discountPct}% Off · ${calculatedDiscountPrice}</span>
-              </div>
+              {startPhase === "DISCOUNT" ? (
+                <>
+                  <div 
+                    className="bg-[#16a34a] py-4 flex flex-col justify-center items-center transition-all"
+                    style={{ flex: parseInt(discountDays || "0") }}
+                  >
+                    <span>Days 1–{discountDays}</span>
+                    <span className="text-green-100 font-normal text-xs">{discountPct}% Off · ${calculatedDiscountPrice}</span>
+                  </div>
+                  <div 
+                    className="bg-[#2563eb] border-l border-white/20 py-4 flex flex-col justify-center items-center transition-all"
+                    style={{ flex: parseInt(regularDays || "0") }}
+                  >
+                    <span>Days {parseInt(discountDays || "0") + 1}–{totalDays}</span>
+                    <span className="text-blue-100 font-normal text-xs">Regular Price · ${parseFloat(regularPrice || "0").toFixed(2)}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div 
+                    className="bg-[#2563eb] py-4 flex flex-col justify-center items-center transition-all"
+                    style={{ flex: parseInt(regularDays || "0") }}
+                  >
+                    <span>Days 1–{regularDays}</span>
+                    <span className="text-blue-100 font-normal text-xs">Regular Price · ${parseFloat(regularPrice || "0").toFixed(2)}</span>
+                  </div>
+                  <div 
+                    className="bg-[#16a34a] border-l border-white/20 py-4 flex flex-col justify-center items-center transition-all"
+                    style={{ flex: parseInt(discountDays || "0") }}
+                  >
+                    <span>Days {parseInt(regularDays || "0") + 1}–{totalDays}</span>
+                    <span className="text-green-100 font-normal text-xs">{discountPct}% Off · ${calculatedDiscountPrice}</span>
+                  </div>
+                </>
+              )}
             </div>
             <div className="flex flex-col justify-center items-center text-slate-500 pl-4 w-32 shrink-0">
               <Repeat className="h-6 w-6 text-[#16a34a] mb-1" />
