@@ -361,7 +361,9 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
               <p className="text-xs text-slate-500 font-medium">Next price change</p>
               <p className="font-bold text-base">
                 {selectedProduct?.priceCycleNextChangeAt 
-                  ? new Date(selectedProduct.priceCycleNextChangeAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                  ? (new Date(selectedProduct.priceCycleNextChangeAt).getFullYear() <= 1970 
+                      ? "Tonight at 3:15 AM" 
+                      : new Date(selectedProduct.priceCycleNextChangeAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))
                   : nextDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
                 }
               </p>
@@ -412,7 +414,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-slate-600">
-                        {p.priceCycleNextChangeAt ? new Date(p.priceCycleNextChangeAt).toLocaleDateString() : "Pending"}
+                        {p.priceCycleNextChangeAt ? (new Date(p.priceCycleNextChangeAt).getFullYear() <= 1970 ? "Tonight at 3:15 AM" : new Date(p.priceCycleNextChangeAt).toLocaleDateString()) : "Pending"}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${p.priceCycleStatus === 'Active' ? 'bg-green-100 text-green-700' : p.priceCycleStatus === 'Failed' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>
