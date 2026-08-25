@@ -681,6 +681,82 @@ export async function submitPriceUpdateFeed(
 }
 
 /**
+ * Submit a recurring sale price update (Automatic Price Cycle).
+ * Updates the discounted_price block with precise start and end dates.
+ * If salePrice is null, it removes the discount (regular phase).
+ */
+export async function submitScheduledSaleUpdate(
+  sku: string,
+  basePrice: number,
+  salePrice: number | null,
+  startDate: Date,
+  endDate: Date,
+  marketplaceCode = "US"
+): Promise<{ success: boolean; error?: string }> {
+  const client: any = getClient()
+  const marketplaceId = marketplaceIdForCode(marketplaceCode)
+
+  const sellerId = process.env.AMAZON_SPAPI_SELLER_ID?.trim()
+  if (!sellerId) {
+    throw new Error("Missing AMAZON_SPAPI_SELLER_ID")
+  }
+
+  try {
+    const valuePayload: any = {
+      marketplace_id: marketplaceId,
+      currency: marketplaceCode === "US" ? "USD" : marketplaceCode === "CA" ? "CAD" : marketplaceCode === "MX" ? "MXN" : "USD",
+      our_price: [
+        {
+          schedule: [
+            {
+              value_with_tax: Number(basePrice)
+            }
+          ]
+        }
+      ]
+    }
+
+    if (salePrice !== null) {
+      valuePayload.discounted_price = [
+        {
+          schedule: [
+            {
+              value_with_tax: Number(salePrice),
+              start_at: startDate.toISOString(),
+              end_at: endDate.toISOString()
+            }
+          ]
+        }
+      ]
+    }
+
+    await client.callAPI({
+      operation: "patchListingsItem",
+      endpoint: "listingsItems",
+      path: { sellerId, sku },
+      query: { marketplaceIds: [marketplaceId] },
+      body: {
+        productType: "PRODUCT",
+        patches: [
+          {
+            op: "replace",
+            path: "/attributes/purchasable_offer",
+            value: [valuePayload]
+          }
+        ]
+      },
+    })
+
+    return { success: true }
+  } catch (err: any) {
+    const details = err?.response?.data || err?.response || err?.message || String(err)
+    console.error(`[SALE-SYNC] Failed to patch listing ${sku}:`, details)
+    return { success: false, error: JSON.stringify(details) }
+  }
+}
+
+
+/**
  * Parse a flat-file feed result document for errors. The result is a TSV;
  * error rows contain the word "Error" (case-insensitive) somewhere. We surface
  * those lines verbatim so the seller sees Amazon's exact message.

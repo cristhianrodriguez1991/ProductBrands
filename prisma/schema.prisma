@@ -1037,6 +1037,17 @@ model MonitoredProduct {
   autopilotStartRank  Int?
   autopilotStartPrice Float?
 
+  // Automatic Price Cycle Fields (Recurring Flash Sales)
+  priceCycleEnabled        Boolean   @default(false)
+  priceCycleStatus         String?   @default("Draft") // "Active", "Paused", "Failed", "Completed", "Draft"
+  priceCycleDiscountPct    Float?    // e.g. 10 for 10%
+  priceCycleRegularDays    Int?      // e.g. 14
+  priceCycleDiscountDays   Int?      // e.g. 7
+  priceCycleBasePrice      Float?    // e.g. 12.99
+  priceCycleStartDate      DateTime? // When the cycle initially started
+  priceCycleCurrentPhase   String?   // "REGULAR" | "DISCOUNT"
+  priceCycleNextChangeAt   DateTime? // When the next phase shift happens
+
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

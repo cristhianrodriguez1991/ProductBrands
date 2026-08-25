@@ -36,6 +36,7 @@ import {
   Target,
   Brain,
   Bot,
+  Repeat,
 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { PRICE_INTELLIGENCE_CONFIG, MarketplaceCode, RecommendedActionCode } from "@/config/price-intelligence.config"
@@ -44,7 +45,9 @@ import { KeepaSettings } from "./keepa-settings"
 import { KeepaChart } from "./keepa-chart"
 import { KeepaAnalytics } from "./keepa-analytics"
 import { AutopilotInsightsModal } from "./autopilot-insights-modal"
+import { PriceCycleCard } from "./price-cycle-card"
 import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip } from "recharts"
+
 
 interface MonitoredProduct {
   id: string
@@ -83,6 +86,14 @@ interface MonitoredProduct {
   keepaLastSyncedAt?: string | null
   keepaSyncStatus?: string | null
   keepaTokensConsumed?: number | null
+  priceCycleEnabled: boolean
+  priceCycleStatus: string
+  priceCycleDiscountPct: number | null
+  priceCycleRegularDays: number | null
+  priceCycleDiscountDays: number | null
+  priceCycleBasePrice: number | null
+  priceCycleCurrentPhase: string | null
+  priceCycleNextChangeAt: string | null
   isAutopilot?: boolean
   autopilotStartedAt?: string | null
   autopilotStartRank?: number | null
@@ -134,7 +145,7 @@ export default function AutopricerClient() {
   const [seedingDemo, setSeedingDemo] = useState(false)
   const [syncingAmazon, setSyncingAmazon] = useState(false)
   const [syncingKeepa, setSyncingKeepa] = useState(false)
-  const [activeTab, setActiveTab] = useState<"dashboard" | "approvals" | "keepa" | "settings" | "simulator" | "audit">("dashboard")
+  const [activeTab, setActiveTab] = useState<"dashboard" | "price_cycle" | "approvals" | "keepa" | "settings" | "simulator" | "audit">("dashboard")
 
   // Keepa Intelligence State
   const [selectedProductForKeepa, setSelectedProductForKeepa] = useState<string | null>(null)
@@ -1194,6 +1205,15 @@ export default function AutopricerClient() {
           Monitored Portfolio ({products.length})
         </Button>
         <Button
+          variant={activeTab === "price_cycle" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setActiveTab("price_cycle")}
+          className="font-medium"
+        >
+          <Repeat className="h-4 w-4 mr-2" />
+          Automatic Price Cycle
+        </Button>
+        <Button
           variant={activeTab === "approvals" ? "default" : "ghost"}
           size="sm"
           onClick={() => setActiveTab("approvals")}
@@ -1226,6 +1246,13 @@ export default function AutopricerClient() {
           Keepa API Settings
         </Button>
       </div>
+
+      {/* ── TAB X: PRICE CYCLE ── */}
+      {activeTab === "price_cycle" && (
+        <div className="py-2">
+          <PriceCycleCard products={products} onRefresh={fetchProducts} />
+        </div>
+      )}
 
       {/* ── TAB 1: PORTFOLIO DASHBOARD ── */}
       {activeTab === "dashboard" && (

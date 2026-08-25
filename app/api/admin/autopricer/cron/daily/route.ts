@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { getDailySalesAndTrafficBySku, submitPriceUpdateFeed } from "@/lib/amazon-sp-api-service"
+import { getDailySalesAndTrafficBySku, submitPriceUpdateFeed, submitScheduledSaleUpdate } from "@/lib/amazon-sp-api-service"
 import { keepaProvider } from "@/lib/keepa/provider"
 import { analyzeWeekdayBehavior } from "@/lib/keepa/analytics/weekday-engine"
 import { analyzePricingWithGLM } from "@/lib/ai/pricing-analyzer"
@@ -30,12 +30,85 @@ export async function POST(req: Request) {
     })
 
     if (products.length === 0) {
-      return NextResponse.json({ success: true, message: "No products on autopilot." })
+      return NextResponse.json({ success: true, message: "No products to process." })
     }
 
     for (const product of products) {
       try {
         console.log(`[AUTOPILOT_CRON] Processing product: ${product.productName} (SKU: ${product.sku})`)
+
+        // -------------------------------------------------------------
+        // 0. Automatic Price Cycle (Recurring Flash Sales) Check
+        // -------------------------------------------------------------
+        if (product.priceCycleEnabled && product.priceCycleStatus === "Active") {
+          const now = new Date()
+          const nextChange = product.priceCycleNextChangeAt ? new Date(product.priceCycleNextChangeAt) : new Date(0)
+          
+          if (now >= nextChange) {
+            console.log(`[PRICE_CYCLE] Triggering phase change for SKU ${product.sku}.`)
+            
+            let nextPhase = product.priceCycleCurrentPhase === "REGULAR" ? "DISCOUNT" : "REGULAR"
+            if (!product.priceCycleCurrentPhase) nextPhase = "REGULAR" // Initial state
+
+            let salePriceToPush: number | null = null
+            let startDate = new Date()
+            let endDate = new Date()
+
+            if (nextPhase === "DISCOUNT") {
+              const pct = product.priceCycleDiscountPct || 10
+              salePriceToPush = Number((Number(product.priceCycleBasePrice || product.currentPrice) * (1 - pct / 100)).toFixed(2))
+              endDate.setDate(endDate.getDate() + (product.priceCycleDiscountDays || 7))
+              console.log(`[PRICE_CYCLE] Shifting to DISCOUNT: $${salePriceToPush} for ${product.priceCycleDiscountDays} days`)
+            } else {
+              endDate.setDate(endDate.getDate() + (product.priceCycleRegularDays || 14))
+              console.log(`[PRICE_CYCLE] Shifting to REGULAR: $${product.priceCycleBasePrice} for ${product.priceCycleRegularDays} days`)
+            }
+
+            const res = await submitScheduledSaleUpdate(
+              product.sku,
+              Number(product.priceCycleBasePrice || product.currentPrice),
+              salePriceToPush,
+              startDate,
+              endDate,
+              product.marketplace
+            )
+
+            if (res.success) {
+               await prisma.monitoredProduct.update({
+                 where: { id: product.id },
+                 data: {
+                   priceCycleCurrentPhase: nextPhase,
+                   priceCycleNextChangeAt: endDate
+                 }
+               })
+               // Create audit log
+               await prisma.priceChangeLog.create({
+                 data: {
+                   monitoredProductId: product.id,
+                   oldPrice: product.currentPrice,
+                   newPrice: nextPhase === "DISCOUNT" ? (salePriceToPush || 0) : Number(product.priceCycleBasePrice || product.currentPrice),
+                   recommendedAction: "MANUAL",
+                   reason: `PRICE CYCLE SHIFT: Moving to ${nextPhase} phase`,
+                   status: "APPLIED",
+                   approvedAt: new Date(),
+                   approvedByUserId: "SYSTEM_CRON"
+                 }
+               })
+            } else {
+              console.error(`[PRICE_CYCLE] Failed to push update for ${product.sku}:`, res.error)
+              await prisma.monitoredProduct.update({
+                 where: { id: product.id },
+                 data: { priceCycleStatus: "Failed" }
+              })
+            }
+          } else {
+            console.log(`[PRICE_CYCLE] Active cycle, but next change is not until ${nextChange.toISOString()}`)
+          }
+          
+          // Bypass AI logic since product is governed by a price cycle
+          processed++
+          continue
+        }
 
         // 1. Sync Keepa
         let observations: any[] = []
