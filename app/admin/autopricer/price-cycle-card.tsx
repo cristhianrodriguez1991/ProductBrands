@@ -402,7 +402,8 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
               <tbody className="divide-y divide-slate-100">
                 {activeCycles.map(p => {
                   const salePrice = (Number(p.priceCycleBasePrice || p.currentPrice) * (1 - (p.priceCycleDiscountPct || 0)/100)).toFixed(2)
-                  const isActivePhase = p.priceCycleCurrentPhase === "DISCOUNT"
+                  const isPending = p.priceCycleNextChangeAt && new Date(p.priceCycleNextChangeAt).getFullYear() <= 1970
+                  const isActivePhase = p.priceCycleCurrentPhase === "DISCOUNT" && !isPending
                   return (
                     <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-slate-900 max-w-[250px]">
@@ -412,9 +413,15 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                       <td className="px-4 py-3">${Number(p.priceCycleBasePrice).toFixed(2)}</td>
                       <td className="px-4 py-3">${salePrice} <span className="text-xs text-emerald-600 ml-1 bg-emerald-50 px-1 rounded">-{p.priceCycleDiscountPct}%</span></td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded text-[10px] font-bold tracking-wider ${isActivePhase ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {p.priceCycleCurrentPhase || "REGULAR"}
-                        </span>
+                        {isPending ? (
+                          <span className="px-2 py-1 rounded text-[10px] font-bold tracking-wider bg-orange-100 text-orange-700">
+                            PENDING START
+                          </span>
+                        ) : (
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold tracking-wider ${isActivePhase ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                            {p.priceCycleCurrentPhase || "REGULAR"}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
                         {p.priceCycleNextChangeAt ? (new Date(p.priceCycleNextChangeAt).getFullYear() <= 1970 ? "Tonight at 3:15 AM" : new Date(p.priceCycleNextChangeAt).toLocaleDateString()) : "Pending"}

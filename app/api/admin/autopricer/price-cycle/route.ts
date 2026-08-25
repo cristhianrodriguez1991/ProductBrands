@@ -69,11 +69,10 @@ export async function POST(request: Request) {
       
       if (startPhase === "DISCOUNT") {
         phase = "REGULAR" // Set to REGULAR so the very next shift goes to DISCOUNT
-        nextDate = new Date(0) // Date in the past ensures the cron triggers the DISCOUNT shift tonight at 3 AM
+        nextDate = new Date(0) // Date in the past ensures the cron triggers tonight
       } else {
-        phase = "REGULAR" 
-        nextDate = new Date()
-        nextDate.setDate(nextDate.getDate() + priceCycleRegularDays)
+        phase = "DISCOUNT" // Set to DISCOUNT so the very next shift goes to REGULAR
+        nextDate = new Date(0) // Date in the past ensures the cron triggers tonight
       }
     }
 
