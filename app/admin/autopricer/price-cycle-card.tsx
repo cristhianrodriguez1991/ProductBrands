@@ -112,7 +112,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
     setSaving(true)
     try {
       const payload: any = {
-        priceCycleEnabled: repeatCycle,
+        priceCycleEnabled: true,
         priceCycleDiscountPct: parseFloat(discountPct),
         priceCycleRegularDays: parseInt(regularDays),
         priceCycleDiscountDays: parseInt(discountDays),
