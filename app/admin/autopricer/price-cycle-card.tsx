@@ -172,6 +172,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                 className="w-full bg-white shadow-sm"
                 placeholder="Search by ASIN, SKU, or Name..."
                 value={isDropdownOpen ? searchQuery : (selectedProduct ? `${selectedProduct.productName} — ${selectedProduct.asin}` : searchQuery)}
+                title={selectedProduct ? selectedProduct.productName : ""}
                 onChange={(e) => {
                   setSearchQuery(e.target.value)
                   if (!isDropdownOpen) setIsDropdownOpen(true)
@@ -202,7 +203,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                         setIsDropdownOpen(false)
                       }}
                     >
-                      <div className="font-medium text-slate-900 truncate">{p.productName}</div>
+                      <div className="font-medium text-slate-900 truncate" title={p.productName}>{p.productName}</div>
                       <div className="text-xs text-slate-500">ASIN: {p.asin} | SKU: {p.sku} | Base: ${p.priceCycleBasePrice || p.currentPrice}</div>
                     </div>
                   ))}
@@ -225,7 +226,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                         setIsDropdownOpen(false)
                       }}
                     >
-                      <div className="font-medium text-slate-900 truncate">{p.productName}</div>
+                      <div className="font-medium text-slate-900 truncate" title={p.productName}>{p.productName}</div>
                       <div className="text-xs text-slate-500">ASIN: {p.asin} | SKU: {p.sku} | Price: ${p.price}</div>
                       <div className="text-[10px] text-blue-600 font-medium mt-0.5">Will be added to Price Cycle</div>
                     </div>

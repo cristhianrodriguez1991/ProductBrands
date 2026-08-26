@@ -33,7 +33,11 @@ export async function GET(req: Request) {
 
     const where: any = {}
     if (marketplace && marketplace !== "ALL") where.marketplace = marketplace
-    if (status && status !== "ALL") where.status = status
+    if (status && status !== "ALL") {
+      where.status = status
+    } else {
+      where.status = { not: "PRICE_CYCLE_ONLY" }
+    }
     if (action && action !== "ALL") where.recommendedAction = action
     if (search) {
       where.OR = [
