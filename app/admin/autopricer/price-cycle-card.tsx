@@ -81,6 +81,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
   const [discountDays, setDiscountDays] = useState("7")
   const [repeatCycle, setRepeatCycle] = useState(true)
   const [startPhase, setStartPhase] = useState<"REGULAR" | "DISCOUNT">("DISCOUNT")
+  const [pushImmediately, setPushImmediately] = useState<boolean>(false)
   const [saving, setSaving] = useState(false)
 
   // Sync state when product selected
@@ -91,8 +92,6 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
       setDiscountPct(selectedProduct.priceCycleDiscountPct?.toString() || "10")
       setDiscountDays(selectedProduct.priceCycleDiscountDays?.toString() || "7")
       setRepeatCycle(selectedProduct.priceCycleEnabled !== false)
-      // Infer start phase from the existing schedule logic
-      // If it hasn't started yet (or was paused), it might be tricky to infer, so default to DISCOUNT for new.
     }
   }, [selectedProduct])
 
@@ -118,7 +117,8 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
         priceCycleRegularDays: parseInt(regularDays),
         priceCycleDiscountDays: parseInt(discountDays),
         priceCycleBasePrice: parseFloat(regularPrice),
-        startPhase
+        startPhase,
+        pushImmediately
       }
       
       if (selectedProductId) {
@@ -137,7 +137,10 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       })
-      if (!res.ok) throw new Error("Failed to save schedule")
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to save schedule")
+      }
       
       // Clear selection so the UI resets
       setSelectedProductId("")
@@ -256,13 +259,25 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1.5">Start phase</label>
             <select className="w-full h-10 px-3 bg-white border border-slate-300 rounded-md text-sm shadow-sm font-medium" value={startPhase} onChange={(e: any) => setStartPhase(e.target.value)}>
-              <option value="DISCOUNT">Discount (Starts Tonight)</option>
-              <option value="REGULAR">Regular (Wait {regularDays} Days)</option>
+              <option value="DISCOUNT">Discount</option>
+              <option value="REGULAR">Regular Price</option>
             </select>
+          </div>
+          <div className="flex flex-col">
+            <label className="block text-xs font-medium text-slate-700 mb-2.5">Sync Time</label>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setPushImmediately(!pushImmediately)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${pushImmediately ? 'bg-indigo-600' : 'bg-slate-300'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${pushImmediately ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+              <span className="text-sm font-medium whitespace-nowrap">{pushImmediately ? "Push Now" : "Wait for 3:15 AM"}</span>
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1.5">Regular-price period</label>
@@ -365,7 +380,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                   ? (new Date(selectedProduct.priceCycleNextChangeAt).getFullYear() <= 1970 
                       ? "Tonight at 3:15 AM" 
                       : new Date(selectedProduct.priceCycleNextChangeAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))
-                  : nextDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                  : (pushImmediately ? "Immediately on Save" : nextDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))
                 }
               </p>
             </div>

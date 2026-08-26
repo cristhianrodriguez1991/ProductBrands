@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { submitScheduledSaleUpdate } from "@/lib/amazon-sp-api-service"
 
 export async function POST(request: Request) {
   try {
@@ -44,6 +45,11 @@ export async function POST(request: Request) {
     if (!targetProductId) {
       return NextResponse.json({ success: false, error: "Product ID or new Amazon product details are required" }, { status: 400 })
     }
+    
+    const targetProduct = await prisma.monitoredProduct.findUnique({ where: { id: targetProductId } })
+    if (!targetProduct) {
+      return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 })
+    }
 
     if (priceCycleEnabled) {
       if (!priceCycleDiscountPct || !priceCycleRegularDays || !priceCycleDiscountDays || !priceCycleBasePrice) {
@@ -67,12 +73,59 @@ export async function POST(request: Request) {
       status = "Active"
       startDate = new Date()
       
-      if (startPhase === "DISCOUNT") {
-        phase = "REGULAR" // Set to REGULAR so the very next shift goes to DISCOUNT
-        nextDate = new Date(0) // Date in the past ensures the cron triggers tonight
+      if (pushImmediately) {
+        phase = startPhase
+        const now = new Date()
+        nextDate = new Date()
+        
+        let salePriceToPush: number | null = null
+        let basePriceForCalc = Number(priceCycleBasePrice || targetProduct.currentPrice)
+        
+        if (phase === "DISCOUNT") {
+          const pct = Number(priceCycleDiscountPct || 10)
+          salePriceToPush = Number((basePriceForCalc * (1 - pct / 100)).toFixed(2))
+          nextDate.setDate(now.getDate() + Number(priceCycleDiscountDays || 7))
+        } else {
+          nextDate.setDate(now.getDate() + Number(priceCycleRegularDays || 14))
+        }
+
+        try {
+          const res = await submitScheduledSaleUpdate(
+            targetProduct.sku,
+            basePriceForCalc,
+            salePriceToPush,
+            now,
+            nextDate,
+            targetProduct.marketplace || "US"
+          )
+          
+          if (!res.success) {
+            return NextResponse.json({ error: "Failed to push to Amazon SP-API: " + res.error }, { status: 500 })
+          }
+          
+          // Log it for visibility
+          await prisma.priceChangeLog.create({
+            data: {
+              monitoredProductId: targetProduct.id,
+              oldPrice: targetProduct.currentPrice,
+              newPrice: salePriceToPush || basePriceForCalc,
+              status: "APPLIED",
+              approvedAt: now,
+              approvedByUserId: "SYSTEM_IMMEDIATE_SYNC",
+              notes: `Manual Immediate Push to ${phase} phase`
+            }
+          })
+        } catch (e: any) {
+          return NextResponse.json({ error: "Failed to push to Amazon SP-API: " + e.message }, { status: 500 })
+        }
       } else {
-        phase = "DISCOUNT" // Set to DISCOUNT so the very next shift goes to REGULAR
-        nextDate = new Date(0) // Date in the past ensures the cron triggers tonight
+        if (startPhase === "DISCOUNT") {
+          phase = "REGULAR" // Set to REGULAR so the very next shift goes to DISCOUNT
+          nextDate = new Date(0) // Date in the past ensures the cron triggers tonight
+        } else {
+          phase = "DISCOUNT" // Set to DISCOUNT so the very next shift goes to REGULAR
+          nextDate = new Date(0) // Date in the past ensures the cron triggers tonight
+        }
       }
     }
 
