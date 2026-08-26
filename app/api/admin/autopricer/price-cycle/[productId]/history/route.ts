@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { keepaProvider } from "@/lib/keepa/provider"
 
 export async function GET(
   request: Request,
@@ -22,7 +23,7 @@ export async function GET(
     })
     
     // Fetch Keepa history for last 40 days
-    const keepaLogs = await prisma.keepaProductHistory.findMany({
+    let keepaLogs = await prisma.keepaProductHistory.findMany({
       where: {
         monitoredProductId: productId,
         timestamp: { gte: fortyDaysAgo }
@@ -30,7 +31,47 @@ export async function GET(
       orderBy: { timestamp: 'asc' }
     })
     
-    // If no Keepa data, we can't chart rank. We'll still return price if we have it, but usually both are needed.
+    // If no Keepa data, fetch it right now so the user can see it
+    if (keepaLogs.length === 0) {
+      const product = await prisma.monitoredProduct.findUnique({ where: { id: productId } })
+      if (product && product.asin) {
+        const res = await keepaProvider.getProductHistory({ asin: product.asin, days: 90 })
+        if (res.success && res.observations.length > 0) {
+          for (const obs of res.observations) {
+            try {
+              await prisma.keepaProductHistory.create({
+                data: {
+                  monitoredProductId: product.id,
+                  asin: product.asin,
+                  timestamp: obs.timestamp,
+                  keepaTimestamp: obs.keepaTimestamp,
+                  salesRank: obs.salesRank,
+                  buyBoxPrice: obs.buyBoxPrice,
+                  amazonPrice: obs.amazonPrice,
+                  newPrice: obs.newPrice,
+                  newFbaPrice: obs.newFbaPrice,
+                  newFbmPrice: obs.newFbmPrice,
+                  offerCount: obs.offerCount,
+                  isAvailable: obs.isAvailable ?? true,
+                },
+              })
+            } catch {
+              // ignore duplicate keys
+            }
+          }
+          // Re-query Keepa logs
+          keepaLogs = await prisma.keepaProductHistory.findMany({
+            where: {
+              monitoredProductId: productId,
+              timestamp: { gte: fortyDaysAgo }
+            },
+            orderBy: { timestamp: 'asc' }
+          })
+        }
+      }
+    }
+    
+    // If STILL no Keepa data (Keepa might not have data for this ASIN yet), we can't chart rank. 
     if (keepaLogs.length === 0 && priceLogs.length === 0) {
       return NextResponse.json({ data: [] })
     }
