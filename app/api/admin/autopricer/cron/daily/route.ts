@@ -83,7 +83,9 @@ export async function GET(req: Request) {
                  where: { id: product.id },
                  data: {
                    priceCycleCurrentPhase: nextPhase,
-                   priceCycleNextChangeAt: endDate
+                   priceCycleNextChangeAt: endDate,
+                   priceCycleError: null,
+                   priceCycleStatus: product.priceCycleStatus === "Failed" ? "Active" : product.priceCycleStatus
                  }
                })
                // Create audit log
@@ -103,7 +105,10 @@ export async function GET(req: Request) {
               console.error(`[PRICE_CYCLE] Failed to push update for ${product.sku}:`, res.error)
               await prisma.monitoredProduct.update({
                  where: { id: product.id },
-                 data: { priceCycleStatus: "Failed" }
+                 data: { 
+                   priceCycleStatus: "Failed",
+                   priceCycleError: res.error || "Unknown error occurred during SP-API price push"
+                 }
               })
             }
           } else {

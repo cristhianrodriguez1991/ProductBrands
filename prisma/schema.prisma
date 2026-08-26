@@ -1047,6 +1047,8 @@ model MonitoredProduct {
   priceCycleStartDate      DateTime? // When the cycle initially started
   priceCycleCurrentPhase   String?   // "REGULAR" | "DISCOUNT"
   priceCycleNextChangeAt   DateTime? // When the next phase shift happens
+  priceCycleError          String?   @db.Text // Store errors from SP-API during cron/push
+
 
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt

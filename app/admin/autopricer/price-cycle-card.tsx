@@ -435,12 +435,25 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                   const isRegularLive = p.priceCycleCurrentPhase === "REGULAR" && !isPending
                   const isDiscountLive = p.priceCycleCurrentPhase === "DISCOUNT" && !isPending
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50 transition-colors group/row relative hover:z-50">
+                    <tr key={p.id} className={`hover:bg-slate-50 transition-colors group/row relative hover:z-50 ${p.priceCycleStatus === "Failed" ? "bg-red-50/40" : ""}`}>
                       <td className="px-4 py-3 max-w-[250px] relative">
-                        <a href={`https://amazon.com/dp/${p.asin}`} target="_blank" rel="noopener noreferrer" className="truncate font-medium text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer block">
-                          {p.productName}
-                        </a>
+                        <div className="flex items-center gap-2">
+                          <a href={`https://amazon.com/dp/${p.asin}`} target="_blank" rel="noopener noreferrer" className="truncate font-medium text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer block">
+                            {p.productName}
+                          </a>
+                          {p.priceCycleStatus === "Failed" && (
+                            <span className="shrink-0 bg-red-100 text-red-700 border border-red-200 text-[10px] font-bold px-1.5 py-0.5 rounded cursor-help" title={p.priceCycleError || "Failed to push price"}>
+                              ERROR
+                            </span>
+                          )}
+                        </div>
                         <div className="text-slate-400 font-normal text-xs mt-0.5">SKU: {p.sku}</div>
+                        
+                        {p.priceCycleStatus === "Failed" && p.priceCycleError && (
+                          <div className="mt-1 text-xs text-red-600 font-medium bg-red-50 p-1.5 rounded border border-red-100 w-full whitespace-pre-wrap">
+                            {p.priceCycleError}
+                          </div>
+                        )}
                         
                         <div className="absolute left-4 top-[80%] hidden group-hover/row:block bg-slate-900 text-white text-xs rounded shadow-xl p-2 z-[100] w-[300px] whitespace-normal border border-slate-700">
                           {p.productName}
