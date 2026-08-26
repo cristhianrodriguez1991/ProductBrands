@@ -144,6 +144,7 @@ export async function POST(request: Request) {
         priceCycleStartDate: startDate,
         priceCycleCurrentPhase: phase,
         priceCycleNextChangeAt: nextDate,
+        priceCycleError: null,
       },
     })
 

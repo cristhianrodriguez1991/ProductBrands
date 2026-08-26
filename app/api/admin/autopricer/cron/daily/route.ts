@@ -85,7 +85,7 @@ export async function GET(req: Request) {
                    priceCycleCurrentPhase: nextPhase,
                    priceCycleNextChangeAt: endDate,
                    priceCycleError: null,
-                   priceCycleStatus: product.priceCycleStatus === "Failed" ? "Active" : product.priceCycleStatus
+                   priceCycleStatus: "Active"
                  }
                })
                // Create audit log
