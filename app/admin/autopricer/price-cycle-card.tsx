@@ -432,6 +432,8 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                   const salePrice = (Number(p.priceCycleBasePrice || p.currentPrice) * (1 - (p.priceCycleDiscountPct || 0)/100)).toFixed(2)
                   const isPending = p.priceCycleNextChangeAt && new Date(p.priceCycleNextChangeAt).getFullYear() <= 1970
                   const isActivePhase = p.priceCycleCurrentPhase === "DISCOUNT" && !isPending
+                  const isRegularLive = p.priceCycleCurrentPhase === "REGULAR" && !isPending
+                  const isDiscountLive = p.priceCycleCurrentPhase === "DISCOUNT" && !isPending
                   return (
                     <tr key={p.id} className="hover:bg-slate-50 transition-colors group/row relative hover:z-50">
                       <td className="px-4 py-3 max-w-[250px] relative">
@@ -444,8 +446,19 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                           {p.productName}
                         </div>
                       </td>
-                      <td className="px-4 py-3">${Number(p.priceCycleBasePrice).toFixed(2)}</td>
-                      <td className="px-4 py-3">${salePrice} <span className="text-xs text-emerald-600 ml-1 bg-emerald-50 px-1 rounded">-{p.priceCycleDiscountPct}%</span></td>
+                      <td className="px-4 py-3">
+                        <div className={`inline-flex items-center px-2 py-1 rounded-md transition-colors ${isRegularLive ? 'bg-amber-100 text-amber-900 font-bold border border-amber-200 shadow-sm' : 'font-medium text-slate-700'}`}>
+                          ${Number(p.priceCycleBasePrice).toFixed(2)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className={`inline-flex items-center px-2 py-1 rounded-md transition-colors ${isDiscountLive ? 'bg-emerald-100 text-emerald-900 font-bold border border-emerald-200 shadow-sm' : 'font-medium text-slate-700'}`}>
+                          ${salePrice} 
+                          <span className={`text-[10px] ml-1.5 px-1 rounded border ${isDiscountLive ? 'text-emerald-700 bg-emerald-50/50 border-emerald-200' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
+                            -{p.priceCycleDiscountPct}%
+                          </span>
+                        </div>
+                      </td>
                       <td className="px-4 py-3">
                         {isPending ? (
                           <span className="px-2 py-1 rounded text-[10px] font-bold tracking-wider bg-orange-100 text-orange-700">
