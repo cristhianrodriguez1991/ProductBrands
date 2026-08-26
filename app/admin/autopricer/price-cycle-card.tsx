@@ -408,7 +408,9 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                   return (
                     <tr key={p.id} className="hover:bg-slate-50 transition-colors group/row relative hover:z-50">
                       <td className="px-4 py-3 max-w-[250px] relative">
-                        <div className="truncate font-medium text-slate-900 cursor-help">{p.productName}</div>
+                        <a href={`https://amazon.com/dp/${p.asin}`} target="_blank" rel="noopener noreferrer" className="truncate font-medium text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer block">
+                          {p.productName}
+                        </a>
                         <div className="text-slate-400 font-normal text-xs mt-0.5">SKU: {p.sku}</div>
                         
                         <div className="absolute left-4 top-[80%] hidden group-hover/row:block bg-slate-900 text-white text-xs rounded shadow-xl p-2 z-[100] w-[300px] whitespace-normal border border-slate-700">
