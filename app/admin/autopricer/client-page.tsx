@@ -1389,7 +1389,7 @@ export default function AutopricerClient() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {products.map((p) => {
+                    {products.filter(p => p.status !== "PRICE_CYCLE_ONLY").map((p) => {
                       const actionConfig = PRICE_INTELLIGENCE_CONFIG.ACTIONS[p.recommendedAction as RecommendedActionCode] || PRICE_INTELLIGENCE_CONFIG.ACTIONS.MAINTAIN
                       const mp = PRICE_INTELLIGENCE_CONFIG.MARKETPLACES.find((m) => m.code === p.marketplace) || PRICE_INTELLIGENCE_CONFIG.MARKETPLACES[0]
                       const margin = p.calculated?.netMarginPct ?? 0
@@ -1748,7 +1748,7 @@ export default function AutopricerClient() {
                 }}
                 className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-sm text-white font-medium min-w-[240px]"
               >
-                {products.map((p) => (
+                {products.filter(p => p.status !== "PRICE_CYCLE_ONLY").map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.productName} ({p.asin})
                   </option>

@@ -33,11 +33,7 @@ export async function GET(req: Request) {
 
     const where: any = {}
     if (marketplace && marketplace !== "ALL") where.marketplace = marketplace
-    if (status && status !== "ALL") {
-      where.status = status
-    } else {
-      where.status = { not: "PRICE_CYCLE_ONLY" }
-    }
+    if (status && status !== "ALL") where.status = status
     if (action && action !== "ALL") where.recommendedAction = action
     if (search) {
       where.OR = [
@@ -73,8 +69,9 @@ export async function GET(req: Request) {
     })
 
     // Calculate aggregated KPIs
-    const totalMonitored = products.length
-    const totalActive = products.filter((p) => p.status === "ACTIVE").length
+    const aiProducts = products.filter(p => p.status !== "PRICE_CYCLE_ONLY")
+    const totalMonitored = aiProducts.length
+    const totalActive = aiProducts.filter((p) => p.status === "ACTIVE").length
 
     let pendingApprovalsCount = 0
     let totalMonthlyUplift = 0
