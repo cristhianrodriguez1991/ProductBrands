@@ -468,6 +468,12 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-1">
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-indigo-600" onClick={() => handleEdit(p)} title="Edit"><Pencil className="h-3 w-3" /></Button>
+                          <Button size="icon" variant="ghost" className={`h-7 w-7 ${p.priceCycleStatus === 'Paused' ? 'text-emerald-500' : 'text-amber-500'}`} onClick={async () => {
+                             await fetch("/api/admin/autopricer/price-cycle", { method: "PATCH", body: JSON.stringify({ productId: p.id, priceCycleStatus: p.priceCycleStatus === 'Paused' ? 'Active' : 'Paused' })})
+                             onRefresh()
+                          }} title={p.priceCycleStatus === 'Paused' ? "Resume Cycle" : "Pause Cycle"}>
+                            {p.priceCycleStatus === 'Paused' ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+                          </Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-rose-500" onClick={async () => {
                              await fetch("/api/admin/autopricer/price-cycle", { method: "POST", body: JSON.stringify({ productId: p.id, priceCycleEnabled: false })})
                              onRefresh()

@@ -156,3 +156,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json()
+    const { productId, priceCycleStatus } = body
+
+    if (!productId || !priceCycleStatus) {
+      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
+    }
+
+    const updatedProduct = await prisma.monitoredProduct.update({
+      where: { id: productId },
+      data: { priceCycleStatus }
+    })
+
+    return NextResponse.json({ success: true, product: updatedProduct })
+  } catch (error: any) {
+    console.error("[PRICE-CYCLE-PATCH] Error:", error)
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  }
+}
