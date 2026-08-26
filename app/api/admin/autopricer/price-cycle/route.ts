@@ -13,7 +13,8 @@ export async function POST(request: Request) {
       priceCycleDiscountDays,
       priceCycleBasePrice,
       newAmazonProduct,
-      startPhase
+      startPhase,
+      pushImmediately
     } = body
 
     let targetProductId = productId
