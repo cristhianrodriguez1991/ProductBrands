@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Calendar, Repeat, Play, Pause, XCircle, Loader2 } from "lucide-react"
+import { Calendar, Repeat, Play, Pause, XCircle, Loader2, Pencil } from "lucide-react"
 
 interface Product {
   id: string
@@ -157,6 +157,18 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
   }
 
   const activeCycles = products.filter(p => p.priceCycleEnabled)
+
+  const handleEdit = (p: MonitoredProduct) => {
+    setSelectedProductId(p.id)
+    setSelectedAmazonProduct(null)
+    setSearchQuery(`${p.productName} — ${p.asin}`)
+    setRegularPrice(p.priceCycleBasePrice?.toString() || p.currentPrice.toString())
+    setDiscountPct(p.priceCycleDiscountPct?.toString() || "10")
+    setRegularDays(p.priceCycleRegularDays?.toString() || "14")
+    setDiscountDays(p.priceCycleDiscountDays?.toString() || "7")
+    setStartPhase(p.priceCycleCurrentPhase === "DISCOUNT" ? "DISCOUNT" : "REGULAR")
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -455,7 +467,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-1">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-indigo-600" onClick={() => setSelectedProductId(p.id)} title="Edit"><Play className="h-3 w-3" /></Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-indigo-600" onClick={() => handleEdit(p)} title="Edit"><Pencil className="h-3 w-3" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-rose-500" onClick={async () => {
                              await fetch("/api/admin/autopricer/price-cycle", { method: "POST", body: JSON.stringify({ productId: p.id, priceCycleEnabled: false })})
                              onRefresh()
