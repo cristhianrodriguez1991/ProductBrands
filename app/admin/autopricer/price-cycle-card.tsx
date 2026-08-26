@@ -383,11 +383,11 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
 
       {/* Active Schedules Table */}
       {activeCycles.length > 0 && (
-        <Card className="p-0 bg-white shadow-sm border-slate-200 overflow-hidden rounded-xl">
-          <div className="p-4 border-b border-slate-100 bg-slate-50">
+        <Card className="p-0 bg-white shadow-sm border-slate-200 rounded-xl">
+          <div className="p-4 border-b border-slate-100 bg-slate-50 rounded-t-xl">
             <h3 className="font-bold text-slate-800">Active Schedules</h3>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-visible pb-10">
             <table className="w-full text-sm text-left whitespace-nowrap">
               <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                 <tr>
@@ -406,12 +406,12 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                   const isPending = p.priceCycleNextChangeAt && new Date(p.priceCycleNextChangeAt).getFullYear() <= 1970
                   const isActivePhase = p.priceCycleCurrentPhase === "DISCOUNT" && !isPending
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 max-w-[250px] relative group">
+                    <tr key={p.id} className="hover:bg-slate-50 transition-colors group/row relative hover:z-50">
+                      <td className="px-4 py-3 max-w-[250px] relative">
                         <div className="truncate font-medium text-slate-900 cursor-help">{p.productName}</div>
                         <div className="text-slate-400 font-normal text-xs mt-0.5">SKU: {p.sku}</div>
                         
-                        <div className="absolute left-4 bottom-full mb-1 hidden group-hover:block bg-slate-900 text-white text-xs rounded shadow-xl p-2 z-[60] w-[300px] whitespace-normal border border-slate-700">
+                        <div className="absolute left-4 top-[80%] hidden group-hover/row:block bg-slate-900 text-white text-xs rounded shadow-xl p-2 z-[100] w-[300px] whitespace-normal border border-slate-700">
                           {p.productName}
                         </div>
                       </td>
