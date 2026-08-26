@@ -158,7 +158,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
 
   const activeCycles = products.filter(p => p.priceCycleEnabled)
 
-  const handleEdit = (p: MonitoredProduct) => {
+  const handleEdit = (p: Product) => {
     setSelectedProductId(p.id)
     setSelectedAmazonProduct(null)
     setSearchQuery(`${p.productName} — ${p.asin}`)
