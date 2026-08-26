@@ -78,6 +78,7 @@ export async function POST(request: Request) {
         phase = startPhase
         const now = new Date()
         nextDate = new Date()
+        nextDate.setUTCHours(7, 15, 0, 0) // Force the future change to happen at 3:15 AM ET
         
         let salePriceToPush: number | null = null
         let basePriceForCalc = Number(priceCycleBasePrice || targetProduct.currentPrice)
@@ -85,9 +86,9 @@ export async function POST(request: Request) {
         if (phase === "DISCOUNT") {
           const pct = Number(priceCycleDiscountPct || 10)
           salePriceToPush = Number((basePriceForCalc * (1 - pct / 100)).toFixed(2))
-          nextDate.setDate(now.getDate() + Number(priceCycleDiscountDays || 7))
+          nextDate.setUTCDate(nextDate.getUTCDate() + Number(priceCycleDiscountDays || 7))
         } else {
-          nextDate.setDate(now.getDate() + Number(priceCycleRegularDays || 14))
+          nextDate.setUTCDate(nextDate.getUTCDate() + Number(priceCycleRegularDays || 14))
         }
 
         try {
