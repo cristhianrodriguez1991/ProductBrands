@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect, Fragment } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Calendar, Repeat, Play, Pause, XCircle, Loader2, Pencil } from "lucide-react"
+import { Calendar, Repeat, Play, Pause, XCircle, Loader2, Pencil, LineChart } from "lucide-react"
+import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 interface Product {
   id: string
@@ -28,9 +29,108 @@ interface PriceCycleCardProps {
   onRefresh: () => void
 }
 
+function PriceCycleHistoryChart({ productId }: { productId: string }) {
+  const [data, setData] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchHistory() {
+      try {
+        const res = await fetch(`/api/admin/autopricer/price-cycle/${productId}/history`)
+        const json = await res.json()
+        if (json.success) {
+          // Format date for x-axis
+          const formattedData = json.data.map((d: any) => ({
+            ...d,
+            formattedDate: new Date(d.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+          }))
+          setData(formattedData)
+        }
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchHistory()
+  }, [productId])
+
+  if (loading) {
+    return <div className="h-64 flex items-center justify-center text-slate-400"><Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading Keepa Analysis...</div>
+  }
+  
+  if (data.length === 0) {
+    return <div className="h-64 flex items-center justify-center text-slate-400">No historical data found for the last 40 days.</div>
+  }
+
+  return (
+    <div className="h-72 w-full pt-4">
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+          <XAxis 
+            dataKey="formattedDate" 
+            tick={{ fontSize: 11, fill: '#64748b' }} 
+            axisLine={false} 
+            tickLine={false}
+            minTickGap={30}
+          />
+          <YAxis 
+            yAxisId="rank" 
+            orientation="left" 
+            tick={{ fontSize: 11, fill: '#64748b' }} 
+            axisLine={false}
+            tickLine={false}
+            reversed={true}
+            domain={['dataMin - 1000', 'dataMax + 1000']}
+          />
+          <YAxis 
+            yAxisId="price" 
+            orientation="right" 
+            tick={{ fontSize: 11, fill: '#10b981' }} 
+            tickFormatter={(val) => `$${val}`}
+            axisLine={false}
+            tickLine={false}
+            domain={['dataMin - 2', 'dataMax + 2']}
+          />
+          <Tooltip 
+            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+            labelStyle={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '4px' }}
+            formatter={(value: any, name: any) => [
+              name === 'rank' ? value.toLocaleString() : `$${Number(value).toFixed(2)}`,
+              name === 'rank' ? 'Sales Rank' : 'Price'
+            ]}
+          />
+          <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+          <Line 
+            yAxisId="rank" 
+            type="monotone" 
+            dataKey="rank" 
+            stroke="#6366f1" 
+            strokeWidth={2} 
+            dot={false}
+            connectNulls={true}
+            name="rank"
+          />
+          <Line 
+            yAxisId="price" 
+            type="stepAfter" 
+            dataKey="price" 
+            stroke="#10b981" 
+            strokeWidth={2} 
+            dot={false}
+            name="price"
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
   const [selectedProductId, setSelectedProductId] = useState<string>("")
   const [selectedAmazonProduct, setSelectedAmazonProduct] = useState<any>(null)
+  const [expandedCharts, setExpandedCharts] = useState<Set<string>>(new Set())
   
   const [searchQuery, setSearchQuery] = useState("")
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
@@ -436,8 +536,9 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                   const isRegularLive = p.priceCycleCurrentPhase === "REGULAR" && !isPending
                   const isDiscountLive = p.priceCycleCurrentPhase === "DISCOUNT" && !isPending
                   return (
-                    <tr key={p.id} className={`hover:bg-slate-50 transition-colors group/row relative hover:z-50 ${p.priceCycleStatus === "Failed" ? "bg-red-50/40" : ""}`}>
-                      <td className="px-4 py-3 max-w-[250px] relative">
+                    <React.Fragment key={p.id}>
+                      <tr className={`hover:bg-slate-50 transition-colors group/row relative hover:z-50 ${p.priceCycleStatus === "Failed" ? "bg-red-50/40" : ""}`}>
+                        <td className="px-4 py-3 max-w-[250px] relative">
                         <div className="flex items-center gap-2">
                           <a href={`https://amazon.com/dp/${p.asin}`} target="_blank" rel="noopener noreferrer" className="truncate font-medium text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer block">
                             {p.productName}
@@ -494,6 +595,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-1">
+                          <Button size="icon" variant="ghost" className={`h-7 w-7 ${expandedCharts.has(p.id) ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 hover:text-indigo-600'}`} onClick={() => setExpandedCharts(prev => { const next = new Set(prev); if (next.has(p.id)) next.delete(p.id); else next.add(p.id); return next; })} title="View Keepa Analysis"><LineChart className="h-3 w-3" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-indigo-600" onClick={() => handleEdit(p)} title="Edit"><Pencil className="h-3 w-3" /></Button>
                           <Button size="icon" variant="ghost" className={`h-7 w-7 ${p.priceCycleStatus === 'Paused' ? 'text-emerald-500' : 'text-amber-500'}`} onClick={async () => {
                              await fetch("/api/admin/autopricer/price-cycle", { method: "PATCH", body: JSON.stringify({ productId: p.id, priceCycleStatus: p.priceCycleStatus === 'Paused' ? 'Active' : 'Paused' })})
@@ -508,6 +610,14 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                         </div>
                       </td>
                     </tr>
+                    {expandedCharts.has(p.id) && (
+                      <tr className="bg-slate-50/50 border-b border-slate-100 shadow-inner">
+                        <td colSpan={6} className="px-4 pb-4">
+                          <PriceCycleHistoryChart productId={p.id} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                   )
                 })}
               </tbody>
