@@ -14,6 +14,7 @@ interface Product {
   currentPrice: number
   priceCycleEnabled: boolean
   priceCycleStatus: string
+  priceCycleError?: string | null
   priceCycleDiscountPct: number | null
   priceCycleRegularDays: number | null
   priceCycleDiscountDays: number | null
