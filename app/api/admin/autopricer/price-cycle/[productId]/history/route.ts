@@ -55,6 +55,7 @@ export async function GET(
       type: 'KEEPA' | 'PRICE';
       rank?: number | null;
       price?: number;
+      keepaPrice?: number | null;
       isPriceShift?: boolean;
     }
     
@@ -64,7 +65,8 @@ export async function GET(
       timeline.push({
         timestamp: k.timestamp,
         type: 'KEEPA',
-        rank: k.salesRank
+        rank: k.salesRank,
+        keepaPrice: k.buyBoxPrice || k.newPrice || k.amazonPrice
       })
     }
     
@@ -95,6 +97,9 @@ export async function GET(
           isShift: true
         })
       } else {
+        if (event.keepaPrice) {
+          currentPrice = event.keepaPrice
+        }
         chartData.push({
           date: event.timestamp.toISOString(),
           timestampMs: event.timestamp.getTime(),

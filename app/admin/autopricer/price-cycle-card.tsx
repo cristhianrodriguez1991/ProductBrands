@@ -81,7 +81,6 @@ function PriceCycleHistoryChart({ productId }: { productId: string }) {
             tick={{ fontSize: 11, fill: '#64748b' }} 
             axisLine={false}
             tickLine={false}
-            reversed={true}
             domain={['dataMin - 1000', 'dataMax + 1000']}
           />
           <YAxis 
@@ -118,7 +117,13 @@ function PriceCycleHistoryChart({ productId }: { productId: string }) {
             dataKey="price" 
             stroke="#10b981" 
             strokeWidth={2} 
-            dot={false}
+            dot={(props: any) => {
+              if (props.payload.isShift) {
+                return <circle key={`dot-${props.index}`} cx={props.cx} cy={props.cy} r={4} fill="#f59e0b" stroke="#fff" strokeWidth={1} />
+              }
+              return null;
+            }}
+            activeDot={{ r: 6 }}
             name="price"
           />
         </ComposedChart>
