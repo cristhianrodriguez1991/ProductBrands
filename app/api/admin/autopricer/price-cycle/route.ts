@@ -110,6 +110,7 @@ export async function POST(request: Request) {
               monitoredProductId: targetProduct.id,
               oldPrice: targetProduct.currentPrice,
               newPrice: salePriceToPush || basePriceForCalc,
+              recommendedAction: "MANUAL",
               status: "APPLIED",
               approvedAt: now,
               approvedByUserId: "SYSTEM_IMMEDIATE_SYNC",
