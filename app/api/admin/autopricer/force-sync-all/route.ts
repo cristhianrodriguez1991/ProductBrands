@@ -5,7 +5,7 @@ import { submitScheduledSaleUpdate } from "@/lib/amazon-sp-api-service"
 export async function GET(request: Request) {
   try {
     const activeProducts = await prisma.monitoredProduct.findMany({
-      where: { priceCycleStatus: "ACTIVE" }
+      where: { priceCycleEnabled: true }
     })
 
     const results = []
