@@ -641,19 +641,7 @@ export async function submitPriceUpdateFeed(
                       ]
                     }
                   ],
-                  // The only bulletproof way to explicitly remove a sale in SP-API is to submit an EXPIRED sale schedule.
-                  // Simply omitting it or sending an empty array often gets ignored during array replacement.
-                  discounted_price: [
-                    {
-                      schedule: [
-                        {
-                          value_with_tax: Number(basePrice),
-                          start_at: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
-                          end_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString()
-                        }
-                      ]
-                    }
-                  ]
+
                 }
               ]
             }
@@ -729,18 +717,30 @@ export async function submitScheduledSaleUpdate(
     } else {
       // The only bulletproof way to explicitly remove a sale in SP-API is to submit an EXPIRED sale schedule.
       // Simply omitting it or sending an empty array often gets ignored during array replacement.
+      // It is important to use YYYY-MM-DD format as Amazon often rejects full ISO date-times for sales.
+      const yesterday = new Date(Date.now() - 24 * 3600 * 1000).toISOString().split('T')[0]
+      const twoDaysAgo = new Date(Date.now() - 48 * 3600 * 1000).toISOString().split('T')[0]
+      
       valuePayload.discounted_price = [
         {
           schedule: [
             {
               value_with_tax: Number(basePrice),
-              start_at: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
-              end_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString()
+              start_at: twoDaysAgo,
+              end_at: yesterday
             }
           ]
         }
       ]
     }
+
+    const patches: any[] = [
+      {
+        op: "replace",
+        path: "/attributes/purchasable_offer",
+        value: [valuePayload]
+      }
+    ]
 
     await client.callAPI({
       operation: "patchListingsItem",
@@ -749,13 +749,7 @@ export async function submitScheduledSaleUpdate(
       query: { marketplaceIds: [marketplaceId] },
       body: {
         productType: "PRODUCT",
-        patches: [
-          {
-            op: "replace",
-            path: "/attributes/purchasable_offer",
-            value: [valuePayload]
-          }
-        ]
+        patches
       },
     })
 
