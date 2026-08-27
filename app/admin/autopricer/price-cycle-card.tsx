@@ -526,11 +526,18 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
               onClick={async () => {
                 if (confirm("Do you want to instantly force-sync all active schedules to Amazon right now to fix any stuck prices?")) {
                   try {
-                    await fetch("/api/admin/autopricer/force-sync-all")
-                    alert("Sync command sent successfully! All active schedules have been pushed to Amazon.")
+                    const res = await fetch("/api/admin/autopricer/force-sync-all")
+                    const data = await res.json()
+                    
+                    const errors = data.results?.filter((r: any) => !r.success) || []
+                    if (errors.length > 0) {
+                      alert("Sync finished, but with errors:\n\n" + errors.map((e: any) => `${e.sku}: ${e.error}`).join("\n\n"))
+                    } else {
+                      alert("Sync command sent successfully! All active schedules have been pushed to Amazon without errors.")
+                    }
                     onRefresh()
-                  } catch (e) {
-                    alert("Failed to sync.")
+                  } catch (e: any) {
+                    alert("Failed to sync: " + e.message)
                   }
                 }
               }}
