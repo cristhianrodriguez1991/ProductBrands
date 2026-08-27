@@ -688,22 +688,50 @@ export async function submitScheduledSaleUpdate(
   }
 
   try {
-    const valuePayload: any = {
-      marketplace_id: marketplaceId,
-      currency: marketplaceCode === "US" ? "USD" : marketplaceCode === "CA" ? "CAD" : marketplaceCode === "MX" ? "MXN" : "USD",
-      our_price: [
+    // 1. Fetch current attributes to preserve B2B offers and other settings
+    const existingListing: any = await client.callAPI({
+      operation: "getListingsItem",
+      endpoint: "listingsItems",
+      path: { sellerId, sku },
+      query: {
+        marketplaceIds: [marketplaceId],
+        includedData: "attributes",
+      },
+    })
+
+    let purchasableOffers = existingListing?.attributes?.purchasable_offer || []
+
+    if (!purchasableOffers.length) {
+      // Default fallback if no offers exist
+      purchasableOffers = [
         {
-          schedule: [
-            {
-              value_with_tax: Number(basePrice)
-            }
-          ]
+          marketplace_id: marketplaceId,
+          currency: marketplaceCode === "US" ? "USD" : marketplaceCode === "CA" ? "CAD" : marketplaceCode === "MX" ? "MXN" : "USD",
+          audience: "ALL"
         }
       ]
     }
 
+    // 2. Find the B2C offer ("ALL") or fallback to the first offer
+    let b2cOffer = purchasableOffers.find((o: any) => o.audience === "ALL" || !o.audience)
+    if (!b2cOffer) {
+      b2cOffer = purchasableOffers[0]
+    }
+
+    // 3. Update the standard price
+    b2cOffer.our_price = [
+      {
+        schedule: [
+          {
+            value_with_tax: Number(basePrice)
+          }
+        ]
+      }
+    ]
+
+    // 4. Update or remove the sale price
     if (salePrice !== null) {
-      valuePayload.discounted_price = [
+      b2cOffer.discounted_price = [
         {
           schedule: [
             {
@@ -715,30 +743,16 @@ export async function submitScheduledSaleUpdate(
         }
       ]
     } else {
-      // The only bulletproof way to explicitly remove a sale in SP-API is to submit an EXPIRED sale schedule.
-      // Simply omitting it or sending an empty array often gets ignored during array replacement.
-      // It is important to use YYYY-MM-DD format as Amazon often rejects full ISO date-times for sales.
-      const yesterday = new Date(Date.now() - 24 * 3600 * 1000).toISOString().split('T')[0]
-      const twoDaysAgo = new Date(Date.now() - 48 * 3600 * 1000).toISOString().split('T')[0]
-      
-      valuePayload.discounted_price = [
-        {
-          schedule: [
-            {
-              value_with_tax: Number(basePrice),
-              start_at: twoDaysAgo,
-              end_at: yesterday
-            }
-          ]
-        }
-      ]
+      // Explicitly remove the property from the object in memory
+      delete b2cOffer.discounted_price
     }
 
+    // 5. Send the entire modified array back
     const patches: any[] = [
       {
         op: "replace",
         path: "/attributes/purchasable_offer",
-        value: [valuePayload]
+        value: purchasableOffers
       }
     ]
 
