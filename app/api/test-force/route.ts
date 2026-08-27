@@ -1,26 +1,42 @@
 import { NextResponse } from "next/server"
-import { submitScheduledSaleUpdate } from "@/lib/amazon-sp-api-service"
+import { prisma } from "@/lib/prisma"
+import { getClient } from "@/lib/amazon-sp-api-service"
 
 export async function GET() {
   try {
-    const sku = "WB-B3V2-ZNMA"
-    const now = new Date()
-    const end = new Date()
-    end.setFullYear(now.getFullYear() + 5)
-    
-    // We want to force it to REGULAR price to see if the sale clears
-    const res = await submitScheduledSaleUpdate(
-      sku,
-      7.50, // Base price
-      null, // Sale price (null means clear it)
-      now,
-      end,
-      "US"
-    )
+    const products = await prisma.monitoredProduct.findMany({
+      where: {
+        productName: {
+          contains: "Peanut",
+          mode: "insensitive"
+        }
+      }
+    })
 
-    return NextResponse.json({ success: true, res })
+    const client: any = await getClient()
+    const sellerId = process.env.AMAZON_SPAPI_SELLER_ID
+
+    const results = []
+    for (const p of products) {
+      if (!p.sku) continue
+      try {
+        const existingListing: any = await client.callAPI({
+          operation: "getListingsItem",
+          endpoint: "listingsItems",
+          path: { sellerId, sku: p.sku },
+          query: {
+            marketplaceIds: ["ATVPDKIKX0DER"],
+            includedData: "attributes",
+          },
+        })
+        results.push({ db: p, amazon: existingListing?.attributes?.purchasable_offer })
+      } catch (e: any) {
+        results.push({ db: p, error: String(e) })
+      }
+    }
+
+    return NextResponse.json({ success: true, results })
   } catch (err: any) {
-    const details = err?.response?.data || err?.response || err?.message || String(err)
-    return NextResponse.json({ error: details }, { status: 500 })
+    return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
