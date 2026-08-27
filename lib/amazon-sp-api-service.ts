@@ -641,8 +641,19 @@ export async function submitPriceUpdateFeed(
                       ]
                     }
                   ],
-                  // Explicitly wipe the sale price if it's just a regular price update
-                  discounted_price: []
+                  // The only bulletproof way to explicitly remove a sale in SP-API is to submit an EXPIRED sale schedule.
+                  // Simply omitting it or sending an empty array often gets ignored during array replacement.
+                  discounted_price: [
+                    {
+                      schedule: [
+                        {
+                          value_with_tax: Number(basePrice),
+                          start_at: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
+                          end_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString()
+                        }
+                      ]
+                    }
+                  ]
                 }
               ]
             }
@@ -716,8 +727,19 @@ export async function submitScheduledSaleUpdate(
         }
       ]
     } else {
-      // Explicitly wipe the sale price if returning to regular phase
-      valuePayload.discounted_price = []
+      // The only bulletproof way to explicitly remove a sale in SP-API is to submit an EXPIRED sale schedule.
+      // Simply omitting it or sending an empty array often gets ignored during array replacement.
+      valuePayload.discounted_price = [
+        {
+          schedule: [
+            {
+              value_with_tax: Number(basePrice),
+              start_at: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
+              end_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString()
+            }
+          ]
+        }
+      ]
     }
 
     await client.callAPI({
