@@ -743,8 +743,22 @@ export async function submitScheduledSaleUpdate(
         }
       ]
     } else {
-      // Explicitly remove the property from the object in memory
-      delete b2cOffer.discounted_price
+      // The only bulletproof way to explicitly remove a sale in SP-API is to submit an EXPIRED sale schedule.
+      // Simply omitting it or sending an empty array often gets ignored during array replacement.
+      const yesterday = new Date(Date.now() - 24 * 3600 * 1000).toISOString().split('T')[0]
+      const twoDaysAgo = new Date(Date.now() - 48 * 3600 * 1000).toISOString().split('T')[0]
+      
+      b2cOffer.discounted_price = [
+        {
+          schedule: [
+            {
+              value_with_tax: Number(basePrice),
+              start_at: twoDaysAgo,
+              end_at: yesterday
+            }
+          ]
+        }
+      ]
     }
 
     // 5. Send the entire modified array back
