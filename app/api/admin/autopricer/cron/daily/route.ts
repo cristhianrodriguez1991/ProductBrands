@@ -102,17 +102,34 @@ export async function GET(req: Request) {
                  }
                })
             } else {
-              console.error(`[PRICE_CYCLE] Failed to push update for ${product.sku}:`, res.error)
-              await prisma.monitoredProduct.update({
+              console.error(`[PRICE_CYCLE] Failed to transition SKU ${product.sku}: ${res.error}`)
+               await prisma.monitoredProduct.update({
                  where: { id: product.id },
-                 data: { 
-                   priceCycleStatus: "Failed",
-                   priceCycleError: res.error || "Unknown error occurred during SP-API price push"
+                 data: {
+                   priceCycleError: res.error,
+                   priceCycleStatus: "Error"
                  }
-              })
+               })
             }
           } else {
-            console.log(`[PRICE_CYCLE] Active cycle, but next change is not until ${nextChange.toISOString()}`)
+            // Product is NOT transitioning today, but we should force-sync its CURRENT phase
+            // just to ensure Amazon hasn't gotten out of sync (e.g., stuck sales).
+            let salePriceToPush: number | null = null
+            if (product.priceCycleCurrentPhase === "DISCOUNT") {
+              const pct = product.priceCycleDiscountPct || 10
+              salePriceToPush = Number((Number(product.priceCycleBasePrice || product.currentPrice) * (1 - pct / 100)).toFixed(2))
+            }
+            
+            // Re-push the current phase
+            await submitScheduledSaleUpdate(
+              product.sku,
+              Number(product.priceCycleBasePrice || product.currentPrice),
+              salePriceToPush,
+              new Date(),
+              nextChange, // Sale ends when the next change is scheduled
+              product.marketplace
+            )
+            console.log(`[PRICE_CYCLE] Active cycle, sync maintained for ${product.sku}`)
           }
           
           // Bypass AI logic since product is governed by a price cycle

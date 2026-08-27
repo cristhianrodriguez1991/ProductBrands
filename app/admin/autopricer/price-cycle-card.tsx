@@ -517,8 +517,27 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
       {/* Active Schedules Table */}
       {activeCycles.length > 0 && (
         <Card className="p-0 bg-white shadow-sm border-slate-200 rounded-xl">
-          <div className="p-4 border-b border-slate-100 bg-slate-50 rounded-t-xl">
+          <div className="p-4 border-b border-slate-100 bg-slate-50 rounded-t-xl flex justify-between items-center">
             <h3 className="font-bold text-slate-800">Active Schedules</h3>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 font-medium bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+              onClick={async () => {
+                if (confirm("Do you want to instantly force-sync all active schedules to Amazon right now to fix any stuck prices?")) {
+                  try {
+                    await fetch("/api/admin/autopricer/force-sync-all")
+                    alert("Sync command sent successfully! All active schedules have been pushed to Amazon.")
+                    onRefresh()
+                  } catch (e) {
+                    alert("Failed to sync.")
+                  }
+                }
+              }}
+            >
+              <RefreshCw className="h-3 w-3 mr-1.5" />
+              Force Sync to Amazon Now
+            </Button>
           </div>
           <div className="overflow-visible pb-10">
             <table className="w-full text-sm text-left whitespace-nowrap">
