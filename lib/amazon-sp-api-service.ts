@@ -612,14 +612,47 @@ export async function submitPriceUpdateFeed(
       const existingOffer = existingListing?.attributes?.purchasable_offer?.[0]
       const existingOurPrice = existingOffer?.our_price?.[0]?.schedule?.[0]?.value_with_tax
 
-      // If there's an existing base price, we preserve it. If not, use the new price.
+      // If there's an existing base price, we preserve it. 
+      // User explicitly requested to NEVER change "Your Price" (our_price).
       const basePrice = existingOurPrice || item.price
-      const newSalePrice = Number(item.price)
+      const targetSalePrice = Number(item.price)
 
-      // Start date: now. End date: 5 years from now
+      // Start date: now. End date: 5 years from now (for sales)
       const now = new Date()
       const end = new Date()
       end.setFullYear(now.getFullYear() + 5)
+
+      // Construct the purchasable_offer payload
+      const purchasableOfferPayload: any = {
+        marketplace_id: marketplaceId,
+        currency: marketplaceCode === "US" ? "USD" : marketplaceCode === "CA" ? "CAD" : marketplaceCode === "MX" ? "MXN" : "USD",
+        our_price: [
+          {
+            schedule: [
+              {
+                value_with_tax: Number(basePrice)
+              }
+            ]
+          }
+        ]
+      }
+
+      // ONLY include discounted_price if the target price is strictly less than the base price.
+      // If it's equal to or greater than the base price, omitting discounted_price will REMOVE the sale
+      // and Amazon will naturally revert to displaying "Your Price" (our_price).
+      if (targetSalePrice < Number(basePrice)) {
+        purchasableOfferPayload.discounted_price = [
+          {
+            schedule: [
+              {
+                value_with_tax: targetSalePrice,
+                start_at: now.toISOString(),
+                end_at: end.toISOString()
+              }
+            ]
+          }
+        ]
+      }
 
       await client.callAPI({
         operation: "patchListingsItem",
@@ -632,32 +665,7 @@ export async function submitPriceUpdateFeed(
             {
               op: "replace",
               path: "/attributes/purchasable_offer",
-              value: [
-                {
-                  marketplace_id: marketplaceId,
-                  currency: marketplaceCode === "US" ? "USD" : marketplaceCode === "CA" ? "CAD" : marketplaceCode === "MX" ? "MXN" : "USD",
-                  our_price: [
-                    {
-                      schedule: [
-                        {
-                          value_with_tax: Number(basePrice)
-                        }
-                      ]
-                    }
-                  ],
-                  discounted_price: [
-                    {
-                      schedule: [
-                        {
-                          value_with_tax: newSalePrice,
-                          start_at: now.toISOString(),
-                          end_at: end.toISOString()
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
+              value: [purchasableOfferPayload]
             }
           ]
         },
@@ -702,6 +710,27 @@ export async function submitScheduledSaleUpdate(
   }
 
   try {
+    // 1. Fetch existing listing to preserve the actual "Your Price" (our_price)
+    // The user explicitly requested to NEVER modify "Your Price" and only manipulate the Sale Price.
+    const existingListing: any = await client.callAPI({
+      operation: "getListingsItem",
+      endpoint: "listingsItems",
+      path: { sellerId, sku },
+      query: {
+        marketplaceIds: [marketplaceId],
+        includedData: "attributes",
+      },
+    })
+
+    const existingOffer = existingListing?.attributes?.purchasable_offer?.[0]
+    const existingOurPrice = existingOffer?.our_price?.[0]?.schedule?.[0]?.value_with_tax
+
+    // The target price is the salePrice if we are in DISCOUNT phase, or basePrice if we are in REGULAR phase
+    const targetPrice = salePrice !== null ? salePrice : basePrice
+    
+    // We strictly preserve existingOurPrice. If Amazon somehow has none, we fallback to targetPrice.
+    const amazonBasePrice = existingOurPrice || targetPrice
+
     const valuePayload: any = {
       marketplace_id: marketplaceId,
       currency: marketplaceCode === "US" ? "USD" : marketplaceCode === "CA" ? "CAD" : marketplaceCode === "MX" ? "MXN" : "USD",
@@ -709,21 +738,34 @@ export async function submitScheduledSaleUpdate(
         {
           schedule: [
             {
-              value_with_tax: Number(basePrice)
+              value_with_tax: Number(amazonBasePrice)
             }
           ]
         }
       ]
     }
 
-    if (salePrice !== null) {
+    // ONLY inject the discounted_price (Sale Price) if the target price is strictly LESS than the Amazon base price.
+    // If it's equal or greater, omitting the discounted_price will remove the sale, naturally reverting to "Your Price".
+    if (targetPrice < Number(amazonBasePrice)) {
+      // If we are setting a sale price, use the provided dates, otherwise if it's the "Regular" phase but we still
+      // need to use the sale price mechanism (e.g. Regular is 12, Your Price is 15), we create a 5-year sale for it.
+      let start = startDate
+      let end = endDate
+      
+      if (salePrice === null) {
+        start = new Date()
+        end = new Date()
+        end.setFullYear(start.getFullYear() + 5)
+      }
+
       valuePayload.discounted_price = [
         {
           schedule: [
             {
-              value_with_tax: Number(salePrice),
-              start_at: startDate.toISOString(),
-              end_at: endDate.toISOString()
+              value_with_tax: Number(targetPrice),
+              start_at: start.toISOString(),
+              end_at: end.toISOString()
             }
           ]
         }
