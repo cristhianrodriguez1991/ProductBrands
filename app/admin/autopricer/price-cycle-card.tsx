@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, Fragment } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Calendar, Repeat, Play, Pause, XCircle, Loader2, Pencil, LineChart } from "lucide-react"
+import { Calendar, Repeat, Play, Pause, XCircle, Loader2, Pencil, LineChart, RefreshCw } from "lucide-react"
 import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 interface Product {
