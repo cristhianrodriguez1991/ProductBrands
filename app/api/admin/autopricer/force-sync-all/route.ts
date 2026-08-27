@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       const basePriceForCalc = Number(product.priceCycleBasePrice || product.currentPrice)
       let salePriceToPush: number | null = null
 
-      if (product.priceCyclePhase === "DISCOUNT") {
+      if (product.priceCycleCurrentPhase === "DISCOUNT") {
         const pct = Number(product.priceCycleDiscountPct || 10)
         salePriceToPush = Number((basePriceForCalc * (1 - pct / 100)).toFixed(2))
       }
