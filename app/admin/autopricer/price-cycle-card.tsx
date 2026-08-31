@@ -196,7 +196,8 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
     if (selectedProduct) {
       setRegularPrice(selectedProduct.priceCycleBasePrice?.toString() || selectedProduct.price?.toString() || selectedProduct.currentPrice?.toString() || "0")
       setRegularDays(selectedProduct.priceCycleRegularDays?.toString() || "14")
-      setDiscountPct(selectedProduct.priceCycleDiscountPct?.toString() || "10")
+      setDiscountType(selectedProduct.priceCycleDiscountType as "PERCENTAGE" | "FIXED_PRICE" || "PERCENTAGE")
+      setDiscountValue(selectedProduct.priceCycleDiscountValue?.toString() || selectedProduct.priceCycleDiscountPct?.toString() || "10")
       setDiscountDays(selectedProduct.priceCycleDiscountDays?.toString() || "7")
       setRepeatCycle(selectedProduct.priceCycleEnabled !== false)
     }
@@ -273,7 +274,8 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
     setSelectedAmazonProduct(null)
     setSearchQuery(`${p.productName} — ${p.asin}`)
     setRegularPrice(p.priceCycleBasePrice?.toString() || p.currentPrice.toString())
-    setDiscountPct(p.priceCycleDiscountPct?.toString() || "10")
+    setDiscountType(p.priceCycleDiscountType as "PERCENTAGE" | "FIXED_PRICE" || "PERCENTAGE")
+    setDiscountValue(p.priceCycleDiscountValue?.toString() || p.priceCycleDiscountPct?.toString() || "10")
     setRegularDays(p.priceCycleRegularDays?.toString() || "14")
     setDiscountDays(p.priceCycleDiscountDays?.toString() || "7")
     setStartPhase(p.priceCycleCurrentPhase === "DISCOUNT" ? "DISCOUNT" : "REGULAR")
