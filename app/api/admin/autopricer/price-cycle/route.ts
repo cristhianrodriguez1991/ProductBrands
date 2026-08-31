@@ -54,12 +54,14 @@ export async function POST(request: Request) {
     }
 
     if (priceCycleEnabled) {
-      if (!priceCycleDiscountPct || !priceCycleRegularDays || !priceCycleDiscountDays || !priceCycleBasePrice) {
+      if (!priceCycleDiscountValue || !priceCycleRegularDays || !priceCycleDiscountDays || !priceCycleBasePrice) {
         return NextResponse.json({ success: false, error: "All cycle parameters are required when enabled" }, { status: 400 })
       }
       
       // Calculate discounted price to ensure it doesn't go below minimums (mock validation for now)
-      const discountedPrice = priceCycleBasePrice * (1 - priceCycleDiscountPct / 100)
+      const discountedPrice = priceCycleDiscountType === "FIXED_PRICE"
+        ? Number(priceCycleDiscountValue || priceCycleBasePrice)
+        : priceCycleBasePrice * (1 - (priceCycleDiscountValue || 10) / 100)
       if (discountedPrice <= 0) {
         return NextResponse.json({ success: false, error: "Discounted price cannot be <= 0" }, { status: 400 })
       }
