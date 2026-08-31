@@ -580,7 +580,10 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                             </span>
                           )}
                         </div>
-                        <div className="text-slate-400 font-normal text-xs mt-0.5">SKU: {p.sku}</div>
+                        <div className="text-slate-400 font-normal text-xs mt-0.5 flex flex-col">
+                          <span>SKU: {p.sku}</span>
+                          <span>ASIN: {p.asin}</span>
+                        </div>
                         
                         {p.priceCycleStatus === "Failed" && p.priceCycleError && (
                           <div className="mt-1 text-xs text-red-600 font-medium bg-red-50 p-1.5 rounded border border-red-100 w-full whitespace-pre-wrap">
