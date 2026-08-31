@@ -17,11 +17,15 @@ interface Product {
   priceCycleStatus: string
   priceCycleError?: string | null
   priceCycleDiscountPct: number | null
+  priceCycleDiscountType?: string | null
+  priceCycleDiscountValue?: number | null
   priceCycleRegularDays: number | null
   priceCycleDiscountDays: number | null
   priceCycleBasePrice: number | null
   priceCycleCurrentPhase: string | null
   priceCycleNextChangeAt: string | null
+  priceCycleManualOverride?: boolean
+  priceCycleManualPrice?: number | null
 }
 
 interface PriceCycleCardProps {
