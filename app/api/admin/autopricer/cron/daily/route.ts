@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { getDailySalesAndTrafficBySku, submitPriceUpdateFeed, submitScheduledSaleUpdate } from "@/lib/amazon-sp-api-service"
+import { getDailySalesAndTrafficBySku, submitPriceUpdateFeed, submitScheduledSaleUpdate, getLivePriceForSku } from "@/lib/amazon-sp-api-service"
 import { keepaProvider } from "@/lib/keepa/provider"
 import { analyzeWeekdayBehavior } from "@/lib/keepa/analytics/weekday-engine"
 import { analyzePricingWithGLM } from "@/lib/ai/pricing-analyzer"
@@ -60,8 +60,12 @@ export async function GET(req: Request) {
             let endDate = new Date()
 
             if (nextPhase === "DISCOUNT") {
-              const pct = product.priceCycleDiscountPct || 10
-              salePriceToPush = Number((Number(product.priceCycleBasePrice || product.currentPrice) * (1 - pct / 100)).toFixed(2))
+              if (product.priceCycleDiscountType === "FIXED_PRICE") {
+                salePriceToPush = Number(product.priceCycleDiscountValue || product.priceCycleBasePrice || product.currentPrice)
+              } else {
+                const pct = product.priceCycleDiscountValue || product.priceCycleDiscountPct || 10
+                salePriceToPush = Number((Number(product.priceCycleBasePrice || product.currentPrice) * (1 - pct / 100)).toFixed(2))
+              }
               endDate.setDate(endDate.getDate() + (product.priceCycleDiscountDays || 7))
               console.log(`[PRICE_CYCLE] Shifting to DISCOUNT: $${salePriceToPush} for ${product.priceCycleDiscountDays} days`)
             } else {
@@ -113,6 +117,38 @@ export async function GET(req: Request) {
             }
           } else {
             console.log(`[PRICE_CYCLE] Active cycle, but next change is not until ${nextChange.toISOString()}`)
+
+            // 0.1 Manual Override Detection (Only check on off-days to avoid hitting SP-API right after a push)
+            const livePrice = await getLivePriceForSku(product.sku, product.marketplace === "CA" ? "A2EUQ1WTGCTBG2" : "ATVPDKIKX0DER")
+            if (livePrice !== null) {
+              let expectedPrice = Number(product.priceCycleBasePrice || product.currentPrice)
+              if (product.priceCycleCurrentPhase === "DISCOUNT") {
+                if (product.priceCycleDiscountType === "FIXED_PRICE") {
+                  expectedPrice = Number(product.priceCycleDiscountValue || expectedPrice)
+                } else {
+                  const pct = Number(product.priceCycleDiscountValue || product.priceCycleDiscountPct || 10)
+                  expectedPrice = Number((expectedPrice * (1 - pct / 100)).toFixed(2))
+                }
+              }
+
+              // Allow a tiny margin of error for rounding
+              if (Math.abs(livePrice - expectedPrice) > 0.05) {
+                console.log(`[PRICE_CYCLE] ⚠️ Manual Override Detected for ${product.sku}! Expected: $${expectedPrice}, Live: $${livePrice}`)
+                await prisma.monitoredProduct.update({
+                  where: { id: product.id },
+                  data: {
+                    priceCycleManualOverride: true,
+                    priceCycleManualPrice: livePrice
+                  }
+                })
+              } else if (product.priceCycleManualOverride) {
+                // It was manually overridden, but now it matches the expected price (maybe they fixed it)
+                await prisma.monitoredProduct.update({
+                  where: { id: product.id },
+                  data: { priceCycleManualOverride: false, priceCycleManualPrice: null }
+                })
+              }
+            }
           }
           
           // Bypass AI logic since product is governed by a price cycle

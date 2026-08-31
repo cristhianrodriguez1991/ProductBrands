@@ -1040,13 +1040,17 @@ model MonitoredProduct {
   // Automatic Price Cycle Fields (Recurring Flash Sales)
   priceCycleEnabled        Boolean   @default(false)
   priceCycleStatus         String?   @default("Draft") // "Active", "Paused", "Failed", "Completed", "Draft"
-  priceCycleDiscountPct    Float?    // e.g. 10 for 10%
+  priceCycleDiscountType   String?   @default("PERCENTAGE") // "PERCENTAGE" or "FIXED_PRICE"
+  priceCycleDiscountValue  Float?    // e.g., 15 for 15%, or 8.99 for fixed $8.99
+  priceCycleDiscountPct    Float?    // Legacy (deprecated)
   priceCycleRegularDays    Int?      // e.g. 14
   priceCycleDiscountDays   Int?      // e.g. 7
   priceCycleBasePrice      Float?    // e.g. 12.99
   priceCycleStartDate      DateTime? // When the cycle initially started
   priceCycleCurrentPhase   String?   // "REGULAR" | "DISCOUNT"
   priceCycleNextChangeAt   DateTime? // When the next phase shift happens
+  priceCycleManualOverride Boolean   @default(false)
+  priceCycleManualPrice    Float?    // The live price detected from Amazon
   priceCycleError          String?   @db.Text // Store errors from SP-API during cron/push
 
 

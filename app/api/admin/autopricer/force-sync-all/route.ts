@@ -17,8 +17,12 @@ export async function GET(request: Request) {
       let salePriceToPush: number | null = null
 
       if (product.priceCycleCurrentPhase === "DISCOUNT") {
-        const pct = Number(product.priceCycleDiscountPct || 10)
-        salePriceToPush = Number((basePriceForCalc * (1 - pct / 100)).toFixed(2))
+        if (product.priceCycleDiscountType === "FIXED_PRICE") {
+          salePriceToPush = Number(product.priceCycleDiscountValue || basePriceForCalc)
+        } else {
+          const pct = Number(product.priceCycleDiscountValue || product.priceCycleDiscountPct || 10)
+          salePriceToPush = Number((basePriceForCalc * (1 - pct / 100)).toFixed(2))
+        }
       }
 
       const now = new Date()

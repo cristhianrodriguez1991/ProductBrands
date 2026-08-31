@@ -183,7 +183,8 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
 
   const [regularPrice, setRegularPrice] = useState("12.99")
   const [regularDays, setRegularDays] = useState("14")
-  const [discountPct, setDiscountPct] = useState("10")
+  const [discountType, setDiscountType] = useState<"PERCENTAGE" | "FIXED_PRICE">("PERCENTAGE")
+  const [discountValue, setDiscountValue] = useState("10")
   const [discountDays, setDiscountDays] = useState("7")
   const [repeatCycle, setRepeatCycle] = useState(true)
   const [startPhase, setStartPhase] = useState<"REGULAR" | "DISCOUNT">("DISCOUNT")
@@ -201,7 +202,9 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
     }
   }, [selectedProduct])
 
-  const calculatedDiscountPrice = (parseFloat(regularPrice || "0") * (1 - parseFloat(discountPct || "0") / 100)).toFixed(2)
+  const calculatedDiscountPrice = discountType === "FIXED_PRICE"
+    ? parseFloat(discountValue || "0").toFixed(2)
+    : (parseFloat(regularPrice || "0") * (1 - parseFloat(discountValue || "0") / 100)).toFixed(2)
   const totalDays = parseInt(regularDays || "0") + parseInt(discountDays || "0")
   
   // Calculate next date (mock for display)
@@ -219,7 +222,8 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
     try {
       const payload: any = {
         priceCycleEnabled: true,
-        priceCycleDiscountPct: parseFloat(discountPct),
+        priceCycleDiscountType: discountType,
+        priceCycleDiscountValue: parseFloat(discountValue),
         priceCycleRegularDays: parseInt(regularDays),
         priceCycleDiscountDays: parseInt(discountDays),
         priceCycleBasePrice: parseFloat(regularPrice),
@@ -407,14 +411,29 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">Discount</label>
-            <select className="w-full h-10 px-3 bg-white border border-slate-300 rounded-md text-sm shadow-sm" value={discountPct} onChange={(e) => setDiscountPct(e.target.value)}>
-              <option value="5">5% off</option>
-              <option value="10">10% off</option>
-              <option value="15">15% off</option>
-              <option value="20">20% off</option>
-              <option value="25">25% off</option>
-            </select>
+            <label className="block text-xs font-medium text-slate-700 mb-1.5 flex justify-between">
+              Discount
+              <div className="flex gap-1 text-[10px] bg-slate-100 p-0.5 rounded">
+                <button 
+                  className={`px-1.5 py-0.5 rounded ${discountType === "PERCENTAGE" ? "bg-white shadow-sm font-bold" : "text-slate-500"}`}
+                  onClick={() => setDiscountType("PERCENTAGE")}
+                >%</button>
+                <button 
+                  className={`px-1.5 py-0.5 rounded ${discountType === "FIXED_PRICE" ? "bg-white shadow-sm font-bold" : "text-slate-500"}`}
+                  onClick={() => setDiscountType("FIXED_PRICE")}
+                >$</button>
+              </div>
+            </label>
+            <div className="relative">
+              {discountType === "FIXED_PRICE" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>}
+              <input
+                type="number"
+                className={`w-full h-10 ${discountType === "FIXED_PRICE" ? "pl-6" : "pl-3"} pr-8 bg-white border border-slate-300 rounded-md text-sm shadow-sm focus:ring-1 focus:ring-emerald-500 outline-none`}
+                value={discountValue}
+                onChange={(e) => setDiscountValue(e.target.value)}
+              />
+              {discountType === "PERCENTAGE" && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">%</span>}
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1.5">Discount period</label>
@@ -450,7 +469,9 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                     style={{ flex: parseInt(discountDays || "0") }}
                   >
                     <span>Days 1–{discountDays}</span>
-                    <span className="text-green-100 font-normal text-xs">{discountPct}% Off · ${calculatedDiscountPrice}</span>
+                    <span className="text-green-100 font-normal text-xs">
+                      {discountType === "PERCENTAGE" ? `${discountValue}% Off · ` : ''}${calculatedDiscountPrice}
+                    </span>
                   </div>
                   <div 
                     className="bg-[#2563eb] border-l border-white/20 py-4 flex flex-col justify-center items-center transition-all"
@@ -474,7 +495,9 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                     style={{ flex: parseInt(discountDays || "0") }}
                   >
                     <span>Days {parseInt(regularDays || "0") + 1}–{totalDays}</span>
-                    <span className="text-green-100 font-normal text-xs">{discountPct}% Off · ${calculatedDiscountPrice}</span>
+                    <span className="text-green-100 font-normal text-xs">
+                      {discountType === "PERCENTAGE" ? `${discountValue}% Off · ` : ''}${calculatedDiscountPrice}
+                    </span>
                   </div>
                 </>
               )}
@@ -561,7 +584,9 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {activeCycles.map(p => {
-                  const salePrice = (Number(p.priceCycleBasePrice || p.currentPrice) * (1 - (p.priceCycleDiscountPct || 0)/100)).toFixed(2)
+                  const salePrice = p.priceCycleDiscountType === "FIXED_PRICE"
+                    ? Number(p.priceCycleDiscountValue || p.priceCycleBasePrice || p.currentPrice).toFixed(2)
+                    : (Number(p.priceCycleBasePrice || p.currentPrice) * (1 - (p.priceCycleDiscountValue || p.priceCycleDiscountPct || 0)/100)).toFixed(2)
                   const isPending = p.priceCycleNextChangeAt && new Date(p.priceCycleNextChangeAt).getFullYear() <= 1970
                   const isActivePhase = p.priceCycleCurrentPhase === "DISCOUNT" && !isPending
                   const isRegularLive = p.priceCycleCurrentPhase === "REGULAR" && !isPending
@@ -585,6 +610,13 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                           <span>ASIN: {p.asin}</span>
                         </div>
                         
+                        {p.priceCycleManualOverride && (
+                          <div className="mt-1.5 flex items-start gap-1.5 p-1.5 bg-amber-50 border border-amber-200 rounded text-amber-800 text-[10px] w-max max-w-full">
+                            <svg className="w-3.5 h-3.5 shrink-0 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            <span>Changed manually on Amazon (Live: ${p.priceCycleManualPrice})<br/>Cycle will overwrite this on {p.priceCycleNextChangeAt ? new Date(p.priceCycleNextChangeAt).toLocaleDateString() : 'next change'}.</span>
+                          </div>
+                        )}
+                        
                         {p.priceCycleStatus === "Failed" && p.priceCycleError && (
                           <div className="mt-1 text-xs text-red-600 font-medium bg-red-50 p-1.5 rounded border border-red-100 w-full whitespace-pre-wrap">
                             {p.priceCycleError}
@@ -604,7 +636,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                         <div className={`inline-flex items-center px-2 py-1 rounded-md transition-colors ${isDiscountLive ? 'bg-emerald-100 text-emerald-900 font-bold border border-emerald-200 shadow-sm' : 'font-medium text-slate-700'}`}>
                           ${salePrice} 
                           <span className={`text-[10px] ml-1.5 px-1 rounded border ${isDiscountLive ? 'text-emerald-700 bg-emerald-50/50 border-emerald-200' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
-                            -{p.priceCycleDiscountPct}%
+                            {p.priceCycleDiscountType === "FIXED_PRICE" ? "FIXED" : `-${p.priceCycleDiscountValue || p.priceCycleDiscountPct}%`}
                           </span>
                         </div>
                       </td>

@@ -7,12 +7,13 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { 
       productId, 
+      newAmazonProduct, 
       priceCycleEnabled, 
-      priceCycleDiscountPct, 
+      priceCycleDiscountType,
+      priceCycleDiscountValue,
       priceCycleRegularDays, 
-      priceCycleDiscountDays,
+      priceCycleDiscountDays, 
       priceCycleBasePrice,
-      newAmazonProduct,
       startPhase,
       pushImmediately
     } = body
@@ -84,8 +85,12 @@ export async function POST(request: Request) {
         let basePriceForCalc = Number(priceCycleBasePrice || targetProduct.currentPrice)
         
         if (phase === "DISCOUNT") {
-          const pct = Number(priceCycleDiscountPct || 10)
-          salePriceToPush = Number((basePriceForCalc * (1 - pct / 100)).toFixed(2))
+          if (priceCycleDiscountType === "FIXED_PRICE") {
+            salePriceToPush = Number(priceCycleDiscountValue || basePriceForCalc)
+          } else {
+            const pct = Number(priceCycleDiscountValue || 10)
+            salePriceToPush = Number((basePriceForCalc * (1 - pct / 100)).toFixed(2))
+          }
           nextDate.setUTCDate(nextDate.getUTCDate() + Number(priceCycleDiscountDays || 7))
         } else {
           nextDate.setUTCDate(nextDate.getUTCDate() + Number(priceCycleRegularDays || 14))
@@ -137,10 +142,13 @@ export async function POST(request: Request) {
       data: {
         priceCycleEnabled,
         priceCycleStatus: status,
-        priceCycleDiscountPct: priceCycleDiscountPct || null,
+        priceCycleDiscountType: priceCycleDiscountType || "PERCENTAGE",
+        priceCycleDiscountValue: priceCycleDiscountValue || null,
         priceCycleRegularDays: priceCycleRegularDays || null,
         priceCycleDiscountDays: priceCycleDiscountDays || null,
         priceCycleBasePrice: priceCycleBasePrice || null,
+        priceCycleManualOverride: false, // Reset override when manually saved
+        priceCycleManualPrice: null,
         priceCycleStartDate: startDate,
         priceCycleCurrentPhase: phase,
         priceCycleNextChangeAt: nextDate,

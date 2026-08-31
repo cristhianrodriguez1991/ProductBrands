@@ -671,6 +671,47 @@ export async function submitPriceUpdateFeed(
  * Updates the discounted_price block with precise start and end dates.
  * If salePrice is null, it removes the discount (regular phase).
  */
+export async function getLivePriceForSku(sku: string, marketplaceId = "ATVPDKIKX0DER"): Promise<number | null> {
+  const client: any = await getClient()
+  const sellerId = process.env.AMAZON_SPAPI_SELLER_ID
+
+  if (!sellerId) return null
+
+  try {
+    const existingListing: any = await client.callAPI({
+      operation: "getListingsItem",
+      endpoint: "listingsItems",
+      path: { sellerId, sku },
+      query: { marketplaceIds: [marketplaceId], includedData: "attributes" },
+    })
+
+    const purchasableOffers = existingListing?.attributes?.purchasable_offer || []
+    let b2cOffer = purchasableOffers.find((o: any) => o.audience === "ALL" || !o.audience)
+    if (!b2cOffer) b2cOffer = purchasableOffers[0]
+
+    if (!b2cOffer) return null
+
+    const regularPrice = b2cOffer.our_price?.[0]?.schedule?.[0]?.value_with_tax
+    let effectivePrice = regularPrice
+
+    // Check if there is an active discount
+    if (b2cOffer.discounted_price && b2cOffer.discounted_price.length > 0) {
+      const saleSchedule = b2cOffer.discounted_price[0]?.schedule?.[0]
+      if (saleSchedule && saleSchedule.value_with_tax) {
+        const endAt = new Date(saleSchedule.end_at)
+        if (endAt > new Date()) {
+          effectivePrice = saleSchedule.value_with_tax
+        }
+      }
+    }
+
+    return effectivePrice ? Number(effectivePrice) : null
+  } catch (error) {
+    console.error(`[getLivePriceForSku] Failed for SKU ${sku}`, error)
+    return null
+  }
+}
+
 export async function submitScheduledSaleUpdate(
   sku: string,
   basePrice: number,
