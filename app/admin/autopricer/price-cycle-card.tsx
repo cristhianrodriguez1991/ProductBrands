@@ -24,6 +24,7 @@ interface Product {
   priceCycleBasePrice: number | null
   priceCycleCurrentPhase: string | null
   priceCycleNextChangeAt: string | null
+  priceCycleB2BEnabled?: boolean
   priceCycleManualOverride?: boolean
   priceCycleManualPrice?: number | null
 }
