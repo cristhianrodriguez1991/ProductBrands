@@ -79,7 +79,8 @@ export async function GET(req: Request) {
               salePriceToPush,
               startDate,
               endDate,
-              product.marketplace
+              product.marketplace || "US",
+              product.priceCycleB2BEnabled
             )
 
             if (res.success) {

@@ -718,7 +718,8 @@ export async function submitScheduledSaleUpdate(
   salePrice: number | null,
   startDate: Date,
   endDate: Date,
-  marketplaceCode = "US"
+  marketplaceCode = "US",
+  b2bEnabled = false
 ): Promise<{ success: boolean; error?: string }> {
   const client: any = getClient()
   const marketplaceId = marketplaceIdForCode(marketplaceCode)
@@ -801,8 +802,62 @@ export async function submitScheduledSaleUpdate(
         }
       ]
     }
+    
+    // 5. Update B2B offer if enabled
+    if (b2bEnabled) {
+      let b2bOffer = purchasableOffers.find((o: any) => o.audience === "B2B")
+      if (!b2bOffer) {
+        b2bOffer = {
+          marketplace_id: marketplaceId,
+          currency: marketplaceCode === "US" ? "USD" : marketplaceCode === "CA" ? "CAD" : marketplaceCode === "MX" ? "MXN" : "USD",
+          audience: "B2B"
+        }
+        purchasableOffers.push(b2bOffer)
+      }
+      
+      const b2bBasePrice = Number((basePrice * 0.95).toFixed(2))
+      
+      b2bOffer.our_price = [
+        {
+          schedule: [
+            {
+              value_with_tax: b2bBasePrice
+            }
+          ]
+        }
+      ]
 
-    // 5. Send the entire modified array back
+      if (salePrice !== null) {
+        const b2bSalePrice = Number((salePrice * 0.95).toFixed(2))
+        b2bOffer.discounted_price = [
+          {
+            schedule: [
+              {
+                value_with_tax: b2bSalePrice,
+                start_at: startDate.toISOString(),
+                end_at: endDate.toISOString()
+              }
+            ]
+          }
+        ]
+      } else {
+        const yesterday = new Date(Date.now() - 24 * 3600 * 1000).toISOString().split('T')[0]
+        const twoDaysAgo = new Date(Date.now() - 48 * 3600 * 1000).toISOString().split('T')[0]
+        b2bOffer.discounted_price = [
+          {
+            schedule: [
+              {
+                value_with_tax: b2bBasePrice,
+                start_at: twoDaysAgo,
+                end_at: yesterday
+              }
+            ]
+          }
+        ]
+      }
+    }
+
+    // 6. Send the entire modified array back
     const patches: any[] = [
       {
         op: "replace",

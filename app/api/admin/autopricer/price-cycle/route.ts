@@ -14,6 +14,7 @@ export async function POST(request: Request) {
       priceCycleRegularDays, 
       priceCycleDiscountDays, 
       priceCycleBasePrice,
+      priceCycleB2BEnabled,
       startPhase,
       pushImmediately
     } = body
@@ -105,7 +106,8 @@ export async function POST(request: Request) {
             salePriceToPush,
             now,
             nextDate,
-            targetProduct.marketplace || "US"
+            targetProduct.marketplace || "US",
+            priceCycleB2BEnabled
           )
           
           if (!res.success) {
@@ -149,6 +151,7 @@ export async function POST(request: Request) {
         priceCycleRegularDays: priceCycleRegularDays || null,
         priceCycleDiscountDays: priceCycleDiscountDays || null,
         priceCycleBasePrice: priceCycleBasePrice || null,
+        priceCycleB2BEnabled: !!priceCycleB2BEnabled,
         priceCycleManualOverride: false, // Reset override when manually saved
         priceCycleManualPrice: null,
         priceCycleStartDate: startDate,

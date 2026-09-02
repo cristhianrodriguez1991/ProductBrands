@@ -192,6 +192,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
   const [discountValue, setDiscountValue] = useState("10")
   const [discountDays, setDiscountDays] = useState("7")
   const [repeatCycle, setRepeatCycle] = useState(true)
+  const [b2bEnabled, setB2bEnabled] = useState(false)
   const [startPhase, setStartPhase] = useState<"REGULAR" | "DISCOUNT">("DISCOUNT")
   const [pushImmediately, setPushImmediately] = useState<boolean>(false)
   const [saving, setSaving] = useState(false)
@@ -233,6 +234,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
         priceCycleRegularDays: parseInt(regularDays),
         priceCycleDiscountDays: parseInt(discountDays),
         priceCycleBasePrice: parseFloat(regularPrice),
+        priceCycleB2BEnabled: b2bEnabled,
         startPhase,
         pushImmediately
       }
@@ -289,6 +291,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
     setRegularDays(p.priceCycleRegularDays?.toString() || "14")
     setDiscountDays(p.priceCycleDiscountDays?.toString() || "7")
     setStartPhase(p.priceCycleCurrentPhase === "DISCOUNT" ? "DISCOUNT" : "REGULAR")
+    setB2bEnabled(p.priceCycleB2BEnabled || false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -468,6 +471,18 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
               <span className="text-sm font-medium">{repeatCycle ? "On" : "Off"}</span>
             </div>
           </div>
+          <div className="flex flex-col pl-4 border-l border-slate-100">
+            <label className="block text-xs font-medium text-slate-700 mb-2.5">B2B Price</label>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setB2bEnabled(!b2bEnabled)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${b2bEnabled ? 'bg-indigo-600' : 'bg-slate-300'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${b2bEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+              <span className="text-sm font-medium">{b2bEnabled ? "-5% Auto" : "Off"}</span>
+            </div>
+          </div>
         </div>
 
         <div className="mb-8">
@@ -484,6 +499,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                     <span className="text-green-100 font-normal text-xs">
                       {discountType === "PERCENTAGE" ? `${discountValue}% Off · ` : ''}${calculatedDiscountPrice}
                     </span>
+                    {b2bEnabled && <span className="text-green-200/80 font-normal text-[10px] mt-0.5">B2B: ${(parseFloat(calculatedDiscountPrice) * 0.95).toFixed(2)}</span>}
                   </div>
                   <div 
                     className="bg-[#2563eb] border-l border-white/20 py-4 flex flex-col justify-center items-center transition-all"
@@ -491,6 +507,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                   >
                     <span>Days {parseInt(discountDays || "0") + 1}–{totalDays}</span>
                     <span className="text-blue-100 font-normal text-xs">Regular Price · ${parseFloat(regularPrice || "0").toFixed(2)}</span>
+                    {b2bEnabled && <span className="text-blue-200/80 font-normal text-[10px] mt-0.5">B2B: ${(parseFloat(regularPrice || "0") * 0.95).toFixed(2)}</span>}
                   </div>
                 </>
               ) : (
@@ -501,6 +518,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                   >
                     <span>Days 1–{regularDays}</span>
                     <span className="text-blue-100 font-normal text-xs">Regular Price · ${parseFloat(regularPrice || "0").toFixed(2)}</span>
+                    {b2bEnabled && <span className="text-blue-200/80 font-normal text-[10px] mt-0.5">B2B: ${(parseFloat(regularPrice || "0") * 0.95).toFixed(2)}</span>}
                   </div>
                   <div 
                     className="bg-[#16a34a] border-l border-white/20 py-4 flex flex-col justify-center items-center transition-all"
@@ -510,6 +528,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                     <span className="text-green-100 font-normal text-xs">
                       {discountType === "PERCENTAGE" ? `${discountValue}% Off · ` : ''}${calculatedDiscountPrice}
                     </span>
+                    {b2bEnabled && <span className="text-green-200/80 font-normal text-[10px] mt-0.5">B2B: ${(parseFloat(calculatedDiscountPrice) * 0.95).toFixed(2)}</span>}
                   </div>
                 </>
               )}
@@ -654,16 +673,30 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className={`inline-flex items-center px-2 py-1 rounded-md transition-colors ${isRegularLive ? 'bg-amber-100 text-amber-900 font-bold border border-amber-200 shadow-sm' : 'font-medium text-slate-700'}`}>
-                          ${Number(p.priceCycleBasePrice).toFixed(2)}
+                        <div className="flex flex-col gap-1 items-start">
+                          <div className={`inline-flex items-center px-2 py-1 rounded-md transition-colors ${isRegularLive ? 'bg-amber-100 text-amber-900 font-bold border border-amber-200 shadow-sm' : 'font-medium text-slate-700'}`}>
+                            ${Number(p.priceCycleBasePrice).toFixed(2)}
+                          </div>
+                          {p.priceCycleB2BEnabled && (
+                            <div className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              B2B: ${(Number(p.priceCycleBasePrice) * 0.95).toFixed(2)}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className={`inline-flex items-center px-2 py-1 rounded-md transition-colors ${isDiscountLive ? 'bg-emerald-100 text-emerald-900 font-bold border border-emerald-200 shadow-sm' : 'font-medium text-slate-700'}`}>
-                          ${salePrice} 
-                          <span className={`text-[10px] ml-1.5 px-1 rounded border ${isDiscountLive ? 'text-emerald-700 bg-emerald-50/50 border-emerald-200' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
-                            {p.priceCycleDiscountType === "FIXED_PRICE" ? "FIXED" : `-${p.priceCycleDiscountValue || p.priceCycleDiscountPct}%`}
-                          </span>
+                        <div className="flex flex-col gap-1 items-start">
+                          <div className={`inline-flex items-center px-2 py-1 rounded-md transition-colors ${isDiscountLive ? 'bg-emerald-100 text-emerald-900 font-bold border border-emerald-200 shadow-sm' : 'font-medium text-slate-700'}`}>
+                            ${salePrice} 
+                            <span className={`text-[10px] ml-1.5 px-1 rounded border ${isDiscountLive ? 'text-emerald-700 bg-emerald-50/50 border-emerald-200' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
+                              {p.priceCycleDiscountType === "FIXED_PRICE" ? "FIXED" : `-${p.priceCycleDiscountValue || p.priceCycleDiscountPct}%`}
+                            </span>
+                          </div>
+                          {p.priceCycleB2BEnabled && (
+                            <div className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              B2B: ${(Number(salePrice) * 0.95).toFixed(2)}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3">

@@ -35,7 +35,8 @@ export async function GET(request: Request) {
         salePriceToPush,
         now,
         end,
-        product.marketplace || "US"
+        product.marketplace || "US",
+        product.priceCycleB2BEnabled
       )
 
       results.push({ sku: product.sku, success: res.success, error: res.error })
