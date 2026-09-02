@@ -142,6 +142,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
   const [expandedCharts, setExpandedCharts] = useState<Set<string>>(new Set())
   
   const [searchQuery, setSearchQuery] = useState("")
+  const [tableSearchQuery, setTableSearchQuery] = useState("")
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [amazonResults, setAmazonResults] = useState<any[]>([])
   const [isSearchingAmazon, setIsSearchingAmazon] = useState(false)
@@ -272,6 +273,11 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
   }
 
   const activeCycles = products.filter(p => p.priceCycleEnabled)
+  const filteredActiveCycles = activeCycles.filter(p => {
+    if (!tableSearchQuery) return true
+    const q = tableSearchQuery.toLowerCase()
+    return p.asin.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.productName.toLowerCase().includes(q)
+  })
 
   const handleEdit = (p: Product) => {
     setSelectedProductId(p.id)
@@ -546,13 +552,26 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
       {/* Active Schedules Table */}
       {activeCycles.length > 0 && (
         <Card className="p-0 bg-white shadow-sm border-slate-200 rounded-xl">
-          <div className="p-4 border-b border-slate-100 bg-slate-50 rounded-t-xl flex justify-between items-center">
+          <div className="p-4 border-b border-slate-100 bg-slate-50 rounded-t-xl flex flex-wrap gap-4 justify-between items-center">
             <h3 className="font-bold text-slate-800">Active Schedules</h3>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-8 font-medium bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-              onClick={async () => {
+            <div className="flex items-center gap-3 ml-auto">
+              <div className="relative">
+                <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search ASIN, SKU, Name..."
+                  value={tableSearchQuery}
+                  onChange={(e) => setTableSearchQuery(e.target.value)}
+                  className="h-8 pl-8 pr-3 text-sm border border-slate-200 rounded-md focus:ring-1 focus:ring-indigo-500 outline-none w-[220px]"
+                />
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 font-medium bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                onClick={async () => {
                 if (confirm("Do you want to instantly force-sync all active schedules to Amazon right now to fix any stuck prices?")) {
                   try {
                     const res = await fetch("/api/admin/autopricer/force-sync-all")
@@ -574,6 +593,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
               <RefreshCw className="h-3 w-3 mr-1.5" />
               Force Sync to Amazon Now
             </Button>
+            </div>
           </div>
           <div className="overflow-visible pb-10">
             <table className="w-full text-sm text-left whitespace-nowrap">
@@ -589,7 +609,7 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {activeCycles.map(p => {
+                {filteredActiveCycles.map(p => {
                   const salePrice = p.priceCycleDiscountType === "FIXED_PRICE"
                     ? Number(p.priceCycleDiscountValue || p.priceCycleBasePrice || p.currentPrice).toFixed(2)
                     : (Number(p.priceCycleBasePrice || p.currentPrice) * (1 - (p.priceCycleDiscountValue || p.priceCycleDiscountPct || 0)/100)).toFixed(2)
