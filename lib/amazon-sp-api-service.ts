@@ -815,46 +815,22 @@ export async function submitScheduledSaleUpdate(
         purchasableOffers.push(b2bOffer)
       }
       
-      const b2bBasePrice = Number((basePrice * 0.95).toFixed(2))
+      const activePrice = salePrice !== null ? salePrice : basePrice
+      const b2bActivePrice = Number((activePrice * 0.95).toFixed(2))
       
       b2bOffer.our_price = [
         {
           schedule: [
             {
-              value_with_tax: b2bBasePrice
+              value_with_tax: b2bActivePrice
             }
           ]
         }
       ]
 
-      if (salePrice !== null) {
-        const b2bSalePrice = Number((salePrice * 0.95).toFixed(2))
-        b2bOffer.discounted_price = [
-          {
-            schedule: [
-              {
-                value_with_tax: b2bSalePrice,
-                start_at: startDate.toISOString(),
-                end_at: endDate.toISOString()
-              }
-            ]
-          }
-        ]
-      } else {
-        const yesterday = new Date(Date.now() - 24 * 3600 * 1000).toISOString().split('T')[0]
-        const twoDaysAgo = new Date(Date.now() - 48 * 3600 * 1000).toISOString().split('T')[0]
-        b2bOffer.discounted_price = [
-          {
-            schedule: [
-              {
-                value_with_tax: b2bBasePrice,
-                start_at: twoDaysAgo,
-                end_at: yesterday
-              }
-            ]
-          }
-        ]
-      }
+      // Amazon B2B offers do not support discounted_price schedules.
+      // We must explicitly remove it to prevent SP-API from rejecting or ignoring the sale phase.
+      delete b2bOffer.discounted_price
     }
 
     // 6. Send the entire modified array back
