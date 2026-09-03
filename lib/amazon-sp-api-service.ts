@@ -773,12 +773,19 @@ export async function submitScheduledSaleUpdate(
 
     // 4. Update or remove the sale price
     if (salePrice !== null) {
+      // Force start_at to be in the past so the sale goes live immediately.
+      // Amazon SP-API aligns sale starts to midnight PT. If we submit a sale 
+      // late at night ET, the base price updates immediately but the sale 
+      // waits until 3 AM ET (Midnight PT). Shifting the start date back 2 days fixes this.
+      const adjustedStartDate = new Date(startDate.getTime())
+      adjustedStartDate.setDate(adjustedStartDate.getDate() - 2)
+
       b2cOffer.discounted_price = [
         {
           schedule: [
             {
               value_with_tax: Number(salePrice),
-              start_at: startDate.toISOString(),
+              start_at: adjustedStartDate.toISOString(),
               end_at: endDate.toISOString()
             }
           ]
