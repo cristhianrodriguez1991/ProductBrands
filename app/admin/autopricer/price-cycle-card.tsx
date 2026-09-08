@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, Fragment } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Calendar, Repeat, Play, Pause, XCircle, Loader2, Pencil, LineChart, RefreshCw } from "lucide-react"
+import { Calendar, Repeat, Play, Pause, XCircle, Loader2, Pencil, LineChart, RefreshCw, ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react"
 import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 interface Product {
@@ -281,6 +281,73 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
     const q = tableSearchQuery.toLowerCase()
     return p.asin.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.productName.toLowerCase().includes(q)
   })
+
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'nextChange', direction: 'asc' })
+
+  const sortedActiveCycles = useMemo(() => {
+    let sortableItems = [...filteredActiveCycles];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        if (sortConfig.key === 'productName') {
+          if (a.productName < b.productName) return sortConfig.direction === 'asc' ? -1 : 1;
+          if (a.productName > b.productName) return sortConfig.direction === 'asc' ? 1 : -1;
+          return 0;
+        }
+        if (sortConfig.key === 'regularPrice') {
+          const aPrice = a.priceCycleBasePrice || a.currentPrice || 0;
+          const bPrice = b.priceCycleBasePrice || b.currentPrice || 0;
+          return sortConfig.direction === 'asc' ? aPrice - bPrice : bPrice - aPrice;
+        }
+        if (sortConfig.key === 'discountedPrice') {
+          const aSale = a.priceCycleDiscountType === "FIXED_PRICE" ? Number(a.priceCycleDiscountValue || a.priceCycleBasePrice || a.currentPrice) : (Number(a.priceCycleBasePrice || a.currentPrice) * (1 - (a.priceCycleDiscountValue || a.priceCycleDiscountPct || 0)/100));
+          const bSale = b.priceCycleDiscountType === "FIXED_PRICE" ? Number(b.priceCycleDiscountValue || b.priceCycleBasePrice || b.currentPrice) : (Number(b.priceCycleBasePrice || b.currentPrice) * (1 - (b.priceCycleDiscountValue || b.priceCycleDiscountPct || 0)/100));
+          return sortConfig.direction === 'asc' ? aSale - bSale : bSale - aSale;
+        }
+        if (sortConfig.key === 'currentPhase') {
+          const aPhase = a.priceCycleCurrentPhase || "REGULAR";
+          const bPhase = b.priceCycleCurrentPhase || "REGULAR";
+          if (aPhase < bPhase) return sortConfig.direction === 'asc' ? -1 : 1;
+          if (aPhase > bPhase) return sortConfig.direction === 'asc' ? 1 : -1;
+          return 0;
+        }
+        if (sortConfig.key === 'nextChange') {
+          const aDateStr = a.priceCycleNextChangeAt;
+          const bDateStr = b.priceCycleNextChangeAt;
+          const aTime = aDateStr ? new Date(aDateStr).getTime() : Infinity;
+          const bTime = bDateStr ? new Date(bDateStr).getTime() : Infinity;
+          return sortConfig.direction === 'asc' ? aTime - bTime : bTime - aTime;
+        }
+        if (sortConfig.key === 'status') {
+          const aStatus = a.priceCycleStatus || "Active";
+          const bStatus = b.priceCycleStatus || "Active";
+          if (aStatus < bStatus) return sortConfig.direction === 'asc' ? -1 : 1;
+          if (aStatus > bStatus) return sortConfig.direction === 'asc' ? 1 : -1;
+          return 0;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filteredActiveCycles, sortConfig]);
+
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  }
+
+  const getSortIcon = (columnName: string) => {
+    if (!sortConfig || sortConfig.key !== columnName) {
+      return <ArrowUpDown className="ml-1 h-3 w-3 text-slate-400" />
+    }
+    return sortConfig.direction === 'asc' ? (
+      <ChevronUp className="ml-1 h-3 w-3 text-indigo-500" />
+    ) : (
+      <ChevronDown className="ml-1 h-3 w-3 text-indigo-500" />
+    )
+  }
 
   const handleEdit = (p: Product) => {
     setSelectedProductId(p.id)
@@ -619,17 +686,29 @@ export function PriceCycleCard({ products, onRefresh }: PriceCycleCardProps) {
             <table className="w-full text-sm text-left whitespace-nowrap">
               <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                 <tr>
-                  <th className="px-4 py-3">Product</th>
-                  <th className="px-4 py-3">Regular Price</th>
-                  <th className="px-4 py-3">Discounted Price</th>
-                  <th className="px-4 py-3">Current Phase</th>
-                  <th className="px-4 py-3">Next Change</th>
-                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 cursor-pointer group/th hover:bg-slate-100 transition-colors" onClick={() => requestSort('productName')}>
+                    <div className="flex items-center">Product {getSortIcon('productName')}</div>
+                  </th>
+                  <th className="px-4 py-3 cursor-pointer group/th hover:bg-slate-100 transition-colors" onClick={() => requestSort('regularPrice')}>
+                    <div className="flex items-center">Regular Price {getSortIcon('regularPrice')}</div>
+                  </th>
+                  <th className="px-4 py-3 cursor-pointer group/th hover:bg-slate-100 transition-colors" onClick={() => requestSort('discountedPrice')}>
+                    <div className="flex items-center">Discounted Price {getSortIcon('discountedPrice')}</div>
+                  </th>
+                  <th className="px-4 py-3 cursor-pointer group/th hover:bg-slate-100 transition-colors" onClick={() => requestSort('currentPhase')}>
+                    <div className="flex items-center">Current Phase {getSortIcon('currentPhase')}</div>
+                  </th>
+                  <th className="px-4 py-3 cursor-pointer group/th hover:bg-slate-100 transition-colors" onClick={() => requestSort('nextChange')}>
+                    <div className="flex items-center">Next Change {getSortIcon('nextChange')}</div>
+                  </th>
+                  <th className="px-4 py-3 cursor-pointer group/th hover:bg-slate-100 transition-colors" onClick={() => requestSort('status')}>
+                    <div className="flex items-center">Status {getSortIcon('status')}</div>
+                  </th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredActiveCycles.map(p => {
+                {sortedActiveCycles.map(p => {
                   const salePrice = p.priceCycleDiscountType === "FIXED_PRICE"
                     ? Number(p.priceCycleDiscountValue || p.priceCycleBasePrice || p.currentPrice).toFixed(2)
                     : (Number(p.priceCycleBasePrice || p.currentPrice) * (1 - (p.priceCycleDiscountValue || p.priceCycleDiscountPct || 0)/100)).toFixed(2)
