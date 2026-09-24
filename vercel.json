@@ -20,6 +20,10 @@
     {
       "path": "/api/admin/autopricer/cron/daily",
       "schedule": "15 7 * * *"
+    },
+    {
+      "path": "/api/admin/product-rankings/sync",
+      "schedule": "0 7 * * *"
     }
   ]
 }

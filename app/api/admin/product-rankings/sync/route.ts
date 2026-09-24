@@ -15,12 +15,15 @@ export const maxDuration = 300 // allow up to 5 mins
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    const userRole = (session?.user as any)?.role
-    const customPermissions = (session?.user as any)?.customPermissions || []
+    const authHeader = req.headers.get('authorization')
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      const session = await getServerSession(authOptions)
+      const userRole = (session?.user as any)?.role
+      const customPermissions = (session?.user as any)?.customPermissions || []
 
-    if (!session || !hasEffectivePermission(userRole, customPermissions, PERMISSIONS.PRODUCT_RANKINGS)) {
-      return new NextResponse("Unauthorized", { status: 401 })
+      if (!session || !hasEffectivePermission(userRole, customPermissions, PERMISSIONS.PRODUCT_RANKINGS)) {
+        return new NextResponse("Unauthorized", { status: 401 })
+      }
     }
 
     const rankings = await prisma.productRanking.findMany()
@@ -60,12 +63,12 @@ export async function POST(req: Request) {
         const targetAsin = r.asin.toUpperCase()
         for (const [key, val] of fbaQtyMap.entries()) {
           if (val.asin?.toUpperCase() === targetAsin) {
-            actualSku = key
-            break
+            actualSkus.add(key)
           }
         }
+      } else if (actualSku) {
+        actualSkus.add(actualSku)
       }
-      if (actualSku) actualSkus.add(actualSku)
     })
     
     const actualSkusArray = Array.from(actualSkus)
@@ -144,28 +147,44 @@ export async function POST(req: Request) {
         catalogTitle = kData.title
       }
 
-      // Resolve actual SKU if they only entered ASIN
-      let actualSku = sku
-      let fbaQty = fbaQtyMap.get(actualSku)
-      
-      if (!fbaQty && asin) {
+      // Resolve all SKUs belonging to this ASIN
+      let actualSkusForThisAsin: string[] = []
+      let baseSku = sku
+      if (!fbaQtyMap.has(baseSku) && asin) {
         const targetAsin = asin.toUpperCase()
         for (const [key, val] of fbaQtyMap.entries()) {
           if (val.asin?.toUpperCase() === targetAsin) {
-            actualSku = key
-            fbaQty = val
-            break
+            actualSkusForThisAsin.push(key)
+          }
+        }
+        if (actualSkusForThisAsin.length > 0) baseSku = actualSkusForThisAsin[0]
+      } else if (baseSku) {
+        actualSkusForThisAsin.push(baseSku)
+      }
+
+      // Inventory (Prefer real-time API over cached report, sum over all SKUs)
+      let newInventory = r.inventory
+      let foundRealTime = false
+      let summedInventory = 0
+
+      for (const s of actualSkusForThisAsin) {
+        if (realTimeInventoryMap.has(s)) {
+          summedInventory += realTimeInventoryMap.get(s)!
+          foundRealTime = true
+        } else {
+          const fbaQty = fbaQtyMap.get(s)
+          if (fbaQty) {
+            summedInventory += (fbaQty.fulfillable + fbaQty.reserved)
+            foundRealTime = true
           }
         }
       }
 
-      // Inventory (Prefer real-time API over cached report)
-      let newInventory = r.inventory
-      if (realTimeInventoryMap.has(actualSku)) {
-        newInventory = realTimeInventoryMap.get(actualSku)!
-      } else if (fbaQty) {
-        newInventory = fbaQty.fulfillable + fbaQty.reserved
+      if (foundRealTime) {
+        newInventory = summedInventory
       }
+      
+      const actualSku = baseSku // pass for catalog lookup compatibility
 
       // Price and FbaFee
       const listing = listingsMap.get(actualSku)
@@ -241,3 +260,4 @@ export async function POST(req: Request) {
     return new NextResponse("Internal Error", { status: 500 })
   }
 }
+export const GET = POST

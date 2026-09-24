@@ -169,10 +169,10 @@ function RankingRow({
 
       <div className="col-span-2 flex flex-col items-end justify-center pr-4">
         <span className={`text-lg font-bold ${totalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-          ${totalProfit.toFixed(2)}
+          ${totalProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
         <span className="text-xs text-muted-foreground">
-          ${profitPerUnit.toFixed(2)} / unit
+          ${profitPerUnit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / unit
         </span>
       </div>
 
