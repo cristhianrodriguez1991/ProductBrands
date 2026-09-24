@@ -11,8 +11,8 @@ export default function PinProtection({ children }: { children: React.ReactNode 
   const [pin, setPin] = useState("")
   const [error, setError] = useState(false)
 
-  // Default PIN is 0000. You can change this here if you prefer a different one!
-  const CORRECT_PIN = "0000"
+  // Default PIN is 0033. You can change this here if you prefer a different one!
+  const CORRECT_PIN = "0033"
   
   useEffect(() => {
     const unlockedUntil = localStorage.getItem("financials_unlocked_until")
