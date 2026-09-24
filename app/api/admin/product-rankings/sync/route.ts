@@ -116,15 +116,28 @@ export async function POST(req: Request) {
         catalogTitle = kData.title
       }
 
+      // Resolve actual SKU if they only entered ASIN
+      let actualSku = sku
+      let fbaQty = fbaQtyMap.get(actualSku)
+      
+      if (!fbaQty && asin) {
+        for (const [key, val] of fbaQtyMap.entries()) {
+          if (val.asin === asin) {
+            actualSku = key
+            fbaQty = val
+            break
+          }
+        }
+      }
+
       // Inventory
-      const fbaQty = fbaQtyMap.get(sku)
       let newInventory = r.inventory
       if (fbaQty) {
         newInventory = fbaQty.fulfillable + fbaQty.reserved
       }
 
       // Price and FbaFee
-      const listing = listingsMap.get(sku)
+      const listing = listingsMap.get(actualSku)
       let newPrice = r.price
       if (listing?.currentPrice) {
         newPrice = listing.currentPrice
@@ -135,9 +148,9 @@ export async function POST(req: Request) {
       // FBA Fee async evaluation wrapper (will resolve in Promise.all)
       return (async () => {
         let fbaFee = r.fbaFee || 0.0
-        if (sku && newPrice > 0) {
+        if (actualSku && newPrice > 0) {
           try {
-            const feeEst = await getFbaFeeEstimate(sku, newPrice, true)
+            const feeEst = await getFbaFeeEstimate(actualSku, newPrice, true)
             if (feeEst?.fbaFee) fbaFee = feeEst.fbaFee
           } catch (e) {
             // silent fail
@@ -145,7 +158,7 @@ export async function POST(req: Request) {
         }
 
         // Sales
-        const skuSales = allSales.filter(s => (sku && s.sku === sku) || (asin && s.asin === asin))
+        const skuSales = allSales.filter(s => (actualSku && s.sku === actualSku) || (asin && s.asin === asin))
         const now = new Date()
         let sales7 = 0
         let sales30 = 0
@@ -171,6 +184,7 @@ export async function POST(req: Request) {
         return prisma.productRanking.update({
           where: { id: r.id },
           data: {
+            sku: actualSku,
             imageUrl: catalogImage,
             productName: catalogTitle,
             inventory: newInventory,
