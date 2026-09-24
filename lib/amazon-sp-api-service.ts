@@ -1158,17 +1158,32 @@ export async function getRecentDisbursements(days: number = 30, startDateStr?: s
   const pastDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
 
   const after = startDateStr ? new Date(startDateStr).toISOString() : pastDate.toISOString()
-  const before = endDateStr ? new Date(endDateStr).toISOString() : now.toISOString()
 
   try {
+    const query: any = {
+      FinancialEventGroupStartedAfter: after,
+      MaxResultsPerPage: 100
+    }
+    
+    // Amazon requires this to be at least 2 minutes in the past.
+    // To be safe, we only append it if the user explicitly provided a custom end date.
+    if (endDateStr) {
+      // Input is usually "YYYY-MM-DD", append T23:59:59Z to cover the whole day
+      const beforeStr = endDateStr.includes("T") ? endDateStr : `${endDateStr}T23:59:59Z`
+      const beforeDate = new Date(beforeStr)
+      
+      // Ensure we don't violate Amazon's "2 minutes in the past" rule
+      if (beforeDate.getTime() > now.getTime() - 120000) {
+        query.FinancialEventGroupStartedBefore = new Date(now.getTime() - 120000).toISOString()
+      } else {
+        query.FinancialEventGroupStartedBefore = beforeDate.toISOString()
+      }
+    }
+
     const res: any = await client.callAPI({
       operation: "listFinancialEventGroups",
       endpoint: "finances",
-      query: {
-        FinancialEventGroupStartedAfter: after,
-        FinancialEventGroupStartedBefore: before,
-        MaxResultsPerPage: 100
-      }
+      query
     })
     return res?.payload?.FinancialEventGroupList || res?.FinancialEventGroupList || []
   } catch (e: any) {
