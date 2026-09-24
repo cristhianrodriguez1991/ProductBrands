@@ -57,39 +57,46 @@ export async function POST(req: Request) {
       console.warn("Active listings lookup failed:", e?.message)
     }
 
-    // Normalize ASINs and SKUs from input
+    // Helper: Given an ASIN, find the SKU with the highest total FBA inventory.
+    // This avoids picking an out-of-stock variation over the active one.
+    const getBestSkuForAsin = (targetAsin: string): string => {
+      let bestSku = ""
+      let bestTotal = -1
+      const upper = targetAsin.toUpperCase()
+      for (const [key, val] of fbaQtyMap.entries()) {
+        if (val.asin?.toUpperCase() === upper) {
+          const t = val.total || (val.fulfillable + val.reserved + (val.inbound || 0))
+          if (t > bestTotal) { bestTotal = t; bestSku = key }
+        }
+      }
+      // Fallback to active listings if nothing in FBA report
+      if (!bestSku) {
+        for (const [key, val] of activeListingsQtyMap.entries()) {
+          if (val.asin?.toUpperCase() === upper) { bestSku = key; break }
+        }
+      }
+      return bestSku
+    }
+
+    // Normalize: resolve each ranking's ASIN and SKU correctly.
     rankings.forEach(r => {
       const input = r.asin || r.sku
-      if (input && input === r.sku && input === r.asin) {
-        // Check if input is a SKU in our maps
-        if (fbaQtyMap.has(input)) {
-          r.asin = fbaQtyMap.get(input).asin
-          r.sku = input
-        } else if (activeListingsQtyMap.has(input)) {
-          r.asin = activeListingsQtyMap.get(input).asin
-          r.sku = input
-        } else {
-          // Check if input is an ASIN by searching values
-          let foundSku = ""
-          for (const [key, val] of fbaQtyMap.entries()) {
-            if (val.asin?.toUpperCase() === input.toUpperCase()) {
-              foundSku = key
-              break
-            }
-          }
-          if (!foundSku) {
-            for (const [key, val] of activeListingsQtyMap.entries()) {
-              if (val.asin?.toUpperCase() === input.toUpperCase()) {
-                foundSku = key
-                break
-              }
-            }
-          }
-          if (foundSku) {
-            r.asin = input
-            r.sku = foundSku
-          }
+      if (!input) return
+      if (fbaQtyMap.has(input)) {
+        // Input IS a valid SKU — resolve ASIN from it
+        r.asin = fbaQtyMap.get(input)!.asin || input
+        r.sku = input
+      } else if (activeListingsQtyMap.has(input)) {
+        r.asin = activeListingsQtyMap.get(input).asin || input
+        r.sku = input
+      } else {
+        // Input might be an ASIN — find the best (highest inventory) SKU
+        const bestSku = getBestSkuForAsin(input)
+        if (bestSku) {
+          r.asin = input
+          r.sku = bestSku
         }
+        // else leave as-is and hope it's a valid ASIN
       }
     })
 
@@ -199,36 +206,21 @@ export async function POST(req: Request) {
         catalogTitle = kData.title
       }
 
-      // Resolve the single best SKU for this ranking entry
-      // Priority: 1) stored SKU if it exists in FBA map, 2) first ASIN-matched SKU
-      let resolvedSku = sku
+      // Resolve the best SKU: prefer stored SKU if valid, otherwise pick highest-inventory SKU for ASIN
       const targetAsin = asin ? asin.toUpperCase() : ""
+      let resolvedSku = sku
 
-      if (sku && (fbaQtyMap.has(sku) || realTimeInventoryMap.has(sku))) {
-        resolvedSku = sku // stored SKU is valid — use it directly
-      } else if (targetAsin) {
-        // Stored SKU not found — find the first active SKU for this ASIN
-        for (const [key, val] of fbaQtyMap.entries()) {
-          if (val.asin?.toUpperCase() === targetAsin) {
-            resolvedSku = key
-            break
-          }
-        }
-        if (!resolvedSku || resolvedSku === sku) {
-          for (const [key, val] of activeListingsQtyMap.entries()) {
-            if (val.asin?.toUpperCase() === targetAsin) {
-              resolvedSku = key
-              break
-            }
-          }
-        }
+      if (sku && fbaQtyMap.has(sku)) {
+        resolvedSku = sku // stored SKU is directly in the FBA report — use it
+      } else {
+        // Pick the SKU with the highest inventory total for this ASIN
+        const bestSku = targetAsin ? getBestSkuForAsin(targetAsin) : ""
+        if (bestSku) resolvedSku = bestSku
       }
-      
+
       const baseSku = resolvedSku || sku
 
-      // Inventory — FBA Report (afn-total-quantity) is the authoritative source since
-      // SP-API real-time does NOT include FC Transfer inventory, causing undercounts.
-      // Fallback to real-time only if SKU is missing from the report.
+      // Inventory — FBA Report (afn-total-quantity) is authoritative; includes FC transfers
       let newInventory = r.inventory
       let foundRealTime = false
       let summedInventory = 0
@@ -236,11 +228,10 @@ export async function POST(req: Request) {
       if (resolvedSku) {
         const fbaQty = fbaQtyMap.get(resolvedSku)
         if (fbaQty) {
-          // Use afn-total-quantity from FBA report — most accurate, includes FC transfers
           summedInventory = fbaQty.total || (fbaQty.fulfillable + fbaQty.reserved + (fbaQty.inbound || 0))
           foundRealTime = true
         } else if (realTimeInventoryMap.has(resolvedSku)) {
-          // Fallback: real-time API (may undercount due to FC transfers)
+          // Fallback: real-time API (may undercount; doesn't include FC transfers)
           summedInventory = realTimeInventoryMap.get(resolvedSku)!
           foundRealTime = true
         }
