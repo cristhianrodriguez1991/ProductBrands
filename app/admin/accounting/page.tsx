@@ -327,18 +327,29 @@ export default function AccountingPage() {
                   <h3 className="font-semibold">Operating Expenses</h3>
                   <p className="text-xs text-muted-foreground mt-1">Warehouse, shipping, supplies, etc.</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-red-500 font-semibold">-</span>
-                  <div className="relative">
-                    <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      type="number"
-                      value={operatingExpenses === 0 ? "" : operatingExpenses}
-                      onChange={handleOpExChange}
-                      placeholder="0.00"
-                      className="pl-7 w-32 text-right border-red-200 focus-visible:ring-red-500 font-semibold"
-                    />
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-red-500 font-semibold">-</span>
+                    <div className="relative">
+                      <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        type="number"
+                        value={operatingExpenses === 0 ? "" : operatingExpenses}
+                        onChange={handleOpExChange}
+                        placeholder="0.00"
+                        className="pl-7 w-32 text-right border-red-200 focus-visible:ring-red-500 font-semibold"
+                      />
+                    </div>
                   </div>
+                  <button 
+                    onClick={() => {
+                      setOperatingExpenses(42550)
+                      localStorage.setItem("operatingExpenses", "42550")
+                    }}
+                    className="text-[10px] text-muted-foreground hover:text-primary transition-colors underline decoration-dotted underline-offset-2"
+                  >
+                    Use Default: $42,550
+                  </button>
                 </div>
               </div>
             </div>
