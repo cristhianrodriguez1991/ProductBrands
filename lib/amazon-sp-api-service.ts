@@ -466,6 +466,88 @@ export interface DailySalesObservation {
 }
 
 /**
+ * Query Amazon SP-API for Total Sales Metrics (Units ordered) by SKU.
+ */
+export async function getSalesMetricsBySkus(skus: string[], days: number = 30): Promise<Map<string, number>> {
+  const map = new Map<string, number>()
+  if (skus.length === 0) return map
+
+  const client: any = getClient()
+  const usMarketplaceId = "ATVPDKIKX0DER"
+
+  const now = new Date()
+  const pastDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+  
+  const interval = `${pastDate.toISOString().split('.')[0]}Z--${now.toISOString().split('.')[0]}Z`
+
+  for (const sku of skus) {
+    try {
+      const res: any = await client.callAPI({
+        operation: "getOrderMetrics",
+        endpoint: "sales",
+        query: {
+          marketplaceIds: [usMarketplaceId],
+          interval,
+          granularity: "Total",
+          sku
+        }
+      })
+      const list = Array.isArray(res) ? res : res?.payload || []
+      const metrics = list[0]
+      if (metrics) {
+        map.set(sku, metrics.unitCount || 0)
+      }
+    } catch (e: any) {
+      console.warn(`[SP-API] getOrderMetrics failed for SKU ${sku}:`, e?.message)
+    }
+  }
+
+  return map
+}
+
+/**
+ * Query Amazon SP-API for real-time FBA Inventory using getInventorySummaries.
+ * This fetches live data rather than relying on the 30-min cached FBA report.
+ */
+export async function getRealTimeInventoryBySkus(skus: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>()
+  if (skus.length === 0) return map
+
+  const client: any = getClient()
+  const usMarketplaceId = "ATVPDKIKX0DER"
+
+  const chunkSize = 50
+  for (let i = 0; i < skus.length; i += chunkSize) {
+    const chunk = skus.slice(i, i + chunkSize)
+    try {
+      const res: any = await client.callAPI({
+        operation: "getInventorySummaries",
+        endpoint: "fbaInventory",
+        query: {
+          marketplaceIds: [usMarketplaceId],
+          details: true,
+          granularityType: "Marketplace",
+          granularityId: usMarketplaceId,
+          sellerSkus: chunk.join(",")
+        }
+      })
+      const list = res?.payload?.inventorySummaries || res?.inventorySummaries || []
+      for (const item of list) {
+        if (item.sellerSku) {
+          const fulfillable = item.inventoryDetails?.fulfillableQuantity || 0
+          const reserved = item.inventoryDetails?.reservedQuantity?.totalReservedQuantity || 0
+          map.set(item.sellerSku, fulfillable + reserved)
+        }
+      }
+    } catch (e: any) {
+      console.warn(`[SP-API] getInventorySummaries failed for chunk:`, e?.message)
+    }
+  }
+
+  return map
+}
+
+/**
  * Query Amazon SP-API Daily Sales & Traffic (or Orders API) by SKU/ASIN.
  * Returns daily units ordered and revenue to correlate with Keepa Sales Rank inertia.
  * Includes deterministic mock generation for office product weekend drop-offs when in demo/mock mode.
