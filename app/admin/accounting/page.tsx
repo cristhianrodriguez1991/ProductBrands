@@ -400,12 +400,12 @@ export default function AccountingPage() {
                   </div>
                   <button 
                     onClick={() => {
-                      setOperatingExpenses(42550)
-                      localStorage.setItem("operatingExpenses", "42550")
+                      setOperatingExpenses(44170)
+                      localStorage.setItem("operatingExpenses", "44170")
                     }}
                     className="text-[10px] text-muted-foreground hover:text-primary transition-colors underline decoration-dotted underline-offset-2"
                   >
-                    Use Default: $42,550
+                    Use Default: $44,170
                   </button>
                 </div>
               </div>
