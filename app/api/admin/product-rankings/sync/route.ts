@@ -239,7 +239,7 @@ export async function POST(req: Request) {
         } else {
           const fbaQty = fbaQtyMap.get(s)
           if (fbaQty) {
-            summedInventory += (fbaQty.fulfillable || 0) + (fbaQty.reserved || 0) + (fbaQty.inbound || 0) + (fbaQty.unfulfillable || 0)
+            summedInventory += fbaQty.total || (fbaQty.fulfillable + fbaQty.reserved)
             foundRealTime = true
           }
         }

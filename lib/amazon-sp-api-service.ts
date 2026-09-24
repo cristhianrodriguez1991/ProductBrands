@@ -160,10 +160,10 @@ export async function getActiveListings(): Promise<any[]> {
  * we use the ultra-reliable GET_FBA_MYI_UNSUPPRESSED_INVENTORY_DATA report.
  * Returns a Map of SKU → { fulfillable, reserved, fnsku, asin }
  */
-export async function getFbaQuantities(): Promise<Map<string, { fulfillable: number; reserved: number; fnsku: string | null; asin: string | null }>> {
+export async function getFbaQuantities(): Promise<Map<string, { fulfillable: number; reserved: number; inbound: number; unfulfillable: number; researching: number; total: number; fnsku: string | null; asin: string | null }>> {
   const client: any = getClient()
   const usMarketplaceId = "ATVPDKIKX0DER"
-  const quantityMap = new Map<string, { fulfillable: number; reserved: number; fnsku: string | null; asin: string | null }>()
+  const quantityMap = new Map<string, { fulfillable: number; reserved: number; inbound: number; unfulfillable: number; researching: number; total: number; fnsku: string | null; asin: string | null }>()
 
   // 1. Try to fetch a recent successful report first to avoid the 30-min throttle limit
   const createdSince = new Date(Date.now() - 30 * 60 * 1000).toISOString() // Max 30 mins old for FBA quantities
@@ -237,8 +237,14 @@ export async function getFbaQuantities(): Promise<Map<string, { fulfillable: num
       const asin = inv["asin"] || null
       const fulfillable = parseInt(inv["afn-fulfillable-quantity"] || "0", 10) || 0
       const reserved = parseInt(inv["afn-reserved-quantity"] || "0", 10) || 0
+      const inbound = (parseInt(inv["afn-inbound-working-quantity"] || "0", 10) || 0)
+        + (parseInt(inv["afn-inbound-shipped-quantity"] || "0", 10) || 0)
+        + (parseInt(inv["afn-inbound-receiving-quantity"] || "0", 10) || 0)
+      const unfulfillable = parseInt(inv["afn-unsellable-quantity"] || "0", 10) || 0
+      const researching = parseInt(inv["afn-researching-quantity"] || "0", 10) || 0
+      const total = parseInt(inv["afn-total-quantity"] || "0", 10) || (fulfillable + reserved + inbound + unfulfillable + researching)
 
-      quantityMap.set(sku, { fulfillable, reserved, fnsku, asin })
+      quantityMap.set(sku, { fulfillable, reserved, inbound, unfulfillable, researching, total, fnsku, asin })
     }
     console.log(`FBA Quantities mapped properly from Unsuppressed Report: ${quantityMap.size} valid FBA items attached.`)
   }
