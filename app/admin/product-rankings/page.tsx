@@ -226,13 +226,16 @@ export default function ProductRankingsPage() {
         body: JSON.stringify({ sku: newSku, asin: newSku, cost: 0 })
       })
 
-      if (!res.ok) throw new Error("Failed to add")
+      if (!res.ok) {
+        const msg = await res.text()
+        throw new Error(msg || "Failed to add")
+      }
       
       toast({ title: "Success", description: "Product added to rankings" })
       setNewSku("")
       await fetchRankings()
-    } catch (error) {
-      toast({ title: "Error", description: "Could not add product", variant: "destructive" })
+    } catch (error: any) {
+      toast({ title: "Error", description: error?.message || "Could not add product", variant: "destructive" })
     } finally {
       setAdding(false)
     }

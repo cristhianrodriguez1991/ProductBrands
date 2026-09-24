@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { PERMISSIONS, hasEffectivePermission } from "@/lib/permissions"
-import { getListingDetailsBySkus, getCatalogItemsByAsins, getFbaFeeEstimate, getFbaQuantities, getActiveListings } from "@/lib/amazon-sp-api-service"
+import { getListingDetailsBySkus, getCatalogItemsByAsins, getFbaFeeEstimate, getActiveListings } from "@/lib/amazon-sp-api-service"
 
 export const dynamic = "force-dynamic"
 
@@ -48,20 +48,20 @@ export async function POST(req: Request) {
     let finalAsin = asin || ""
     let finalSku = sku || ""
 
+    // If both asin and sku are the same input, check if it's a SKU or an ASIN.
+    // We use only getActiveListings() here (fast) to avoid FBA report timeout.
+    // Inventory will be filled in on the next Sync Amazon Data.
     if (finalAsin && finalAsin === finalSku) {
       try {
-        const fbaQtyMap = await getFbaQuantities()
-        if (fbaQtyMap.has(finalAsin)) {
-          finalAsin = fbaQtyMap.get(finalAsin)!.asin
-        } else {
-          const activeListings = await getActiveListings()
-          for (const item of activeListings) {
-            if (item["seller-sku"] === finalAsin) {
-              finalAsin = item["asin1"] || item["asin"] || finalAsin
-              break
-            }
+        const activeListings = await getActiveListings()
+        // Check if input matches a seller-sku
+        for (const item of activeListings) {
+          if (item["seller-sku"] === finalAsin) {
+            finalAsin = item["asin1"] || item["asin"] || finalAsin
+            break
           }
         }
+        // If it didn't change, it might already be an ASIN — that's fine
       } catch (e) {
         console.warn("Failed to normalize SKU to ASIN on POST", e)
       }
