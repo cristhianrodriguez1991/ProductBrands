@@ -310,6 +310,58 @@ export async function getCatalogItemsByAsins(asins: string[]): Promise<any[]> {
 /**
  * Query Amazon SP-API for exact live FBA fulfillment fees and referral fee estimates.
  */
+export async function getFbaFeeEstimateForAsin(
+  asin: string,
+  price: number
+): Promise<{ fbaFee: number; referralFeePct: number; totalFee: number } | null> {
+  const client: any = getClient()
+  const usMarketplaceId = "ATVPDKIKX0DER"
+
+  try {
+    const res: any = await client.callAPI({
+      operation: "getMyFeesEstimateForASIN",
+      endpoint: "productFees",
+      path: { Asin: asin },
+      body: {
+        FeesEstimateRequest: {
+          MarketplaceId: usMarketplaceId,
+          IsAmazonFulfilled: true,
+          PriceToEstimateFees: {
+            ListingPrice: { CurrencyCode: "USD", Amount: price },
+          },
+          Identifier: asin,
+        },
+      },
+    })
+
+    const estimate = res?.FeesEstimateResult?.FeesEstimate || res?.payload?.FeesEstimateResult?.FeesEstimate
+    if (!estimate || !estimate.FeeDetailList) return null
+
+    let fbaFee = 0
+    let referralFeeAmount = 0
+    let totalFee = estimate.TotalFeesEstimate?.Amount || 0
+
+    for (const detail of estimate.FeeDetailList) {
+      const type = detail.FeeType || ""
+      const amount = detail.FeeAmount?.Amount || 0
+      if (type.includes("FBA") || type.includes("Fulfillment")) {
+        fbaFee += amount
+      } else if (type.includes("Referral")) {
+        referralFeeAmount += amount
+      }
+    }
+
+    const referralFeePct = price > 0 ? Math.round((referralFeeAmount / price) * 1000) / 10 : 15.0
+    return { fbaFee: Math.round(fbaFee * 100) / 100, referralFeePct, totalFee }
+  } catch (e: any) {
+    console.warn(`[SP-API] Fee estimate failed for ASIN ${asin}:`, e?.message)
+    return null
+  }
+}
+
+/**
+ * Estimate FBA fees using a SKU.
+ */
 export async function getFbaFeeEstimate(
   sku: string,
   price: number,
@@ -506,6 +558,46 @@ export async function getSalesMetricsBySkus(skus: string[], days: number = 30): 
 }
 
 /**
+ * Query Amazon SP-API for Total Sales Metrics (Units ordered) by ASIN.
+ */
+export async function getSalesMetricsByAsins(asins: string[], days: number = 30): Promise<Map<string, number>> {
+  const map = new Map<string, number>()
+  if (asins.length === 0) return map
+
+  const client: any = getClient()
+  const usMarketplaceId = "ATVPDKIKX0DER"
+
+  const now = new Date()
+  const pastDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+  
+  const interval = `${pastDate.toISOString().split('.')[0]}Z--${now.toISOString().split('.')[0]}Z`
+
+  for (const asin of asins) {
+    try {
+      const res: any = await client.callAPI({
+        operation: "getOrderMetrics",
+        endpoint: "sales",
+        query: {
+          marketplaceIds: [usMarketplaceId],
+          interval,
+          granularity: "Total",
+          asin
+        }
+      })
+      const list = Array.isArray(res) ? res : res?.payload || []
+      const metrics = list[0]
+      if (metrics) {
+        map.set(asin, metrics.unitCount || 0)
+      }
+    } catch (e: any) {
+      console.warn(`[SP-API] getOrderMetrics failed for ASIN ${asin}:`, e?.message)
+    }
+  }
+
+  return map
+}
+
+/**
  * Query Amazon SP-API for real-time FBA Inventory using getInventorySummaries.
  * This fetches live data rather than relying on the 30-min cached FBA report.
  */
@@ -535,8 +627,7 @@ export async function getRealTimeInventoryBySkus(skus: string[]): Promise<Map<st
       for (const item of list) {
         if (item.sellerSku) {
           const fulfillable = item.inventoryDetails?.fulfillableQuantity || 0
-          const reserved = item.inventoryDetails?.reservedQuantity?.totalReservedQuantity || 0
-          map.set(item.sellerSku, fulfillable + reserved)
+          map.set(item.sellerSku, fulfillable)
         }
       }
     } catch (e: any) {

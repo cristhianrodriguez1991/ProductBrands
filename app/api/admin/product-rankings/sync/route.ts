@@ -7,7 +7,8 @@ import {
   getCatalogItemsByAsins, 
   getFbaQuantities,
   getListingDetailsBySkus,
-  getFbaFeeEstimate
+  getFbaFeeEstimate,
+  getFbaFeeEstimateForAsin
 } from "@/lib/amazon-sp-api-service"
 
 export const maxDuration = 300 // allow up to 5 mins
@@ -79,11 +80,11 @@ export async function POST(req: Request) {
         listingsMap = await getListingDetailsBySkus(actualSkusArray)
         
         // Fetch real-time FBA inventory and SP-API Sales Metrics
-        const { getRealTimeInventoryBySkus, getSalesMetricsBySkus } = await import("@/lib/amazon-sp-api-service")
+        const { getRealTimeInventoryBySkus, getSalesMetricsByAsins } = await import("@/lib/amazon-sp-api-service")
         realTimeInventoryMap = await getRealTimeInventoryBySkus(actualSkusArray)
-        sales7Map = await getSalesMetricsBySkus(actualSkusArray, 7)
-        sales30Map = await getSalesMetricsBySkus(actualSkusArray, 30)
-        sales90Map = await getSalesMetricsBySkus(actualSkusArray, 90)
+        sales7Map = await getSalesMetricsByAsins(asinsToFetch, 7)
+        sales30Map = await getSalesMetricsByAsins(asinsToFetch, 30)
+        sales90Map = await getSalesMetricsByAsins(asinsToFetch, 90)
       }
     } catch (e: any) {
       console.warn("Real-time data lookup failed:", e?.message)
@@ -178,9 +179,9 @@ export async function POST(req: Request) {
       // FBA Fee async evaluation wrapper (will resolve in Promise.all)
       return (async () => {
         let fbaFee = r.fbaFee || 0.0
-        if (actualSku && newPrice > 0) {
+        if (asin && newPrice > 0) {
           try {
-            const feeEst = await getFbaFeeEstimate(actualSku, newPrice, true)
+            const feeEst = await getFbaFeeEstimateForAsin(asin, newPrice)
             if (feeEst?.fbaFee) fbaFee = feeEst.fbaFee
           } catch (e) {
             // silent fail
@@ -188,9 +189,9 @@ export async function POST(req: Request) {
         }
 
         // Sales (Prefer direct SP-API metrics, fallback to DB, fallback to Keepa)
-        let sales7 = sales7Map.get(actualSku) || 0
-        let sales30 = sales30Map.get(actualSku) || 0
-        let sales90 = sales90Map.get(actualSku) || 0
+        let sales7 = sales7Map.get(asin) || 0
+        let sales30 = sales30Map.get(asin) || 0
+        let sales90 = sales90Map.get(asin) || 0
 
         // Fallback to local DB if SP-API didn't return metrics
         if (sales30 === 0) {
