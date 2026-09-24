@@ -186,34 +186,31 @@ export async function POST(req: Request) {
         }
 
         // Sales (Prefer direct SP-API metrics, fallback to DB, fallback to Keepa)
-        let sales7 = sales7Map.get(actualSku)
-        let sales30 = sales30Map.get(actualSku)
-        let sales90 = sales90Map.get(actualSku)
+        let sales7 = sales7Map.get(actualSku) || 0
+        let sales30 = sales30Map.get(actualSku) || 0
+        let sales90 = sales90Map.get(actualSku) || 0
 
         // Fallback to local DB if SP-API didn't return metrics
-        if (sales30 === undefined) {
+        if (sales30 === 0) {
           const skuSales = allSales.filter(s => (actualSku && s.sku === actualSku) || (asin && s.asin === asin))
           const now = new Date()
-          sales7 = 0
-          sales30 = 0
-          sales90 = 0
 
           if (skuSales.length > 0) {
             skuSales.forEach(sale => {
               const saleDate = new Date(sale.date)
               const diffDays = Math.ceil((now.getTime() - saleDate.getTime()) / (1000 * 3600 * 24))
-              if (diffDays <= 7) sales7! += sale.unitsOrdered
-              if (diffDays <= 30) sales30! += sale.unitsOrdered
-              if (diffDays <= 90) sales90! += sale.unitsOrdered
+              if (diffDays <= 7) sales7 += sale.unitsOrdered
+              if (diffDays <= 30) sales30 += sale.unitsOrdered
+              if (diffDays <= 90) sales90 += sale.unitsOrdered
             })
           }
         }
 
         // Keepa sales fallback if both SP-API and local DB have 0
-        if ((!sales30 || sales30 === 0) && kData?.currentStats?.boughtInLastMonth) {
-          sales30 = kData.currentStats.boughtInLastMonth
-          if (!sales7 || sales7 === 0) sales7 = Math.round(sales30 / 4)
-          if (!sales90 || sales90 === 0) sales90 = sales30 * 3
+        if (sales30 === 0 && kData?.currentStats?.boughtInLastMonth) {
+          sales30 = kData.currentStats.boughtInLastMonth || 0
+          if (sales7 === 0) sales7 = Math.round(sales30 / 4)
+          if (sales90 === 0) sales90 = sales30 * 3
         }
 
         return prisma.productRanking.update({
