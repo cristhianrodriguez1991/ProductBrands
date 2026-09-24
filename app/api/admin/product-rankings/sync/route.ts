@@ -184,8 +184,7 @@ export async function POST(req: Request) {
       })()
     })
 
-    const transactionResult = await Promise.all(transaction)
-    await prisma.$transaction(transactionResult)
+    await Promise.all(transaction)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
