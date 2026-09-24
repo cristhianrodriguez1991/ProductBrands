@@ -409,6 +409,43 @@ export default function ProductRankingsPage() {
             ))
           )}
         </div>
+
+        {rankings.length > 0 && (() => {
+          const grandTotalProfit = rankings.reduce((sum, item) => {
+            const cost = item.cost || 0
+            const profitPerUnit = item.price - cost - (item.fbaFee || 0)
+            const sales = item.sales30Days || 0
+            return sum + profitPerUnit * sales
+          }, 0)
+          const grandTotalInventory = rankings.reduce((sum, item) => sum + (item.inventory || 0), 0)
+          const grandTotalUnits = rankings.reduce((sum, item) => sum + (item.sales30Days || 0), 0)
+
+          return (
+            <div className="grid grid-cols-12 gap-4 p-4 items-center border-t-2 border-primary/30 bg-primary/5 rounded-b-md">
+              <div className="col-span-1 text-center">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Total</span>
+              </div>
+              <div className="col-span-3">
+                <span className="text-sm font-semibold text-muted-foreground">{rankings.length} product{rankings.length !== 1 ? "s" : ""}</span>
+              </div>
+              <div className="col-span-1 text-center">
+                <span className="font-bold text-base">{grandTotalInventory.toLocaleString("en-US")}</span>
+                <p className="text-xs text-muted-foreground">units</p>
+              </div>
+              <div className="col-span-2" />
+              <div className="col-span-3 pl-4">
+                <span className="font-bold text-base">{grandTotalUnits.toLocaleString("en-US")}</span>
+                <span className="text-xs text-muted-foreground ml-1">units / 30d</span>
+              </div>
+              <div className="col-span-2 flex flex-col items-end pr-4">
+                <span className={`text-xl font-bold ${grandTotalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                  ${grandTotalProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-xs text-muted-foreground">grand total profit</span>
+              </div>
+            </div>
+          )
+        })()}
       </div>
     </div>
   )
