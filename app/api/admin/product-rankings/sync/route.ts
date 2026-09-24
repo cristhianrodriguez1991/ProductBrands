@@ -8,7 +8,8 @@ import {
   getFbaQuantities,
   getListingDetailsBySkus,
   getFbaFeeEstimate,
-  getFbaFeeEstimateForAsin
+  getFbaFeeEstimateForAsin,
+  getActiveListings
 } from "@/lib/amazon-sp-api-service"
 
 export const maxDuration = 300 // allow up to 5 mins
@@ -53,6 +54,21 @@ export async function POST(req: Request) {
       fbaQtyMap = await getFbaQuantities()
     } catch (e: any) {
       console.warn("FBA quantities lookup failed:", e?.message)
+    }
+
+    let activeListingsQtyMap = new Map<string, any>()
+    try {
+      const activeListings = await getActiveListings()
+      for (const item of activeListings) {
+        const sku = item["seller-sku"]
+        const asin = item["asin1"] || item["asin"]
+        const quantity = parseInt(item["quantity"]) || 0
+        if (sku && asin) {
+          activeListingsQtyMap.set(sku, { asin, quantity })
+        }
+      }
+    } catch (e: any) {
+      console.warn("Active listings lookup failed:", e?.message)
     }
     
     // Resolve actual SKUs
@@ -150,14 +166,27 @@ export async function POST(req: Request) {
       // Resolve all SKUs belonging to this ASIN
       let actualSkusForThisAsin: string[] = []
       let baseSku = sku
-      if (!fbaQtyMap.has(baseSku) && asin) {
-        const targetAsin = asin.toUpperCase()
+      
+      const targetAsin = asin ? asin.toUpperCase() : ""
+      if (targetAsin) {
+        // Collect from fbaQtyMap
         for (const [key, val] of fbaQtyMap.entries()) {
-          if (val.asin?.toUpperCase() === targetAsin) {
+          if (val.asin?.toUpperCase() === targetAsin && !actualSkusForThisAsin.includes(key)) {
             actualSkusForThisAsin.push(key)
           }
         }
-        if (actualSkusForThisAsin.length > 0) baseSku = actualSkusForThisAsin[0]
+        // Collect from activeListingsQtyMap
+        for (const [key, val] of activeListingsQtyMap.entries()) {
+          if (val.asin?.toUpperCase() === targetAsin && !actualSkusForThisAsin.includes(key)) {
+            actualSkusForThisAsin.push(key)
+          }
+        }
+      }
+      
+      if (actualSkusForThisAsin.length > 0) {
+        if (!actualSkusForThisAsin.includes(baseSku)) {
+          baseSku = actualSkusForThisAsin[0]
+        }
       } else if (baseSku) {
         actualSkusForThisAsin.push(baseSku)
       }
@@ -168,13 +197,29 @@ export async function POST(req: Request) {
       let summedInventory = 0
 
       for (const s of actualSkusForThisAsin) {
+        let fbaInventoryForSku = 0
+        let hasFba = false
+
         if (realTimeInventoryMap.has(s)) {
-          summedInventory += realTimeInventoryMap.get(s)!
+          fbaInventoryForSku = realTimeInventoryMap.get(s)!
+          hasFba = true
           foundRealTime = true
         } else {
           const fbaQty = fbaQtyMap.get(s)
           if (fbaQty) {
-            summedInventory += (fbaQty.fulfillable + fbaQty.reserved)
+            fbaInventoryForSku = (fbaQty.fulfillable + fbaQty.reserved)
+            hasFba = true
+            foundRealTime = true
+          }
+        }
+
+        summedInventory += fbaInventoryForSku
+
+        // If FBA quantity is 0 or missing, check FBM active listings quantity
+        if (fbaInventoryForSku === 0) {
+          const fbmQty = activeListingsQtyMap.get(s)
+          if (fbmQty && fbmQty.quantity > 0) {
+            summedInventory += fbmQty.quantity
             foundRealTime = true
           }
         }

@@ -626,8 +626,8 @@ export async function getRealTimeInventoryBySkus(skus: string[]): Promise<Map<st
       const list = res?.payload?.inventorySummaries || res?.inventorySummaries || []
       for (const item of list) {
         if (item.sellerSku) {
-          const fulfillable = item.inventoryDetails?.fulfillableQuantity || 0
-          map.set(item.sellerSku, fulfillable)
+          const total = item.totalQuantity || 0
+          map.set(item.sellerSku, total)
         }
       }
     } catch (e: any) {
