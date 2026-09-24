@@ -233,29 +233,13 @@ export async function POST(req: Request) {
       let summedInventory = 0
 
       for (const s of actualSkusForThisAsin) {
-        let fbaInventoryForSku = 0
-        let hasFba = false
-
         if (realTimeInventoryMap.has(s)) {
-          fbaInventoryForSku = realTimeInventoryMap.get(s)!
-          hasFba = true
+          summedInventory += realTimeInventoryMap.get(s)!
           foundRealTime = true
         } else {
           const fbaQty = fbaQtyMap.get(s)
           if (fbaQty) {
-            fbaInventoryForSku = (fbaQty.fulfillable + fbaQty.reserved)
-            hasFba = true
-            foundRealTime = true
-          }
-        }
-
-        summedInventory += fbaInventoryForSku
-
-        // If FBA quantity is 0 or missing, check FBM active listings quantity
-        if (fbaInventoryForSku === 0) {
-          const fbmQty = activeListingsQtyMap.get(s)
-          if (fbmQty && fbmQty.quantity > 0) {
-            summedInventory += fbmQty.quantity
+            summedInventory += fbaQty.fulfillable
             foundRealTime = true
           }
         }
