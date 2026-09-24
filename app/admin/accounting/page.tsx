@@ -107,8 +107,8 @@ export default function AccountingPage() {
     }
     
     return {
-      title: p.title || "Unknown Product",
-      image: p.image || "",
+      title: p.productName || p.title || "Unknown Product",
+      image: p.imageUrl || p.image || "",
       cost,
       unitsSold: estimatedSales,
       totalCogs: cost * estimatedSales,
@@ -357,15 +357,15 @@ export default function AccountingPage() {
                       <TableBody>
                         {cogsBreakdown.map((item, i) => (
                           <TableRow key={i}>
-                            <TableCell className="flex items-center gap-3">
+                            <TableCell className="flex items-start gap-3">
                               {item.image && (
-                                <img src={item.image} alt="product" className="w-8 h-8 rounded object-cover" />
+                                <img src={item.image} alt="product" className="w-10 h-10 rounded object-cover flex-shrink-0" />
                               )}
-                              <span className="truncate max-w-[200px]" title={item.title}>{item.title}</span>
+                              <span className="text-sm leading-snug">{item.title}</span>
                             </TableCell>
-                            <TableCell className="text-right">${item.cost.toFixed(2)}</TableCell>
-                            <TableCell className="text-right">{Math.round(item.unitsSold).toLocaleString()}</TableCell>
-                            <TableCell className="text-right font-semibold text-red-500">
+                            <TableCell className="text-right align-top">${item.cost.toFixed(2)}</TableCell>
+                            <TableCell className="text-right align-top">{Math.round(item.unitsSold).toLocaleString()}</TableCell>
+                            <TableCell className="text-right font-semibold text-red-500 align-top">
                               ${item.totalCogs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
                           </TableRow>
