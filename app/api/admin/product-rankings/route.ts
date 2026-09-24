@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { PERMISSIONS, hasEffectivePermission } from "@/lib/permissions"
-import { getListingDetailsBySkus } from "@/lib/amazon-sp-api-service"
+import { getListingDetailsBySkus, getCatalogItemsByAsins } from "@/lib/amazon-sp-api-service"
 
 export const dynamic = "force-dynamic"
 
@@ -21,42 +21,7 @@ export async function GET(req: Request) {
       orderBy: { rank: "asc" }
     })
 
-    const ninetyDaysAgo = new Date()
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
-
-    const enrichedRankings = await Promise.all(rankings.map(async (r) => {
-      const sales = await prisma.amazonDailySales.findMany({
-        where: {
-          OR: [
-            { sku: r.sku || "" },
-            { asin: r.asin || "" }
-          ],
-          date: { gte: ninetyDaysAgo.toISOString().split("T")[0] }
-        }
-      })
-      
-      const now = new Date()
-      let sales7 = 0
-      let sales30 = 0
-      let sales90 = 0
-
-      sales.forEach(sale => {
-        const saleDate = new Date(sale.date)
-        const diffDays = Math.ceil((now.getTime() - saleDate.getTime()) / (1000 * 3600 * 24))
-        if (diffDays <= 7) sales7 += sale.unitsOrdered
-        if (diffDays <= 30) sales30 += sale.unitsOrdered
-        if (diffDays <= 90) sales90 += sale.unitsOrdered
-      })
-
-      return {
-        ...r,
-        sales7Days: sales7,
-        sales30Days: sales30,
-        sales90Days: sales90
-      }
-    }))
-
-    return NextResponse.json(enrichedRankings)
+    return NextResponse.json(rankings)
   } catch (error) {
     console.error("[PRODUCT_RANKINGS_GET]", error)
     return new NextResponse("Internal Error", { status: 500 })
@@ -111,10 +76,35 @@ export async function POST(req: Request) {
     })
 
     if (invItem) {
-      inventory = invItem.quantityOnHand
+      inventory = invItem.quantityOnHand + invItem.quantityReserved
       if (invItem.sellingPrice && price === 0) price = invItem.sellingPrice
       if (invItem.name && productName === "Unknown Product") productName = invItem.name
       if (invItem.imageUrl && !imageUrl) imageUrl = invItem.imageUrl
+    }
+
+    // If still missing image or price, try Amazon directly
+    if (!imageUrl || productName === "Unknown Product" || price === 0) {
+      try {
+        if (asin) {
+          const catalogData = await getCatalogItemsByAsins([asin])
+          if (catalogData.length > 0) {
+            const cData = catalogData[0]
+            if (cData.images && cData.images.length > 0) {
+              const variants = cData.images[0].images || []
+              const mainImage = variants.find((img: any) => img.variant === "MAIN")
+              if (!imageUrl) imageUrl = mainImage?.link || variants[0]?.link || null
+            }
+            if (productName === "Unknown Product") productName = cData.summaries?.[0]?.itemName || "Unknown Product"
+          }
+        }
+        if (sku && price === 0) {
+          const listingData = await getListingDetailsBySkus([sku])
+          const details = listingData.get(sku)
+          if (details?.currentPrice) price = details.currentPrice
+        }
+      } catch (e) {
+        console.warn("Failed to fallback to Amazon SP-API on POST", e)
+      }
     }
 
     // Determine highest rank to append at the end
@@ -164,6 +154,9 @@ export async function PATCH(req: Request) {
       const data: any = {}
       if (u.rank !== undefined) data.rank = Number(u.rank)
       if (u.cost !== undefined) data.cost = Number(u.cost)
+      if (u.sales7Days !== undefined) data.sales7Days = Number(u.sales7Days)
+      if (u.sales30Days !== undefined) data.sales30Days = Number(u.sales30Days)
+      if (u.sales90Days !== undefined) data.sales90Days = Number(u.sales90Days)
       
       return prisma.productRanking.update({
         where: { id: u.id },
@@ -179,3 +172,26 @@ export async function PATCH(req: Request) {
     return new NextResponse("Internal Error", { status: 500 })
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+    const userRole = (session?.user as any)?.role
+    const customPermissions = (session?.user as any)?.customPermissions || []
+
+    if (!session || !hasEffectivePermission(userRole, customPermissions, PERMISSIONS.PRODUCT_RANKINGS)) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get("id")
+    if (!id) return new NextResponse("Missing id", { status: 400 })
+
+    await prisma.productRanking.delete({ where: { id } })
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("[PRODUCT_RANKINGS_DELETE]", error)
+    return new NextResponse("Internal Error", { status: 500 })
+  }
+}
+

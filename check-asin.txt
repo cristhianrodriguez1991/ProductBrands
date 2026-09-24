@@ -1,0 +1,32 @@
+import { PrismaClient } from '@prisma/client'
+import { getClient, marketplaceIdForCode } from './lib/amazon-sp-api-service.ts'
+
+async function check() {
+  const prisma = new PrismaClient()
+  const product = await prisma.monitoredProduct.findFirst({ where: { asin: 'B0FVG1WNB2' }})
+  
+  if (!product) {
+    console.log("Product not found in DB")
+    return
+  }
+  
+  console.log(`Checking SKU: ${product.sku} for ASIN: ${product.asin}`)
+  
+  try {
+    const client = await getClient()
+    const sellerId = process.env.AMAZON_SPAPI_SELLER_ID
+    
+    const existingListing = await client.callAPI({
+      operation: "getListingsItem",
+      endpoint: "listingsItems",
+      path: { sellerId, sku: product.sku },
+      query: { marketplaceIds: [marketplaceIdForCode("US")], includedData: "attributes" },
+    })
+    
+    const offers = existingListing?.attributes?.purchasable_offer
+    console.log(JSON.stringify(offers, null, 2))
+  } catch (e) {
+    console.error(e)
+  }
+}
+check()

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -11,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { GripVertical, Plus, Save, TrendingUp, DollarSign, Package } from "lucide-react"
+import { GripVertical, Plus, DollarSign, Package, RefreshCw, Trash2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,12 +30,164 @@ interface ProductRanking {
   sales90Days: number
 }
 
+function RankingRow({ 
+  item, 
+  onUpdateCost, 
+  onUpdateSales,
+  onDragStart, 
+  onDragOver, 
+  onDrop,
+  onDelete
+}: { 
+  item: ProductRanking, 
+  onUpdateCost: (id: string, cost: number) => void,
+  onUpdateSales: (id: string, period: string, value: number) => void,
+  onDragStart: (e: React.DragEvent, item: ProductRanking) => void,
+  onDragOver: (e: React.DragEvent) => void,
+  onDrop: (e: React.DragEvent, item: ProductRanking) => void,
+  onDelete: (id: string) => void
+}) {
+  const [salesPeriod, setSalesPeriod] = useState<"7" | "30" | "90">("30")
+  const [cost, setCost] = useState(item.cost.toString())
+  
+  let currentSales = item.sales30Days
+  if (salesPeriod === "7") currentSales = item.sales7Days
+  if (salesPeriod === "90") currentSales = item.sales90Days
+
+  const [salesValue, setSalesValue] = useState(currentSales.toString())
+
+  // Keep local state in sync if parent updates
+  useEffect(() => {
+    let s = item.sales30Days
+    if (salesPeriod === "7") s = item.sales7Days
+    if (salesPeriod === "90") s = item.sales90Days
+    setSalesValue(s.toString())
+  }, [item, salesPeriod])
+
+  const handleCostBlur = () => {
+    const num = parseFloat(cost) || 0
+    if (num !== item.cost) {
+      onUpdateCost(item.id, num)
+    }
+  }
+
+  const handleSalesBlur = () => {
+    const num = parseInt(salesValue) || 0
+    if (num !== currentSales) {
+      onUpdateSales(item.id, salesPeriod, num)
+    }
+  }
+
+  const profitPerUnit = item.price - (parseFloat(cost) || 0)
+  const totalProfit = profitPerUnit * (parseInt(salesValue) || 0)
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e, item)}
+      onDragOver={onDragOver}
+      onDrop={(e) => onDrop(e, item)}
+      className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-muted/30 transition-colors group cursor-move relative"
+    >
+      <div className="col-span-1 flex items-center justify-center gap-2">
+        <GripVertical className="h-4 w-4 text-muted-foreground opacity-50 group-hover:opacity-100" />
+        <span className="font-bold text-lg w-6 text-center">{item.rank}</span>
+      </div>
+      
+      <div className="col-span-3 flex items-center gap-3">
+        <div className="relative h-12 w-12 rounded overflow-hidden bg-muted flex-shrink-0 border">
+          {item.imageUrl ? (
+            <Image src={item.imageUrl} alt={item.productName || "Product"} fill className="object-cover" />
+          ) : (
+            <Package className="h-6 w-6 absolute inset-0 m-auto text-muted-foreground" />
+          )}
+        </div>
+        <div className="overflow-hidden">
+          <p className="font-medium text-sm truncate" title={item.productName || "Unknown"}>
+            {item.productName || "Unknown Product"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {item.asin || item.sku}
+          </p>
+        </div>
+      </div>
+
+      <div className="col-span-1 text-center font-medium">
+        {item.inventory}
+      </div>
+
+      <div className="col-span-2 flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground w-8">Cost:</span>
+          <div className="relative">
+            <DollarSign className="absolute left-2 top-1.5 h-4 w-4 text-muted-foreground" />
+            <Input 
+              type="number"
+              step="0.01"
+              className="h-8 pl-7 text-sm w-24"
+              value={cost}
+              onChange={(e) => setCost(e.target.value)}
+              onBlur={handleCostBlur}
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground w-8">Price:</span>
+          <span className="text-sm font-medium">${item.price.toFixed(2)}</span>
+        </div>
+      </div>
+
+      <div className="col-span-3 flex flex-col gap-2 pl-4">
+        <div className="flex items-center gap-2">
+          <Select value={salesPeriod} onValueChange={(val: any) => setSalesPeriod(val)}>
+            <SelectTrigger className="h-8 w-28 text-xs">
+              <SelectValue placeholder="Period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">7 Days</SelectItem>
+              <SelectItem value="30">30 Days</SelectItem>
+              <SelectItem value="90">90 Days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input 
+            type="number"
+            className="h-8 w-28 text-sm"
+            value={salesValue}
+            onChange={(e) => setSalesValue(e.target.value)}
+            onBlur={handleSalesBlur}
+          />
+          <span className="text-xs text-muted-foreground">units</span>
+        </div>
+      </div>
+
+      <div className="col-span-2 flex flex-col items-end justify-center pr-4">
+        <span className={`text-lg font-bold ${totalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+          ${totalProfit.toFixed(2)}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          ${profitPerUnit.toFixed(2)} / unit
+        </span>
+      </div>
+
+      <button 
+        onClick={() => onDelete(item.id)}
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+        title="Remove"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </div>
+  )
+}
+
 export default function ProductRankingsPage() {
   const [rankings, setRankings] = useState<ProductRanking[]>([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [newSku, setNewSku] = useState("")
-  const [salesPeriod, setSalesPeriod] = useState<"7" | "30" | "90">("30")
   const { toast } = useToast()
 
   const [draggedItem, setDraggedItem] = useState<ProductRanking | null>(null)
@@ -82,18 +233,67 @@ export default function ProductRankingsPage() {
     }
   }
 
-  const handleUpdateCost = async (id: string, newCost: string) => {
-    const numCost = parseFloat(newCost) || 0
-    setRankings(prev => prev.map(r => r.id === id ? { ...r, cost: numCost } : r))
-    
+  const handleUpdateCost = async (id: string, cost: number) => {
+    setRankings(prev => prev.map(r => r.id === id ? { ...r, cost } : r))
     try {
       await fetch("/api/admin/product-rankings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ updates: [{ id, cost: numCost }] })
+        body: JSON.stringify({ updates: [{ id, cost }] })
       })
     } catch (error) {
       toast({ title: "Error", description: "Failed to save cost", variant: "destructive" })
+    }
+  }
+
+  const handleUpdateSales = async (id: string, period: string, value: number) => {
+    setRankings(prev => prev.map(r => {
+      if (r.id !== id) return r
+      return {
+        ...r,
+        sales7Days: period === "7" ? value : r.sales7Days,
+        sales30Days: period === "30" ? value : r.sales30Days,
+        sales90Days: period === "90" ? value : r.sales90Days,
+      }
+    }))
+    try {
+      const payload: any = { id }
+      if (period === "7") payload.sales7Days = value
+      if (period === "30") payload.sales30Days = value
+      if (period === "90") payload.sales90Days = value
+
+      await fetch("/api/admin/product-rankings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates: [payload] })
+      })
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to save sales", variant: "destructive" })
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Remove this product from rankings?")) return
+    setRankings(prev => prev.filter(r => r.id !== id))
+    try {
+      await fetch(`/api/admin/product-rankings?id=${id}`, { method: "DELETE" })
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to remove", variant: "destructive" })
+    }
+  }
+
+  const handleSyncAmazon = async () => {
+    setSyncing(true)
+    try {
+      toast({ title: "Syncing with Amazon...", description: "Fetching images, live inventory, and sales. This may take a minute." })
+      const res = await fetch("/api/admin/product-rankings/sync", { method: "POST" })
+      if (!res.ok) throw new Error("Sync failed")
+      await fetchRankings()
+      toast({ title: "Sync Complete", description: "Live Amazon data has been pulled successfully." })
+    } catch (error) {
+      toast({ title: "Sync Failed", description: "Could not fetch data from Amazon SP-API.", variant: "destructive" })
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -118,7 +318,6 @@ export default function ProductRankingsPage() {
     newRankings.splice(draggedIdx, 1)
     newRankings.splice(targetIdx, 0, draggedItem)
 
-    // Update ranks sequentially
     const updatedRankings = newRankings.map((r, idx) => ({ ...r, rank: idx + 1 }))
     setRankings(updatedRankings)
     setDraggedItem(null)
@@ -131,7 +330,6 @@ export default function ProductRankingsPage() {
           updates: updatedRankings.map(r => ({ id: r.id, rank: r.rank }))
         })
       })
-      toast({ title: "Rankings Updated" })
     } catch (error) {
       toast({ title: "Error", description: "Failed to save order", variant: "destructive" })
     }
@@ -147,24 +345,13 @@ export default function ProductRankingsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Product Rankings (P&L)</h1>
           <p className="text-muted-foreground mt-2">
-            Track and prioritize your best selling products. Manage profit and loss manually.
+            Track and prioritize your best selling products. Pull live Amazon data, override manually, and calculate profits.
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Label className="whitespace-nowrap">Sales Period:</Label>
-            <Select value={salesPeriod} onValueChange={(val: any) => setSalesPeriod(val)}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">Last 7 Days</SelectItem>
-                <SelectItem value="30">Last 30 Days</SelectItem>
-                <SelectItem value="90">Last 90 Days</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <Button onClick={handleSyncAmazon} disabled={syncing} variant="outline" className="gap-2">
+          <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+          {syncing ? 'Syncing...' : 'Sync Amazon Data'}
+        </Button>
       </div>
 
       <Card>
@@ -193,8 +380,8 @@ export default function ProductRankingsPage() {
           <div className="col-span-3">Product</div>
           <div className="col-span-1 text-center">Inventory</div>
           <div className="col-span-2">Cost & Price</div>
-          <div className="col-span-2 text-center">Sales ({salesPeriod}d)</div>
-          <div className="col-span-3 text-right pr-4">Profit</div>
+          <div className="col-span-3 pl-4">Sales</div>
+          <div className="col-span-2 text-right pr-4">Profit</div>
         </div>
 
         <div className="divide-y">
@@ -203,87 +390,18 @@ export default function ProductRankingsPage() {
               No products added yet. Add an ASIN/SKU above to start ranking.
             </div>
           ) : (
-            rankings.map((item) => {
-              let sales = item.sales30Days
-              if (salesPeriod === "7") sales = item.sales7Days
-              if (salesPeriod === "90") sales = item.sales90Days
-
-              const profitPerUnit = item.price - item.cost
-              const totalProfit = profitPerUnit * sales
-
-              return (
-                <div
-                  key={item.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, item)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, item)}
-                  className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-muted/30 transition-colors group cursor-move"
-                >
-                  <div className="col-span-1 flex items-center justify-center gap-2">
-                    <GripVertical className="h-4 w-4 text-muted-foreground opacity-50 group-hover:opacity-100" />
-                    <span className="font-bold text-lg w-6 text-center">{item.rank}</span>
-                  </div>
-                  
-                  <div className="col-span-3 flex items-center gap-3">
-                    <div className="relative h-12 w-12 rounded overflow-hidden bg-muted flex-shrink-0 border">
-                      {item.imageUrl ? (
-                        <Image src={item.imageUrl} alt={item.productName || "Product"} fill className="object-cover" />
-                      ) : (
-                        <Package className="h-6 w-6 absolute inset-0 m-auto text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="overflow-hidden">
-                      <p className="font-medium text-sm truncate" title={item.productName || "Unknown"}>
-                        {item.productName || "Unknown Product"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.asin || item.sku}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="col-span-1 text-center font-medium">
-                    {item.inventory}
-                  </div>
-
-                  <div className="col-span-2 flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground w-8">Cost:</span>
-                      <div className="relative">
-                        <DollarSign className="absolute left-2 top-1.5 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          type="number"
-                          step="0.01"
-                          className="h-8 pl-7 text-sm w-24"
-                          defaultValue={item.cost}
-                          onBlur={(e) => handleUpdateCost(item.id, e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground w-8">Price:</span>
-                      <span className="text-sm font-medium">${item.price.toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  <div className="col-span-2 text-center">
-                    <span className="inline-flex items-center justify-center bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 rounded-full px-3 py-1 text-sm font-medium">
-                      {sales} units
-                    </span>
-                  </div>
-
-                  <div className="col-span-3 flex flex-col items-end justify-center pr-4">
-                    <span className={`text-lg font-bold ${totalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                      ${totalProfit.toFixed(2)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      ${profitPerUnit.toFixed(2)} / unit
-                    </span>
-                  </div>
-                </div>
-              )
-            })
+            rankings.map((item) => (
+              <RankingRow
+                key={item.id}
+                item={item}
+                onUpdateCost={handleUpdateCost}
+                onUpdateSales={handleUpdateSales}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onDelete={handleDelete}
+              />
+            ))
           )}
         </div>
       </div>
