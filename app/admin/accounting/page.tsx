@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { RefreshCw, DollarSign, Wallet, ChevronDown, ChevronUp, Calculator } from "lucide-react"
+import PinProtection from "@/components/PinProtection"
 
 export default function AccountingPage() {
   const [disbursements, setDisbursements] = useState<any[]>([])
@@ -125,8 +126,9 @@ export default function AccountingPage() {
   const profitMargin = totalDisbursed > 0 ? (netProfit / totalDisbursed) * 100 : 0
 
   return (
-    <div className="space-y-6 pb-20 print:pb-0">
-      <style dangerouslySetInnerHTML={{__html: `
+    <PinProtection>
+      <div className="space-y-6 pb-20 print:pb-0">
+        <style dangerouslySetInnerHTML={{__html: `
         @media print {
           @page { margin: 0.5in; size: letter portrait; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -435,5 +437,6 @@ export default function AccountingPage() {
         </CardContent>
       </Card>
     </div>
+    </PinProtection>
   )
 }

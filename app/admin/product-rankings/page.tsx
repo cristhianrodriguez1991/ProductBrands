@@ -14,6 +14,7 @@ import { GripVertical, Plus, DollarSign, Package, RefreshCw, Trash2 } from "luci
 import { useToast } from "@/components/ui/use-toast"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import PinProtection from "@/components/PinProtection"
 
 interface ProductRanking {
   id: string
@@ -370,6 +371,7 @@ export default function ProductRankingsPage() {
   }
 
   return (
+    <PinProtection>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -479,5 +481,6 @@ export default function ProductRankingsPage() {
         })()}
       </div>
     </div>
+    </PinProtection>
   )
 }
