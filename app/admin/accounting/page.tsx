@@ -15,6 +15,8 @@ export default function AccountingPage() {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [days, setDays] = useState("30")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
   const [isDisbursementsOpen, setIsDisbursementsOpen] = useState(false)
   
   // Try to load operating expenses from local storage, default to 0
@@ -36,8 +38,13 @@ export default function AccountingPage() {
   const fetchData = async () => {
     setLoading(true)
     try {
+      let url = `/api/admin/accounting/disbursements?days=${days}`
+      if (days === "custom" && startDate && endDate) {
+        url += `&startDate=${startDate}&endDate=${endDate}`
+      }
+      
       const [disRes, prodRes] = await Promise.all([
-        fetch(`/api/admin/accounting/disbursements?days=${days}`),
+        fetch(url),
         fetch(`/api/admin/product-rankings`)
       ])
       
@@ -75,11 +82,14 @@ export default function AccountingPage() {
     const fbaFee = p.fbaFee || 0
 
     let estimatedSales = 0
-    const d = parseInt(days)
-    if (d === 30) estimatedSales = p.sales30Days || 0
-    else if (d === 60) estimatedSales = (p.sales90Days || 0) * (60 / 90)
-    else if (d === 90) estimatedSales = p.sales90Days || 0
-    else if (d === 180) estimatedSales = (p.sales90Days || 0) * 2
+    let d = parseInt(days)
+    if (days === "custom" && startDate && endDate) {
+      const diffMs = new Date(endDate).getTime() - new Date(startDate).getTime()
+      d = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)))
+    }
+    
+    if (d <= 30) estimatedSales = (p.sales30Days || 0) * (d / 30)
+    else estimatedSales = (p.sales90Days || 0) * (d / 90)
     
     return {
       cogs: acc.cogs + (cost * estimatedSales),
@@ -96,7 +106,14 @@ export default function AccountingPage() {
   const profitMargin = totalDisbursed > 0 ? (netProfit / totalDisbursed) * 100 : 0
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-20 print:pb-0">
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          @page { margin: 0.5in; size: letter portrait; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print\\:hidden { display: none !important; }
+        }
+      `}} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Accounting, Profit & Loss</h1>
@@ -104,9 +121,26 @@ export default function AccountingPage() {
             Track Amazon disbursements, subtract COGS and expenses to find your True Net Profit.
           </p>
         </div>
-        <div className="flex gap-4 print:hidden">
+        <div className="flex flex-wrap gap-2 print:hidden items-center">
+          {days === "custom" && (
+            <div className="flex items-center gap-2 mr-2">
+              <Input 
+                type="date" 
+                value={startDate} 
+                onChange={e => setStartDate(e.target.value)}
+                className="w-36 bg-white dark:bg-gray-950 h-10"
+              />
+              <span className="text-muted-foreground">to</span>
+              <Input 
+                type="date" 
+                value={endDate} 
+                onChange={e => setEndDate(e.target.value)}
+                className="w-36 bg-white dark:bg-gray-950 h-10"
+              />
+            </div>
+          )}
           <Select value={days} onValueChange={setDays}>
-            <SelectTrigger className="w-40 bg-white dark:bg-gray-950">
+            <SelectTrigger className="w-36 bg-white dark:bg-gray-950">
               <SelectValue placeholder="Period" />
             </SelectTrigger>
             <SelectContent>
@@ -114,6 +148,7 @@ export default function AccountingPage() {
               <SelectItem value="60">Last 60 Days</SelectItem>
               <SelectItem value="90">Last 90 Days</SelectItem>
               <SelectItem value="180">Last 6 Months</SelectItem>
+              <SelectItem value="custom">Custom Range</SelectItem>
             </SelectContent>
           </Select>
           <Button onClick={() => window.print()} variant="outline" className="gap-2 bg-white dark:bg-gray-950">
@@ -122,7 +157,7 @@ export default function AccountingPage() {
           </Button>
           <Button onClick={handleSync} disabled={syncing} variant="outline" className="gap-2 bg-white dark:bg-gray-950">
             <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Syncing...' : 'Sync Data'}
+            {syncing ? 'Syncing...' : 'Sync'}
           </Button>
         </div>
       </div>

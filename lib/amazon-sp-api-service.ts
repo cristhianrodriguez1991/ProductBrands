@@ -1152,17 +1152,21 @@ export async function getPriceFeedResult(feedSubmissionId: string): Promise<Pric
 /**
  * Get Amazon Disbursements / Financial Event Groups (Payouts)
  */
-export async function getRecentDisbursements(days: number = 30) {
+export async function getRecentDisbursements(days: number = 30, startDateStr?: string, endDateStr?: string) {
   const client: any = getClient()
   const now = new Date()
   const pastDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+
+  const after = startDateStr ? new Date(startDateStr).toISOString() : pastDate.toISOString()
+  const before = endDateStr ? new Date(endDateStr).toISOString() : now.toISOString()
 
   try {
     const res: any = await client.callAPI({
       operation: "listFinancialEventGroups",
       endpoint: "finances",
       query: {
-        FinancialEventGroupStartedAfter: pastDate.toISOString(),
+        FinancialEventGroupStartedAfter: after,
+        FinancialEventGroupStartedBefore: before,
         MaxResultsPerPage: 100
       }
     })
@@ -1176,13 +1180,16 @@ export async function getRecentDisbursements(days: number = 30) {
 /**
  * Get Total Gross Sales for the entire Amazon Account
  */
-export async function getAccountSalesMetrics(days: number = 30): Promise<{ amount: number; units: number }> {
+export async function getAccountSalesMetrics(days: number = 30, startDateStr?: string, endDateStr?: string): Promise<{ amount: number; units: number }> {
   const client: any = getClient()
   const usMarketplaceId = "ATVPDKIKX0DER"
 
   const now = new Date()
   const pastDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
-  const interval = `${pastDate.toISOString().split('.')[0]}Z--${now.toISOString().split('.')[0]}Z`
+  
+  const start = startDateStr ? new Date(startDateStr).toISOString().split('.')[0] : pastDate.toISOString().split('.')[0]
+  const end = endDateStr ? new Date(endDateStr).toISOString().split('.')[0] : now.toISOString().split('.')[0]
+  const interval = `${start}Z--${end}Z`
 
   try {
     const res: any = await client.callAPI({

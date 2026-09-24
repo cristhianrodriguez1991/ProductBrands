@@ -14,10 +14,12 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url)
     const days = parseInt(searchParams.get("days") || "30")
+    const startDate = searchParams.get("startDate")
+    const endDate = searchParams.get("endDate")
 
     const [disbursements, accountSales] = await Promise.all([
-      getRecentDisbursements(days),
-      getAccountSalesMetrics(days)
+      getRecentDisbursements(days, startDate || undefined, endDate || undefined),
+      getAccountSalesMetrics(days, startDate || undefined, endDate || undefined)
     ])
 
     return NextResponse.json({
