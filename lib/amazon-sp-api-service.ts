@@ -566,7 +566,7 @@ export async function getSalesMetricsBySkus(skus: string[], days: number = 30): 
 /**
  * Query Amazon SP-API for Total Sales Metrics (Units ordered) by ASIN.
  */
-export async function getSalesMetricsByAsins(asins: string[], days: number = 30): Promise<Map<string, number>> {
+export async function getSalesMetricsByAsins(asins: string[], days: number = 30, startDateStr?: string, endDateStr?: string): Promise<Map<string, number>> {
   const map = new Map<string, number>()
   if (asins.length === 0) return map
 
@@ -576,7 +576,14 @@ export async function getSalesMetricsByAsins(asins: string[], days: number = 30)
   const now = new Date()
   const pastDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
   
-  const interval = `${pastDate.toISOString().split('.')[0]}Z--${now.toISOString().split('.')[0]}Z`
+  const start = startDateStr ? new Date(startDateStr).toISOString().split('.')[0] : pastDate.toISOString().split('.')[0]
+  let end = now.toISOString().split('.')[0]
+  if (endDateStr) {
+    const beforeStr = endDateStr.includes("T") ? endDateStr : `${endDateStr}T23:59:59Z`
+    end = new Date(beforeStr).toISOString().split('.')[0]
+  }
+  
+  const interval = `${start}Z--${end}Z`
 
   for (const asin of asins) {
     try {

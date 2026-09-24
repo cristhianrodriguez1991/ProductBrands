@@ -17,6 +17,7 @@ export default function AccountingPage() {
   const [days, setDays] = useState("30")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+  const [exactCustomSalesMap, setExactCustomSalesMap] = useState<Record<string, number> | null>(null)
   const [isDisbursementsOpen, setIsDisbursementsOpen] = useState(false)
   
   // Try to load operating expenses from local storage, default to 0
@@ -39,8 +40,14 @@ export default function AccountingPage() {
     setLoading(true)
     try {
       let url = `/api/admin/accounting/disbursements?days=${days}`
+      let fetchedCustomSales = null
+      
       if (days === "custom" && startDate && endDate) {
         url += `&startDate=${startDate}&endDate=${endDate}`
+        
+        // Fetch exact ASIN sales directly from Amazon for this specific custom date range
+        const customRes = await fetch(`/api/admin/accounting/ranked-sales-custom?startDate=${startDate}&endDate=${endDate}`)
+        if (customRes.ok) fetchedCustomSales = await customRes.json()
       }
       
       const [disRes, prodRes] = await Promise.all([
@@ -55,6 +62,7 @@ export default function AccountingPage() {
       
       setDisbursements(disData.disbursements || [])
       setAccountSales(disData.accountSales || { amount: 0, units: 0 })
+      setExactCustomSalesMap(fetchedCustomSales)
       setProducts(prodData || [])
     } catch (e: any) {
       toast({ title: "Error", description: "Could not load data.", variant: "destructive" })
@@ -84,12 +92,17 @@ export default function AccountingPage() {
     let estimatedSales = 0
     let d = parseInt(days)
     if (days === "custom" && startDate && endDate) {
-      const diffMs = new Date(endDate).getTime() - new Date(startDate).getTime()
-      d = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)))
+      if (exactCustomSalesMap && p.asin && exactCustomSalesMap[p.asin] !== undefined) {
+        estimatedSales = exactCustomSalesMap[p.asin]
+      } else {
+        const diffMs = new Date(endDate).getTime() - new Date(startDate).getTime()
+        d = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)))
+        estimatedSales = (p.sales30Days || 0) * (d / 30)
+      }
+    } else {
+      if (d <= 30) estimatedSales = (p.sales30Days || 0) * (d / 30)
+      else estimatedSales = (p.sales90Days || 0) * (d / 90)
     }
-    
-    if (d <= 30) estimatedSales = (p.sales30Days || 0) * (d / 30)
-    else estimatedSales = (p.sales90Days || 0) * (d / 90)
     
     return {
       cogs: acc.cogs + (cost * estimatedSales),
