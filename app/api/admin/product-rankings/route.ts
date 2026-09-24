@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       try {
         const fbaQtyMap = await getFbaQuantities()
         if (fbaQtyMap.has(finalAsin)) {
-          finalAsin = fbaQtyMap.get(finalAsin).asin
+          finalAsin = fbaQtyMap.get(finalAsin)!.asin
         } else {
           const activeListings = await getActiveListings()
           for (const item of activeListings) {
