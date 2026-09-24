@@ -226,21 +226,23 @@ export async function POST(req: Request) {
       
       const baseSku = resolvedSku || sku
 
-      // Inventory — use the single resolved SKU only
+      // Inventory — FBA Report (afn-total-quantity) is the authoritative source since
+      // SP-API real-time does NOT include FC Transfer inventory, causing undercounts.
+      // Fallback to real-time only if SKU is missing from the report.
       let newInventory = r.inventory
       let foundRealTime = false
       let summedInventory = 0
 
       if (resolvedSku) {
-        if (realTimeInventoryMap.has(resolvedSku)) {
+        const fbaQty = fbaQtyMap.get(resolvedSku)
+        if (fbaQty) {
+          // Use afn-total-quantity from FBA report — most accurate, includes FC transfers
+          summedInventory = fbaQty.total || (fbaQty.fulfillable + fbaQty.reserved + (fbaQty.inbound || 0))
+          foundRealTime = true
+        } else if (realTimeInventoryMap.has(resolvedSku)) {
+          // Fallback: real-time API (may undercount due to FC transfers)
           summedInventory = realTimeInventoryMap.get(resolvedSku)!
           foundRealTime = true
-        } else {
-          const fbaQty = fbaQtyMap.get(resolvedSku)
-          if (fbaQty) {
-            summedInventory = fbaQty.total || (fbaQty.fulfillable + fbaQty.reserved)
-            foundRealTime = true
-          }
         }
       }
 
