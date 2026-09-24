@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { RefreshCw, DollarSign, Wallet, ChevronDown, ChevronUp, Calculator } from "lucide-react"
 
 export default function AccountingPage() {
@@ -84,7 +86,7 @@ export default function AccountingPage() {
   // Math Calculations
   const totalDisbursed = disbursements.reduce((sum, d) => sum + (d.OriginalTotal?.CurrencyAmount || 0), 0)
   
-  const totalStats = products.reduce((acc, p) => {
+  const cogsBreakdown = products.map((p) => {
     const cost = p.cost || 0
     const price = p.price || 0
     const fbaFee = p.fbaFee || 0
@@ -105,15 +107,19 @@ export default function AccountingPage() {
     }
     
     return {
-      cogs: acc.cogs + (cost * estimatedSales),
-      grossSales: acc.grossSales + (price * estimatedSales),
-      amazonFees: acc.amazonFees + (fbaFee * estimatedSales)
+      title: p.title || "Unknown Product",
+      image: p.image || "",
+      cost,
+      unitsSold: estimatedSales,
+      totalCogs: cost * estimatedSales,
+      totalGross: price * estimatedSales,
+      totalFees: fbaFee * estimatedSales
     }
-  }, { cogs: 0, grossSales: 0, amazonFees: 0 })
+  })
 
-  const totalCogs = totalStats.cogs
-  const totalGrossSales = totalStats.grossSales
-  const totalAmazonFees = totalStats.amazonFees
+  const totalCogs = cogsBreakdown.reduce((sum, item) => sum + item.totalCogs, 0)
+  const totalGrossSales = cogsBreakdown.reduce((sum, item) => sum + item.totalGross, 0)
+  const totalAmazonFees = cogsBreakdown.reduce((sum, item) => sum + item.totalFees, 0)
 
   const netProfit = totalDisbursed - operatingExpenses - totalCogs
   const profitMargin = totalDisbursed > 0 ? (netProfit / totalDisbursed) * 100 : 0
@@ -329,9 +335,45 @@ export default function AccountingPage() {
                     (Unit Cost × {days} Day Sales)
                   </p>
                 </div>
-                <div className="text-lg font-semibold text-red-500">
-                  - ${totalCogs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button className="text-lg font-semibold text-red-500 hover:text-red-700 transition-colors underline decoration-dotted underline-offset-4 cursor-pointer">
+                      - ${totalCogs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>COGS Breakdown ({days === "custom" ? "Custom Range" : `${days} Days`})</DialogTitle>
+                    </DialogHeader>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead className="text-right">Unit Cost</TableHead>
+                          <TableHead className="text-right">Units Sold</TableHead>
+                          <TableHead className="text-right font-bold">Total COGS</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {cogsBreakdown.map((item, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="flex items-center gap-3">
+                              {item.image && (
+                                <img src={item.image} alt="product" className="w-8 h-8 rounded object-cover" />
+                              )}
+                              <span className="truncate max-w-[200px]" title={item.title}>{item.title}</span>
+                            </TableCell>
+                            <TableCell className="text-right">${item.cost.toFixed(2)}</TableCell>
+                            <TableCell className="text-right">{Math.round(item.unitsSold).toLocaleString()}</TableCell>
+                            <TableCell className="text-right font-semibold text-red-500">
+                              ${item.totalCogs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               {/* Operating Expenses */}
