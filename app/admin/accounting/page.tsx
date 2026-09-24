@@ -5,24 +5,50 @@ import { useToast } from "@/components/ui/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RefreshCw, DollarSign, Wallet, ArrowRightLeft } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { RefreshCw, DollarSign, Wallet, ChevronDown, ChevronUp, Calculator } from "lucide-react"
 
 export default function AccountingPage() {
   const [disbursements, setDisbursements] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [days, setDays] = useState("30")
+  const [isDisbursementsOpen, setIsDisbursementsOpen] = useState(false)
+  
+  // Try to load operating expenses from local storage, default to 0
+  const [operatingExpenses, setOperatingExpenses] = useState<number>(0)
+  
+  useEffect(() => {
+    const savedExp = localStorage.getItem("operatingExpenses")
+    if (savedExp) setOperatingExpenses(parseFloat(savedExp))
+  }, [])
+
+  const handleOpExChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value) || 0
+    setOperatingExpenses(val)
+    localStorage.setItem("operatingExpenses", val.toString())
+  }
+
   const { toast } = useToast()
 
-  const fetchDisbursements = async () => {
+  const fetchData = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/accounting/disbursements?days=${days}`)
-      if (!res.ok) throw new Error("Failed to fetch")
-      const data = await res.json()
-      setDisbursements(data || [])
+      const [disRes, prodRes] = await Promise.all([
+        fetch(`/api/admin/accounting/disbursements?days=${days}`),
+        fetch(`/api/admin/product-rankings`)
+      ])
+      
+      if (!disRes.ok || !prodRes.ok) throw new Error("Failed to fetch")
+      
+      const disData = await disRes.json()
+      const prodData = await prodRes.json()
+      
+      setDisbursements(disData || [])
+      setProducts(prodData || [])
     } catch (e: any) {
-      toast({ title: "Error", description: "Could not load Amazon disbursements.", variant: "destructive" })
+      toast({ title: "Error", description: "Could not load data.", variant: "destructive" })
     } finally {
       setLoading(false)
       setSyncing(false)
@@ -30,26 +56,45 @@ export default function AccountingPage() {
   }
 
   useEffect(() => {
-    fetchDisbursements()
+    fetchData()
   }, [days])
 
   const handleSync = () => {
     setSyncing(true)
-    fetchDisbursements()
+    fetchData()
   }
 
+  // Math Calculations
+  const totalDisbursed = disbursements.reduce((sum, d) => sum + (d.OriginalTotal?.CurrencyAmount || 0), 0)
+  
+  const totalCogs = products.reduce((sum, p) => {
+    const cost = p.cost || 0
+    // Extrapolate sales based on the selected period
+    let estimatedSales = 0
+    const d = parseInt(days)
+    if (d === 30) estimatedSales = p.sales30Days || 0
+    else if (d === 60) estimatedSales = (p.sales90Days || 0) * (60 / 90)
+    else if (d === 90) estimatedSales = p.sales90Days || 0
+    else if (d === 180) estimatedSales = (p.sales90Days || 0) * 2
+    
+    return sum + (cost * estimatedSales)
+  }, 0)
+
+  const netProfit = totalDisbursed - operatingExpenses - totalCogs
+  const profitMargin = totalDisbursed > 0 ? (netProfit / totalDisbursed) * 100 : 0
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Accounting, Profit & Loss</h1>
           <p className="text-muted-foreground mt-2">
-            Track Amazon disbursements, calculate net revenue, and manage operating expenses.
+            Track Amazon disbursements, subtract COGS and expenses to find your True Net Profit.
           </p>
         </div>
         <div className="flex gap-4">
           <Select value={days} onValueChange={setDays}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-40 bg-white dark:bg-gray-950">
               <SelectValue placeholder="Period" />
             </SelectTrigger>
             <SelectContent>
@@ -59,9 +104,9 @@ export default function AccountingPage() {
               <SelectItem value="180">Last 6 Months</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={handleSync} disabled={syncing} variant="outline" className="gap-2">
+          <Button onClick={handleSync} disabled={syncing} variant="outline" className="gap-2 bg-white dark:bg-gray-950">
             <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Syncing...' : 'Sync Payouts'}
+            {syncing ? 'Syncing...' : 'Sync Data'}
           </Button>
         </div>
       </div>
@@ -74,81 +119,163 @@ export default function AccountingPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-700 dark:text-green-400">
-              ${disbursements.reduce((sum, d) => sum + (d.OriginalTotal?.CurrencyAmount || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              ${totalDisbursed.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-green-600/80 dark:text-green-400/80 mt-1">
-              For selected period
+              Received from Amazon
             </p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Collapsible Disbursements List */}
       <Card>
-        <CardHeader>
-          <CardTitle>Amazon Disbursements (Payouts)</CardTitle>
-          <CardDescription>
-            Actual cash flow sent to your bank account from Amazon.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading && disbursements.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">Loading payouts...</div>
-          ) : disbursements.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">No disbursements found in the selected period.</div>
-          ) : (
-            <div className="rounded-md border">
-              <div className="grid grid-cols-5 p-4 font-medium border-b bg-muted/50 text-sm">
-                <div>Processing Status</div>
-                <div>Start Date</div>
-                <div>End Date</div>
-                <div>Currency</div>
-                <div className="text-right">Amount</div>
-              </div>
-              <div className="divide-y">
-                {disbursements.map((d: any, idx: number) => {
-                  const status = d.ProcessingStatus
-                  const startDate = new Date(d.FinancialEventGroupStart).toLocaleDateString()
-                  const endDate = new Date(d.FinancialEventGroupEnd).toLocaleDateString()
-                  const amount = d.OriginalTotal?.CurrencyAmount || 0
-                  const currency = d.OriginalTotal?.CurrencyCode || "USD"
-                  
-                  return (
-                    <div key={idx} className="grid grid-cols-5 p-4 items-center text-sm">
-                      <div>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
-                          status === "Closed" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-                          "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                        }`}>
-                          {status}
-                        </span>
-                      </div>
-                      <div>{startDate}</div>
-                      <div>{endDate}</div>
-                      <div>{currency}</div>
-                      <div className="text-right font-bold text-base">
-                        ${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+        <CardHeader 
+          className="cursor-pointer hover:bg-muted/30 transition-colors"
+          onClick={() => setIsDisbursementsOpen(!isDisbursementsOpen)}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Amazon Disbursements (Payouts)</CardTitle>
+              <CardDescription className="mt-1">
+                Click to {isDisbursementsOpen ? "collapse" : "expand"} individual bank transfers.
+              </CardDescription>
             </div>
-          )}
-        </CardContent>
+            {isDisbursementsOpen ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+          </div>
+        </CardHeader>
+        
+        {isDisbursementsOpen && (
+          <CardContent>
+            {loading && disbursements.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">Loading payouts...</div>
+            ) : disbursements.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">No disbursements found in the selected period.</div>
+            ) : (
+              <div className="rounded-md border">
+                <div className="grid grid-cols-5 p-4 font-medium border-b bg-muted/50 text-sm">
+                  <div>Processing Status</div>
+                  <div>Start Date</div>
+                  <div>End Date</div>
+                  <div>Currency</div>
+                  <div className="text-right">Amount</div>
+                </div>
+                <div className="divide-y max-h-[400px] overflow-y-auto">
+                  {disbursements.map((d: any, idx: number) => {
+                    const status = d.ProcessingStatus
+                    const startDate = new Date(d.FinancialEventGroupStart).toLocaleDateString()
+                    const endDate = new Date(d.FinancialEventGroupEnd).toLocaleDateString()
+                    const amount = d.OriginalTotal?.CurrencyAmount || 0
+                    const currency = d.OriginalTotal?.CurrencyCode || "USD"
+                    
+                    return (
+                      <div key={idx} className="grid grid-cols-5 p-4 items-center text-sm">
+                        <div>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                            status === "Closed" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                            "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                          }`}>
+                            {status}
+                          </span>
+                        </div>
+                        <div>{startDate}</div>
+                        <div>{endDate}</div>
+                        <div>{currency}</div>
+                        <div className="text-right font-bold text-base">
+                          ${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        )}
       </Card>
       
-      {/* Operating Expenses & COGS will go here later */}
-      <Card className="opacity-50 border-dashed">
-        <CardHeader>
+      {/* Profit and Loss Calculator */}
+      <Card className="border-2 border-primary/20">
+        <CardHeader className="bg-muted/30 border-b">
           <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" /> Cost of Goods Sold & Operating Expenses
+            <Calculator className="h-5 w-5" /> Profit & Loss Statement ({days} Days)
           </CardTitle>
           <CardDescription>
-            This section will automatically calculate your total COGS (Cost × Units Sold) and let you input warehouse expenses to give you your True Net Revenue.
+            Calculates True Net Profit by subtracting Cost of Goods Sold (Unit Cost × Units Sold) and custom Operating Expenses from Total Disbursements.
           </CardDescription>
         </CardHeader>
-      </Card>
+        <CardContent className="p-6">
+          <div className="grid md:grid-cols-2 gap-12">
+            
+            {/* Left side: Inputs and Subtractions */}
+            <div className="space-y-6">
+              
+              {/* Total Revenue */}
+              <div className="flex justify-between items-center pb-4 border-b">
+                <div>
+                  <h3 className="font-semibold text-lg text-green-600 dark:text-green-400">Total Disbursement (Cash In)</h3>
+                  <p className="text-xs text-muted-foreground">Total money deposited from Amazon</p>
+                </div>
+                <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                  ${totalDisbursed.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
 
+              {/* COGS */}
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="font-semibold">Cost of Goods Sold (COGS)</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Calculated automatically from {products.length} products.<br/>
+                    (Unit Cost × {days} Day Sales)
+                  </p>
+                </div>
+                <div className="text-lg font-semibold text-red-500">
+                  - ${totalCogs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+
+              {/* Operating Expenses */}
+              <div className="flex justify-between items-center pt-2">
+                <div>
+                  <h3 className="font-semibold">Operating Expenses</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Warehouse, shipping, supplies, etc.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-red-500 font-semibold">-</span>
+                  <div className="relative">
+                    <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      type="number"
+                      value={operatingExpenses === 0 ? "" : operatingExpenses}
+                      onChange={handleOpExChange}
+                      placeholder="0.00"
+                      className="pl-7 w-32 text-right border-red-200 focus-visible:ring-red-500 font-semibold"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right side: Grand Total */}
+            <div className="flex flex-col justify-center items-center p-8 bg-muted/20 rounded-xl border">
+              <h2 className="text-xl font-medium text-muted-foreground mb-2">True Net Profit</h2>
+              
+              <div className={`text-6xl font-black mb-4 ${netProfit >= 0 ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
+                ${netProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Profit Margin:</span>
+                <span className={`px-3 py-1 rounded-full font-bold ${netProfit >= 0 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}>
+                  {profitMargin.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
