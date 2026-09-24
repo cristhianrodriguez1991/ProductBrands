@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { getRecentDisbursements } from "@/lib/amazon-sp-api-service"
+import { getRecentDisbursements, getAccountSalesMetrics } from "@/lib/amazon-sp-api-service"
 
 export const dynamic = "force-dynamic"
 
@@ -15,8 +15,15 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const days = parseInt(searchParams.get("days") || "30")
 
-    const disbursements = await getRecentDisbursements(days)
-    return NextResponse.json(disbursements)
+    const [disbursements, accountSales] = await Promise.all([
+      getRecentDisbursements(days),
+      getAccountSalesMetrics(days)
+    ])
+
+    return NextResponse.json({
+      disbursements,
+      accountSales
+    })
   } catch (error) {
     console.error("[DISBURSEMENTS_GET]", error)
     return new NextResponse("Internal Error", { status: 500 })

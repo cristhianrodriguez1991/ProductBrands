@@ -10,6 +10,7 @@ import { RefreshCw, DollarSign, Wallet, ChevronDown, ChevronUp, Calculator } fro
 
 export default function AccountingPage() {
   const [disbursements, setDisbursements] = useState<any[]>([])
+  const [accountSales, setAccountSales] = useState<{ amount: number, units: number }>({ amount: 0, units: 0 })
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -45,7 +46,8 @@ export default function AccountingPage() {
       const disData = await disRes.json()
       const prodData = await prodRes.json()
       
-      setDisbursements(disData || [])
+      setDisbursements(disData.disbursements || [])
+      setAccountSales(disData.accountSales || { amount: 0, units: 0 })
       setProducts(prodData || [])
     } catch (e: any) {
       toast({ title: "Error", description: "Could not load data.", variant: "destructive" })
@@ -223,14 +225,25 @@ export default function AccountingPage() {
             
             {/* Left side: Inputs and Subtractions */}
             <div className="space-y-6">
-              
-              {/* Gross Sales */}
+
+              {/* Total Amazon Account Sales */}
               <div className="flex justify-between items-center pb-2">
                 <div>
-                  <h3 className="font-semibold text-lg">Total Gross Sales</h3>
-                  <p className="text-xs text-muted-foreground">Total revenue generated on Amazon</p>
+                  <h3 className="font-semibold text-lg text-blue-600 dark:text-blue-400">Total Amazon Account Sales</h3>
+                  <p className="text-xs text-muted-foreground">Top-level gross revenue for the entire Amazon Account</p>
                 </div>
-                <div className="text-xl font-bold">
+                <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                  ${accountSales.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+
+              {/* Ranked Products Gross Sales */}
+              <div className="flex justify-between items-center pt-2 border-t">
+                <div>
+                  <h3 className="font-semibold text-md">Ranked Products Sales</h3>
+                  <p className="text-xs text-muted-foreground">Revenue generated only by products in your Product Rankings</p>
+                </div>
+                <div className="text-lg font-bold text-muted-foreground">
                   ${totalGrossSales.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>

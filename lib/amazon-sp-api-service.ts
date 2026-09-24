@@ -1172,3 +1172,38 @@ export async function getRecentDisbursements(days: number = 30) {
     return []
   }
 }
+
+/**
+ * Get Total Gross Sales for the entire Amazon Account
+ */
+export async function getAccountSalesMetrics(days: number = 30): Promise<{ amount: number; units: number }> {
+  const client: any = getClient()
+  const usMarketplaceId = "ATVPDKIKX0DER"
+
+  const now = new Date()
+  const pastDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+  const interval = `${pastDate.toISOString().split('.')[0]}Z--${now.toISOString().split('.')[0]}Z`
+
+  try {
+    const res: any = await client.callAPI({
+      operation: "getOrderMetrics",
+      endpoint: "sales",
+      query: {
+        marketplaceIds: [usMarketplaceId],
+        interval,
+        granularity: "Total"
+      }
+    })
+    const list = Array.isArray(res) ? res : res?.payload || []
+    const metrics = list[0]
+    if (metrics) {
+      return {
+        amount: metrics.totalSales?.amount || 0,
+        units: metrics.unitCount || 0
+      }
+    }
+  } catch (e: any) {
+    console.warn(`[SP-API] getAccountSalesMetrics failed:`, e?.message)
+  }
+  return { amount: 0, units: 0 }
+}
