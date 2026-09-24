@@ -113,7 +113,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const Sidebar = ({ mobile = false }) => (
     <aside
       className={cn(
-        "flex flex-col border-r transition-all duration-300 ease-in-out",
+        "flex flex-col border-r transition-all duration-300 ease-in-out print:hidden",
         mobile
           ? "fixed inset-y-0 left-0 z-50 w-72 shadow-xl bg-white dark:bg-gray-950"
           : cn(
@@ -257,7 +257,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile top bar */}
-        <header className="md:hidden flex items-center justify-between px-4 py-3 border-b bg-background flex-shrink-0 sticky top-0 z-30">
+        <header className="md:hidden flex items-center justify-between px-4 py-3 border-b bg-background flex-shrink-0 sticky top-0 z-30 print:hidden">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileSidebarOpen(true)}

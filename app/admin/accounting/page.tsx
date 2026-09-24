@@ -276,11 +276,11 @@ export default function AccountingPage() {
             Calculates True Net Profit by subtracting Cost of Goods Sold (Unit Cost × Units Sold) and custom Operating Expenses from Total Disbursements.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid md:grid-cols-2 gap-12">
+        <CardContent className="p-6 print:p-0">
+          <div className="grid md:grid-cols-2 print:grid-cols-1 print:gap-8 gap-12">
             
             {/* Left side: Inputs and Subtractions */}
-            <div className="space-y-6">
+            <div className="space-y-6 print:space-y-4">
 
               {/* Total Amazon Account Sales */}
               <div className="flex justify-between items-center pb-2">
