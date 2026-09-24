@@ -36,6 +36,7 @@ export interface KeepaProductHistoryResponse {
     currentNewPrice?: number | null
     competitorCount?: number | null
     isAvailable?: boolean
+    boughtInLastMonth?: number | null
   }
   error?: string
 }

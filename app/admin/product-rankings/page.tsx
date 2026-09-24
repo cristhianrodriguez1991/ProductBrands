@@ -24,6 +24,7 @@ interface ProductRanking {
   rank: number
   cost: number
   price: number
+  fbaFee: number
   inventory: number
   sales7Days: number
   sales30Days: number
@@ -78,7 +79,7 @@ function RankingRow({
     }
   }
 
-  const profitPerUnit = item.price - (parseFloat(cost) || 0)
+  const profitPerUnit = item.price - (parseFloat(cost) || 0) - (item.fbaFee || 0)
   const totalProfit = profitPerUnit * (parseInt(salesValue) || 0)
 
   return (
@@ -116,24 +117,28 @@ function RankingRow({
         {item.inventory}
       </div>
 
-      <div className="col-span-2 flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground w-8">Cost:</span>
+      <div className="col-span-2 flex flex-col gap-2 pl-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">Price:</span>
+          <span className="text-sm font-medium">${item.price.toFixed(2)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">FBA:</span>
+          <span className="text-sm text-red-500">-${(item.fbaFee || 0).toFixed(2)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">Cost:</span>
           <div className="relative">
-            <DollarSign className="absolute left-2 top-1.5 h-4 w-4 text-muted-foreground" />
+            <DollarSign className="absolute left-1 top-1.5 h-3 w-3 text-muted-foreground" />
             <Input 
               type="number"
               step="0.01"
-              className="h-8 pl-7 text-sm w-24"
+              className="h-6 pl-5 text-xs w-16 text-right"
               value={cost}
               onChange={(e) => setCost(e.target.value)}
               onBlur={handleCostBlur}
             />
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground w-8">Price:</span>
-          <span className="text-sm font-medium">${item.price.toFixed(2)}</span>
         </div>
       </div>
 

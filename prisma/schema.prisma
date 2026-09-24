@@ -1214,6 +1214,7 @@ model ProductRanking {
   rank           Int      @default(0) 
   cost           Float    @default(0.0) 
   price          Float    @default(0.0) 
+  fbaFee         Float    @default(0.0)
   sales7Days     Int      @default(0)
   sales30Days    Int      @default(0)
   sales90Days    Int      @default(0)

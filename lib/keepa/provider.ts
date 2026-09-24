@@ -335,6 +335,7 @@ export class KeepaService implements KeepaDataProvider {
             currentNewPrice: stats[KEEPA_CSV_INDICES.NEW] > 0 ? (stats[KEEPA_CSV_INDICES.NEW] / 100) : lastObs.newPrice,
             competitorCount: stats[KEEPA_CSV_INDICES.COUNT_NEW] >= 0 ? stats[KEEPA_CSV_INDICES.COUNT_NEW] : lastObs.offerCount,
             isAvailable: lastObs.isAvailable ?? true,
+            boughtInLastMonth: stats.boughtInLastMonth || prod.stats?.boughtInLastMonth || 0,
           },
         }
       } catch (err: any) {

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { PERMISSIONS, hasEffectivePermission } from "@/lib/permissions"
-import { getListingDetailsBySkus, getCatalogItemsByAsins } from "@/lib/amazon-sp-api-service"
+import { getListingDetailsBySkus, getCatalogItemsByAsins, getFbaFeeEstimate } from "@/lib/amazon-sp-api-service"
 
 export const dynamic = "force-dynamic"
 
@@ -105,6 +105,21 @@ export async function POST(req: Request) {
       } catch (e) {
         console.warn("Failed to fallback to Amazon SP-API on POST", e)
       }
+
+      // If STILL missing image (e.g. SP-API failed), try Keepa (like Auto Pricer)
+      if (!imageUrl && asin) {
+        try {
+          const { keepaProvider } = await import("@/lib/keepa/provider")
+          const keepaData = await keepaProvider.getProductHistory({ asin, domainId: 1 })
+          if (keepaData.success) {
+            if (keepaData.imageUrl) imageUrl = keepaData.imageUrl
+            if (keepaData.title && productName === "Unknown Product") productName = keepaData.title
+            if (keepaData.currentStats?.currentAmazonPrice && price === 0) price = keepaData.currentStats.currentAmazonPrice
+          }
+        } catch (e) {
+          console.warn("Failed to fallback to Keepa on POST", e)
+        }
+      }
     }
 
     // Determine highest rank to append at the end
@@ -113,12 +128,23 @@ export async function POST(req: Request) {
     })
     const nextRank = lastRank ? lastRank.rank + 1 : 1
 
+    let fbaFee = 0.0
+    try {
+      if (sku && price > 0) {
+        const feeEst = await getFbaFeeEstimate(sku, price, true)
+        if (feeEst?.fbaFee) fbaFee = feeEst.fbaFee
+      }
+    } catch (e) {
+      console.warn("Failed to get FBA fee estimate on POST", e)
+    }
+
     const created = await prisma.productRanking.create({
       data: {
         asin: asin || sku,
         sku: sku || asin,
         cost: Number(cost) || 0,
         price,
+        fbaFee,
         productName,
         imageUrl,
         rank: nextRank,
@@ -154,6 +180,8 @@ export async function PATCH(req: Request) {
       const data: any = {}
       if (u.rank !== undefined) data.rank = Number(u.rank)
       if (u.cost !== undefined) data.cost = Number(u.cost)
+      if (u.price !== undefined) data.price = Number(u.price)
+      if (u.fbaFee !== undefined) data.fbaFee = Number(u.fbaFee)
       if (u.sales7Days !== undefined) data.sales7Days = Number(u.sales7Days)
       if (u.sales30Days !== undefined) data.sales30Days = Number(u.sales30Days)
       if (u.sales90Days !== undefined) data.sales90Days = Number(u.sales90Days)
