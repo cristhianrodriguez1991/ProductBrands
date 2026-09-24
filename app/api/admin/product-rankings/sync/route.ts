@@ -199,47 +199,46 @@ export async function POST(req: Request) {
         catalogTitle = kData.title
       }
 
-      // Resolve all SKUs belonging to this ASIN
-      let actualSkusForThisAsin: string[] = []
-      let baseSku = sku
-      
+      // Resolve the single best SKU for this ranking entry
+      // Priority: 1) stored SKU if it exists in FBA map, 2) first ASIN-matched SKU
+      let resolvedSku = sku
       const targetAsin = asin ? asin.toUpperCase() : ""
-      if (targetAsin) {
-        // Collect from fbaQtyMap
+
+      if (sku && (fbaQtyMap.has(sku) || realTimeInventoryMap.has(sku))) {
+        resolvedSku = sku // stored SKU is valid — use it directly
+      } else if (targetAsin) {
+        // Stored SKU not found — find the first active SKU for this ASIN
         for (const [key, val] of fbaQtyMap.entries()) {
-          if (val.asin?.toUpperCase() === targetAsin && !actualSkusForThisAsin.includes(key)) {
-            actualSkusForThisAsin.push(key)
+          if (val.asin?.toUpperCase() === targetAsin) {
+            resolvedSku = key
+            break
           }
         }
-        // Collect from activeListingsQtyMap
-        for (const [key, val] of activeListingsQtyMap.entries()) {
-          if (val.asin?.toUpperCase() === targetAsin && !actualSkusForThisAsin.includes(key)) {
-            actualSkusForThisAsin.push(key)
+        if (!resolvedSku || resolvedSku === sku) {
+          for (const [key, val] of activeListingsQtyMap.entries()) {
+            if (val.asin?.toUpperCase() === targetAsin) {
+              resolvedSku = key
+              break
+            }
           }
         }
       }
       
-      if (actualSkusForThisAsin.length > 0) {
-        if (!actualSkusForThisAsin.includes(baseSku)) {
-          baseSku = actualSkusForThisAsin[0]
-        }
-      } else if (baseSku) {
-        actualSkusForThisAsin.push(baseSku)
-      }
+      const baseSku = resolvedSku || sku
 
-      // Inventory (Prefer real-time API over cached report, sum over all SKUs)
+      // Inventory — use the single resolved SKU only
       let newInventory = r.inventory
       let foundRealTime = false
       let summedInventory = 0
 
-      for (const s of actualSkusForThisAsin) {
-        if (realTimeInventoryMap.has(s)) {
-          summedInventory += realTimeInventoryMap.get(s)!
+      if (resolvedSku) {
+        if (realTimeInventoryMap.has(resolvedSku)) {
+          summedInventory = realTimeInventoryMap.get(resolvedSku)!
           foundRealTime = true
         } else {
-          const fbaQty = fbaQtyMap.get(s)
+          const fbaQty = fbaQtyMap.get(resolvedSku)
           if (fbaQty) {
-            summedInventory += fbaQty.total || (fbaQty.fulfillable + fbaQty.reserved)
+            summedInventory = fbaQty.total || (fbaQty.fulfillable + fbaQty.reserved)
             foundRealTime = true
           }
         }
