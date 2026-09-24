@@ -82,6 +82,13 @@ function RankingRow({
   const profitPerUnit = item.price - (parseFloat(cost) || 0) - (item.fbaFee || 0)
   const totalProfit = profitPerUnit * (parseInt(salesValue) || 0)
 
+  const dailySales = (item.sales30Days || 0) / 30
+  const daysOfSupply = dailySales > 0 ? Math.floor(item.inventory / dailySales) : 999
+  
+  // Target 90 days of supply for restock recommendations
+  const targetDays = 90
+  const restockQty = daysOfSupply < targetDays && dailySales > 0 ? Math.ceil((targetDays - daysOfSupply) * dailySales) : 0
+
   return (
     <div
       draggable
@@ -113,8 +120,18 @@ function RankingRow({
         </div>
       </div>
 
-      <div className="col-span-1 text-center font-medium">
-        {item.inventory}
+      <div className="col-span-1 flex flex-col items-center justify-center gap-1">
+        <span className="font-medium">{item.inventory}</span>
+        {daysOfSupply < 999 ? (
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap">{daysOfSupply} Days Supply</span>
+        ) : (
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap">&gt;999 Days Supply</span>
+        )}
+        {restockQty > 0 && (
+          <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded whitespace-nowrap">
+            Rec: +{restockQty}
+          </span>
+        )}
       </div>
 
       <div className="col-span-2 flex flex-col gap-2 pl-2">
