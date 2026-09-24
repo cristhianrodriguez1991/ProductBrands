@@ -35,6 +35,7 @@ const PERMISSION_LABELS: Record<Permission, string> = {
   settings: "Site Settings",
   autopricer: "Autopricer",
   productinfo: "Product Info",
+  product_rankings: "Product Rankings",
 }
 
 export default async function AdminUsersPage() {
