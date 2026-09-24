@@ -56,8 +56,9 @@ export async function POST(req: Request) {
     rankings.forEach(r => {
       let actualSku = r.sku || ""
       if (!fbaQtyMap.has(actualSku) && r.asin) {
+        const targetAsin = r.asin.toUpperCase()
         for (const [key, val] of fbaQtyMap.entries()) {
-          if (val.asin === r.asin) {
+          if (val.asin?.toUpperCase() === targetAsin) {
             actualSku = key
             break
           }
@@ -147,8 +148,9 @@ export async function POST(req: Request) {
       let fbaQty = fbaQtyMap.get(actualSku)
       
       if (!fbaQty && asin) {
+        const targetAsin = asin.toUpperCase()
         for (const [key, val] of fbaQtyMap.entries()) {
-          if (val.asin === asin) {
+          if (val.asin?.toUpperCase() === targetAsin) {
             actualSku = key
             fbaQty = val
             break

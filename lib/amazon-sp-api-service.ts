@@ -254,7 +254,7 @@ function parseTSV(tsv: string): any[] {
   const lines = tsv.split("\n").filter((l) => l.trim().length > 0)
   if (lines.length < 2) return []
 
-  const headers = lines[0].split("\t").map((h) => h.trim())
+  const headers = lines[0].split("\t").map((h) => h.trim().toLowerCase())
   const items: any[] = []
 
   for (let i = 1; i < lines.length; i++) {
