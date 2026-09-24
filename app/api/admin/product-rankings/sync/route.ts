@@ -6,7 +6,8 @@ import { PERMISSIONS, hasEffectivePermission } from "@/lib/permissions"
 import { 
   getCatalogItemsByAsins, 
   getFbaQuantities,
-  getListingDetailsBySkus
+  getListingDetailsBySkus,
+  getFbaFeeEstimate
 } from "@/lib/amazon-sp-api-service"
 
 export const maxDuration = 300 // allow up to 5 mins
