@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { RefreshCw, DollarSign, Wallet, ChevronDown, ChevronUp, Calculator } from "lucide-react"
+import { RefreshCw, DollarSign, Wallet, ChevronDown, ChevronUp, Calculator, ArrowUpDown } from "lucide-react"
 import PinProtection from "@/components/PinProtection"
 
 export default function AccountingPage() {
@@ -22,6 +22,7 @@ export default function AccountingPage() {
   const [endDate, setEndDate] = useState("")
   const [exactCustomSalesMap, setExactCustomSalesMap] = useState<Record<string, number> | null>(null)
   const [isDisbursementsOpen, setIsDisbursementsOpen] = useState(false)
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: "asc" | "desc" } | null>({ key: "endDate", direction: "desc" })
   
   // Try to load operating expenses from local storage, default to 0
   const [operatingExpenses, setOperatingExpenses] = useState<number>(0)
@@ -82,6 +83,14 @@ export default function AccountingPage() {
   const handleSync = () => {
     setSyncing(true)
     fetchData()
+  }
+
+  const handleSort = (key: string) => {
+    let direction: "asc" | "desc" = "desc"
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "desc") {
+      direction = "asc"
+    }
+    setSortConfig({ key, direction })
   }
 
   // Math Calculations
@@ -227,13 +236,35 @@ export default function AccountingPage() {
               <div className="rounded-md border">
                 <div className="grid grid-cols-5 p-4 font-medium border-b bg-muted/50 text-sm">
                   <div>Processing Status</div>
-                  <div>Start Date</div>
-                  <div>End Date</div>
+                  <div className="cursor-pointer flex items-center gap-1 hover:text-primary transition-colors select-none" onClick={() => handleSort("startDate")}>
+                    Start Date <ArrowUpDown className={`w-3 h-3 ${sortConfig?.key === "startDate" ? "text-primary" : "text-muted-foreground"}`} />
+                  </div>
+                  <div className="cursor-pointer flex items-center gap-1 hover:text-primary transition-colors select-none" onClick={() => handleSort("endDate")}>
+                    End Date <ArrowUpDown className={`w-3 h-3 ${sortConfig?.key === "endDate" ? "text-primary" : "text-muted-foreground"}`} />
+                  </div>
                   <div>Currency</div>
-                  <div className="text-right">Amount</div>
+                  <div className="text-right cursor-pointer flex items-center justify-end gap-1 hover:text-primary transition-colors select-none" onClick={() => handleSort("amount")}>
+                    <ArrowUpDown className={`w-3 h-3 ${sortConfig?.key === "amount" ? "text-primary" : "text-muted-foreground"}`} /> Amount
+                  </div>
                 </div>
                 <div className="divide-y max-h-[400px] overflow-y-auto">
-                  {disbursements.map((d: any, idx: number) => {
+                  {[...disbursements].sort((a, b) => {
+                    if (!sortConfig) return 0;
+                    let aVal: any = 0; let bVal: any = 0;
+                    if (sortConfig.key === "amount") {
+                      aVal = a.OriginalTotal?.CurrencyAmount || 0;
+                      bVal = b.OriginalTotal?.CurrencyAmount || 0;
+                    } else if (sortConfig.key === "startDate") {
+                      aVal = new Date(a.FinancialEventGroupStart).getTime();
+                      bVal = new Date(b.FinancialEventGroupStart).getTime();
+                    } else if (sortConfig.key === "endDate") {
+                      aVal = new Date(a.FinancialEventGroupEnd).getTime();
+                      bVal = new Date(b.FinancialEventGroupEnd).getTime();
+                    }
+                    if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
+                    if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
+                    return 0;
+                  }).map((d: any, idx: number) => {
                     const status = d.ProcessingStatus
                     const startDate = new Date(d.FinancialEventGroupStart).toLocaleDateString()
                     const endDate = new Date(d.FinancialEventGroupEnd).toLocaleDateString()
