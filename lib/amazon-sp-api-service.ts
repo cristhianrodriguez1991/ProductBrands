@@ -1148,3 +1148,27 @@ export async function getPriceFeedResult(feedSubmissionId: string): Promise<Pric
   base.resultPreview = text.slice(0, 400)
   return base
 }
+
+/**
+ * Get Amazon Disbursements / Financial Event Groups (Payouts)
+ */
+export async function getRecentDisbursements(days: number = 30) {
+  const client: any = getClient()
+  const now = new Date()
+  const pastDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+
+  try {
+    const res: any = await client.callAPI({
+      operation: "listFinancialEventGroups",
+      endpoint: "finances",
+      query: {
+        FinancialEventGroupStartedAfter: pastDate.toISOString(),
+        MaxResultsPerPage: 100
+      }
+    })
+    return res?.payload?.FinancialEventGroupList || res?.FinancialEventGroupList || []
+  } catch (e: any) {
+    console.warn("[SP-API] listFinancialEventGroups failed:", e?.message)
+    return []
+  }
+}

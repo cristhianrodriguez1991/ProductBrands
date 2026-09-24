@@ -24,6 +24,7 @@ export const PERMISSIONS = {
   AUTOPRICER: 'autopricer',
   PRODUCTINFO: 'productinfo',
   PRODUCT_RANKINGS: 'product_rankings',
+  ACCOUNTING: 'accounting',
 } as const
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]
