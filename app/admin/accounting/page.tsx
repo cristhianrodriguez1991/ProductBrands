@@ -67,9 +67,11 @@ export default function AccountingPage() {
   // Math Calculations
   const totalDisbursed = disbursements.reduce((sum, d) => sum + (d.OriginalTotal?.CurrencyAmount || 0), 0)
   
-  const totalCogs = products.reduce((sum, p) => {
+  const totalStats = products.reduce((acc, p) => {
     const cost = p.cost || 0
-    // Extrapolate sales based on the selected period
+    const price = p.price || 0
+    const fbaFee = p.fbaFee || 0
+
     let estimatedSales = 0
     const d = parseInt(days)
     if (d === 30) estimatedSales = p.sales30Days || 0
@@ -77,8 +79,16 @@ export default function AccountingPage() {
     else if (d === 90) estimatedSales = p.sales90Days || 0
     else if (d === 180) estimatedSales = (p.sales90Days || 0) * 2
     
-    return sum + (cost * estimatedSales)
-  }, 0)
+    return {
+      cogs: acc.cogs + (cost * estimatedSales),
+      grossSales: acc.grossSales + (price * estimatedSales),
+      amazonFees: acc.amazonFees + (fbaFee * estimatedSales)
+    }
+  }, { cogs: 0, grossSales: 0, amazonFees: 0 })
+
+  const totalCogs = totalStats.cogs
+  const totalGrossSales = totalStats.grossSales
+  const totalAmazonFees = totalStats.amazonFees
 
   const netProfit = totalDisbursed - operatingExpenses - totalCogs
   const profitMargin = totalDisbursed > 0 ? (netProfit / totalDisbursed) * 100 : 0
@@ -92,7 +102,7 @@ export default function AccountingPage() {
             Track Amazon disbursements, subtract COGS and expenses to find your True Net Profit.
           </p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 print:hidden">
           <Select value={days} onValueChange={setDays}>
             <SelectTrigger className="w-40 bg-white dark:bg-gray-950">
               <SelectValue placeholder="Period" />
@@ -104,6 +114,10 @@ export default function AccountingPage() {
               <SelectItem value="180">Last 6 Months</SelectItem>
             </SelectContent>
           </Select>
+          <Button onClick={() => window.print()} variant="outline" className="gap-2 bg-white dark:bg-gray-950">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-file-text"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+            Download PDF
+          </Button>
           <Button onClick={handleSync} disabled={syncing} variant="outline" className="gap-2 bg-white dark:bg-gray-950">
             <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
             {syncing ? 'Syncing...' : 'Sync Data'}
@@ -210,11 +224,35 @@ export default function AccountingPage() {
             {/* Left side: Inputs and Subtractions */}
             <div className="space-y-6">
               
-              {/* Total Revenue */}
+              {/* Gross Sales */}
+              <div className="flex justify-between items-center pb-2">
+                <div>
+                  <h3 className="font-semibold text-lg">Total Gross Sales</h3>
+                  <p className="text-xs text-muted-foreground">Total revenue generated on Amazon</p>
+                </div>
+                <div className="text-xl font-bold">
+                  ${totalGrossSales.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+
+              {/* Amazon Fees */}
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="font-semibold text-sm">Estimated Amazon Fees</h3>
+                  <p className="text-xs text-muted-foreground mt-1">FBA fulfillment & referral fees</p>
+                </div>
+                <div className="text-base font-medium text-red-500">
+                  - ${totalAmazonFees.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+              
+              <div className="border-t pt-4" />
+
+              {/* Total Disbursement */}
               <div className="flex justify-between items-center pb-4 border-b">
                 <div>
                   <h3 className="font-semibold text-lg text-green-600 dark:text-green-400">Total Disbursement (Cash In)</h3>
-                  <p className="text-xs text-muted-foreground">Total money deposited from Amazon</p>
+                  <p className="text-xs text-muted-foreground">Actual money deposited from Amazon</p>
                 </div>
                 <div className="text-xl font-bold text-green-600 dark:text-green-400">
                   ${totalDisbursed.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -266,9 +304,15 @@ export default function AccountingPage() {
               </div>
               
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Profit Margin:</span>
+                <span className="text-sm text-muted-foreground">ROI (on Cash):</span>
                 <span className={`px-3 py-1 rounded-full font-bold ${netProfit >= 0 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}>
                   {profitMargin.toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-sm text-muted-foreground">True Margin (on Sales):</span>
+                <span className={`px-3 py-1 rounded-full font-bold ${netProfit >= 0 ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}>
+                  {totalGrossSales > 0 ? ((netProfit / totalGrossSales) * 100).toFixed(1) : "0.0"}%
                 </span>
               </div>
             </div>
