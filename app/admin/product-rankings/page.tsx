@@ -49,7 +49,7 @@ function RankingRow({
   onDelete: (id: string) => void
 }) {
   const [salesPeriod, setSalesPeriod] = useState<"7" | "30" | "90">("30")
-  const [cost, setCost] = useState(item.cost.toString())
+  const [cost, setCost] = useState(item.cost === 0 ? "" : item.cost.toString())
   
   let currentSales = item.sales30Days
   if (salesPeriod === "7") currentSales = item.sales7Days
@@ -126,14 +126,15 @@ function RankingRow({
           <span className="text-xs text-muted-foreground">FBA:</span>
           <span className="text-sm text-red-500">-${(item.fbaFee || 0).toFixed(2)}</span>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-1">
           <span className="text-xs text-muted-foreground">Cost:</span>
           <div className="relative">
-            <DollarSign className="absolute left-1 top-1.5 h-3 w-3 text-muted-foreground" />
+            <DollarSign className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
             <Input 
               type="number"
               step="0.01"
-              className="h-6 pl-5 text-xs w-16 text-right"
+              placeholder="0.00"
+              className="h-8 pl-7 text-sm w-24 text-right print:border-none print:shadow-none print:p-0 print:text-left print:pl-5 print:w-auto"
               value={cost}
               onChange={(e) => setCost(e.target.value)}
               onBlur={handleCostBlur}
@@ -142,7 +143,7 @@ function RankingRow({
         </div>
       </div>
 
-      <div className="col-span-3 flex flex-col gap-2 pl-4">
+      <div className="col-span-3 flex flex-col gap-2 pl-4 print:hidden">
         <div className="flex items-center gap-2">
           <Select value={salesPeriod} onValueChange={(val: any) => setSalesPeriod(val)}>
             <SelectTrigger className="h-8 w-28 text-xs">
@@ -166,6 +167,10 @@ function RankingRow({
           <span className="text-xs text-muted-foreground">units</span>
         </div>
       </div>
+      <div className="col-span-3 hidden print:flex flex-col justify-center pl-4">
+        <span className="text-sm font-medium">{salesValue} units</span>
+        <span className="text-xs text-muted-foreground">{salesPeriod} Days</span>
+      </div>
 
       <div className="col-span-2 flex flex-col items-end justify-center pr-4">
         <span className={`text-lg font-bold ${totalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
@@ -178,7 +183,7 @@ function RankingRow({
 
       <button 
         onClick={() => onDelete(item.id)}
-        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity print:hidden"
         title="Remove"
       >
         <Trash2 className="h-4 w-4" />
@@ -352,17 +357,23 @@ export default function ProductRankingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Product Rankings (P&L)</h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-foreground mt-2 print:hidden">
             Track and prioritize your best selling products. Pull live Amazon data, override manually, and calculate profits.
           </p>
         </div>
-        <Button onClick={handleSyncAmazon} disabled={syncing} variant="outline" className="gap-2">
-          <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? 'Syncing...' : 'Sync Amazon Data'}
-        </Button>
+        <div className="flex items-center gap-3 print:hidden">
+          <Button onClick={() => window.print()} variant="outline" className="gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-printer"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+            Print PDF
+          </Button>
+          <Button onClick={handleSyncAmazon} disabled={syncing} variant="outline" className="gap-2">
+            <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Syncing...' : 'Sync Amazon Data'}
+          </Button>
+        </div>
       </div>
 
-      <Card>
+      <Card className="print:hidden">
         <CardHeader>
           <CardTitle>Add Product to Rankings</CardTitle>
         </CardHeader>
