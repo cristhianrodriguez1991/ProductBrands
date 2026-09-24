@@ -154,7 +154,7 @@ export async function POST(req: Request) {
     try {
       if (finalSku && price > 0) {
         const feeEst = await getFbaFeeEstimate(finalSku, price, true)
-        if (feeEst?.fbaFee) fbaFee = feeEst.fbaFee
+        if (feeEst?.totalFee) fbaFee = feeEst.totalFee
       }
     } catch (e) {
       console.warn("Failed to get FBA fee estimate on POST", e)

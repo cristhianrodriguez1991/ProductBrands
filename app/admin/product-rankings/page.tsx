@@ -123,7 +123,7 @@ function RankingRow({
           <span className="text-sm font-medium">${item.price.toFixed(2)}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">FBA:</span>
+          <span className="text-xs text-muted-foreground">Amz Fees:</span>
           <span className="text-sm text-red-500">-${(item.fbaFee || 0).toFixed(2)}</span>
         </div>
         <div className="flex items-center justify-between mt-1">

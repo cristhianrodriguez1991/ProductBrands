@@ -258,7 +258,7 @@ export async function POST(req: Request) {
         if (asin && newPrice > 0) {
           try {
             const feeEst = await getFbaFeeEstimateForAsin(asin, newPrice)
-            if (feeEst?.fbaFee) fbaFee = feeEst.fbaFee
+            if (feeEst?.totalFee) fbaFee = feeEst.totalFee
           } catch (e) {
             // silent fail
           }
