@@ -14,6 +14,10 @@ import {
 
 export const maxDuration = 300 // allow up to 5 mins
 
+export async function GET(req: Request) {
+  return POST(req)
+}
+
 export async function POST(req: Request) {
   try {
     const authHeader = req.headers.get('authorization')
