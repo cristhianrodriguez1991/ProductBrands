@@ -23,7 +23,7 @@
     },
     {
       "path": "/api/admin/product-rankings/sync",
-      "schedule": "0 7 * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }
