@@ -32,23 +32,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, message: "No rankings to sync" })
     }
 
-    const asinsToFetch = Array.from(new Set(rankings.map(r => r.asin).filter(Boolean))) as string[]
-    const skusToFetch = Array.from(new Set(rankings.map(r => r.sku).filter(Boolean))) as string[]
-
-    let catalogMap = new Map<string, any>()
     let fbaQtyMap = new Map<string, any>()
+    let activeListingsQtyMap = new Map<string, any>()
+    let catalogMap = new Map<string, any>()
     let listingsMap = new Map<string, any>()
-
-    try {
-      if (asinsToFetch.length > 0) {
-        const catalogData = await getCatalogItemsByAsins(asinsToFetch)
-        for (const cat of catalogData) {
-          catalogMap.set(cat.asin, cat)
-        }
-      }
-    } catch (e: any) {
-      console.warn("Catalog lookup failed:", e?.message)
-    }
 
     try {
       fbaQtyMap = await getFbaQuantities()
@@ -56,7 +43,6 @@ export async function POST(req: Request) {
       console.warn("FBA quantities lookup failed:", e?.message)
     }
 
-    let activeListingsQtyMap = new Map<string, any>()
     try {
       const activeListings = await getActiveListings()
       for (const item of activeListings) {
@@ -69,6 +55,56 @@ export async function POST(req: Request) {
       }
     } catch (e: any) {
       console.warn("Active listings lookup failed:", e?.message)
+    }
+
+    // Normalize ASINs and SKUs from input
+    rankings.forEach(r => {
+      const input = r.asin || r.sku
+      if (input && input === r.sku && input === r.asin) {
+        // Check if input is a SKU in our maps
+        if (fbaQtyMap.has(input)) {
+          r.asin = fbaQtyMap.get(input).asin
+          r.sku = input
+        } else if (activeListingsQtyMap.has(input)) {
+          r.asin = activeListingsQtyMap.get(input).asin
+          r.sku = input
+        } else {
+          // Check if input is an ASIN by searching values
+          let foundSku = ""
+          for (const [key, val] of fbaQtyMap.entries()) {
+            if (val.asin?.toUpperCase() === input.toUpperCase()) {
+              foundSku = key
+              break
+            }
+          }
+          if (!foundSku) {
+            for (const [key, val] of activeListingsQtyMap.entries()) {
+              if (val.asin?.toUpperCase() === input.toUpperCase()) {
+                foundSku = key
+                break
+              }
+            }
+          }
+          if (foundSku) {
+            r.asin = input
+            r.sku = foundSku
+          }
+        }
+      }
+    })
+
+    const asinsToFetch = Array.from(new Set(rankings.map(r => r.asin).filter(Boolean))) as string[]
+    const skusToFetch = Array.from(new Set(rankings.map(r => r.sku).filter(Boolean))) as string[]
+
+    try {
+      if (asinsToFetch.length > 0) {
+        const catalogData = await getCatalogItemsByAsins(asinsToFetch)
+        for (const cat of catalogData) {
+          catalogMap.set(cat.asin, cat)
+        }
+      }
+    } catch (e: any) {
+      console.warn("Catalog lookup failed:", e?.message)
     }
     
     // Resolve actual SKUs
@@ -283,6 +319,7 @@ export async function POST(req: Request) {
         return prisma.productRanking.update({
           where: { id: r.id },
           data: {
+            asin,
             sku: actualSku,
             imageUrl: catalogImage,
             productName: catalogTitle,

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { PERMISSIONS, hasEffectivePermission } from "@/lib/permissions"
-import { getListingDetailsBySkus, getCatalogItemsByAsins, getFbaFeeEstimate } from "@/lib/amazon-sp-api-service"
+import { getListingDetailsBySkus, getCatalogItemsByAsins, getFbaFeeEstimate, getFbaQuantities, getActiveListings } from "@/lib/amazon-sp-api-service"
 
 export const dynamic = "force-dynamic"
 
@@ -45,6 +45,28 @@ export async function POST(req: Request) {
       return new NextResponse("Missing ASIN or SKU", { status: 400 })
     }
 
+    let finalAsin = asin || ""
+    let finalSku = sku || ""
+
+    if (finalAsin && finalAsin === finalSku) {
+      try {
+        const fbaQtyMap = await getFbaQuantities()
+        if (fbaQtyMap.has(finalAsin)) {
+          finalAsin = fbaQtyMap.get(finalAsin).asin
+        } else {
+          const activeListings = await getActiveListings()
+          for (const item of activeListings) {
+            if (item["seller-sku"] === finalAsin) {
+              finalAsin = item["asin1"] || item["asin"] || finalAsin
+              break
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to normalize SKU to ASIN on POST", e)
+      }
+    }
+
     let price = 0
     let productName = "Unknown Product"
     let imageUrl = null
@@ -54,8 +76,8 @@ export async function POST(req: Request) {
     const monitored = await prisma.monitoredProduct.findFirst({
       where: {
         OR: [
-          { sku: sku || undefined },
-          { asin: asin || undefined }
+          { sku: finalSku || undefined },
+          { asin: finalAsin || undefined }
         ]
       }
     })
@@ -69,8 +91,8 @@ export async function POST(req: Request) {
     const invItem = await prisma.inventoryItem.findFirst({
       where: {
         OR: [
-          { sku: sku || undefined },
-          { asin: asin || undefined }
+          { sku: finalSku || undefined },
+          { asin: finalAsin || undefined }
         ]
       }
     })
@@ -85,8 +107,8 @@ export async function POST(req: Request) {
     // If still missing image or price, try Amazon directly
     if (!imageUrl || productName === "Unknown Product" || price === 0) {
       try {
-        if (asin) {
-          const catalogData = await getCatalogItemsByAsins([asin])
+        if (finalAsin) {
+          const catalogData = await getCatalogItemsByAsins([finalAsin])
           if (catalogData.length > 0) {
             const cData = catalogData[0]
             if (cData.images && cData.images.length > 0) {
@@ -97,9 +119,9 @@ export async function POST(req: Request) {
             if (productName === "Unknown Product") productName = cData.summaries?.[0]?.itemName || "Unknown Product"
           }
         }
-        if (sku && price === 0) {
-          const listingData = await getListingDetailsBySkus([sku])
-          const details = listingData.get(sku)
+        if (finalSku && price === 0) {
+          const listingData = await getListingDetailsBySkus([finalSku])
+          const details = listingData.get(finalSku)
           if (details?.currentPrice) price = details.currentPrice
         }
       } catch (e) {
@@ -107,10 +129,10 @@ export async function POST(req: Request) {
       }
 
       // If STILL missing image (e.g. SP-API failed), try Keepa (like Auto Pricer)
-      if (!imageUrl && asin) {
+      if (!imageUrl && finalAsin) {
         try {
           const { keepaProvider } = await import("@/lib/keepa/provider")
-          const keepaData = await keepaProvider.getProductHistory({ asin, domainId: 1 })
+          const keepaData = await keepaProvider.getProductHistory({ asin: finalAsin, domainId: 1 })
           if (keepaData.success) {
             if (keepaData.imageUrl) imageUrl = keepaData.imageUrl
             if (keepaData.title && productName === "Unknown Product") productName = keepaData.title
@@ -130,8 +152,8 @@ export async function POST(req: Request) {
 
     let fbaFee = 0.0
     try {
-      if (sku && price > 0) {
-        const feeEst = await getFbaFeeEstimate(sku, price, true)
+      if (finalSku && price > 0) {
+        const feeEst = await getFbaFeeEstimate(finalSku, price, true)
         if (feeEst?.fbaFee) fbaFee = feeEst.fbaFee
       }
     } catch (e) {
@@ -140,8 +162,8 @@ export async function POST(req: Request) {
 
     const created = await prisma.productRanking.create({
       data: {
-        asin: asin || sku,
-        sku: sku || asin,
+        asin: finalAsin || finalSku,
+        sku: finalSku || finalAsin,
         cost: Number(cost) || 0,
         price,
         fbaFee,
