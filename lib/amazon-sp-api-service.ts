@@ -626,8 +626,22 @@ export async function getRealTimeInventoryBySkus(skus: string[]): Promise<Map<st
       const list = res?.payload?.inventorySummaries || res?.inventorySummaries || []
       for (const item of list) {
         if (item.sellerSku) {
-          const fulfillable = item.inventoryDetails?.fulfillableQuantity || 0
-          map.set(item.sellerSku, fulfillable)
+          const details = item.inventoryDetails || {}
+          const fulfillable = details.fulfillableQuantity || 0
+          const inboundWorking = details.inboundWorkingQuantity || 0
+          const inboundShipped = details.inboundShippedQuantity || 0
+          const inboundReceiving = details.inboundReceivingQuantity || 0
+          const reserved = details.reservedQuantity?.totalReservedQuantity ?? details.reservedQuantity ?? 0
+          const unfulfillable = details.unfulfillableQuantity?.totalUnfulfillableQuantity ?? details.unfulfillableQuantity ?? 0
+          const researching = details.researchingQuantity?.totalResearchingQuantity ?? details.researchingQuantity ?? 0
+          
+          // Sum all components to match Seller Central "Total" inventory
+          const total = fulfillable + inboundWorking + inboundShipped + inboundReceiving
+            + (typeof reserved === 'number' ? reserved : 0)
+            + (typeof unfulfillable === 'number' ? unfulfillable : 0)
+            + (typeof researching === 'number' ? researching : 0)
+          
+          map.set(item.sellerSku, total)
         }
       }
     } catch (e: any) {
