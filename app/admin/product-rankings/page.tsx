@@ -91,122 +91,244 @@ function RankingRow({
   const restockQty = daysOfSupply < targetDays && dailySales > 0 ? Math.ceil((targetDays - daysOfSupply) * dailySales) : 0
 
   return (
-    <div
-      draggable
-      onDragStart={(e) => onDragStart(e, item)}
-      onDragOver={onDragOver}
-      onDrop={(e) => onDrop(e, item)}
-      className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-muted/30 transition-colors group cursor-move relative"
-    >
-      <div className="col-span-1 flex items-center justify-center gap-2">
-        <GripVertical className="h-4 w-4 text-muted-foreground opacity-50 group-hover:opacity-100" />
-        <span className="font-bold text-lg w-6 text-center">{item.rank}</span>
-      </div>
-      
-      <div className="col-span-3 flex items-center gap-3">
-        <div className="relative h-12 w-12 rounded overflow-hidden bg-muted flex-shrink-0 border">
-          {item.imageUrl ? (
-            <Image src={item.imageUrl} alt={item.productName || "Product"} fill className="object-cover" />
-          ) : (
-            <Package className="h-6 w-6 absolute inset-0 m-auto text-muted-foreground" />
-          )}
+    <>
+      {/* Mobile Card Layout (md:hidden) */}
+      <div className="md:hidden p-4 space-y-3 bg-white dark:bg-gray-900 border-b relative">
+        {/* Top Row: Rank, Image, Product Info, Delete button */}
+        <div className="flex items-start gap-3">
+          <div className="flex flex-col items-center justify-center shrink-0 w-7 pt-0.5">
+            <span className="font-bold text-sm bg-muted text-foreground w-7 h-7 rounded-full flex items-center justify-center border">
+              {item.rank}
+            </span>
+          </div>
+          <div className="relative h-14 w-14 rounded-md overflow-hidden bg-muted flex-shrink-0 border">
+            {item.imageUrl ? (
+              <Image src={item.imageUrl} alt={item.productName || "Product"} fill className="object-cover" />
+            ) : (
+              <Package className="h-6 w-6 absolute inset-0 m-auto text-muted-foreground" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0 pr-6">
+            <p className="font-medium text-sm line-clamp-2 leading-snug" title={item.productName || "Unknown"}>
+              {item.productName || "Unknown Product"}
+            </p>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              <span className="text-xs text-muted-foreground font-mono">{item.asin || item.sku}</span>
+              {restockQty > 0 && (
+                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded">
+                  Rec: +{restockQty}
+                </span>
+              )}
+            </div>
+          </div>
+          <button 
+            onClick={() => onDelete(item.id)}
+            className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors shrink-0"
+            title="Remove"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
         </div>
-        <div className="overflow-hidden">
-          <p className="font-medium text-sm truncate" title={item.productName || "Unknown"}>
-            {item.productName || "Unknown Product"}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {item.asin || item.sku}
-          </p>
-        </div>
-      </div>
 
-      <div className="col-span-1 flex flex-col items-center justify-center gap-1">
-        <span className="font-medium">{item.inventory}</span>
-        {daysOfSupply < 999 ? (
-          <span className="text-[10px] text-muted-foreground whitespace-nowrap">{daysOfSupply} Days Supply</span>
-        ) : (
-          <span className="text-[10px] text-muted-foreground whitespace-nowrap">&gt;999 Days Supply</span>
-        )}
-        {restockQty > 0 && (
-          <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded whitespace-nowrap">
-            Rec: +{restockQty}
-          </span>
-        )}
-      </div>
+        {/* Quick Stats Banner (Inventory / Supply & Profit) */}
+        <div className="grid grid-cols-2 gap-2 bg-muted/40 p-2.5 rounded-lg text-xs">
+          <div>
+            <span className="text-muted-foreground">Inventory: </span>
+            <span className="font-semibold text-foreground">{item.inventory.toLocaleString()} units</span>
+            <div className="text-[10px] text-muted-foreground mt-0.5">
+              {daysOfSupply < 999 ? `${daysOfSupply} Days Supply` : ">999 Days Supply"}
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-muted-foreground">Est. Profit: </span>
+            <div className={`text-base font-bold leading-tight ${totalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+              ${totalProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              ${profitPerUnit.toFixed(2)} / unit
+            </div>
+          </div>
+        </div>
 
-      <div className="col-span-2 flex flex-col gap-2 pl-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Price:</span>
-          <span className="text-sm font-medium">${item.price.toFixed(2)}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Amz Fees:</span>
-          <span className="text-sm text-red-500">-${(item.fbaFee || 0).toFixed(2)}</span>
-        </div>
-        <div className="flex items-center justify-between mt-1">
-          <span className="text-xs text-muted-foreground">Cost:</span>
-          <div className="relative">
-            <DollarSign className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              className="h-8 pl-7 text-sm w-24 text-right print:border-none print:shadow-none print:p-0 print:text-left print:pl-5 print:w-auto"
-              value={cost}
-              onChange={(e) => setCost(e.target.value)}
-              onBlur={handleCostBlur}
-            />
+        {/* Inputs Row: Price, Fees, Cost input | Sales Period & Units */}
+        <div className="grid grid-cols-2 gap-3 pt-1 border-t">
+          {/* Cost & Price column */}
+          <div className="space-y-1.5 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Price:</span>
+              <span className="font-medium">${item.price.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Amz Fees:</span>
+              <span className="text-red-500 font-medium">-${(item.fbaFee || 0).toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-1 pt-1">
+              <span className="text-muted-foreground">Cost:</span>
+              <div className="relative">
+                <DollarSign className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input 
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  className="h-7 pl-6 text-xs w-20 text-right"
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
+                  onBlur={handleCostBlur}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Sales column */}
+          <div className="space-y-1.5 text-xs">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-muted-foreground">Period:</span>
+              <Select value={salesPeriod} onValueChange={(val: any) => setSalesPeriod(val)}>
+                <SelectTrigger className="h-7 w-20 text-xs px-2">
+                  <SelectValue placeholder="Period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 Days</SelectItem>
+                  <SelectItem value="30">30 Days</SelectItem>
+                  <SelectItem value="90">90 Days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between gap-1 pt-1">
+              <span className="text-muted-foreground">Sales:</span>
+              <div className="flex items-center gap-1">
+                <Input 
+                  type="number"
+                  className="h-7 w-16 text-xs text-right"
+                  value={salesValue}
+                  onChange={(e) => setSalesValue(e.target.value)}
+                  onBlur={handleSalesBlur}
+                />
+                <span className="text-[10px] text-muted-foreground">units</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="col-span-3 flex flex-col gap-2 pl-4 print:hidden">
-        <div className="flex items-center gap-2">
-          <Select value={salesPeriod} onValueChange={(val: any) => setSalesPeriod(val)}>
-            <SelectTrigger className="h-8 w-28 text-xs">
-              <SelectValue placeholder="Period" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">7 Days</SelectItem>
-              <SelectItem value="30">30 Days</SelectItem>
-              <SelectItem value="90">90 Days</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center gap-2">
-          <Input 
-            type="number"
-            className="h-8 w-28 text-sm"
-            value={salesValue}
-            onChange={(e) => setSalesValue(e.target.value)}
-            onBlur={handleSalesBlur}
-          />
-          <span className="text-xs text-muted-foreground">units</span>
-        </div>
-      </div>
-      <div className="col-span-3 hidden print:flex flex-col justify-center pl-4">
-        <span className="text-sm font-medium">{salesValue} units</span>
-        <span className="text-xs text-muted-foreground">{salesPeriod} Days</span>
-      </div>
-
-      <div className="col-span-2 flex flex-col items-end justify-center pr-4">
-        <span className={`text-lg font-bold ${totalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-          ${totalProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          ${profitPerUnit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / unit
-        </span>
-      </div>
-
-      <button 
-        onClick={() => onDelete(item.id)}
-        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity print:hidden"
-        title="Remove"
+      {/* Desktop Grid Layout (hidden md:grid) */}
+      <div
+        draggable
+        onDragStart={(e) => onDragStart(e, item)}
+        onDragOver={onDragOver}
+        onDrop={(e) => onDrop(e, item)}
+        className="hidden md:grid grid-cols-12 gap-4 p-4 items-center hover:bg-muted/30 transition-colors group cursor-move relative"
       >
-        <Trash2 className="h-4 w-4" />
-      </button>
-    </div>
+        <div className="col-span-1 flex items-center justify-center gap-2">
+          <GripVertical className="h-4 w-4 text-muted-foreground opacity-50 group-hover:opacity-100" />
+          <span className="font-bold text-lg w-6 text-center">{item.rank}</span>
+        </div>
+        
+        <div className="col-span-3 flex items-center gap-3 min-w-0">
+          <div className="relative h-12 w-12 rounded overflow-hidden bg-muted flex-shrink-0 border">
+            {item.imageUrl ? (
+              <Image src={item.imageUrl} alt={item.productName || "Product"} fill className="object-cover" />
+            ) : (
+              <Package className="h-6 w-6 absolute inset-0 m-auto text-muted-foreground" />
+            )}
+          </div>
+          <div className="overflow-hidden min-w-0">
+            <p className="font-medium text-sm truncate" title={item.productName || "Unknown"}>
+              {item.productName || "Unknown Product"}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">
+              {item.asin || item.sku}
+            </p>
+          </div>
+        </div>
+
+        <div className="col-span-1 flex flex-col items-center justify-center gap-1">
+          <span className="font-medium">{item.inventory}</span>
+          {daysOfSupply < 999 ? (
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">{daysOfSupply} Days Supply</span>
+          ) : (
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">&gt;999 Days Supply</span>
+          )}
+          {restockQty > 0 && (
+            <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded whitespace-nowrap">
+              Rec: +{restockQty}
+            </span>
+          )}
+        </div>
+
+        <div className="col-span-2 flex flex-col gap-2 pl-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Price:</span>
+            <span className="text-sm font-medium">${item.price.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Amz Fees:</span>
+            <span className="text-sm text-red-500">-${(item.fbaFee || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex items-center justify-between mt-1">
+            <span className="text-xs text-muted-foreground">Cost:</span>
+            <div className="relative">
+              <DollarSign className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                className="h-8 pl-7 text-sm w-24 text-right print:border-none print:shadow-none print:p-0 print:text-left print:pl-5 print:w-auto"
+                value={cost}
+                onChange={(e) => setCost(e.target.value)}
+                onBlur={handleCostBlur}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="col-span-3 flex flex-col gap-2 pl-4 print:hidden">
+          <div className="flex items-center gap-2">
+            <Select value={salesPeriod} onValueChange={(val: any) => setSalesPeriod(val)}>
+              <SelectTrigger className="h-8 w-28 text-xs">
+                <SelectValue placeholder="Period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">7 Days</SelectItem>
+                <SelectItem value="30">30 Days</SelectItem>
+                <SelectItem value="90">90 Days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input 
+              type="number"
+              className="h-8 w-28 text-sm"
+              value={salesValue}
+              onChange={(e) => setSalesValue(e.target.value)}
+              onBlur={handleSalesBlur}
+            />
+            <span className="text-xs text-muted-foreground">units</span>
+          </div>
+        </div>
+        <div className="col-span-3 hidden print:flex flex-col justify-center pl-4">
+          <span className="text-sm font-medium">{salesValue} units</span>
+          <span className="text-xs text-muted-foreground">{salesPeriod} Days</span>
+        </div>
+
+        <div className="col-span-2 flex flex-col items-end justify-center pr-4">
+          <span className={`text-lg font-bold ${totalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+            ${totalProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            ${profitPerUnit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / unit
+          </span>
+        </div>
+
+        <button 
+          onClick={() => onDelete(item.id)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity print:hidden"
+          title="Remove"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+    </>
   )
 }
 
@@ -373,38 +495,38 @@ export default function ProductRankingsPage() {
   return (
     <PinProtection>
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Product Rankings (P&L)</h1>
-          <p className="text-muted-foreground mt-2 print:hidden">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Product Rankings (P&L)</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base print:hidden">
             Track and prioritize your best selling products. Pull live Amazon data, override manually, and calculate profits.
           </p>
         </div>
-        <div className="flex items-center gap-3 print:hidden">
-          <Button onClick={() => window.print()} variant="outline" className="gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 print:hidden">
+          <Button onClick={() => window.print()} variant="outline" className="gap-2 h-9 sm:h-10 text-xs sm:text-sm">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-printer"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
-            Print PDF
+            <span className="hidden sm:inline">Print</span> PDF
           </Button>
-          <Button onClick={handleSyncAmazon} disabled={syncing} variant="outline" className="gap-2">
+          <Button onClick={handleSyncAmazon} disabled={syncing} variant="outline" className="gap-2 h-9 sm:h-10 text-xs sm:text-sm">
             <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Syncing...' : 'Sync Amazon Data'}
+            {syncing ? 'Syncing...' : 'Sync Amazon'}
           </Button>
         </div>
       </div>
 
       <Card className="print:hidden">
-        <CardHeader>
-          <CardTitle>Add Product to Rankings</CardTitle>
+        <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
+          <CardTitle className="text-base sm:text-lg">Add Product to Rankings</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleAdd} className="flex gap-4">
+        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+          <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-2 sm:gap-4">
             <Input
               placeholder="Enter ASIN or SKU..."
               value={newSku}
               onChange={(e) => setNewSku(e.target.value)}
-              className="max-w-md"
+              className="w-full sm:max-w-md h-9 sm:h-10 text-sm"
             />
-            <Button type="submit" disabled={adding || !newSku}>
+            <Button type="submit" disabled={adding || !newSku} className="h-9 sm:h-10">
               <Plus className="h-4 w-4 mr-2" />
               Add Product
             </Button>
@@ -412,8 +534,9 @@ export default function ProductRankingsPage() {
         </CardContent>
       </Card>
 
-      <div className="bg-white dark:bg-gray-900 rounded-md border shadow-sm">
-        <div className="grid grid-cols-12 gap-4 p-4 font-medium border-b bg-muted/50 text-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-md border shadow-sm overflow-hidden">
+        {/* Desktop Table Header */}
+        <div className="hidden md:grid grid-cols-12 gap-4 p-4 font-medium border-b bg-muted/50 text-sm">
           <div className="col-span-1 text-center">Rank</div>
           <div className="col-span-3">Product</div>
           <div className="col-span-1 text-center">Inventory</div>
@@ -422,9 +545,15 @@ export default function ProductRankingsPage() {
           <div className="col-span-2 text-right pr-4">Profit</div>
         </div>
 
+        {/* Mobile Header / Count */}
+        <div className="md:hidden px-4 py-3 bg-muted/40 border-b flex justify-between items-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <span>Ranked Products ({rankings.length})</span>
+          <span>Rank Order</span>
+        </div>
+
         <div className="divide-y">
           {rankings.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
+            <div className="p-8 text-center text-muted-foreground text-sm">
               No products added yet. Add an ASIN/SKU above to start ranking.
             </div>
           ) : (
@@ -454,29 +583,52 @@ export default function ProductRankingsPage() {
           const grandTotalUnits = rankings.reduce((sum, item) => sum + (item.sales30Days || 0), 0)
 
           return (
-            <div className="grid grid-cols-12 gap-4 p-4 items-center border-t-2 border-primary/30 bg-primary/5 rounded-b-md">
-              <div className="col-span-1 text-center">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Total</span>
+            <>
+              {/* Desktop Grand Total Footer */}
+              <div className="hidden md:grid grid-cols-12 gap-4 p-4 items-center border-t-2 border-primary/30 bg-primary/5 rounded-b-md">
+                <div className="col-span-1 text-center">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Total</span>
+                </div>
+                <div className="col-span-3">
+                  <span className="text-sm font-semibold text-muted-foreground">{rankings.length} product{rankings.length !== 1 ? "s" : ""}</span>
+                </div>
+                <div className="col-span-1 text-center">
+                  <span className="font-bold text-base">{grandTotalInventory.toLocaleString("en-US")}</span>
+                  <p className="text-xs text-muted-foreground">units</p>
+                </div>
+                <div className="col-span-2" />
+                <div className="col-span-3 pl-4">
+                  <span className="font-bold text-base">{grandTotalUnits.toLocaleString("en-US")}</span>
+                  <span className="text-xs text-muted-foreground ml-1">units / 30d</span>
+                </div>
+                <div className="col-span-2 flex flex-col items-end pr-4">
+                  <span className={`text-xl font-bold ${grandTotalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                    ${grandTotalProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-xs text-muted-foreground">grand total profit</span>
+                </div>
               </div>
-              <div className="col-span-3">
-                <span className="text-sm font-semibold text-muted-foreground">{rankings.length} product{rankings.length !== 1 ? "s" : ""}</span>
+
+              {/* Mobile Grand Total Footer */}
+              <div className="md:hidden p-4 border-t-2 border-primary/30 bg-primary/5 rounded-b-md space-y-2.5">
+                <div className="flex justify-between items-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  <span>Total ({rankings.length} Products)</span>
+                  <span>{grandTotalInventory.toLocaleString("en-US")} in stock</span>
+                </div>
+                <div className="flex justify-between items-end pt-2 border-t border-primary/10">
+                  <div>
+                    <span className="text-[11px] text-muted-foreground">30-Day Sales Volume</span>
+                    <div className="font-bold text-sm">{grandTotalUnits.toLocaleString("en-US")} units</div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[11px] text-muted-foreground">Grand Total Profit</span>
+                    <div className={`text-lg font-black leading-tight ${grandTotalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                      ${grandTotalProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="col-span-1 text-center">
-                <span className="font-bold text-base">{grandTotalInventory.toLocaleString("en-US")}</span>
-                <p className="text-xs text-muted-foreground">units</p>
-              </div>
-              <div className="col-span-2" />
-              <div className="col-span-3 pl-4">
-                <span className="font-bold text-base">{grandTotalUnits.toLocaleString("en-US")}</span>
-                <span className="text-xs text-muted-foreground ml-1">units / 30d</span>
-              </div>
-              <div className="col-span-2 flex flex-col items-end pr-4">
-                <span className={`text-xl font-bold ${grandTotalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                  ${grandTotalProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-                <span className="text-xs text-muted-foreground">grand total profit</span>
-              </div>
-            </div>
+            </>
           )
         })()}
       </div>
