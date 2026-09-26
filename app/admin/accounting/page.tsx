@@ -507,9 +507,10 @@ export default function AccountingPage() {
                 <YAxis yAxisId="left" tickFormatter={(val) => `$${val}`} />
                 <YAxis yAxisId="right" orientation="right" tickFormatter={(val) => `${val}%`} />
                 <Tooltip 
-                  formatter={(value: number, name: string) => {
-                    if (name === "Net Profit") return [`$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, name]
-                    return [`${value.toFixed(2)}%`, name]
+                  formatter={(value: any, name: any) => {
+                    if (value === undefined || value === null) return ["", name]
+                    if (name === "Net Profit") return [`$${Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, name]
+                    return [`${Number(value).toFixed(2)}%`, name]
                   }}
                 />
                 <Legend />
