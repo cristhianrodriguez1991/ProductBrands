@@ -21,6 +21,9 @@ export default function AccountingPage() {
   const [days, setDays] = useState("30")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+  const [graphFilter, setGraphFilter] = useState("all")
+  const [graphStartDate, setGraphStartDate] = useState("")
+  const [graphEndDate, setGraphEndDate] = useState("")
   const [exactCustomSalesMap, setExactCustomSalesMap] = useState<Record<string, number> | null>(null)
   const [isDisbursementsOpen, setIsDisbursementsOpen] = useState(false)
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: "asc" | "desc" } | null>({ key: "endDate", direction: "desc" })
@@ -190,14 +193,40 @@ export default function AccountingPage() {
   const netProfit = totalDisbursed - operatingExpenses - totalCogs
   const profitMargin = totalDisbursed > 0 ? (netProfit / totalDisbursed) * 100 : 0
 
-  const chartData = snapshots.map((s, i) => {
-    const prevProfit = i > 0 ? snapshots[i-1].netProfit : s.netProfit
+  let filteredSnapshots = snapshots
+  if (graphFilter !== "all") {
+    const now = new Date()
+    let cutoff = new Date(0)
+    
+    if (graphFilter === "1m") {
+      cutoff = new Date(now.setMonth(now.getMonth() - 1))
+    } else if (graphFilter === "3m") {
+      cutoff = new Date(now.setMonth(now.getMonth() - 3))
+    } else if (graphFilter === "6m") {
+      cutoff = new Date(now.setMonth(now.getMonth() - 6))
+    } else if (graphFilter === "custom" && graphStartDate && graphEndDate) {
+      const start = new Date(graphStartDate)
+      const end = new Date(graphEndDate)
+      filteredSnapshots = snapshots.filter((s: any) => {
+        const d = new Date(s.weekEndDate)
+        return d >= start && d <= end
+      })
+    }
+
+    if (graphFilter !== "custom") {
+      filteredSnapshots = snapshots.filter((s: any) => new Date(s.weekEndDate) >= cutoff)
+    }
+  }
+
+  const chartData = filteredSnapshots.map((s, i) => {
+    const prevProfit = i > 0 ? filteredSnapshots[i-1].netProfit : s.netProfit
     const growth = prevProfit > 0 ? ((s.netProfit - prevProfit) / prevProfit) * 100 : 0
     return {
       week: new Date(s.weekEndDate).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
       profit: s.netProfit,
       growth: i === 0 ? 0 : growth,
-      roi: s.roiCash
+      roi: s.roiCash,
+      rawDate: s.weekEndDate
     }
   })
 
@@ -541,13 +570,46 @@ export default function AccountingPage() {
 
       {/* Weekly Growth Chart */}
       <Card className="border-2 border-primary/20 print:hidden">
-        <CardHeader className="bg-muted/30 border-b p-4 sm:p-6">
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-            Weekly Profit Growth
-          </CardTitle>
-          <CardDescription className="text-xs sm:text-sm">
-            Historical snapshot of weekly net profit and growth prediction. Updated every Monday.
-          </CardDescription>
+        <CardHeader className="bg-muted/30 border-b p-4 sm:p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              Weekly Profit Growth
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm mt-1">
+              Historical snapshot of weekly net profit and growth prediction. Updated every Monday.
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-2 items-center shrink-0">
+            {graphFilter === "custom" && (
+              <div className="flex items-center gap-2">
+                <Input 
+                  type="date" 
+                  value={graphStartDate} 
+                  onChange={e => setGraphStartDate(e.target.value)}
+                  className="w-[130px] bg-white dark:bg-gray-950 h-9 text-xs"
+                />
+                <span className="text-xs text-muted-foreground">to</span>
+                <Input 
+                  type="date" 
+                  value={graphEndDate} 
+                  onChange={e => setGraphEndDate(e.target.value)}
+                  className="w-[130px] bg-white dark:bg-gray-950 h-9 text-xs"
+                />
+              </div>
+            )}
+            <Select value={graphFilter} onValueChange={setGraphFilter}>
+              <SelectTrigger className="w-[140px] bg-white dark:bg-gray-950 h-9 text-xs">
+                <SelectValue placeholder="Date Range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="1m">Last Month</SelectItem>
+                <SelectItem value="3m">Last 3 Months</SelectItem>
+                <SelectItem value="6m">Last 6 Months</SelectItem>
+                <SelectItem value="custom">Custom Range</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <div className="h-[400px] w-full">
