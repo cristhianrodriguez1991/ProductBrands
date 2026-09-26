@@ -48,18 +48,19 @@ export default function AccountingPage() {
       let url = `/api/admin/accounting/disbursements?days=${days}`
       let fetchedCustomSales = null
       
+      const ts = Date.now()
       if (days === "custom" && startDate && endDate) {
         url += `&startDate=${startDate}&endDate=${endDate}`
         
         // Fetch exact ASIN sales directly from Amazon for this specific custom date range
-        const customRes = await fetch(`/api/admin/accounting/ranked-sales-custom?startDate=${startDate}&endDate=${endDate}`)
+        const customRes = await fetch(`/api/admin/accounting/ranked-sales-custom?startDate=${startDate}&endDate=${endDate}&_t=${ts}`, { cache: 'no-store' })
         if (customRes.ok) fetchedCustomSales = await customRes.json()
       }
       
       const [disRes, prodRes, snapRes] = await Promise.all([
-        fetch(url),
-        fetch(`/api/admin/product-rankings`),
-        fetch(`/api/admin/accounting/snapshots`)
+        fetch(`${url}&_t=${ts}`, { cache: 'no-store' }),
+        fetch(`/api/admin/product-rankings?_t=${ts}`, { cache: 'no-store' }),
+        fetch(`/api/admin/accounting/snapshots?_t=${ts}`, { cache: 'no-store' })
       ])
       
       if (!disRes.ok || !prodRes.ok) throw new Error("Failed to fetch")
@@ -83,6 +84,18 @@ export default function AccountingPage() {
 
   useEffect(() => {
     fetchData()
+
+    // Automatically re-fetch when the user returns to the tab (e.g. the next morning)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchData()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
   }, [days])
 
   const handleSync = () => {
