@@ -198,7 +198,9 @@ export default function AccountingPage() {
     const now = new Date()
     let cutoff = new Date(0)
     
-    if (graphFilter === "1m") {
+    if (graphFilter === "1w") {
+      cutoff = new Date(now.setDate(now.getDate() - 7))
+    } else if (graphFilter === "1m") {
       cutoff = new Date(now.setMonth(now.getMonth() - 1))
     } else if (graphFilter === "3m") {
       cutoff = new Date(now.setMonth(now.getMonth() - 3))
@@ -603,6 +605,7 @@ export default function AccountingPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="1w">Last Week</SelectItem>
                 <SelectItem value="1m">Last Month</SelectItem>
                 <SelectItem value="3m">Last 3 Months</SelectItem>
                 <SelectItem value="6m">Last 6 Months</SelectItem>
