@@ -1225,3 +1225,23 @@ model ProductRanking {
   @@index([rank])
 }
 
+// ─────────────────────────────────────────────────────────────
+// WEEKLY PROFIT SNAPSHOTS (Accounting)
+// ─────────────────────────────────────────────────────────────
+
+model WeeklyProfitSnapshot {
+  id             String   @id @default(cuid())
+  weekStartDate  DateTime
+  weekEndDate    DateTime
+  totalDisbursed Float    @default(0.0)
+  totalCogs      Float    @default(0.0)
+  operatingExp   Float    @default(0.0)
+  netProfit      Float    @default(0.0)
+  roiCash        Float    @default(0.0)
+  marginSales    Float    @default(0.0)
+  createdAt      DateTime @default(now())
+  
+  @@index([weekEndDate])
+}
+
+

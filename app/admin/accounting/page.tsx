@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { RefreshCw, DollarSign, Wallet, ChevronDown, ChevronUp, Calculator, ArrowUpDown } from "lucide-react"
 import PinProtection from "@/components/PinProtection"
+import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts"
 
 export default function AccountingPage() {
   const [disbursements, setDisbursements] = useState<any[]>([])
@@ -23,6 +24,7 @@ export default function AccountingPage() {
   const [exactCustomSalesMap, setExactCustomSalesMap] = useState<Record<string, number> | null>(null)
   const [isDisbursementsOpen, setIsDisbursementsOpen] = useState(false)
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: "asc" | "desc" } | null>({ key: "endDate", direction: "desc" })
+  const [snapshots, setSnapshots] = useState<any[]>([])
   
   // Try to load operating expenses from local storage, default to 0
   const [operatingExpenses, setOperatingExpenses] = useState<number>(0)
@@ -54,20 +56,23 @@ export default function AccountingPage() {
         if (customRes.ok) fetchedCustomSales = await customRes.json()
       }
       
-      const [disRes, prodRes] = await Promise.all([
+      const [disRes, prodRes, snapRes] = await Promise.all([
         fetch(url),
-        fetch(`/api/admin/product-rankings`)
+        fetch(`/api/admin/product-rankings`),
+        fetch(`/api/admin/accounting/snapshots`)
       ])
       
       if (!disRes.ok || !prodRes.ok) throw new Error("Failed to fetch")
       
       const disData = await disRes.json()
       const prodData = await prodRes.json()
+      const snapData = await snapRes.json()
       
       setDisbursements(disData.disbursements || [])
       setAccountSales(disData.accountSales || { amount: 0, units: 0 })
       setExactCustomSalesMap(fetchedCustomSales)
       setProducts(prodData || [])
+      setSnapshots(snapData || [])
     } catch (e: any) {
       toast({ title: "Error", description: "Could not load data.", variant: "destructive" })
     } finally {
@@ -133,6 +138,17 @@ export default function AccountingPage() {
 
   const netProfit = totalDisbursed - operatingExpenses - totalCogs
   const profitMargin = totalDisbursed > 0 ? (netProfit / totalDisbursed) * 100 : 0
+
+  const chartData = snapshots.map((s, i) => {
+    const prevProfit = i > 0 ? snapshots[i-1].netProfit : s.netProfit
+    const growth = prevProfit > 0 ? ((s.netProfit - prevProfit) / prevProfit) * 100 : 0
+    return {
+      week: new Date(s.weekEndDate).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      profit: s.netProfit,
+      growth: i === 0 ? 0 : growth,
+      roi: s.roiCash
+    }
+  })
 
   return (
     <PinProtection>
@@ -468,6 +484,40 @@ export default function AccountingPage() {
               </div>
             </div>
 
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Weekly Growth Chart */}
+      <Card className="border-2 border-primary/20 print:hidden">
+        <CardHeader className="bg-muted/30 border-b p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            Weekly Profit Growth
+          </CardTitle>
+          <CardDescription className="text-xs sm:text-sm">
+            Historical snapshot of weekly net profit and growth prediction. Updated every Monday.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6">
+          <div className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="week" />
+                <YAxis yAxisId="left" tickFormatter={(val) => `$${val}`} />
+                <YAxis yAxisId="right" orientation="right" tickFormatter={(val) => `${val}%`} />
+                <Tooltip 
+                  formatter={(value: number, name: string) => {
+                    if (name === "Net Profit") return [`$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, name]
+                    return [`${value.toFixed(2)}%`, name]
+                  }}
+                />
+                <Legend />
+                <Bar yAxisId="left" dataKey="profit" name="Net Profit" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="growth" name="WoW Growth %" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                <Line yAxisId="right" type="monotone" dataKey="roi" name="ROI %" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
           </div>
         </CardContent>
       </Card>
