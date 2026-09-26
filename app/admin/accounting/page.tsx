@@ -30,6 +30,8 @@ export default function AccountingPage() {
     growth: false,
     roi: false,
   })
+  const [selectedBarData, setSelectedBarData] = useState<any>(null)
+  const [isBarModalOpen, setIsBarModalOpen] = useState(false)
   
   // Try to load operating expenses from local storage, default to 0
   const [operatingExpenses, setOperatingExpenses] = useState<number>(0)
@@ -154,9 +156,32 @@ export default function AccountingPage() {
       unitsSold: estimatedSales,
       totalCogs: cost * estimatedSales,
       totalGross: price * estimatedSales,
-      totalFees: fbaFee * estimatedSales
+      totalFees: fbaFee * estimatedSales,
+      netProfit: (price * estimatedSales) - (fbaFee * estimatedSales) - (cost * estimatedSales)
     }
   })
+
+  // Calculates a 7-day breakdown for the graph bar modal
+  const getWeeklyBarBreakdown = () => {
+    return products.map(p => {
+      const cost = p.cost || 0
+      const price = p.price || 0
+      const fbaFee = p.fbaFee || 0
+      const units = p.sales7Days || 0
+      const gross = price * units
+      const cogs = cost * units
+      const fees = fbaFee * units
+      return {
+        title: p.productName || "Unknown Product",
+        image: p.imageUrl || "",
+        units,
+        gross,
+        cogs,
+        fees,
+        netProfit: gross - fees - cogs
+      }
+    }).sort((a, b) => b.netProfit - a.netProfit)
+  }
 
   const totalCogs = cogsBreakdown.reduce((sum, item) => sum + item.totalCogs, 0)
   const totalGrossSales = cogsBreakdown.reduce((sum, item) => sum + item.totalGross, 0)
@@ -540,7 +565,20 @@ export default function AccountingPage() {
                   }}
                 />
                 <Legend onClick={toggleMetric} wrapperStyle={{ cursor: 'pointer', userSelect: 'none' }} />
-                <Bar hide={hiddenMetrics.profit} yAxisId="left" dataKey="profit" name="Net Profit" fill="#22c55e" radius={[4, 4, 0, 0]} opacity={hiddenMetrics.profit ? 0.3 : 1} />
+                <Bar 
+                  hide={hiddenMetrics.profit} 
+                  yAxisId="left" 
+                  dataKey="profit" 
+                  name="Net Profit" 
+                  fill="#22c55e" 
+                  radius={[4, 4, 0, 0]} 
+                  opacity={hiddenMetrics.profit ? 0.3 : 1} 
+                  onClick={(data) => {
+                    setSelectedBarData(data)
+                    setIsBarModalOpen(true)
+                  }}
+                  cursor="pointer"
+                />
                 <Line hide={hiddenMetrics.growth} yAxisId="right" type="monotone" dataKey="growth" name="WoW Growth %" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} opacity={hiddenMetrics.growth ? 0.3 : 1} />
                 <Line hide={hiddenMetrics.roi} yAxisId="right" type="monotone" dataKey="roi" name="ROI %" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} opacity={hiddenMetrics.roi ? 0.3 : 1} />
               </ComposedChart>
@@ -548,6 +586,53 @@ export default function AccountingPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isBarModalOpen} onOpenChange={setIsBarModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6">
+          <DialogHeader>
+            <DialogTitle>Weekly Net Profit Breakdown ({selectedBarData?.week})</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm text-muted-foreground mb-4">
+            <p><strong>Total Weekly Net Profit:</strong> ${selectedBarData?.profit?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="mt-1">Below is the estimated 7-day breakdown of Net Profit per product.</p>
+          </div>
+          <div className="rounded-md border overflow-x-auto">
+            <div className="min-w-[650px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="text-right">7-Day Units</TableHead>
+                    <TableHead className="text-right">Gross Sales</TableHead>
+                    <TableHead className="text-right">COGS</TableHead>
+                    <TableHead className="text-right">FBA Fees</TableHead>
+                    <TableHead className="text-right">Net Profit</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {getWeeklyBarBreakdown().map((item, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell className="max-w-[200px] truncate">
+                        <div className="flex items-center gap-2">
+                          {item.image && <img src={item.image} alt={item.title} className="w-8 h-8 object-cover rounded" />}
+                          <span className="truncate" title={item.title}>{item.title}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{item.units.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">${item.gross.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-right text-red-500">${item.cogs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-right text-red-500">${item.fees.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell className={`text-right font-bold ${item.netProfit >= 0 ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
+                        ${item.netProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
     </PinProtection>
   )
