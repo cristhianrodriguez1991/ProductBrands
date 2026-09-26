@@ -25,6 +25,11 @@ export default function AccountingPage() {
   const [isDisbursementsOpen, setIsDisbursementsOpen] = useState(false)
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: "asc" | "desc" } | null>({ key: "endDate", direction: "desc" })
   const [snapshots, setSnapshots] = useState<any[]>([])
+  const [hiddenMetrics, setHiddenMetrics] = useState<Record<string, boolean>>({
+    profit: false,
+    growth: false,
+    roi: false,
+  })
   
   // Try to load operating expenses from local storage, default to 0
   const [operatingExpenses, setOperatingExpenses] = useState<number>(0)
@@ -109,6 +114,14 @@ export default function AccountingPage() {
       direction = "asc"
     }
     setSortConfig({ key, direction })
+  }
+
+  const toggleMetric = (e: any) => {
+    if (!e || !e.dataKey) return
+    setHiddenMetrics(prev => ({
+      ...prev,
+      [e.dataKey]: !prev[e.dataKey]
+    }))
   }
 
   // Math Calculations
@@ -526,10 +539,10 @@ export default function AccountingPage() {
                     return [`${Number(value).toFixed(2)}%`, name]
                   }}
                 />
-                <Legend />
-                <Bar yAxisId="left" dataKey="profit" name="Net Profit" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="growth" name="WoW Growth %" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                <Line yAxisId="right" type="monotone" dataKey="roi" name="ROI %" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                <Legend onClick={toggleMetric} wrapperStyle={{ cursor: 'pointer', userSelect: 'none' }} />
+                <Bar hide={hiddenMetrics.profit} yAxisId="left" dataKey="profit" name="Net Profit" fill="#22c55e" radius={[4, 4, 0, 0]} opacity={hiddenMetrics.profit ? 0.3 : 1} />
+                <Line hide={hiddenMetrics.growth} yAxisId="right" type="monotone" dataKey="growth" name="WoW Growth %" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} opacity={hiddenMetrics.growth ? 0.3 : 1} />
+                <Line hide={hiddenMetrics.roi} yAxisId="right" type="monotone" dataKey="roi" name="ROI %" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} opacity={hiddenMetrics.roi ? 0.3 : 1} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
