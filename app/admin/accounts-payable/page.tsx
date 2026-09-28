@@ -19,6 +19,7 @@ type AccountPayable = {
   lastDayToPay: string | null
   notes: string | null
   isPaid: boolean
+  proofOfPaymentUrl: string | null
 }
 
 export default function AccountsPayablePage() {
@@ -26,6 +27,12 @@ export default function AccountsPayablePage() {
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  
+  // Payment Proof State
+  const [payModalOpen, setPayModalOpen] = useState(false)
+  const [payingItem, setPayingItem] = useState<AccountPayable | null>(null)
+  const [proofFile, setProofFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
   
   // Form State
   const [supplierName, setSupplierName] = useState("")
@@ -124,17 +131,42 @@ export default function AccountsPayablePage() {
     }
   }
 
-  const toggleStatus = async (item: AccountPayable) => {
+  const openPayModal = (item: AccountPayable) => {
+    setPayingItem(item)
+    setProofFile(null)
+    setPayModalOpen(true)
+  }
+
+  const handleMarkAsPaid = async () => {
+    if (!payingItem) return
+    setUploading(true)
     try {
-      const res = await fetch(`/api/admin/accounts-payable/${item.id}`, {
+      let proofUrl = null
+      if (proofFile) {
+        const formData = new FormData()
+        formData.append("file", proofFile)
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData
+        })
+        if (!uploadRes.ok) throw new Error("Failed to upload proof of payment")
+        const uploadData = await uploadRes.json()
+        proofUrl = uploadData.url
+      }
+
+      const res = await fetch(`/api/admin/accounts-payable/${payingItem.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isPaid: !item.isPaid })
+        body: JSON.stringify({ isPaid: true, proofOfPaymentUrl: proofUrl })
       })
-      if (!res.ok) throw new Error("Failed to update status")
+      if (!res.ok) throw new Error("Failed to mark as paid")
+      toast({ title: "Success", description: "Marked as paid successfully." })
+      setPayModalOpen(false)
       fetchPayables()
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" })
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -246,7 +278,7 @@ export default function AccountsPayablePage() {
                 payables.map((item) => (
                   <TableRow key={item.id} className={item.isPaid ? "opacity-60" : ""}>
                     <TableCell>
-                      <button onClick={() => toggleStatus(item)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                      <div className="flex items-center gap-2">
                         {item.isPaid ? (
                           <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200">
                             <CheckCircle className="h-3 w-3 mr-1" /> Paid
@@ -256,7 +288,7 @@ export default function AccountsPayablePage() {
                             <Circle className="h-3 w-3 mr-1" /> Unpaid
                           </Badge>
                         )}
-                      </button>
+                      </div>
                     </TableCell>
                     <TableCell className="font-medium">{item.supplierName}</TableCell>
                     <TableCell className="font-bold">
@@ -277,6 +309,15 @@ export default function AccountsPayablePage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        {!item.isPaid ? (
+                          <Button variant="outline" size="sm" onClick={() => openPayModal(item)} className="text-green-600 border-green-200 hover:bg-green-50">
+                            Mark as Paid
+                          </Button>
+                        ) : item.proofOfPaymentUrl ? (
+                          <Button variant="outline" size="sm" onClick={() => window.open(item.proofOfPaymentUrl as string, "_blank")} className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                            View Proof
+                          </Button>
+                        ) : null}
                         <Button variant="ghost" size="icon" onClick={() => openEditModal(item)} className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50">
                           <Edit2 className="h-4 w-4" />
                         </Button>
@@ -292,6 +333,29 @@ export default function AccountsPayablePage() {
           </Table>
         </CardContent>
       </Card>
+      <Dialog open={payModalOpen} onOpenChange={setPayModalOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Mark Invoice as Paid</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 grid gap-4">
+            <p className="text-sm text-muted-foreground">
+              You are marking the invoice for <strong>{payingItem?.supplierName}</strong> (${payingItem?.amount.toFixed(2)}) as paid.
+            </p>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Upload Proof of Payment (Optional)</label>
+              <Input type="file" onChange={(e) => setProofFile(e.target.files?.[0] || null)} accept="image/*,application/pdf" />
+              <p className="text-xs text-muted-foreground">Attach a PDF or Image receipt for your records.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleMarkAsPaid} disabled={uploading}>
+              {uploading ? "Uploading & Saving..." : "Confirm Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

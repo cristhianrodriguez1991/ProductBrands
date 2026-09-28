@@ -11,7 +11,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
 
     const body = await req.json()
-    const { supplierName, amount, dueDate, lastDayToPay, notes, isPaid } = body
+    const { supplierName, amount, dueDate, lastDayToPay, notes, isPaid, proofOfPaymentUrl } = body
 
     const updateData: any = {}
     if (supplierName !== undefined) updateData.supplierName = supplierName
@@ -20,6 +20,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (lastDayToPay !== undefined) updateData.lastDayToPay = lastDayToPay ? new Date(lastDayToPay) : null
     if (notes !== undefined) updateData.notes = notes
     if (isPaid !== undefined) updateData.isPaid = isPaid
+    if (proofOfPaymentUrl !== undefined) updateData.proofOfPaymentUrl = proofOfPaymentUrl
 
     const payable = await prisma.accountPayable.update({
       where: { id: params.id },
