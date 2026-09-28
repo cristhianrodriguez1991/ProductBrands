@@ -13,7 +13,8 @@ export async function GET(req: Request) {
     }
 
     const payables = await prisma.accountPayable.findMany({
-      orderBy: { dueDate: 'asc' }
+      orderBy: { dueDate: 'asc' },
+      include: { payments: { orderBy: { date: 'asc' } } }
     })
 
     return NextResponse.json(payables)

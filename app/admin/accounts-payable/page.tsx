@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, Calendar, FileText, CheckCircle, Circle, Eye, ExternalLink, Clock } from "lucide-react"
+import { Plus, Trash2, Edit2, Calendar, FileText, CheckCircle, Circle, Eye, ExternalLink, Clock, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 
 type AccountPayable = {
   id: string
@@ -20,6 +20,7 @@ type AccountPayable = {
   notes: string | null
   isPaid: boolean
   proofOfPaymentUrl: string | null
+  payments?: { id: string, amount: number, date: string, proofOfPaymentUrl: string | null }[]
 }
 
 export default function AccountsPayablePage() {
@@ -37,6 +38,10 @@ export default function AccountsPayablePage() {
   // View Details State
   const [viewModalOpen, setViewModalOpen] = useState(false)
   const [viewingItem, setViewingItem] = useState<AccountPayable | null>(null)
+  
+  // Sort State
+  const [sortConfig, setSortConfig] = useState<{ key: 'amount' | 'dueDate' | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' })
+  const [payAmount, setPayAmount] = useState("")
   
   // Form State
   const [supplierName, setSupplierName] = useState("")
@@ -63,6 +68,29 @@ export default function AccountsPayablePage() {
   useEffect(() => {
     fetchPayables()
   }, [])
+
+  const sortedPayables = [...payables].sort((a, b) => {
+    if (!sortConfig.key) return 0
+    
+    if (sortConfig.key === 'amount') {
+      return sortConfig.direction === 'asc' ? a.amount - b.amount : b.amount - a.amount
+    }
+    
+    if (sortConfig.key === 'dueDate') {
+      const dateA = new Date(a.dueDate).getTime()
+      const dateB = new Date(b.dueDate).getTime()
+      return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA
+    }
+    
+    return 0
+  })
+
+  const handleSort = (key: 'amount' | 'dueDate') => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }))
+  }
 
   const resetForm = () => {
     setSupplierName("")
@@ -158,6 +186,9 @@ export default function AccountsPayablePage() {
   const openPayModal = (item: AccountPayable) => {
     setPayingItem(item)
     setProofFile(null)
+    const paidSoFar = item.payments?.reduce((acc, p) => acc + p.amount, 0) || 0
+    const remaining = Math.max(0, item.amount - paidSoFar)
+    setPayAmount(remaining.toString())
     setPayModalOpen(true)
   }
 
@@ -178,13 +209,13 @@ export default function AccountsPayablePage() {
         proofUrl = uploadData.url
       }
 
-      const res = await fetch(`/api/admin/accounts-payable/${payingItem.id}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/admin/accounts-payable/${payingItem.id}/payments`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isPaid: true, proofOfPaymentUrl: proofUrl })
+        body: JSON.stringify({ amount: parseFloat(payAmount), proofOfPaymentUrl: proofUrl })
       })
-      if (!res.ok) throw new Error("Failed to mark as paid")
-      toast({ title: "Success", description: "Marked as paid successfully." })
+      if (!res.ok) throw new Error("Failed to record payment")
+      toast({ title: "Success", description: "Payment recorded successfully." })
       setPayModalOpen(false)
       fetchPayables()
     } catch (e: any) {
@@ -194,8 +225,8 @@ export default function AccountsPayablePage() {
     }
   }
 
-  const totalUnpaid = payables.filter(p => !p.isPaid).reduce((sum, p) => sum + p.amount, 0)
-  const totalPaid = payables.filter(p => p.isPaid).reduce((sum, p) => sum + p.amount, 0)
+  const totalPaid = payables.reduce((sum, p) => sum + (p.payments?.reduce((a, b) => a + b.amount, 0) || 0), 0)
+  const totalUnpaid = payables.reduce((sum, p) => sum + p.amount, 0) - totalPaid
 
   return (
     <div className="space-y-6">
@@ -283,8 +314,18 @@ export default function AccountsPayablePage() {
               <TableRow>
                 <TableHead>Status</TableHead>
                 <TableHead>Supplier</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Due Date</TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('amount')}>
+                  <div className="flex items-center gap-1">
+                    Amount 
+                    {sortConfig.key === 'amount' ? (sortConfig.direction === 'asc' ? <ArrowUp className="h-3 w-3"/> : <ArrowDown className="h-3 w-3"/>) : <ArrowUpDown className="h-3 w-3 text-muted-foreground opacity-50"/>}
+                  </div>
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('dueDate')}>
+                  <div className="flex items-center gap-1">
+                    Due Date 
+                    {sortConfig.key === 'dueDate' ? (sortConfig.direction === 'asc' ? <ArrowUp className="h-3 w-3"/> : <ArrowDown className="h-3 w-3"/>) : <ArrowUpDown className="h-3 w-3 text-muted-foreground opacity-50"/>}
+                  </div>
+                </TableHead>
                 <TableHead>Notes</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -299,7 +340,11 @@ export default function AccountsPayablePage() {
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No accounts payable records found.</TableCell>
                 </TableRow>
               ) : (
-                payables.map((item) => (
+                sortedPayables.map((item) => {
+                  const paidSoFar = item.payments?.reduce((acc, p) => acc + p.amount, 0) || 0
+                  const isPartiallyPaid = !item.isPaid && paidSoFar > 0
+
+                  return (
                   <TableRow 
                     key={item.id} 
                     className={`cursor-pointer hover:bg-muted/50 ${item.isPaid ? "opacity-60" : ""}`}
@@ -313,6 +358,10 @@ export default function AccountsPayablePage() {
                         {item.isPaid ? (
                           <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200">
                             <CheckCircle className="h-3 w-3 mr-1" /> Paid
+                          </Badge>
+                        ) : isPartiallyPaid ? (
+                          <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200">
+                            <Circle className="h-3 w-3 mr-1" /> Partial (${paidSoFar.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200">
@@ -369,7 +418,8 @@ export default function AccountsPayablePage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
+                  )
+                })
               )}
             </TableBody>
           </Table>
@@ -382,8 +432,16 @@ export default function AccountsPayablePage() {
           </DialogHeader>
           <div className="py-4 grid gap-4">
             <p className="text-sm text-muted-foreground">
-              You are marking the invoice for <strong>{payingItem?.supplierName}</strong> (${payingItem?.amount.toFixed(2)}) as paid.
+              You are recording a payment for <strong>{payingItem?.supplierName}</strong>. 
+              Total amount: ${payingItem?.amount.toFixed(2)}. Remaining: ${(payingItem?.amount - (payingItem?.payments?.reduce((a, b) => a + b.amount, 0) || 0)).toFixed(2)}.
             </p>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Payment Amount *</label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">$</span>
+                <Input type="number" step="0.01" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="pl-7" />
+              </div>
+            </div>
             <div className="grid gap-2">
               <label className="text-sm font-medium">Upload Proof of Payment (Optional)</label>
               <Input type="file" onChange={(e) => setProofFile(e.target.files?.[0] || null)} accept="image/*,application/pdf" />
@@ -407,7 +465,11 @@ export default function AccountsPayablePage() {
               Account Payable Details
             </DialogTitle>
           </DialogHeader>
-          {viewingItem && (
+          {viewingItem && (() => {
+            const paidSoFar = viewingItem.payments?.reduce((acc, p) => acc + p.amount, 0) || 0
+            const isPartiallyPaid = !viewingItem.isPaid && paidSoFar > 0
+
+            return (
             <div className="space-y-6 py-4">
               <div className="flex items-start justify-between">
                 <div>
@@ -415,7 +477,11 @@ export default function AccountsPayablePage() {
                   <div className="mt-1 flex items-center gap-2">
                     {viewingItem.isPaid ? (
                       <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200">
-                        <CheckCircle className="h-3 w-3 mr-1" /> Paid
+                        <CheckCircle className="h-3 w-3 mr-1" /> Fully Paid
+                      </Badge>
+                    ) : isPartiallyPaid ? (
+                      <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200">
+                        <Circle className="h-3 w-3 mr-1" /> Partially Paid
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200">
@@ -431,6 +497,11 @@ export default function AccountsPayablePage() {
                   <div className="text-3xl font-black text-primary">
                     ${viewingItem.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
+                  {isPartiallyPaid && (
+                    <div className="text-sm font-medium text-muted-foreground mt-1">
+                      Balance Remaining: ${(viewingItem.amount - paidSoFar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -473,16 +544,32 @@ export default function AccountsPayablePage() {
                 )}
               </div>
 
-              {viewingItem.isPaid && viewingItem.proofOfPaymentUrl && (
+              {viewingItem.payments && viewingItem.payments.length > 0 && (
                 <div>
-                  <div className="text-sm font-semibold mb-2 border-b pb-1">Proof of Payment</div>
-                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => window.open(viewingItem.proofOfPaymentUrl as string, "_blank")}>
-                    <ExternalLink className="h-4 w-4 mr-2" /> View Document
-                  </Button>
+                  <div className="text-sm font-semibold mb-2 border-b pb-1">Payment History</div>
+                  <div className="space-y-2">
+                    {viewingItem.payments.map(payment => (
+                      <div key={payment.id} className="flex items-center justify-between bg-muted/10 p-2 rounded-md border text-sm">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <div>
+                            <div className="font-bold">${payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            <div className="text-xs text-muted-foreground">{new Date(payment.date).toLocaleDateString()}</div>
+                          </div>
+                        </div>
+                        {payment.proofOfPaymentUrl && (
+                          <Button variant="outline" size="sm" onClick={() => window.open(payment.proofOfPaymentUrl as string, "_blank")}>
+                            <ExternalLink className="h-3 w-3 mr-1" /> Proof
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
-          )}
+            )
+          })()}
           <DialogFooter>
             <Button onClick={() => setViewModalOpen(false)}>Close</Button>
           </DialogFooter>

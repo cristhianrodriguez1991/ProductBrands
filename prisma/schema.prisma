@@ -1259,9 +1259,23 @@ model AccountPayable {
   proofOfPaymentUrl String? @db.Text
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  
+  payments         AccountPayablePayment[]
 
   @@index([dueDate])
   @@index([isPaid])
+}
+
+model AccountPayablePayment {
+  id               String   @id @default(cuid())
+  accountPayableId String
+  amount           Float
+  proofOfPaymentUrl String? @db.Text
+  date             DateTime @default(now())
+
+  accountPayable   AccountPayable @relation(fields: [accountPayableId], references: [id], onDelete: Cascade)
+  
+  @@index([accountPayableId])
 }
 
 
