@@ -25,6 +25,7 @@ import {
   MapPin,
   Boxes,
   TrendingUp,
+  CreditCard,
 } from "lucide-react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
@@ -60,6 +61,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/productinfo", label: "Product Info", icon: Package, permission: PERMISSIONS.PRODUCTINFO },
   { href: "/admin/product-rankings", label: "Product Rankings", icon: TrendingUp, permission: PERMISSIONS.PRODUCT_RANKINGS },
   { href: "/admin/accounting", label: "Accounting & P&L", icon: FileText, permission: PERMISSIONS.ACCOUNTING },
+  { href: "/admin/accounts-payable", label: "Accounts Payable", icon: CreditCard, permission: PERMISSIONS.ACCOUNTING },
   { href: "/admin/settings", label: "Site Settings", icon: Settings, permission: PERMISSIONS.SETTINGS },
 ]
 

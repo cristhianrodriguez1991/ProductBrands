@@ -1244,4 +1244,23 @@ model WeeklyProfitSnapshot {
   @@index([weekEndDate])
 }
 
+// ─────────────────────────────────────────────────────────────
+// ACCOUNTS PAYABLE
+// ─────────────────────────────────────────────────────────────
+
+model AccountPayable {
+  id           String   @id @default(cuid())
+  supplierName String
+  amount       Float
+  dueDate      DateTime
+  lastDayToPay DateTime?
+  notes        String?  @db.Text
+  isPaid       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([dueDate])
+  @@index([isPaid])
+}
+
 
