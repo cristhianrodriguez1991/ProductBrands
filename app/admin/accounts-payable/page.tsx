@@ -433,7 +433,7 @@ export default function AccountsPayablePage() {
           <div className="py-4 grid gap-4">
             <p className="text-sm text-muted-foreground">
               You are recording a payment for <strong>{payingItem?.supplierName}</strong>. 
-              Total amount: ${payingItem?.amount.toFixed(2)}. Remaining: ${(payingItem?.amount - (payingItem?.payments?.reduce((a, b) => a + b.amount, 0) || 0)).toFixed(2)}.
+              Total amount: ${(payingItem?.amount || 0).toFixed(2)}. Remaining: ${((payingItem?.amount || 0) - (payingItem?.payments?.reduce((a, b) => a + b.amount, 0) || 0)).toFixed(2)}.
             </p>
             <div className="grid gap-2">
               <label className="text-sm font-medium">Payment Amount *</label>
