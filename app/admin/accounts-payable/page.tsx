@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, Calendar, FileText, CheckCircle, Circle } from "lucide-react"
+import { Plus, Trash2, Edit2, Calendar, FileText, CheckCircle, Circle, Eye, ExternalLink, Clock } from "lucide-react"
 
 type AccountPayable = {
   id: string
@@ -33,6 +33,10 @@ export default function AccountsPayablePage() {
   const [payingItem, setPayingItem] = useState<AccountPayable | null>(null)
   const [proofFile, setProofFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  
+  // View Details State
+  const [viewModalOpen, setViewModalOpen] = useState(false)
+  const [viewingItem, setViewingItem] = useState<AccountPayable | null>(null)
   
   // Form State
   const [supplierName, setSupplierName] = useState("")
@@ -129,6 +133,26 @@ export default function AccountsPayablePage() {
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" })
     }
+  }
+
+  const getDaysUntil = (dateString: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(dateString);
+    target.setHours(0, 0, 0, 0);
+    const diffTime = target.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  const renderTextWithLinks = (text: string) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.split(urlRegex).map((part, i) => {
+      if (part.match(urlRegex)) {
+        return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1">{part} <ExternalLink className="h-3 w-3" /></a>
+      }
+      return <span key={i}>{part}</span>
+    })
   }
 
   const openPayModal = (item: AccountPayable) => {
@@ -276,7 +300,14 @@ export default function AccountsPayablePage() {
                 </TableRow>
               ) : (
                 payables.map((item) => (
-                  <TableRow key={item.id} className={item.isPaid ? "opacity-60" : ""}>
+                  <TableRow 
+                    key={item.id} 
+                    className={`cursor-pointer hover:bg-muted/50 ${item.isPaid ? "opacity-60" : ""}`}
+                    onClick={() => {
+                      setViewingItem(item)
+                      setViewModalOpen(true)
+                    }}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {item.isPaid ? (
@@ -295,10 +326,21 @@ export default function AccountsPayablePage() {
                       ${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col">
+                      <div className="flex flex-col gap-1">
                         <span className="flex items-center gap-1 text-sm"><Calendar className="h-3 w-3" /> {new Date(item.dueDate).toLocaleDateString()}</span>
                         {item.lastDayToPay && (
                           <span className="text-xs text-red-500 mt-1">Last Day: {new Date(item.lastDayToPay).toLocaleDateString()}</span>
+                        )}
+                        {!item.isPaid && (
+                          <span className="text-xs font-medium mt-1">
+                            {getDaysUntil(item.dueDate) < 0 ? (
+                              <span className="text-red-600 font-bold">Overdue by {Math.abs(getDaysUntil(item.dueDate))} days</span>
+                            ) : getDaysUntil(item.dueDate) === 0 ? (
+                              <span className="text-yellow-600 font-bold">Due today</span>
+                            ) : (
+                              <span className="text-muted-foreground">{getDaysUntil(item.dueDate)} days left</span>
+                            )}
+                          </span>
                         )}
                       </div>
                     </TableCell>
@@ -310,18 +352,18 @@ export default function AccountsPayablePage() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         {!item.isPaid ? (
-                          <Button variant="outline" size="sm" onClick={() => openPayModal(item)} className="text-green-600 border-green-200 hover:bg-green-50">
+                          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); openPayModal(item); }} className="text-green-600 border-green-200 hover:bg-green-50">
                             Mark as Paid
                           </Button>
                         ) : item.proofOfPaymentUrl ? (
-                          <Button variant="outline" size="sm" onClick={() => window.open(item.proofOfPaymentUrl as string, "_blank")} className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); window.open(item.proofOfPaymentUrl as string, "_blank"); }} className="text-blue-600 border-blue-200 hover:bg-blue-50">
                             View Proof
                           </Button>
                         ) : null}
-                        <Button variant="ghost" size="icon" onClick={() => openEditModal(item)} className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50">
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEditModal(item); }} className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50">
                           <Edit2 className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50">
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -353,6 +395,96 @@ export default function AccountsPayablePage() {
             <Button onClick={handleMarkAsPaid} disabled={uploading}>
               {uploading ? "Uploading & Saving..." : "Confirm Payment"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-muted-foreground" />
+              Account Payable Details
+            </DialogTitle>
+          </DialogHeader>
+          {viewingItem && (
+            <div className="space-y-6 py-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-bold">{viewingItem.supplierName}</h3>
+                  <div className="mt-1 flex items-center gap-2">
+                    {viewingItem.isPaid ? (
+                      <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200">
+                        <CheckCircle className="h-3 w-3 mr-1" /> Paid
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200">
+                        <Circle className="h-3 w-3 mr-1" /> Unpaid
+                      </Badge>
+                    )}
+                    {!viewingItem.isPaid && getDaysUntil(viewingItem.dueDate) < 0 && (
+                      <Badge variant="destructive">Overdue</Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-black text-primary">
+                    ${viewingItem.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-lg border">
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider flex items-center gap-1">
+                    <Calendar className="h-3 w-3" /> Due Date
+                  </div>
+                  <div className="font-medium">{new Date(viewingItem.dueDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                  {!viewingItem.isPaid && (
+                    <div className="text-xs mt-1 font-medium">
+                      {getDaysUntil(viewingItem.dueDate) < 0 ? (
+                        <span className="text-red-600 font-bold">Overdue by {Math.abs(getDaysUntil(viewingItem.dueDate))} days</span>
+                      ) : getDaysUntil(viewingItem.dueDate) === 0 ? (
+                        <span className="text-yellow-600 font-bold">Due today</span>
+                      ) : (
+                        <span className="text-muted-foreground">{getDaysUntil(viewingItem.dueDate)} days left</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> Last Day to Pay
+                  </div>
+                  <div className="font-medium">
+                    {viewingItem.lastDayToPay ? new Date(viewingItem.lastDayToPay).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' }) : "Not specified"}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-sm font-semibold mb-2 border-b pb-1">Notes & Details</div>
+                {viewingItem.notes ? (
+                  <div className="text-sm whitespace-pre-wrap bg-muted/10 p-3 rounded-md border border-dashed">
+                    {renderTextWithLinks(viewingItem.notes)}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground italic">No additional notes provided.</div>
+                )}
+              </div>
+
+              {viewingItem.isPaid && viewingItem.proofOfPaymentUrl && (
+                <div>
+                  <div className="text-sm font-semibold mb-2 border-b pb-1">Proof of Payment</div>
+                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => window.open(viewingItem.proofOfPaymentUrl as string, "_blank")}>
+                    <ExternalLink className="h-4 w-4 mr-2" /> View Document
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setViewModalOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
