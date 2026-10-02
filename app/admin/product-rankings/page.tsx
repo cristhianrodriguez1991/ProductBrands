@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/use-toast"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import PinProtection from "@/components/PinProtection"
+import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts"
 
 interface ProductRanking {
   id: string
@@ -30,6 +31,7 @@ interface ProductRanking {
   sales7Days: number
   sales30Days: number
   sales90Days: number
+  history?: { date: string; profit: number; units: number }[]
 }
 
 function RankingRow({ 
@@ -154,13 +156,25 @@ function RankingRow({
               {daysOfSupply < 999 ? `${daysOfSupply} Days Supply` : ">999 Days Supply"}
             </div>
           </div>
-          <div className="text-right">
-            <span className="text-muted-foreground">Est. Profit: </span>
-            <div className={`text-base font-bold leading-tight ${totalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-              ${totalProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <div className="text-[10px] text-muted-foreground">
-              ${profitPerUnit.toFixed(2)} / unit
+          <div className="text-right flex items-center justify-end gap-3">
+            {item.history && item.history.length > 0 && (
+              <div className="h-8 w-16 opacity-70">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={item.history}>
+                    <YAxis domain={['dataMin', 'dataMax']} hide />
+                    <Line type="monotone" dataKey="profit" stroke={totalProfit >= 0 ? "#16a34a" : "#dc2626"} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            <div>
+              <span className="text-muted-foreground">Est. Profit: </span>
+              <div className={`text-base font-bold leading-tight ${totalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                ${totalProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                ${profitPerUnit.toFixed(2)} / unit
+              </div>
             </div>
           </div>
         </div>
@@ -333,12 +347,26 @@ function RankingRow({
         </div>
 
         <div className="col-span-2 flex flex-col items-end justify-center pr-4">
-          <span className={`text-lg font-bold ${totalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-            ${totalProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            ${profitPerUnit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / unit
-          </span>
+          <div className="flex items-center gap-3">
+            {item.history && item.history.length > 0 && (
+              <div className="h-10 w-20 opacity-80 print:hidden">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={item.history}>
+                    <YAxis domain={['dataMin', 'dataMax']} hide />
+                    <Line type="monotone" dataKey="profit" stroke={totalProfit >= 0 ? "#16a34a" : "#dc2626"} strokeWidth={2} dot={false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            <div className="flex flex-col items-end">
+              <span className={`text-lg font-bold ${totalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                ${totalProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                ${profitPerUnit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / unit
+              </span>
+            </div>
+          </div>
         </div>
 
         <button 

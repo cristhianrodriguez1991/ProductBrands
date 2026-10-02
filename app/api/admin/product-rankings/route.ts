@@ -21,7 +21,44 @@ export async function GET(req: Request) {
       orderBy: { rank: "asc" }
     })
 
-    return NextResponse.json(rankings)
+    // Fetch daily sales for the last 30 days for each ranking to calculate history
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const dateStr = thirtyDaysAgo.toISOString().split("T")[0] // "YYYY-MM-DD"
+
+    const skus = rankings.map(r => r.sku).filter(Boolean) as string[]
+    
+    let allSales: any[] = []
+    if (skus.length > 0) {
+      allSales = await prisma.amazonDailySales.findMany({
+        where: {
+          sku: { in: skus },
+          date: { gte: dateStr }
+        },
+        orderBy: { date: "asc" }
+      })
+    }
+
+    const enhancedRankings = rankings.map(ranking => {
+      // Find sales for this SKU
+      const productSales = allSales.filter(s => s.sku === ranking.sku)
+      
+      const history = productSales.map(sale => {
+        const profit = sale.orderedProductSales - (ranking.cost + ranking.fbaFee) * sale.unitsOrdered
+        return {
+          date: sale.date,
+          profit,
+          units: sale.unitsOrdered
+        }
+      })
+
+      return {
+        ...ranking,
+        history
+      }
+    })
+
+    return NextResponse.json(enhancedRankings)
   } catch (error) {
     console.error("[PRODUCT_RANKINGS_GET]", error)
     return new NextResponse("Internal Error", { status: 500 })
