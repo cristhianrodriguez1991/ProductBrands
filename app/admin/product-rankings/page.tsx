@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { GripVertical, Plus, DollarSign, Package, RefreshCw, Trash2 } from "lucide-react"
+import { GripVertical, Plus, DollarSign, Package, RefreshCw, Trash2, Copy, ExternalLink } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -57,6 +57,15 @@ function RankingRow({
   if (salesPeriod === "90") currentSales = item.sales90Days
 
   const [salesValue, setSalesValue] = useState(currentSales.toString())
+  const { toast } = useToast()
+
+  const handleCopy = (e: React.MouseEvent, text: string) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(text)
+    toast({ title: "Copied!", description: `Copied ${text} to clipboard.`, duration: 2000 })
+  }
+
+  const amazonUrl = `https://www.amazon.com/dp/${item.asin || item.sku}`
 
   // Keep local state in sync if parent updates
   useEffect(() => {
@@ -109,11 +118,17 @@ function RankingRow({
             )}
           </div>
           <div className="flex-1 min-w-0 pr-6">
-            <p className="font-medium text-sm line-clamp-2 leading-snug" title={item.productName || "Unknown"}>
+            <a href={amazonUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-sm line-clamp-2 leading-snug hover:text-primary hover:underline transition-colors" title={item.productName || "Unknown"}>
               {item.productName || "Unknown Product"}
-            </p>
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              <span className="text-xs text-muted-foreground font-mono">{item.asin || item.sku}</span>
+            </a>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap group/copy">
+              <a href={amazonUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground font-mono hover:text-primary hover:underline flex items-center gap-1">
+                {item.asin || item.sku}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+              <button onClick={(e) => handleCopy(e, item.asin || item.sku || "")} className="text-muted-foreground hover:text-primary p-0.5 rounded opacity-50 group-hover/copy:opacity-100 transition-opacity" title="Copy ASIN">
+                <Copy className="h-3 w-3" />
+              </button>
               {restockQty > 0 && (
                 <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded">
                   Rec: +{restockQty}
@@ -233,12 +248,18 @@ function RankingRow({
             )}
           </div>
           <div className="overflow-hidden min-w-0">
-            <p className="font-medium text-sm truncate" title={item.productName || "Unknown"}>
+            <a href={amazonUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-sm truncate block hover:text-primary hover:underline transition-colors" title={item.productName || "Unknown"}>
               {item.productName || "Unknown Product"}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">
-              {item.asin || item.sku}
-            </p>
+            </a>
+            <div className="flex items-center gap-2 group/copy mt-0.5">
+              <a href={amazonUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground truncate hover:text-primary hover:underline flex items-center gap-1">
+                {item.asin || item.sku}
+                <ExternalLink className="h-3 w-3 opacity-70" />
+              </a>
+              <button onClick={(e) => handleCopy(e, item.asin || item.sku || "")} className="text-muted-foreground hover:text-primary opacity-0 group-hover/copy:opacity-100 transition-opacity" title="Copy ASIN">
+                <Copy className="h-3 w-3" />
+              </button>
+            </div>
           </div>
         </div>
 
