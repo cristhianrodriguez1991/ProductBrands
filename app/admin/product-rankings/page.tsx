@@ -15,7 +15,7 @@ import { useToast } from "@/components/ui/use-toast"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import PinProtection from "@/components/PinProtection"
-import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts"
+import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip } from "recharts"
 
 interface ProductRanking {
   id: string
@@ -156,13 +156,29 @@ function RankingRow({
               {daysOfSupply < 999 ? `${daysOfSupply} Days Supply` : ">999 Days Supply"}
             </div>
           </div>
-          <div className="text-right flex items-center justify-end gap-3">
+          <div className="text-right flex items-center justify-end gap-2">
             {item.history && item.history.length > 0 && (
-              <div className="h-8 w-16 opacity-70">
+              <div className="h-10 w-24 opacity-100 mr-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={item.history}>
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-background border border-border p-2 rounded shadow-md text-xs z-50 pointer-events-none">
+                              <p className="font-semibold text-foreground">{new Date(data.date).toLocaleDateString()}</p>
+                              <p className="text-primary mt-1 font-medium">Profit: ${Number(data.profit).toFixed(2)}</p>
+                              <p className="text-muted-foreground mt-0.5">Sales: {data.units} units</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                      cursor={{ stroke: 'rgba(0,0,0,0.1)', strokeWidth: 1 }}
+                    />
                     <YAxis domain={['dataMin', 'dataMax']} hide />
-                    <Line type="monotone" dataKey="profit" stroke={totalProfit >= 0 ? "#16a34a" : "#dc2626"} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="profit" stroke={totalProfit >= 0 ? "#16a34a" : "#dc2626"} strokeWidth={2} dot={false} activeDot={{ r: 3 }} isAnimationActive={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -347,18 +363,34 @@ function RankingRow({
         </div>
 
         <div className="col-span-2 flex flex-col items-end justify-center pr-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 w-full justify-end relative right-2">
             {item.history && item.history.length > 0 && (
-              <div className="h-10 w-20 opacity-80 print:hidden">
+              <div className="h-12 w-32 opacity-100 print:hidden flex-shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={item.history}>
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-background border border-border p-2 rounded shadow-md text-xs z-50 pointer-events-none">
+                              <p className="font-semibold text-foreground">{new Date(data.date).toLocaleDateString()}</p>
+                              <p className="text-primary mt-1 font-medium">Profit: ${Number(data.profit).toFixed(2)}</p>
+                              <p className="text-muted-foreground mt-0.5">Sales: {data.units} units</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                      cursor={{ stroke: 'rgba(0,0,0,0.1)', strokeWidth: 1 }}
+                    />
                     <YAxis domain={['dataMin', 'dataMax']} hide />
-                    <Line type="monotone" dataKey="profit" stroke={totalProfit >= 0 ? "#16a34a" : "#dc2626"} strokeWidth={2} dot={false} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="profit" stroke={totalProfit >= 0 ? "#16a34a" : "#dc2626"} strokeWidth={2} dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             )}
-            <div className="flex flex-col items-end">
+            <div className="flex flex-col items-end shrink-0">
               <span className={`text-lg font-bold ${totalProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                 ${totalProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
