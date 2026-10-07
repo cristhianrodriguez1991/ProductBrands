@@ -309,7 +309,7 @@ export default function CustomerInvoicePayPage() {
                 </div>
                 <div className="text-slate-600 flex items-center gap-2">
                   <Phone className="h-4 w-4 text-slate-400 shrink-0" />
-                  <span>{company?.phone || "+1 786-295-4063"}</span>
+                  <span>{company?.phone || "+1 305-600-3157"}</span>
                 </div>
                 <div className="text-slate-600 flex items-center gap-2">
                   <Mail className="h-4 w-4 text-slate-400 shrink-0" />
@@ -669,8 +669,8 @@ export default function CustomerInvoicePayPage() {
               info@productbrands.com
             </a>{" "}
             or{" "}
-            <a href="tel:+17862954063" className="underline hover:text-slate-700">
-              +1 786-295-4063
+            <a href="tel:+13056003157" className="underline hover:text-slate-700">
+              +1 305-600-3157
             </a>
           </div>
         </div>

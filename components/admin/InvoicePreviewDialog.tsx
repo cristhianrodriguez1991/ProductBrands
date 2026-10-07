@@ -57,7 +57,7 @@ export function InvoicePreviewDialog({ data }: { data: InvoicePreviewProps }) {
           Preview Invoice
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 border-0 bg-slate-100/70">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 border-0 bg-slate-100/70 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0">
         <DialogHeader className="p-4 bg-white border-b sticky top-0 z-10 hidden">
           <DialogTitle>Invoice Preview</DialogTitle>
         </DialogHeader>
@@ -68,8 +68,14 @@ export function InvoicePreviewDialog({ data }: { data: InvoicePreviewProps }) {
             <div className="p-6 sm:p-10 border-b border-slate-200 bg-slate-900 text-white">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
                 <div className="flex items-center gap-4">
-                  <div className="relative w-16 h-16 bg-white rounded-xl p-1.5 shadow-sm flex items-center justify-center shrink-0 text-slate-800 font-black text-xs text-center">
-                    Logo
+                  <div className="relative w-16 h-16 bg-white rounded-xl p-1.5 shadow-sm flex items-center justify-center shrink-0">
+                    <Image
+                      src="/images/logo.png"
+                      alt="Product Brands"
+                      width={60}
+                      height={60}
+                      className="object-contain"
+                    />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -116,7 +122,7 @@ export function InvoicePreviewDialog({ data }: { data: InvoicePreviewProps }) {
                   </div>
                   <div className="text-slate-600 flex items-center gap-2">
                     <Phone className="h-4 w-4 text-slate-400 shrink-0" />
-                    <span>+1 786-295-4063</span>
+                    <span>+1 305-600-3157</span>
                   </div>
                   <div className="text-slate-600 flex items-center gap-2">
                     <Mail className="h-4 w-4 text-slate-400 shrink-0" />
