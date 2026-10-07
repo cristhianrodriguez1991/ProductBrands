@@ -57,7 +57,10 @@ export function InvoicePreviewDialog({ data }: { data: InvoicePreviewProps }) {
           Preview Invoice
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 border-0 bg-slate-100/70 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0">
+      <DialogContent
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 border-0 bg-slate-100 outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 [&>button]:ring-0 [&>button]:ring-offset-0 [&>button]:focus:ring-0 [&>button]:focus:outline-none"
+      >
         <DialogHeader className="p-4 bg-white border-b sticky top-0 z-10 hidden">
           <DialogTitle>Invoice Preview</DialogTitle>
         </DialogHeader>
@@ -65,39 +68,28 @@ export function InvoicePreviewDialog({ data }: { data: InvoicePreviewProps }) {
         <div className="p-4 sm:p-8 font-sans">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             {/* Header Bar */}
-            <div className="p-6 sm:p-10 border-b border-slate-200 bg-slate-900 text-white">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-                <div className="flex items-center gap-4">
-                  <div className="relative w-16 h-16 bg-white rounded-xl p-1.5 shadow-sm flex items-center justify-center shrink-0">
-                    <Image
-                      src="/images/logo.png"
-                      alt="Product Brands"
-                      width={60}
-                      height={60}
-                      className="object-contain"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h1 className="text-2xl font-black tracking-tight text-white uppercase">
-                        Product Brands
-                      </h1>
-                      <span className="text-[10px] bg-slate-800 border border-slate-700 px-2 py-0.5 rounded text-slate-300 font-semibold tracking-wider uppercase">
-                        Preview
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-300 mt-1">
-                      Wholesale Distribution & Commercial Supply
-                    </p>
-                  </div>
+            <div className="px-6 py-8 sm:px-10 sm:py-10 border-b border-slate-200 bg-white">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div className="flex flex-col items-start">
+                  <Image
+                    src="/images/logo.png"
+                    alt="Product Brands"
+                    width={1426}
+                    height={382}
+                    priority
+                    className="h-auto w-[280px] sm:w-[380px] md:w-[440px] object-contain"
+                  />
+                  <p className="text-xs sm:text-sm text-slate-500 font-semibold uppercase tracking-[0.2em] mt-3">
+                    Wholesale Distribution &amp; Commercial Supply
+                  </p>
                 </div>
 
-                <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2">
-                  <div className="text-left sm:text-right">
+                <div className="flex md:flex-col items-center md:items-end justify-between w-full md:w-auto gap-2">
+                  <div className="text-left md:text-right">
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest block">
-                      Invoice Number
+                      Official Invoice
                     </span>
-                    <span className="text-xl font-mono font-bold text-slate-100">
+                    <span className="text-xl font-mono font-bold text-slate-900">
                       INV-PREVIEW
                     </span>
                   </div>
