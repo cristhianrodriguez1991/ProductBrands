@@ -1301,6 +1301,13 @@ model CustomerOrder {
   subtotal            Float    @default(0.0)
   totalAmount         Float    @default(0.0)
   
+  // Short human-friendly invoice number, displayed as "PB" + (3000 + invoiceNumber)
+  invoiceNumber       Int      @unique @default(autoincrement())
+  // Credit card surcharge collected at payment (0 for ACH / debit)
+  processingFee       Float    @default(0.0)
+  // "us_bank_account" | "card:credit" | "card:debit" | "card:prepaid" ...
+  paymentMethodType   String?
+  
   stripeSessionId     String?  @unique
   stripePaymentIntent String?  @unique
   

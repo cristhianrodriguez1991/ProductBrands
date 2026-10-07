@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
 import { formatCurrency } from "@/lib/utils"
+import { formatInvoiceNumber } from "@/lib/invoice"
 
 export default function CustomerOrdersPage() {
   const [orders, setOrders] = useState<any[]>([])
@@ -105,6 +106,7 @@ export default function CustomerOrdersPage() {
   }
 
   const filteredOrders = orders.filter(o => 
+    formatInvoiceNumber(o).toLowerCase().includes(search.toLowerCase()) ||
     o.customerName?.toLowerCase().includes(search.toLowerCase()) ||
     o.customerEmail?.toLowerCase().includes(search.toLowerCase()) ||
     (o.companyName && o.companyName.toLowerCase().includes(search.toLowerCase()))
@@ -169,7 +171,8 @@ export default function CustomerOrdersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[110px]">Date</TableHead>
+                  <TableHead className="w-[105px]">Invoice</TableHead>
+                  <TableHead className="w-[100px]">Date</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Delivery</TableHead>
                   <TableHead>Total</TableHead>
@@ -180,19 +183,22 @@ export default function CustomerOrdersPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-10">
+                    <TableCell colSpan={7} className="text-center py-10">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                     </TableCell>
                   </TableRow>
                 ) : filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                       No customer orders found. Click &quot;Create Invoice&quot; to generate your first invoice.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredOrders.map((order) => (
                     <TableRow key={order.id} className="hover:bg-slate-50/60">
+                      <TableCell className="font-mono font-bold text-xs text-slate-900">
+                        {formatInvoiceNumber(order)}
+                      </TableCell>
                       <TableCell className="font-medium text-xs text-muted-foreground">
                         {new Date(order.createdAt).toLocaleDateString()}
                       </TableCell>

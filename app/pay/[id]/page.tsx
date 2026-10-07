@@ -27,6 +27,8 @@ import {
   ChevronDown,
   ChevronUp
 } from "lucide-react"
+import { formatInvoiceNumber } from "@/lib/invoice"
+import { InvoicePaymentPanel } from "@/components/pay/InvoicePaymentPanel"
 
 interface OrderItem {
   id: string
@@ -54,6 +56,9 @@ interface OrderData {
   notes?: string | null
   subtotal: number
   totalAmount: number
+  invoiceNumber?: number | null
+  processingFee?: number | null
+  paymentMethodType?: string | null
   stripePaymentIntent?: string | null
   createdAt: string
   items: OrderItem[]
@@ -82,6 +87,10 @@ export default function CustomerInvoicePayPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [showFullTerms, setShowFullTerms] = useState(false)
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
+  const [paymentConfig, setPaymentConfig] = useState<{
+    publishableKey: string | null
+    cardSurchargePercent: number
+  }>({ publishableKey: null, cardSurchargePercent: 3 })
 
   const toggleItemExpand = (id: string) => {
     setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }))
@@ -112,6 +121,9 @@ export default function CustomerInvoicePayPage() {
       const data = await res.json()
       setOrder(data.order)
       setCompany(data.companyInfo)
+      if (data.paymentConfig) {
+        setPaymentConfig(data.paymentConfig)
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load order")
     } finally {
@@ -260,15 +272,24 @@ export default function CustomerInvoicePayPage() {
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest block">
                     Official Invoice
                   </span>
-                  <span className="text-xl font-mono font-bold text-slate-900">
-                    INV-{order.id.slice(-8).toUpperCase()}
+                  <span className="text-2xl font-mono font-black text-slate-900 tracking-tight">
+                    {formatInvoiceNumber(order)}
                   </span>
                 </div>
-                <div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handlePrint}
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2.5 text-xs font-semibold text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900 print:hidden shadow-2xs"
+                  >
+                    <Printer className="h-3.5 w-3.5 mr-1 text-slate-500" />
+                    Print / PDF
+                  </Button>
                   {isPaid ? (
                     <Badge className="bg-emerald-500 hover:bg-emerald-500 text-slate-950 font-bold px-3 py-1 text-xs uppercase tracking-wider shadow-sm flex items-center gap-1.5">
                       <CheckCircle2 className="h-3.5 w-3.5 text-slate-950" />
-                      Paid & Confirmed
+                      Paid &amp; Confirmed
                     </Badge>
                   ) : (
                     <Badge className="bg-amber-400 text-slate-950 font-bold px-3 py-1 text-xs uppercase tracking-wider">
@@ -536,7 +557,7 @@ export default function CustomerInvoicePayPage() {
                       htmlFor="termsCheckbox"
                       className="text-xs text-slate-800 font-semibold cursor-pointer select-none leading-snug"
                     >
-                      I have read, acknowledge, and agree to Product Brands LLC Wholesale Terms & Conditions, including the 48-hour delivery inspection window, final wholesale sale policy, and payment processing authorization.
+                      I have read, acknowledge, and agree to Southern Basics LLC Wholesale Terms &amp; Conditions, including the 48-hour delivery inspection window, final wholesale sale policy, and payment processing authorization.
                     </label>
                   </div>
                 </div>
@@ -546,7 +567,7 @@ export default function CustomerInvoicePayPage() {
             {/* Payment Section */}
             <div className="pt-2 print:hidden">
               {isPaid ? (
-                <div className="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-8 text-center space-y-4">
+                <div className="bg-emerald-50/80 border-2 border-emerald-300 rounded-2xl p-8 text-center space-y-4">
                   <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-100 text-emerald-600">
                     <CheckCircle2 className="h-8 w-8" />
                   </div>
@@ -561,89 +582,34 @@ export default function CustomerInvoicePayPage() {
                       </div>
                     )}
                   </div>
-                  <Button onClick={handlePrint} variant="outline" className="border-emerald-300 hover:bg-emerald-100 text-emerald-950 font-semibold">
-                    <Printer className="h-4 w-4 mr-2" />
-                    Print / Save Official Invoice (PDF)
-                  </Button>
-                </div>
-              ) : (
-                <div className="bg-slate-900 text-white rounded-xl p-6 sm:p-8 space-y-6 shadow-lg">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-white">Complete Secure Payment</h3>
-                      <p className="text-xs text-slate-300 mt-1">
-                        Encrypted transaction processed directly by Stripe. Select ACH Direct Debit or Card on next screen.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
-                      <Lock className="h-3.5 w-3.5 text-emerald-400" />
-                      <span>Stripe 256-bit SSL</span>
-                    </div>
-                  </div>
-
-                  {/* Payment Methods Info Box */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="flex items-center gap-3 bg-slate-800/80 border border-slate-700 p-3 rounded-lg">
-                      <Landmark className="h-5 w-5 text-emerald-400 shrink-0" />
-                      <div>
-                        <strong className="block text-white">ACH Direct Debit (Recommended)</strong>
-                        <span className="text-slate-400">Directly connect your US business bank account</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 bg-slate-800/80 border border-slate-700 p-3 rounded-lg">
-                      <CreditCard className="h-5 w-5 text-blue-400 shrink-0" />
-                      <div>
-                        <strong className="block text-white">Credit & Debit Cards</strong>
-                        <span className="text-slate-400">Visa, Mastercard, Amex, Discover</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {error && (
-                    <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs p-3 rounded-lg">
-                      {error}
-                    </div>
-                  )}
-
-                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                    <Button
-                      onClick={handleCheckout}
-                      disabled={paying || !agreedToTerms}
-                      size="lg"
-                      className={`font-bold text-base px-8 h-12 shadow-lg flex-1 ${
-                        agreedToTerms 
-                          ? "bg-emerald-500 hover:bg-emerald-600 text-slate-950" 
-                          : "bg-slate-700 text-slate-400 cursor-not-allowed"
-                      }`}
-                    >
-                      {paying ? (
-                        <>
-                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                          Redirecting to Secure Checkout...
-                        </>
-                      ) : (
-                        <>
-                          Proceed to Payment ({formatMoney(order.totalAmount)})
-                        </>
-                      )}
-                    </Button>
+                  <div className="pt-2">
                     <Button 
                       onClick={handlePrint} 
-                      variant="outline" 
-                      size="lg" 
-                      className="border-slate-700 text-white hover:bg-slate-800 h-12"
+                      className="bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-sm"
                     >
                       <Printer className="h-4 w-4 mr-2" />
-                      Print Invoice
+                      Print / Save Official Invoice (PDF)
                     </Button>
                   </div>
-
-                  {!agreedToTerms && (
-                    <p className="text-[11px] text-amber-300 text-center">
-                      * Please check the box above acknowledging the Terms & Conditions to enable payment.
-                    </p>
-                  )}
                 </div>
+              ) : (
+                <InvoicePaymentPanel
+                  orderId={order.id}
+                  amountDue={order.totalAmount}
+                  publishableKey={paymentConfig.publishableKey}
+                  surchargePercent={paymentConfig.cardSurchargePercent}
+                  agreedToTerms={agreedToTerms}
+                  onRequireTerms={() => {
+                    setError("Please review and agree to the Terms & Conditions above before paying.")
+                    const el = document.getElementById("termsCheckbox")
+                    el?.scrollIntoView({ behavior: "smooth", block: "center" })
+                    el?.focus()
+                  }}
+                  onPaymentComplete={(updatedOrder) => {
+                    setOrder(updatedOrder)
+                    setPaymentSuccess(true)
+                  }}
+                />
               )}
             </div>
 
@@ -652,7 +618,7 @@ export default function CustomerInvoicePayPage() {
 
         {/* Footer */}
         <div className="text-center text-xs text-slate-500 py-4 print:hidden space-y-1">
-          <div>Product Brands LLC • Official Commercial Invoice</div>
+          <div>Southern Basics LLC • Official Commercial Invoice</div>
           <div>
             Need assistance? Reach our billing desk at{" "}
             <a href="mailto:info@productbrands.com" className="underline hover:text-slate-700">

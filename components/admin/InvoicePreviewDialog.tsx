@@ -90,7 +90,7 @@ export function InvoicePreviewDialog({ data }: { data: InvoicePreviewProps }) {
                       Official Invoice
                     </span>
                     <span className="text-xl font-mono font-bold text-slate-900">
-                      INV-PREVIEW
+                      PB3040 <span className="text-xs text-slate-400 font-sans font-normal">(Preview)</span>
                     </span>
                   </div>
                   <Badge className="bg-amber-400 text-slate-950 font-bold px-3 py-1 text-xs uppercase tracking-wider">

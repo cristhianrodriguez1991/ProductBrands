@@ -3,6 +3,8 @@ import { headers } from "next/headers"
 import { stripe } from "@/lib/stripe"
 import { prisma } from "@/lib/prisma"
 import { sendEmail } from "@/lib/email"
+import { formatInvoiceNumber } from "@/lib/invoice"
+import { syncOrderWithPaymentIntent } from "@/lib/customer-order-payments"
 import Stripe from "stripe"
 
 export const dynamic = "force-dynamic"
@@ -73,12 +75,12 @@ export async function POST(req: Request) {
 
               await sendEmail({
                 to: order.customerEmail,
-                subject: `Payment Receipt: Order #${order.id.slice(-8).toUpperCase()}`,
+                subject: `Payment Receipt: Invoice ${formatInvoiceNumber(order)}`,
                 html: `
                   <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
                     <h2 style="color: #0f172a; margin-top: 0;">Payment Confirmation</h2>
                     <p style="color: #334155;">Hi ${order.customerName},</p>
-                    <p style="color: #334155;">We have successfully received your payment of <strong>${formattedTotal}</strong> for Order <strong>#${order.id.slice(-8).toUpperCase()}</strong>.</p>
+                    <p style="color: #334155;">We have successfully received your payment of <strong>${formattedTotal}</strong> for Invoice <strong>${formatInvoiceNumber(order)}</strong>.</p>
                     
                     <div style="background-color: #f8fafc; border-radius: 6px; padding: 16px; margin: 20px 0;">
                       <h4 style="margin: 0 0 10px 0; color: #1e293b;">Order Summary</h4>
@@ -102,6 +104,18 @@ export async function POST(req: Request) {
               console.error("[STRIPE_WEBHOOK] Failed to send receipt email:", emailErr)
             }
           }
+        }
+        break
+      }
+
+      case "payment_intent.succeeded":
+      case "payment_intent.processing":
+      case "payment_intent.payment_failed": {
+        // Re-fetch from Stripe: never trust an (possibly unsigned) webhook payload
+        const intent = await stripe.paymentIntents.retrieve((event.data.object as Stripe.PaymentIntent).id)
+        const intentOrderId = intent.metadata?.orderId
+        if (intentOrderId) {
+          await syncOrderWithPaymentIntent(intentOrderId, intent)
         }
         break
       }
