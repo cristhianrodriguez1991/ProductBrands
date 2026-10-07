@@ -67,12 +67,56 @@ export async function POST(req: Request) {
       subtotal += total
       return {
         productName: item.productName,
-        imageUrl: item.imageUrl,
+        sku: item.sku || null,
+        weight: item.weight || null,
+        description: item.description || null,
+        imageUrl: item.imageUrl || null,
         quantity: qty,
         unitPrice: price,
         totalPrice: total
       }
     })
+
+    // Also auto-save/update any items marked as savePreset into InvoiceProductPreset
+    for (const item of items) {
+      if (item.savePreset && item.productName) {
+        try {
+          const existing = await prisma.invoiceProductPreset.findFirst({
+            where: {
+              OR: [
+                { name: { equals: item.productName, mode: "insensitive" as const } },
+                ...(item.sku ? [{ sku: { equals: item.sku, mode: "insensitive" as const } }] : [])
+              ]
+            }
+          })
+          if (existing) {
+            await prisma.invoiceProductPreset.update({
+              where: { id: existing.id },
+              data: {
+                sku: item.sku || existing.sku,
+                weight: item.weight || existing.weight,
+                description: item.description || existing.description,
+                unitPrice: parseFloat(item.unitPrice) || existing.unitPrice,
+                imageUrl: item.imageUrl || existing.imageUrl,
+              }
+            })
+          } else {
+            await prisma.invoiceProductPreset.create({
+              data: {
+                name: item.productName,
+                sku: item.sku || null,
+                weight: item.weight || null,
+                description: item.description || null,
+                unitPrice: parseFloat(item.unitPrice) || 0,
+                imageUrl: item.imageUrl || null,
+              }
+            })
+          }
+        } catch (presetErr) {
+          console.error("Failed to auto-save preset:", presetErr)
+        }
+      }
+    }
 
     const parsedShippingCost = parseFloat(shippingCost) || 0
     const totalAmount = subtotal + parsedShippingCost
@@ -101,6 +145,7 @@ export async function POST(req: Request) {
     })
 
     return NextResponse.json(order)
+
   } catch (error) {
     console.error("[CUSTOMER_ORDERS_POST]", error)
     return new NextResponse("Internal Error", { status: 500 })
