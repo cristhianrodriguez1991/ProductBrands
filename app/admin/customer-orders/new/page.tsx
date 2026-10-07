@@ -23,7 +23,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
 import Image from "next/image"
-
+import { InvoicePreviewDialog } from "@/components/admin/InvoicePreviewDialog"
 interface LineItem {
   id: string
   productName: string
@@ -587,6 +587,21 @@ export default function NewCustomerOrderPage() {
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Generate Professional Invoice
               </Button>
+              <InvoicePreviewDialog 
+                data={{
+                  customerName,
+                  customerEmail,
+                  customerPhone,
+                  companyName,
+                  deliveryType,
+                  deliveryDate,
+                  shippingCost,
+                  terms,
+                  items,
+                  subtotal,
+                  total,
+                }} 
+              />
             </CardContent>
           </Card>
         </div>

@@ -4,11 +4,11 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "m.media-amazon.com",
+        hostname: "**",
       },
       {
-        protocol: "https",
-        hostname: "images-na.ssl-images-amazon.com",
+        protocol: "http",
+        hostname: "**",
       },
     ],
     // Add your production image domains here
