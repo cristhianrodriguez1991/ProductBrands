@@ -264,20 +264,24 @@ export function buildReceiptEmail(order: EmailOrder) {
 
   const inner = `
     <tr><td style="padding:28px 32px 8px 32px;" align="center">
-      <div style="display:inline-block;padding:6px 14px;border-radius:999px;background-color:#dcfce7;color:#166534;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Payment Received</div>
-      <div style="margin-top:14px;font-size:30px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;">${money(paidTotal)}</div>
-      <div style="margin-top:4px;font-size:13px;color:#64748b;">Invoice ${num} &middot; ${methodLabel(order.paymentMethodType)}</div>
+      <div style="display:inline-block;padding:6px 16px;border-radius:999px;background-color:#dcfce7;color:#166534;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">
+        Order Confirmed &amp; Paid
+      </div>
+      <div style="margin-top:14px;font-size:32px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;">${money(paidTotal)}</div>
+      <div style="margin-top:6px;font-size:14px;color:#475569;font-weight:600;">
+        Confirmation #${num} &middot; ${methodLabel(order.paymentMethodType)}
+      </div>
     </td></tr>
 
     <tr><td style="padding:20px 32px 0 32px;font-size:15px;line-height:1.6;color:#334155;">
       Hello ${firstName},<br/><br/>
-      Thank you &mdash; we've received your payment and your order is confirmed for fulfillment. A summary is below for your records.
+      Your order has been confirmed! We have received your payment in full, and your order is now queued for ${order.deliveryType === "PICKUP" ? "warehouse pickup" : "freight delivery"}. Please keep this confirmation and order details for your records.
     </td></tr>
 
     <tr><td style="padding:24px 32px;">
       ${detailsGrid([
-        ["Invoice", num],
-        ["Paid On", fmtDate(new Date()) || ""],
+        ["Confirmation #", num],
+        ["Paid Date", fmtDate(new Date()) || ""],
         ["Fulfillment", order.deliveryType === "PICKUP" ? "Warehouse Pickup" : "Freight Delivery"],
       ])}
     </td></tr>
@@ -285,12 +289,15 @@ export function buildReceiptEmail(order: EmailOrder) {
     <tr><td style="padding:0 32px 24px 32px;">${partiesBlock(order)}</td></tr>
 
     <tr><td style="padding:0 32px 28px 32px;">
-      ${itemsTable(order, { showFee: true, totalLabel: "Total Paid", total: paidTotal })}
-      ${order.stripePaymentIntent ? `<div style="margin-top:16px;font-size:11px;color:#94a3b8;text-align:right;">Payment reference: ${esc(order.stripePaymentIntent)}</div>` : ""}
+      ${itemsTable(order, { showFee: true, totalLabel: "Total Confirmed &amp; Paid", total: paidTotal })}
+      <div style="margin-top:16px;font-size:12px;color:#64748b;display:flex;justify-content:space-between;">
+        <span>Payment Authorization: ${esc(order.stripePaymentIntent || "Verified Online")}</span>
+        <span>Status: Confirmed</span>
+      </div>
     </td></tr>`
 
   return {
-    subject: `Payment received — Invoice ${num} (Product Brands)`,
-    html: shell(`We received your payment of ${money(paidTotal)} for invoice ${num}.`, inner),
+    subject: `Order Confirmed: Invoice ${num} from Product Brands`,
+    html: shell(`Your order #${num} has been confirmed. Total paid: ${money(paidTotal)}.`, inner),
   }
 }

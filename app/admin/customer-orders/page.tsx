@@ -14,19 +14,25 @@ import {
   ExternalLink, 
   CheckCircle2, 
   Clock, 
-  Loader2,
-  Check
+  Check,
+  Eye,
+  Receipt,
+  Loader2
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
 import { formatCurrency } from "@/lib/utils"
 import { formatInvoiceNumber } from "@/lib/invoice"
+import { OrderDetailDialog } from "@/components/admin/OrderDetailDialog"
 
 export default function CustomerOrdersPage() {
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string>("ALL")
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
   const [sendingId, setSendingId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const { toast } = useToast()
@@ -105,18 +111,43 @@ export default function CustomerOrdersPage() {
     }
   }
 
-  const filteredOrders = orders.filter(o => 
-    formatInvoiceNumber(o).toLowerCase().includes(search.toLowerCase()) ||
-    o.customerName?.toLowerCase().includes(search.toLowerCase()) ||
-    o.customerEmail?.toLowerCase().includes(search.toLowerCase()) ||
-    (o.companyName && o.companyName.toLowerCase().includes(search.toLowerCase()))
-  )
+  const openOrderDetail = (order: any) => {
+    setSelectedOrder(order)
+    setDetailOpen(true)
+  }
+
+  const filteredOrders = orders.filter(o => {
+    const matchesSearch = 
+      formatInvoiceNumber(o).toLowerCase().includes(search.toLowerCase()) ||
+      o.customerName?.toLowerCase().includes(search.toLowerCase()) ||
+      o.customerEmail?.toLowerCase().includes(search.toLowerCase()) ||
+      (o.companyName && o.companyName.toLowerCase().includes(search.toLowerCase()))
+
+    if (!matchesSearch) return false
+
+    if (statusFilter === "PAID") return o.status === "PAID"
+    if (statusFilter === "COMPLETED") return o.status === "COMPLETED"
+    if (statusFilter === "UNPAID") return o.status === "SENT" || o.status === "DRAFT"
+
+    return true
+  })
+
+  const countPaid = orders.filter(o => o.status === "PAID").length
+  const countCompleted = orders.filter(o => o.status === "COMPLETED").length
+  const countUnpaid = orders.filter(o => o.status === "SENT" || o.status === "DRAFT").length
 
   const getStatusBadge = (status: string) => {
     switch(status) {
+      case "COMPLETED":
+        return (
+          <Badge className="bg-indigo-600 hover:bg-indigo-600 text-white flex items-center gap-1 font-semibold">
+            <CheckCircle2 className="h-3 w-3" />
+            Order Completed
+          </Badge>
+        )
       case "PAID":
         return (
-          <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white flex items-center gap-1">
+          <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white flex items-center gap-1 font-semibold">
             <CheckCircle2 className="h-3 w-3" />
             Paid
           </Badge>
@@ -153,16 +184,52 @@ export default function CustomerOrdersPage() {
       </div>
 
       <Card>
-        <CardHeader className="pb-3 border-b">
-          <div className="flex items-center">
+        <CardHeader className="pb-3 border-b space-y-3">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="relative w-full max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search customers, emails, companies..."
-                className="pl-9"
+                placeholder="Search invoice #, customers, emails..."
+                className="pl-9 h-9 text-xs"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+            </div>
+
+            {/* Quick Status Filters */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <Button
+                variant={statusFilter === "ALL" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter("ALL")}
+                className={`h-8 px-2.5 text-xs font-semibold ${statusFilter === "ALL" ? "bg-slate-900 text-white" : ""}`}
+              >
+                All ({orders.length})
+              </Button>
+              <Button
+                variant={statusFilter === "PAID" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter("PAID")}
+                className={`h-8 px-2.5 text-xs font-semibold ${statusFilter === "PAID" ? "bg-emerald-600 text-white hover:bg-emerald-700" : "text-emerald-700 border-emerald-200 hover:bg-emerald-50"}`}
+              >
+                Paid ({countPaid})
+              </Button>
+              <Button
+                variant={statusFilter === "COMPLETED" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter("COMPLETED")}
+                className={`h-8 px-2.5 text-xs font-semibold ${statusFilter === "COMPLETED" ? "bg-indigo-600 text-white hover:bg-indigo-700" : "text-indigo-700 border-indigo-200 hover:bg-indigo-50"}`}
+              >
+                Completed ({countCompleted})
+              </Button>
+              <Button
+                variant={statusFilter === "UNPAID" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter("UNPAID")}
+                className={`h-8 px-2.5 text-xs font-semibold ${statusFilter === "UNPAID" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
+              >
+                Unpaid ({countUnpaid})
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -195,8 +262,12 @@ export default function CustomerOrdersPage() {
                   </TableRow>
                 ) : (
                   filteredOrders.map((order) => (
-                    <TableRow key={order.id} className="hover:bg-slate-50/60">
-                      <TableCell className="font-mono font-bold text-xs text-slate-900">
+                    <TableRow 
+                      key={order.id} 
+                      className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                      onClick={() => openOrderDetail(order)}
+                    >
+                      <TableCell className="font-mono font-bold text-xs text-slate-900 group-hover:text-blue-600 underline-offset-2 group-hover:underline">
                         {formatInvoiceNumber(order)}
                       </TableCell>
                       <TableCell className="font-medium text-xs text-muted-foreground">
@@ -221,6 +292,11 @@ export default function CustomerOrdersPage() {
                               {new Date(order.deliveryDate).toLocaleDateString()}
                             </span>
                           )}
+                          {order.completedAt && (
+                            <span className="text-[10px] text-indigo-600 font-semibold">
+                              Done {new Date(order.completedAt).toLocaleDateString()}
+                            </span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -229,17 +305,29 @@ export default function CustomerOrdersPage() {
                           {order.items?.length || 0} item(s)
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <button
-                          onClick={() => handleToggleStatus(order.id, order.status)}
-                          title="Click to toggle status"
+                          onClick={() => openOrderDetail(order)}
+                          title="Click to view details or change status"
                           className="cursor-pointer transition-opacity hover:opacity-80"
                         >
                           {getStatusBadge(order.status)}
                         </button>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* View details */}
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="h-8 px-2.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800"
+                            onClick={() => openOrderDetail(order)}
+                            title="Open customer info and order details"
+                          >
+                            <Eye className="h-3.5 w-3.5 mr-1 text-slate-600" />
+                            <span>Details</span>
+                          </Button>
+
                           {/* Copy Payment Link */}
                           <Button
                             variant="ghost"
@@ -253,9 +341,6 @@ export default function CustomerOrdersPage() {
                             ) : (
                               <Copy className="h-3.5 w-3.5" />
                             )}
-                            <span className="ml-1 hidden md:inline">
-                              {copiedId === order.id ? "Copied" : "Copy Link"}
-                            </span>
                           </Button>
 
                           {/* Open Public Invoice View */}
@@ -267,7 +352,6 @@ export default function CustomerOrdersPage() {
                               title="View Invoice Page"
                             >
                               <ExternalLink className="h-3.5 w-3.5" />
-                              <span className="ml-1 hidden md:inline">View</span>
                             </Button>
                           </Link>
 
@@ -310,6 +394,14 @@ export default function CustomerOrdersPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Order Detail & Fulfillment Modal */}
+      <OrderDetailDialog
+        order={selectedOrder}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onOrderUpdated={fetchOrders}
+      />
     </div>
   )
 }

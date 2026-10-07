@@ -1307,6 +1307,10 @@ model CustomerOrder {
   processingFee       Float    @default(0.0)
   // "us_bank_account" | "card:credit" | "card:debit" | "card:prepaid" ...
   paymentMethodType   String?
+  // Completion and fulfillment tracking
+  completedAt         DateTime?
+  completionNotes     String?  @db.Text
+  receivedDate        DateTime?
   
   stripeSessionId     String?  @unique
   stripePaymentIntent String?  @unique

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { stripe } from "@/lib/stripe"
 import { syncOrderWithPaymentIntent } from "@/lib/customer-order-payments"
+import { sendEmail } from "@/lib/email"
+import { buildReceiptEmail, INVOICE_EMAIL_FROM } from "@/lib/invoice-emails"
 
 export const dynamic = "force-dynamic"
 
@@ -60,14 +62,35 @@ export async function POST(
           ? session.payment_intent
           : session.payment_intent?.id || null
 
-      const updated = await prisma.customerOrder.update({
-        where: { id: order.id },
-        data: {
-          status: "PAID",
-          stripePaymentIntent: paymentIntentIdFromSession,
-        },
-        include: { items: true },
-      })
+      let updated = null
+      if (paymentIntentIdFromSession) {
+        try {
+          const intent = await stripe.paymentIntents.retrieve(paymentIntentIdFromSession)
+          updated = await syncOrderWithPaymentIntent(order.id, intent)
+        } catch (e) {
+          console.error("Error syncing payment intent from session", e)
+        }
+      }
+
+      if (!updated) {
+        updated = await prisma.customerOrder.update({
+          where: { id: order.id },
+          data: {
+            status: "PAID",
+            stripePaymentIntent: paymentIntentIdFromSession,
+          },
+          include: { items: true },
+        })
+
+        if (order.status !== "PAID" && updated.customerEmail) {
+          try {
+            const { subject, html } = buildReceiptEmail(updated)
+            await sendEmail({ to: updated.customerEmail, subject, html, from: INVOICE_EMAIL_FROM })
+          } catch (err) {
+            console.error("[RECEIPT_EMAIL_ERROR]", err)
+          }
+        }
+      }
 
       return NextResponse.json({ order: updated, paid: true })
     }
