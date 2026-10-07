@@ -448,6 +448,34 @@ export default function NewCustomerOrderPage() {
                           ${(item.quantity * item.unitPrice).toFixed(2)}
                         </div>
                       </div>
+
+                      {/* Image URL Link Input */}
+                      <div className="col-span-12 space-y-1.5">
+                        <Label className="text-xs flex items-center justify-between text-slate-600">
+                          <span>Image URL / Direct Link (Optional)</span>
+                          <span className="text-[10px] text-muted-foreground">Paste image link from Amazon, supplier, etc.</span>
+                        </Label>
+                        <Input 
+                          value={item.imageUrl} 
+                          onChange={e => updateItem(item.id, "imageUrl", e.target.value)} 
+                          placeholder="https://... (or click the photo box on the left to upload)" 
+                          className="text-xs font-mono h-9" 
+                        />
+                      </div>
+
+                      {/* Optional Description */}
+                      <div className="col-span-12 space-y-1.5">
+                        <Label className="text-xs flex items-center justify-between text-slate-600">
+                          <span>Product Description & Specifications (Optional)</span>
+                          <span className="text-[10px] text-muted-foreground">If filled, creates a clickable dropdown on customer invoice</span>
+                        </Label>
+                        <Textarea 
+                          value={item.description} 
+                          onChange={e => updateItem(item.id, "description", e.target.value)} 
+                          placeholder="e.g. Premium confectionery chocolate melting wafers, smooth cocoa flavor, easy to melt. Ideal for molding and baking..." 
+                          className="h-20 text-xs" 
+                        />
+                      </div>
                     </div>
                   </div>
 

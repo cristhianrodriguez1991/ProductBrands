@@ -81,6 +81,11 @@ export default function CustomerInvoicePayPage() {
   const [verifyingPayment, setVerifyingPayment] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [showFullTerms, setShowFullTerms] = useState(false)
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
+
+  const toggleItemExpand = (id: string) => {
+    setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }))
+  }
 
   const isSuccessParam = searchParams.get("success") === "true"
   const isCanceledParam = searchParams.get("canceled") === "true"
@@ -393,46 +398,95 @@ export default function CustomerInvoicePayPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {order.items.map((item, idx) => (
-                      <tr key={item.id || idx} className="hover:bg-slate-50/50">
-                        <td className="py-3.5 px-4">
-                          {item.imageUrl ? (
-                            <div className="relative w-12 h-12 rounded-lg border border-slate-200 overflow-hidden bg-white shrink-0 shadow-2xs">
-                              <Image
-                                src={item.imageUrl}
-                                alt={item.productName}
-                                fill
-                                className="object-cover"
-                              />
+                    {order.items.map((item, idx) => {
+                      const itemKey = item.id || `item-${idx}`
+                      const isExpanded = !!expandedItems[itemKey]
+                      const hasDesc = !!(item.description && item.description.trim())
+
+                      return (
+                        <tr key={itemKey} className="group">
+                          <td colSpan={6} className="p-0">
+                            <div className="hover:bg-slate-50/60 transition-colors">
+                              <table className="w-full text-left text-sm">
+                                <tbody>
+                                  <tr>
+                                    <td className="py-3.5 px-4 w-16 align-top">
+                                      {item.imageUrl ? (
+                                        <div className="relative w-12 h-12 rounded-lg border border-slate-200 overflow-hidden bg-white shrink-0 shadow-2xs">
+                                          <Image
+                                            src={item.imageUrl}
+                                            alt={item.productName}
+                                            fill
+                                            className="object-cover"
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
+                                          <Package className="h-5 w-5" />
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="py-3.5 px-4 align-top">
+                                      <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-bold text-slate-900 block">{item.productName}</span>
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                                          {item.sku && (
+                                            <span className="text-slate-500 font-mono">
+                                              SKU: {item.sku}
+                                            </span>
+                                          )}
+                                          
+                                          {/* Optional Dropdown Toggle Button */}
+                                          {hasDesc && (
+                                            <button
+                                              type="button"
+                                              onClick={() => toggleItemExpand(itemKey)}
+                                              className="inline-flex items-center gap-1 font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded transition-colors cursor-pointer select-none"
+                                            >
+                                              <span>{isExpanded ? "Hide Description" : "View Description & Details"}</span>
+                                              {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="py-3.5 px-4 w-28 text-xs text-slate-600 align-top">
+                                      {item.weight || "—"}
+                                    </td>
+                                    <td className="py-3.5 px-4 text-center w-20 font-bold text-slate-800 align-top">
+                                      {item.quantity}
+                                    </td>
+                                    <td className="py-3.5 px-4 text-right w-28 text-slate-700 font-medium align-top">
+                                      {formatMoney(item.unitPrice)}
+                                    </td>
+                                    <td className="py-3.5 px-4 text-right w-32 font-bold text-slate-900 align-top">
+                                      {formatMoney(item.totalPrice)}
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
                             </div>
-                          ) : (
-                            <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
-                              <Package className="h-5 w-5" />
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className="font-bold text-slate-900 block">{item.productName}</span>
-                          {item.sku && (
-                            <span className="text-[11px] text-slate-500 font-mono">
-                              SKU: {item.sku}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 text-xs text-slate-600">
-                          {item.weight || "—"}
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-slate-800">
-                          {item.quantity}
-                        </td>
-                        <td className="py-3.5 px-4 text-right text-slate-700 font-medium">
-                          {formatMoney(item.unitPrice)}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-bold text-slate-900">
-                          {formatMoney(item.totalPrice)}
-                        </td>
-                      </tr>
-                    ))}
+
+                            {/* Dropdown Content Area (Only if description exists AND expanded) */}
+                            {hasDesc && isExpanded && (
+                              <div className="px-6 pb-4 pt-1 bg-slate-50/90 border-t border-slate-200/70 border-b border-slate-200/70">
+                                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-1.5">
+                                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>Product Description & Specifications</span>
+                                  </div>
+                                  <p className="text-xs text-slate-700 whitespace-pre-line leading-relaxed">
+                                    {item.description}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
