@@ -8,26 +8,31 @@ import {
   Lock,
   Landmark,
   CreditCard,
-  Info,
   AlertCircle,
   CheckCircle2,
-  ShieldCheck,
-  Building2,
   Sparkles,
-  ArrowRight
+  FileCheck2,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import { computeCardProcessingFeeCents } from "@/lib/invoice"
 
 type FeeQuote = { feeCents: number; totalCents: number; funding: string | null }
 
-interface PanelProps {
+export interface InvoicePaymentPanelProps {
   orderId: string
   amountDue: number
+  subtotal: number
+  shippingCost: number
+  deliveryType?: string
   publishableKey: string | null
   surchargePercent: number
   agreedToTerms: boolean
+  onToggleTerms: (checked: boolean) => void
   onRequireTerms: () => void
   onPaymentComplete: (order: any) => void
+  termsText?: string | null
 }
 
 const money = (cents: number) =>
@@ -39,7 +44,7 @@ function getStripe(key: string) {
   return stripePromiseCache.get(key)!
 }
 
-export function InvoicePaymentPanel(props: PanelProps) {
+export function InvoicePaymentPanel(props: InvoicePaymentPanelProps) {
   const baseCents = Math.round((props.amountDue || 0) * 100)
 
   const options = useMemo<StripeElementsOptions>(
@@ -81,41 +86,6 @@ export function InvoicePaymentPanel(props: PanelProps) {
   )
 }
 
-/* ------------------------------------------------------------------ */
-/* Shared layout shell                                                */
-/* ------------------------------------------------------------------ */
-
-function PanelShell({
-  baseCents,
-  children,
-  summary,
-}: {
-  baseCents: number
-  children: React.ReactNode
-  summary: React.ReactNode
-}) {
-  return (
-    <section id="pay-invoice" aria-labelledby="pay-invoice-title" className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 px-6 sm:px-8 py-5 border-b border-slate-200 bg-slate-50/70">
-        <div>
-          <h2 id="pay-invoice-title" className="text-lg font-bold text-slate-900">Pay Invoice</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Select your preferred payment method below.</p>
-        </div>
-        <div className="sm:text-right">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">Invoice Total</span>
-          <span className="text-2xl font-black text-slate-900">{money(baseCents)}</span>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-0">
-        <div className="lg:col-span-3 p-6 sm:p-8">{children}</div>
-        <aside className="lg:col-span-2 p-6 sm:p-8 bg-slate-50/60 border-t lg:border-t-0 lg:border-l border-slate-200">
-          {summary}
-        </aside>
-      </div>
-    </section>
-  )
-}
-
 function SecureNote() {
   return (
     <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
@@ -127,60 +97,50 @@ function SecureNote() {
 
 function AchSetupGuide() {
   return (
-    <div className="space-y-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-5">
+    <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
       <div className="flex items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white">
-          <Landmark className="h-4 w-4" />
+        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-600 text-white shrink-0">
+          <Landmark className="h-3.5 w-3.5" />
         </div>
         <div>
           <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-950">
             How to Pay via ACH Bank Transfer ($0.00 Fee)
           </h4>
           <p className="text-[11px] text-emerald-800">
-            Fast, secure direct payment from your US business bank account.
+            Instant bank login or routing &amp; account numbers.
           </p>
         </div>
       </div>
 
-      <ol className="space-y-3 text-xs text-slate-700">
-        <li className="flex items-start gap-2.5">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-200 text-[11px] font-bold text-emerald-900">
+      <ol className="space-y-2 text-xs text-slate-700">
+        <li className="flex items-start gap-2">
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-200 text-[10px] font-bold text-emerald-900 mt-0.5">
             1
           </span>
-          <div>
-            <strong className="text-slate-900">Select Your Bank:</strong>
-            <span className="text-slate-600 ml-1">
-              Click the button to open Stripe&apos;s verified bank portal. Choose from Chase, Bank of America, Wells Fargo, Citi, PNC, Capital One, or search any US financial institution.
-            </span>
-          </div>
+          <span className="text-[11px] leading-snug">
+            <strong className="text-slate-900">Choose Bank:</strong> Select Chase, Bank of America, Wells Fargo, Citi, PNC, Capital One, or search any US bank.
+          </span>
         </li>
-        <li className="flex items-start gap-2.5">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-200 text-[11px] font-bold text-emerald-900">
+        <li className="flex items-start gap-2">
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-200 text-[10px] font-bold text-emerald-900 mt-0.5">
             2
           </span>
-          <div>
-            <strong className="text-slate-900">Log In Securely:</strong>
-            <span className="text-slate-600 ml-1">
-              Sign in with your normal online banking credentials through Stripe Financial Connections. Your credentials are encrypted end-to-end and never seen by Product Brands.
-            </span>
-          </div>
+          <span className="text-[11px] leading-snug">
+            <strong className="text-slate-900">Sign In Securely:</strong> Log in via Stripe Financial Connections (bank-grade encryption; credentials never shared).
+          </span>
         </li>
-        <li className="flex items-start gap-2.5">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-200 text-[11px] font-bold text-emerald-900">
+        <li className="flex items-start gap-2">
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-200 text-[10px] font-bold text-emerald-900 mt-0.5">
             3
           </span>
-          <div>
-            <strong className="text-slate-900">Confirm &amp; Authorize:</strong>
-            <span className="text-slate-600 ml-1">
-              Select your business checking or savings account. Payment is authorized with <span className="font-bold text-emerald-700">$0.00 in added fees</span>.
-            </span>
-          </div>
+          <span className="text-[11px] leading-snug">
+            <strong className="text-slate-900">Confirm &amp; Pay:</strong> Select your checking account. Authorized with <span className="font-bold text-emerald-700">$0.00 fees</span>.
+          </span>
         </li>
       </ol>
 
-      <div className="rounded-lg border border-emerald-200 bg-white/80 p-3 text-[11px] text-slate-600">
-        <span className="font-semibold text-slate-900">Don&apos;t use online banking?</span> You can also select{" "}
-        <em>&quot;Manually enter account details&quot;</em> in the Stripe portal to pay using your 9-digit Routing Number and Account Number.
+      <div className="rounded-lg border border-emerald-200/80 bg-white/90 p-2.5 text-[11px] text-slate-600 leading-snug">
+        <span className="font-semibold text-slate-900">No online banking?</span> You can also select <em>&quot;Manually enter account details&quot;</em> in Stripe using your 9-digit Routing and Account number.
       </div>
     </div>
   )
@@ -188,46 +148,53 @@ function AchSetupGuide() {
 
 function CardFeeNotice({ feeCents }: { feeCents: number }) {
   return (
-    <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-5 text-xs text-slate-700">
+    <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-xs text-slate-700">
       <div className="flex items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 text-white">
-          <CreditCard className="h-4 w-4" />
+        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900 text-white shrink-0">
+          <CreditCard className="h-3.5 w-3.5" />
         </div>
         <div>
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">
             Credit &amp; Debit Card Payment
           </h4>
           <p className="text-[11px] text-slate-500">
-            Visa, Mastercard, American Express, and Discover accepted.
+            Visa, Mastercard, Amex, Discover accepted.
           </p>
         </div>
       </div>
 
-      <p className="leading-relaxed text-slate-600">
-        Card payments are processed instantly. Stripe charges a standard payment processing fee of <strong>2.9% + $0.30</strong> ({money(feeCents)}), which is added to the invoice total.
+      <p className="leading-snug text-[11px] text-slate-600">
+        Card payments are authorized instantly. Stripe charges a standard <strong>2.9% + $0.30</strong> fee ({money(feeCents)}), which is added to the total.
       </p>
 
-      <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-[11px] text-amber-900">
-        💡 <strong>Want to avoid this fee?</strong> Switch to <strong>ACH Bank Transfer</strong> above to pay <strong>$0.00</strong> in processing fees.
+      <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-2.5 text-[11px] text-amber-900 leading-snug">
+        💡 <strong>Want to avoid the fee?</strong> Select <strong>ACH Bank Transfer</strong> above to pay <strong>$0.00</strong> in processing fees.
       </div>
     </div>
   )
 }
 
 /* ------------------------------------------------------------------ */
-/* Fallback: Hosted Stripe Checkout                                   */
+/* Unified Fallback: Hosted Stripe Checkout                           */
 /* ------------------------------------------------------------------ */
 
 function HostedCheckoutFallback({
   orderId,
   baseCents,
+  subtotal,
+  shippingCost,
   agreedToTerms,
+  onToggleTerms,
   onRequireTerms,
-}: PanelProps & { baseCents: number }) {
+  termsText,
+}: InvoicePaymentPanelProps & { baseCents: number }) {
   const [selectedMethod, setSelectedMethod] = useState<"ach" | "card">("ach")
+  const [showFullTerms, setShowFullTerms] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const subtotalCents = Math.round((subtotal || 0) * 100)
+  const shippingCents = Math.round((shippingCost || 0) * 100)
   const cardFeeCents = computeCardProcessingFeeCents(baseCents)
   const feeCents = selectedMethod === "card" ? cardFeeCents : 0
   const totalCents = baseCents + feeCents
@@ -254,111 +221,36 @@ function HostedCheckoutFallback({
     }
   }
 
-  const summary = (
-    <div className="flex flex-col h-full gap-5">
-      <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-          Payment Breakdown
-        </h3>
-        <dl className="space-y-2.5 text-sm">
-          <div className="flex justify-between">
-            <dt className="text-slate-600">Invoice total</dt>
-            <dd className="font-semibold text-slate-900">{money(baseCents)}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-slate-600">Payment method</dt>
-            <dd className="font-semibold text-slate-900 text-right">
-              {selectedMethod === "ach" ? "ACH Bank Transfer" : "Credit / Debit Card"}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-slate-600">
-              {selectedMethod === "card" ? "Card processing fee (2.9% + $0.30)" : "Processing fee"}
-            </dt>
-            <dd className={`font-semibold text-right ${selectedMethod === "ach" ? "text-emerald-700" : "text-slate-900"}`}>
-              {selectedMethod === "ach" ? "$0.00 (Free)" : money(cardFeeCents)}
-            </dd>
-          </div>
-          <div className="flex justify-between items-baseline border-t border-slate-200 pt-3">
-            <dt className="font-bold text-slate-900">Total to pay</dt>
-            <dd className="text-2xl font-black text-slate-900">{money(totalCents)}</dd>
-          </div>
-        </dl>
-      </div>
-
-      {selectedMethod === "ach" && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-xs text-emerald-950 flex items-start gap-2">
-          <Sparkles className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-          <span>
-            <strong>Zero fees:</strong> You are saving <strong>{money(cardFeeCents)}</strong> in processing fees by paying via ACH bank transfer.
-          </span>
-        </div>
-      )}
-
-      {error && (
-        <div role="alert" className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-800">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-px" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      <div className="mt-auto space-y-3">
-        <button
-          id="pay-invoice-button"
-          type="button"
-          onClick={handlePay}
-          disabled={processing}
-          className={`w-full h-12 rounded-xl font-bold text-[15px] inline-flex items-center justify-center gap-2 transition-all ${
-            agreedToTerms
-              ? "bg-slate-900 text-white hover:bg-slate-800 shadow-md hover:shadow-lg active:scale-[0.99]"
-              : "bg-slate-200 text-slate-500"
-          } disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer`}
-        >
-          {processing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Opening secure checkout…
-            </>
-          ) : (
-            <>
-              {selectedMethod === "ach" ? <Landmark className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
-              Pay {money(totalCents)} {selectedMethod === "ach" ? "via ACH (Free)" : "with Card"}
-            </>
-          )}
-        </button>
-
-        {!agreedToTerms && (
-          <p className="text-[11px] text-center text-slate-500">
-            Accept the Terms &amp; Conditions above to enable payment.
-          </p>
-        )}
-
-        <SecureNote />
-      </div>
-    </div>
-  )
-
   return (
-    <PanelShell baseCents={baseCents} summary={summary}>
-      <div className="space-y-6">
-        <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-3">
-            Choose Payment Method
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden print:hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
+        
+        {/* Left Column: Payment Method Selection, Setup Guide, Terms Agreement */}
+        <div className="lg:col-span-7 p-5 sm:p-6 space-y-4">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
+              Payment Method
+            </span>
+            <h3 className="text-base font-bold text-slate-900">
+              Select How You Want to Pay
+            </h3>
+          </div>
+
+          {/* 2 Selectable Tabs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {/* ACH Option */}
             <button
               type="button"
               onClick={() => setSelectedMethod("ach")}
-              className={`text-left p-4 rounded-xl border-2 transition-all relative cursor-pointer ${
+              className={`text-left p-3.5 rounded-xl border-2 transition-all relative cursor-pointer ${
                 selectedMethod === "ach"
-                  ? "border-emerald-600 bg-emerald-50/40 shadow-xs ring-2 ring-emerald-600/20"
-                  : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50"
+                  ? "border-emerald-600 bg-emerald-50/50 shadow-xs ring-2 ring-emerald-600/20"
+                  : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className={`p-2 rounded-lg ${selectedMethod === "ach" ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-700"}`}>
-                  <Landmark className="h-5 w-5" />
+              <div className="flex items-center justify-between mb-1.5">
+                <div className={`p-1.5 rounded-lg ${selectedMethod === "ach" ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-700"}`}>
+                  <Landmark className="h-4 w-4" />
                 </div>
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-800">
                   <CheckCircle2 className="h-3 w-3 text-emerald-600" />
@@ -366,8 +258,8 @@ function HostedCheckoutFallback({
                 </span>
               </div>
               <div className="font-bold text-slate-900 text-sm">ACH Bank Transfer</div>
-              <div className="text-xs text-slate-500 mt-0.5">
-                Direct debit from your business bank account. Recommended.
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Direct debit from US bank account. Recommended.
               </div>
             </button>
 
@@ -375,60 +267,199 @@ function HostedCheckoutFallback({
             <button
               type="button"
               onClick={() => setSelectedMethod("card")}
-              className={`text-left p-4 rounded-xl border-2 transition-all relative cursor-pointer ${
+              className={`text-left p-3.5 rounded-xl border-2 transition-all relative cursor-pointer ${
                 selectedMethod === "card"
                   ? "border-slate-900 bg-slate-50/50 shadow-xs ring-2 ring-slate-900/10"
-                  : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50"
+                  : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className={`p-2 rounded-lg ${selectedMethod === "card" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"}`}>
-                  <CreditCard className="h-5 w-5" />
+              <div className="flex items-center justify-between mb-1.5">
+                <div className={`p-1.5 rounded-lg ${selectedMethod === "card" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"}`}>
+                  <CreditCard className="h-4 w-4" />
                 </div>
                 <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600">
                   +Fee ({money(cardFeeCents)})
                 </span>
               </div>
               <div className="font-bold text-slate-900 text-sm">Credit or Debit Card</div>
-              <div className="text-xs text-slate-500 mt-0.5">
+              <div className="text-[11px] text-slate-500 mt-0.5">
                 Visa, Mastercard, Amex, Discover. Instant authorization.
               </div>
             </button>
           </div>
+
+          {/* Dynamic method instructions */}
+          {selectedMethod === "ach" ? (
+            <AchSetupGuide />
+          ) : (
+            <CardFeeNotice feeCents={cardFeeCents} />
+          )}
+
+          {/* Wholesale Terms Agreement */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 space-y-2">
+            <div
+              className="flex items-center justify-between cursor-pointer select-none text-xs font-bold text-slate-800"
+              onClick={() => setShowFullTerms(!showFullTerms)}
+            >
+              <div className="flex items-center gap-1.5">
+                <FileCheck2 className="h-4 w-4 text-slate-600" />
+                <span className="uppercase tracking-wider text-[11px]">Wholesale Terms of Sale &amp; Policy</span>
+              </div>
+              <span className="text-[11px] text-blue-600 hover:underline flex items-center gap-0.5">
+                {showFullTerms ? (
+                  <>Hide <ChevronUp className="h-3 w-3" /></>
+                ) : (
+                  <>Details <ChevronDown className="h-3 w-3" /></>
+                )}
+              </span>
+            </div>
+
+            <div className={`text-[11px] text-slate-600 leading-relaxed ${showFullTerms ? "block max-h-40 overflow-y-auto" : "line-clamp-2"}`}>
+              <p className="whitespace-pre-line">
+                {termsText || "Standard Product Brands wholesale terms apply. Payment is due in full upon invoice receipt. Buyer must inspect goods within 48 hours of delivery."}
+              </p>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 flex items-start gap-2.5">
+              <Checkbox
+                id="termsCheckbox"
+                checked={agreedToTerms}
+                onCheckedChange={(checked) => onToggleTerms(!!checked)}
+                className="mt-0.5"
+              />
+              <label
+                htmlFor="termsCheckbox"
+                className="text-xs text-slate-800 font-semibold cursor-pointer select-none leading-snug"
+              >
+                I have read, acknowledge, and agree to Southern Basics LLC Wholesale Terms &amp; Conditions.
+              </label>
+            </div>
+          </div>
         </div>
 
-        {/* Selected method dynamic guidance */}
-        {selectedMethod === "ach" ? (
-          <AchSetupGuide />
-        ) : (
-          <CardFeeNotice feeCents={cardFeeCents} />
-        )}
+        {/* Right Column: Single Unified Order & Payment Summary + Checkout Action */}
+        <div className="lg:col-span-5 p-5 sm:p-6 bg-slate-50/70 border-t lg:border-t-0 lg:border-l border-slate-200 flex flex-col justify-between">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+              Order &amp; Payment Summary
+            </h3>
+
+            <dl className="space-y-2.5 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-slate-600">Subtotal</dt>
+                <dd className="font-semibold text-slate-900">{money(subtotalCents)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-slate-600">Freight &amp; Delivery</dt>
+                <dd className="font-semibold text-slate-800">
+                  {shippingCents > 0 ? money(shippingCents) : "Free / Included"}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-slate-600">Payment method</dt>
+                <dd className="font-semibold text-slate-900 text-right">
+                  {selectedMethod === "ach" ? "ACH Bank Transfer" : "Credit / Debit Card"}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-slate-600">
+                  {selectedMethod === "card" ? "Card processing fee (2.9% + $0.30)" : "Processing fee"}
+                </dt>
+                <dd className={`font-semibold text-right ${selectedMethod === "ach" ? "text-emerald-700" : "text-slate-900"}`}>
+                  {selectedMethod === "ach" ? "$0.00 (Free)" : money(cardFeeCents)}
+                </dd>
+              </div>
+              <div className="flex justify-between items-baseline border-t border-slate-200 pt-3">
+                <dt className="font-bold text-slate-900 text-base">Total Due</dt>
+                <dd className="text-2xl font-black text-slate-900">{money(totalCents)}</dd>
+              </div>
+            </dl>
+
+            {selectedMethod === "ach" && (
+              <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs text-emerald-950 flex items-start gap-2">
+                <Sparkles className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Zero fees:</strong> You are saving <strong>{money(cardFeeCents)}</strong> by paying via ACH bank transfer.
+                </span>
+              </div>
+            )}
+
+            {error && (
+              <div role="alert" className="mt-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-px" />
+                <span>{error}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 space-y-3">
+            <button
+              id="pay-invoice-button"
+              type="button"
+              onClick={handlePay}
+              disabled={processing}
+              className={`w-full h-12 rounded-xl font-bold text-[15px] inline-flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                agreedToTerms
+                  ? "bg-slate-900 text-white hover:bg-slate-800 shadow-md hover:shadow-lg active:scale-[0.99]"
+                  : "bg-slate-200 text-slate-500 hover:bg-slate-300"
+              } disabled:opacity-60 disabled:cursor-not-allowed`}
+            >
+              {processing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Opening secure checkout…
+                </>
+              ) : (
+                <>
+                  {selectedMethod === "ach" ? <Landmark className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
+                  Pay {money(totalCents)} {selectedMethod === "ach" ? "via ACH (Free)" : "with Card"}
+                </>
+              )}
+            </button>
+
+            {!agreedToTerms && (
+              <p className="text-[11px] text-center text-slate-500">
+                Please check the Terms &amp; Conditions to enable payment.
+              </p>
+            )}
+
+            <SecureNote />
+          </div>
+        </div>
+
       </div>
-    </PanelShell>
+    </div>
   )
 }
 
 /* ------------------------------------------------------------------ */
-/* Inline Payment Element form (when publishable key is present)       */
+/* Unified Inline Payment Element form (when publishable key is set)  */
 /* ------------------------------------------------------------------ */
 
 function InlinePaymentForm({
   orderId,
   baseCents,
+  subtotal,
+  shippingCost,
   agreedToTerms,
+  onToggleTerms,
   onRequireTerms,
   onPaymentComplete,
-}: PanelProps & { baseCents: number }) {
+  termsText,
+}: InvoicePaymentPanelProps & { baseCents: number }) {
   const stripe = useStripe()
   const elements = useElements()
 
   const [ready, setReady] = useState(false)
   const [methodType, setMethodType] = useState<string>("us_bank_account")
   const [quote, setQuote] = useState<FeeQuote | null>(null)
+  const [showFullTerms, setShowFullTerms] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [microdepositUrl, setMicrodepositUrl] = useState<string | null>(null)
 
+  const subtotalCents = Math.round((subtotal || 0) * 100)
+  const shippingCents = Math.round((shippingCost || 0) * 100)
   const cardFeeCents = computeCardProcessingFeeCents(baseCents)
   const isCard = methodType === "card"
   const feeCents = isCard ? cardFeeCents : 0
@@ -527,116 +558,193 @@ function InlinePaymentForm({
     }
   }
 
-  const buttonLabel = processing
-    ? "Processing…"
-    : quote
-      ? `Confirm & Pay ${money(quote.totalCents)}`
-      : `Pay ${money(totalCents)}`
-
-  const summary = (
-    <div className="flex flex-col h-full gap-5">
-      <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Payment Breakdown</h3>
-        <dl className="space-y-2.5 text-sm">
-          <div className="flex justify-between">
-            <dt className="text-slate-600">Invoice total</dt>
-            <dd className="font-semibold text-slate-900">{money(baseCents)}</dd>
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden print:hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
+        
+        {/* Left Column: Payment Element Form & Terms */}
+        <div className="lg:col-span-7 p-5 sm:p-6 space-y-4">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">
+              Payment Method
+            </span>
+            <h3 className="text-base font-bold text-slate-900">
+              Enter Payment Details
+            </h3>
           </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-slate-600">
-              {isCard ? "Card processing fee (2.9% + $0.30)" : "Processing fee"}
-            </dt>
-            <dd className={`font-semibold text-right ${isCard ? "text-slate-900" : "text-emerald-700"}`}>
-              {isCard ? money(cardFeeCents) : "$0.00 (Free)"}
-            </dd>
+
+          {!ready && (
+            <div className="flex items-center gap-2 text-sm text-slate-500 py-8 justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading secure payment fields…
+            </div>
+          )}
+
+          <PaymentElement
+            id="payment-element"
+            onReady={() => setReady(true)}
+            onChange={(e) => {
+              setError(null)
+              if (e.value?.type && e.value.type !== methodType) {
+                setMethodType(e.value.type)
+                const newFee = e.value.type === "card" ? cardFeeCents : 0
+                elements?.update({ amount: baseCents + newFee })
+              }
+              resetQuote()
+            }}
+            options={{
+              layout: { type: "tabs", defaultCollapsed: false },
+              paymentMethodOrder: ["us_bank_account", "card"],
+            }}
+          />
+
+          {methodType === "us_bank_account" && <AchSetupGuide />}
+
+          {/* Wholesale Terms Agreement */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 space-y-2">
+            <div
+              className="flex items-center justify-between cursor-pointer select-none text-xs font-bold text-slate-800"
+              onClick={() => setShowFullTerms(!showFullTerms)}
+            >
+              <div className="flex items-center gap-1.5">
+                <FileCheck2 className="h-4 w-4 text-slate-600" />
+                <span className="uppercase tracking-wider text-[11px]">Wholesale Terms of Sale &amp; Policy</span>
+              </div>
+              <span className="text-[11px] text-blue-600 hover:underline flex items-center gap-0.5">
+                {showFullTerms ? (
+                  <>Hide <ChevronUp className="h-3 w-3" /></>
+                ) : (
+                  <>Details <ChevronDown className="h-3 w-3" /></>
+                )}
+              </span>
+            </div>
+
+            <div className={`text-[11px] text-slate-600 leading-relaxed ${showFullTerms ? "block max-h-40 overflow-y-auto" : "line-clamp-2"}`}>
+              <p className="whitespace-pre-line">
+                {termsText || "Standard Product Brands wholesale terms apply. Payment is due in full upon invoice receipt. Buyer must inspect goods within 48 hours of delivery."}
+              </p>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 flex items-start gap-2.5">
+              <Checkbox
+                id="termsCheckbox"
+                checked={agreedToTerms}
+                onCheckedChange={(checked) => onToggleTerms(!!checked)}
+                className="mt-0.5"
+              />
+              <label
+                htmlFor="termsCheckbox"
+                className="text-xs text-slate-800 font-semibold cursor-pointer select-none leading-snug"
+              >
+                I have read, acknowledge, and agree to Southern Basics LLC Wholesale Terms &amp; Conditions.
+              </label>
+            </div>
           </div>
-          <div className="flex justify-between items-baseline border-t border-slate-200 pt-3">
-            <dt className="font-bold text-slate-900">Total to pay</dt>
-            <dd className="text-xl font-black text-slate-900">{money(totalCents)}</dd>
+        </div>
+
+        {/* Right Column: Unified Order & Payment Summary + Checkout Action */}
+        <div className="lg:col-span-5 p-5 sm:p-6 bg-slate-50/70 border-t lg:border-t-0 lg:border-l border-slate-200 flex flex-col justify-between">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+              Order &amp; Payment Summary
+            </h3>
+
+            <dl className="space-y-2.5 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-slate-600">Subtotal</dt>
+                <dd className="font-semibold text-slate-900">{money(subtotalCents)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-slate-600">Freight &amp; Delivery</dt>
+                <dd className="font-semibold text-slate-800">
+                  {shippingCents > 0 ? money(shippingCents) : "Free / Included"}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-slate-600">Payment method</dt>
+                <dd className="font-semibold text-slate-900 text-right">
+                  {!isCard ? "ACH Bank Transfer" : "Credit / Debit Card"}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-slate-600">
+                  {isCard ? "Card processing fee (2.9% + $0.30)" : "Processing fee"}
+                </dt>
+                <dd className={`font-semibold text-right ${!isCard ? "text-emerald-700" : "text-slate-900"}`}>
+                  {!isCard ? "$0.00 (Free)" : money(cardFeeCents)}
+                </dd>
+              </div>
+              <div className="flex justify-between items-baseline border-t border-slate-200 pt-3">
+                <dt className="font-bold text-slate-900 text-base">Total Due</dt>
+                <dd className="text-2xl font-black text-slate-900">{money(totalCents)}</dd>
+              </div>
+            </dl>
+
+            {!isCard ? (
+              <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs text-emerald-950 flex items-start gap-2">
+                <Sparkles className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Zero fees:</strong> You are saving <strong>{money(cardFeeCents)}</strong> by paying via ACH bank transfer.
+                </span>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900 leading-relaxed">
+                Card fee of <strong>{money(cardFeeCents)}</strong> added. Select <strong>Bank (ACH)</strong> to pay with $0 fees.
+              </div>
+            )}
+
+            {error && (
+              <div role="alert" className="mt-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-px" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {microdepositUrl && (
+              <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900 leading-relaxed">
+                Bank verification deposits sent.{" "}
+                <a href={microdepositUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                  Verify deposits
+                </a>
+              </div>
+            )}
           </div>
-        </dl>
-      </div>
 
-      {!isCard ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-xs text-emerald-950 flex items-start gap-2">
-          <Sparkles className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-          <span>
-            <strong>Zero fees:</strong> You are paying with ACH bank transfer and save <strong>{money(cardFeeCents)}</strong> in card fees.
-          </span>
-        </div>
-      ) : (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900 leading-relaxed">
-          Card processing fee of <strong>{money(cardFeeCents)}</strong> added. Select <strong>Bank (ACH)</strong> to pay with $0 fees.
-        </div>
-      )}
+          <div className="mt-6 space-y-3">
+            <button
+              id="pay-invoice-button"
+              type="button"
+              onClick={handlePay}
+              disabled={!stripe || !ready || processing || !!microdepositUrl}
+              className={`w-full h-12 rounded-xl font-bold text-[15px] inline-flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                agreedToTerms
+                  ? "bg-slate-900 text-white hover:bg-slate-800 shadow-md hover:shadow-lg active:scale-[0.99]"
+                  : "bg-slate-200 text-slate-500 hover:bg-slate-300"
+              } disabled:opacity-60 disabled:cursor-not-allowed`}
+            >
+              {processing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processing…
+                </>
+              ) : (
+                <>
+                  {!isCard ? <Landmark className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
+                  Pay {money(totalCents)} {!isCard ? "via ACH (Free)" : "with Card"}
+                </>
+              )}
+            </button>
 
-      {error && (
-        <div role="alert" className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-800">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-px" />
-          <span>{error}</span>
-        </div>
-      )}
+            {!agreedToTerms && (
+              <p className="text-[11px] text-center text-slate-500">
+                Please check the Terms &amp; Conditions to enable payment.
+              </p>
+            )}
 
-      {microdepositUrl && (
-        <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-900 leading-relaxed">
-          Your bank account needs a quick verification. Stripe will send two small deposits to your account in 1–2 business days.{" "}
-          <a href={microdepositUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
-            Verify bank account
-          </a>
+            <SecureNote />
+          </div>
         </div>
-      )}
 
-      <div className="mt-auto space-y-3">
-        <button
-          id="pay-invoice-button"
-          type="button"
-          onClick={handlePay}
-          disabled={!stripe || !ready || processing || !!microdepositUrl}
-          className={`w-full h-12 rounded-xl font-bold text-[15px] inline-flex items-center justify-center gap-2 transition-all ${
-            agreedToTerms
-              ? "bg-slate-900 text-white hover:bg-slate-800 shadow-md hover:shadow-lg active:scale-[0.99]"
-              : "bg-slate-200 text-slate-500"
-          } disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer`}
-        >
-          {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-          {buttonLabel}
-        </button>
-        {!agreedToTerms && (
-          <p className="text-[11px] text-center text-slate-500">Accept the Terms &amp; Conditions above to enable payment.</p>
-        )}
-        <SecureNote />
       </div>
     </div>
-  )
-
-  return (
-    <PanelShell baseCents={baseCents} summary={summary}>
-      <div className="space-y-5">
-        {!ready && (
-          <div className="flex items-center gap-2 text-sm text-slate-500 py-10 justify-center">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading secure payment form…
-          </div>
-        )}
-        <PaymentElement
-          id="payment-element"
-          onReady={() => setReady(true)}
-          onChange={(e) => {
-            setError(null)
-            if (e.value?.type && e.value.type !== methodType) {
-              setMethodType(e.value.type)
-              const newFee = e.value.type === "card" ? cardFeeCents : 0
-              elements?.update({ amount: baseCents + newFee })
-            }
-            resetQuote()
-          }}
-          options={{
-            layout: { type: "tabs", defaultCollapsed: false },
-            paymentMethodOrder: ["us_bank_account", "card"],
-          }}
-        />
-
-        {methodType === "us_bank_account" && <AchSetupGuide />}
-      </div>
-    </PanelShell>
   )
 }

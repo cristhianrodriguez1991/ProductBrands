@@ -215,56 +215,71 @@ export default function CustomerInvoicePayPage() {
   const isPaid = order.status === "PAID" || paymentSuccess
 
   return (
-    <div className="min-h-screen bg-slate-100/70 py-10 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-4xl mx-auto space-y-6">
-        
-        {/* Success Alert */}
-        {isSuccessParam && (
-          <div className="bg-emerald-50 border-2 border-emerald-300 text-emerald-950 rounded-xl p-5 flex items-start gap-3 shadow-xs print:hidden">
-            <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-bold text-emerald-950 text-base">Payment Confirmed</h3>
-              <p className="text-sm text-emerald-800 mt-1">
-                Thank you! Your payment of <strong>{formatMoney(order.totalAmount)}</strong> has been processed successfully. Your order is confirmed for fulfillment.
-              </p>
-            </div>
-          </div>
-        )}
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page {
+            size: letter portrait;
+            margin: 10mm 12mm;
+          }
+          html, body {
+            background: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      `}} />
 
-        {isCanceledParam && !isPaid && (
-          <div className="bg-amber-50 border border-amber-300 text-amber-950 rounded-xl p-5 flex items-start gap-3 shadow-xs print:hidden">
-            <AlertCircle className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-bold text-amber-950 text-base">Payment Not Completed</h3>
-              <p className="text-sm text-amber-800 mt-1">
-                The checkout session was closed without charging your account. You can review the invoice details and proceed whenever ready.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Official Document Sheet */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none">
+      <div className="min-h-screen bg-slate-100/70 py-8 px-4 sm:px-6 lg:px-8 font-sans print:min-h-0 print:bg-white print:p-0 print:m-0">
+        <div className="max-w-4xl mx-auto space-y-5 print:max-w-none print:space-y-0">
           
-          {/* Header Bar */}
-          <div className="px-6 py-8 sm:px-10 sm:py-10 border-b border-slate-200 bg-white">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              
-              {/* Brand Logo */}
-              <div className="flex flex-col items-start">
-                <h1 className="sr-only">{company?.name || "Product Brands"} — Official Invoice</h1>
-                <Image
-                  src={company?.logoUrl || "/images/logo.png"}
-                  alt="Product Brands"
-                  width={1426}
-                  height={382}
-                  priority
-                  className="h-auto w-[280px] sm:w-[380px] md:w-[440px] object-contain"
-                />
-                <p className="text-xs sm:text-sm text-slate-500 font-semibold uppercase tracking-[0.2em] mt-3">
-                  Wholesale Distribution &amp; Commercial Supply
+          {/* Success Alert */}
+          {isSuccessParam && (
+            <div className="bg-emerald-50 border-2 border-emerald-300 text-emerald-950 rounded-xl p-4 flex items-start gap-3 shadow-xs print:hidden">
+              <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-bold text-emerald-950 text-base">Payment Confirmed</h3>
+                <p className="text-sm text-emerald-800 mt-1">
+                  Thank you! Your payment of <strong>{formatMoney(order.totalAmount)}</strong> has been processed successfully. Your order is confirmed for fulfillment.
                 </p>
               </div>
+            </div>
+          )}
+
+          {isCanceledParam && !isPaid && (
+            <div className="bg-amber-50 border border-amber-300 text-amber-950 rounded-xl p-4 flex items-start gap-3 shadow-xs print:hidden">
+              <AlertCircle className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-bold text-amber-950 text-base">Payment Not Completed</h3>
+                <p className="text-sm text-amber-800 mt-1">
+                  The checkout session was closed without charging your account. You can review the invoice details and proceed whenever ready.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Official Document Sheet */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none print:rounded-none">
+            
+            {/* Header Bar */}
+            <div className="px-6 py-6 sm:px-8 sm:py-7 border-b border-slate-200 bg-white print:px-0 print:py-2 print:border-b-2 print:border-slate-800">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                
+                {/* Brand Logo */}
+                <div className="flex flex-col items-start">
+                  <h1 className="sr-only">{company?.name || "Product Brands"} — Official Invoice</h1>
+                  <Image
+                    src={company?.logoUrl || "/images/logo.png"}
+                    alt="Product Brands"
+                    width={1426}
+                    height={382}
+                    priority
+                    className="h-auto w-[240px] sm:w-[320px] md:w-[380px] print:w-[190px] object-contain"
+                  />
+                  <p className="text-xs sm:text-sm text-slate-500 font-semibold uppercase tracking-[0.2em] mt-2 print:mt-1 print:text-[10px]">
+                    Wholesale Distribution &amp; Commercial Supply
+                  </p>
+                </div>
 
               {/* Status & Invoice Number */}
               <div className="flex md:flex-col items-center md:items-end justify-between w-full md:w-auto gap-2">
@@ -503,115 +518,130 @@ export default function CustomerInvoicePayPage() {
               </div>
             </div>
 
-            {/* Subtotals & Grand Total Breakdown */}
-            <div className="flex flex-col sm:flex-row justify-end pt-2">
-              <div className="w-full sm:w-80 space-y-2.5 p-5 rounded-xl bg-slate-50 border border-slate-200">
-                <div className="flex justify-between text-sm text-slate-600">
-                  <span>Subtotal:</span>
-                  <span className="font-semibold text-slate-800">{formatMoney(order.subtotal)}</span>
+            {/* Screen Mode: Unpaid Unified Checkout or Paid Receipt */}
+            {!isPaid ? (
+              <>
+                <div className="pt-2 print:hidden">
+                  <InvoicePaymentPanel
+                    orderId={order.id}
+                    amountDue={order.totalAmount}
+                    subtotal={order.subtotal}
+                    shippingCost={order.shippingCost}
+                    deliveryType={order.deliveryType}
+                    publishableKey={paymentConfig.publishableKey}
+                    surchargePercent={paymentConfig.cardSurchargePercent}
+                    agreedToTerms={agreedToTerms}
+                    onToggleTerms={(checked) => setAgreedToTerms(checked)}
+                    onRequireTerms={() => {
+                      setError("Please review and agree to the Wholesale Terms & Conditions before paying.")
+                      const el = document.getElementById("termsCheckbox")
+                      el?.scrollIntoView({ behavior: "smooth", block: "center" })
+                      el?.focus()
+                    }}
+                    onPaymentComplete={(updatedOrder) => {
+                      setOrder(updatedOrder)
+                      setPaymentSuccess(true)
+                    }}
+                    termsText={order.terms}
+                  />
                 </div>
-                <div className="flex justify-between text-sm text-slate-600">
-                  <span>Freight & Delivery:</span>
-                  <span className="font-semibold text-slate-800">
-                    {order.shippingCost > 0 ? formatMoney(order.shippingCost) : "Free / Included"}
-                  </span>
-                </div>
-                <div className="border-t border-slate-200 pt-3 flex justify-between items-baseline">
-                  <span className="font-bold text-slate-900 text-base">Total Due:</span>
-                  <span className="font-black text-2xl text-slate-900">{formatMoney(order.totalAmount)}</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Protective Legal Terms & Conditions */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-5 space-y-3">
-              <div 
-                className="flex items-center justify-between cursor-pointer select-none"
-                onClick={() => setShowFullTerms(!showFullTerms)}
-              >
-                <div className="flex items-center gap-2">
-                  <FileCheck2 className="h-4 w-4 text-slate-700" />
-                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    Wholesale Terms of Sale & Inspection Policy
-                  </span>
-                </div>
-                <Button variant="ghost" size="sm" className="h-6 px-1.5 text-xs text-slate-500">
-                  {showFullTerms ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </Button>
-              </div>
-
-              <div className={`text-xs text-slate-600 space-y-2 leading-relaxed ${showFullTerms ? "block" : "line-clamp-3"}`}>
-                <p className="whitespace-pre-line">{order.terms || "Standard Product Brands terms apply."}</p>
-              </div>
-
-              {!isPaid && (
-                <div className="pt-3 border-t border-slate-200">
-                  <div className="flex items-start space-x-2.5">
-                    <Checkbox
-                      id="termsCheckbox"
-                      checked={agreedToTerms}
-                      onCheckedChange={(checked) => setAgreedToTerms(!!checked)}
-                      className="mt-0.5"
-                    />
-                    <label
-                      htmlFor="termsCheckbox"
-                      className="text-xs text-slate-800 font-semibold cursor-pointer select-none leading-snug"
-                    >
-                      I have read, acknowledge, and agree to Southern Basics LLC Wholesale Terms &amp; Conditions, including the 48-hour delivery inspection window, final wholesale sale policy, and payment processing authorization.
-                    </label>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Payment Section */}
-            <div className="pt-2 print:hidden">
-              {isPaid ? (
-                <div className="bg-emerald-50/80 border-2 border-emerald-300 rounded-2xl p-8 text-center space-y-4">
-                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-100 text-emerald-600">
-                    <CheckCircle2 className="h-8 w-8" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-emerald-950">Official Receipt: Payment Confirmed</h3>
-                    <p className="text-sm text-emerald-800 mt-1 max-w-lg mx-auto">
-                      Payment for this invoice has been fully authorized and recorded. A receipt has been dispatched to {order.customerEmail}.
+                {/* Print Mode Only: Compact Single-Page Invoice Footer */}
+                <div className="hidden print:grid print:grid-cols-12 print:gap-4 print:pt-3 print:border-t print:border-slate-200">
+                  <div className="print:col-span-7 space-y-1">
+                    <span className="text-[10px] font-bold text-slate-800 uppercase tracking-wider block">
+                      Wholesale Terms of Sale &amp; Inspection Policy
+                    </span>
+                    <p className="text-[10px] text-slate-600 leading-snug line-clamp-4 whitespace-pre-line">
+                      {order.terms || "Standard Product Brands wholesale terms apply. Payment is due in full upon invoice receipt via ACH Direct Debit or Credit/Debit Card. Buyer must inspect all goods immediately within 48 hours of delivery or warehouse pickup."}
                     </p>
-                    {order.stripePaymentIntent && (
-                      <div className="mt-2 text-xs font-mono text-emerald-700">
-                        Reference: {order.stripePaymentIntent}
-                      </div>
-                    )}
                   </div>
-                  <div className="pt-2">
+                  <div className="print:col-span-5 space-y-1 text-xs text-slate-700 p-2.5 rounded-lg border border-slate-300 bg-slate-50/60">
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span className="font-semibold">{formatMoney(order.subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Freight &amp; Delivery:</span>
+                      <span className="font-semibold">
+                        {order.shippingCost > 0 ? formatMoney(order.shippingCost) : "Free / Included"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between font-bold text-slate-900 border-t border-slate-300 pt-1 text-sm">
+                      <span>Total Due:</span>
+                      <span>{formatMoney(order.totalAmount)}</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="pt-2 space-y-4">
+                {/* Paid Receipt Summary */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 print:hidden">
+                  <div className="lg:col-span-7 rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-2">
+                    <div className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <FileCheck2 className="h-4 w-4 text-slate-600" />
+                      <span>Wholesale Terms of Sale &amp; Inspection Policy</span>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-line line-clamp-4">
+                      {order.terms || "Standard Product Brands terms apply."}
+                    </p>
+                  </div>
+                  <div className="lg:col-span-5 bg-emerald-50 border-2 border-emerald-300 rounded-xl p-5 text-center space-y-3">
+                    <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-emerald-100 text-emerald-600">
+                      <CheckCircle2 className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-emerald-950">Payment Confirmed</h3>
+                      <p className="text-xs text-emerald-800 mt-0.5">
+                        Total Paid: <strong>{formatMoney(order.totalAmount + (order.processingFee || 0))}</strong>
+                      </p>
+                      {order.stripePaymentIntent && (
+                        <div className="text-[10px] font-mono text-emerald-700 mt-1">
+                          Ref: {order.stripePaymentIntent}
+                        </div>
+                      )}
+                    </div>
                     <Button 
                       onClick={handlePrint} 
-                      className="bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-sm"
+                      size="sm"
+                      className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-xs"
                     >
-                      <Printer className="h-4 w-4 mr-2" />
+                      <Printer className="h-3.5 w-3.5 mr-1.5" />
                       Print / Save Official Invoice (PDF)
                     </Button>
                   </div>
                 </div>
-              ) : (
-                <InvoicePaymentPanel
-                  orderId={order.id}
-                  amountDue={order.totalAmount}
-                  publishableKey={paymentConfig.publishableKey}
-                  surchargePercent={paymentConfig.cardSurchargePercent}
-                  agreedToTerms={agreedToTerms}
-                  onRequireTerms={() => {
-                    setError("Please review and agree to the Terms & Conditions above before paying.")
-                    const el = document.getElementById("termsCheckbox")
-                    el?.scrollIntoView({ behavior: "smooth", block: "center" })
-                    el?.focus()
-                  }}
-                  onPaymentComplete={(updatedOrder) => {
-                    setOrder(updatedOrder)
-                    setPaymentSuccess(true)
-                  }}
-                />
-              )}
-            </div>
+
+                {/* Print View for Paid Order */}
+                <div className="hidden print:grid print:grid-cols-12 print:gap-4 print:pt-3 print:border-t print:border-slate-200">
+                  <div className="print:col-span-7 space-y-1">
+                    <span className="text-[10px] font-bold text-slate-800 uppercase tracking-wider block">
+                      Wholesale Terms of Sale &amp; Inspection Policy
+                    </span>
+                    <p className="text-[10px] text-slate-600 leading-snug line-clamp-4 whitespace-pre-line">
+                      {order.terms || "Standard Product Brands terms apply."}
+                    </p>
+                  </div>
+                  <div className="print:col-span-5 space-y-1 text-xs text-slate-700 p-2.5 rounded-lg border border-slate-300 bg-slate-50/60">
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span className="font-semibold">{formatMoney(order.subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Freight &amp; Delivery:</span>
+                      <span className="font-semibold">
+                        {order.shippingCost > 0 ? formatMoney(order.shippingCost) : "Free / Included"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between font-bold text-emerald-900 border-t border-slate-300 pt-1 text-sm">
+                      <span>Total Paid:</span>
+                      <span>{formatMoney(order.totalAmount + (order.processingFee || 0))}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
           </div>
         </div>
@@ -633,5 +663,6 @@ export default function CustomerInvoicePayPage() {
 
       </div>
     </div>
+    </>
   )
 }
