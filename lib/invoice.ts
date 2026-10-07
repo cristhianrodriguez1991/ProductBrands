@@ -36,4 +36,18 @@ export function computeSurchargeCents(baseCents: number, methodType: string, fun
   return Math.round(baseCents * (percent / 100))
 }
 
+/**
+ * Calculates the exact card processing fee (Stripe rate: 2.9% + $0.30)
+ * so that when Stripe deducts its fee from the total, the net payout to
+ * the business equals 100% of the invoice amount.
+ * 
+ * Formula: total = ceil((base + 30) / (1 - 0.029))
+ * fee = total - base
+ */
+export function computeCardProcessingFeeCents(baseCents: number): number {
+  if (baseCents <= 0) return 0
+  const totalCents = Math.ceil((baseCents + 30) / (1 - 0.029))
+  return totalCents - baseCents
+}
+
 export const toCents = (amount: number) => Math.round((amount || 0) * 100)
