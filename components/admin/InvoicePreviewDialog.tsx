@@ -107,7 +107,7 @@ export function InvoicePreviewDialog({ data }: { data: InvoicePreviewProps }) {
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
                     Issued By
                   </span>
-                  <div className="font-bold text-slate-900 text-base">Product Brands LLC</div>
+                  <div className="font-bold text-slate-900 text-base">Southern Basics LLC</div>
                   <div className="text-slate-600 flex items-start gap-2 pt-0.5">
                     <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
                     <span>8001 NW 54th St, Doral FL, 33166</span>

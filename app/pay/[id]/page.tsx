@@ -291,7 +291,7 @@ export default function CustomerInvoicePayPage() {
                   Issued By
                 </span>
                 <div className="font-bold text-slate-900 text-base">
-                  Product Brands LLC
+                  Southern Basics LLC
                 </div>
                 <div className="text-slate-600 flex items-start gap-2 pt-0.5">
                   <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
