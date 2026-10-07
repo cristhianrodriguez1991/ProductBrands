@@ -1278,4 +1278,54 @@ model AccountPayablePayment {
   @@index([accountPayableId])
 }
 
+// ─────────────────────────────────────────────────────────────
+// CUSTOMER ORDERS & INVOICES
+// ─────────────────────────────────────────────────────────────
+
+model CustomerOrder {
+  id                  String   @id @default(cuid())
+  customerName        String
+  customerEmail       String
+  customerPhone       String?
+  companyName         String?
+  
+  status              String   @default("DRAFT") // DRAFT, SENT, PAID, CANCELLED
+  
+  deliveryDate        DateTime?
+  deliveryType        String   @default("SHIPPING") // SHIPPING or PICKUP
+  shippingCost        Float    @default(0.0)
+  
+  terms               String?  @db.Text
+  notes               String?  @db.Text
+  
+  subtotal            Float    @default(0.0)
+  totalAmount         Float    @default(0.0)
+  
+  stripeSessionId     String?  @unique
+  stripePaymentIntent String?  @unique
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  items               CustomerOrderItem[]
+}
+
+model CustomerOrderItem {
+  id              String   @id @default(cuid())
+  customerOrderId String
+  
+  productName     String
+  imageUrl        String?  @db.Text
+  quantity        Int      @default(1)
+  unitPrice       Float    @default(0.0)
+  totalPrice      Float    @default(0.0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  customerOrder   CustomerOrder @relation(fields: [customerOrderId], references: [id], onDelete: Cascade)
+  
+  @@index([customerOrderId])
+}
+
 
