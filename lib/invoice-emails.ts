@@ -60,9 +60,8 @@ const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, 
 function methodLabel(type?: string | null) {
   if (!type) return "Online payment"
   if (type === "us_bank_account") return "ACH Bank Transfer"
-  if (type.startsWith("card:")) {
-    const funding = type.split(":")[1]
-    return funding === "credit" ? "Credit Card" : funding === "debit" ? "Debit Card" : "Card"
+  if (type === "card" || type.startsWith("card:")) {
+    return "Credit / Debit Card"
   }
   return "Online payment"
 }
@@ -133,7 +132,7 @@ function itemsTable(order: EmailOrder, opts: { showFee: boolean; totalLabel: str
       <tr><td colspan="4" style="height:8px;"></td></tr>
       ${line("Subtotal", money(order.subtotal))}
       ${line("Freight &amp; Delivery", order.shippingCost > 0 ? money(order.shippingCost) : "Included")}
-      ${opts.showFee && (order.processingFee || 0) > 0 ? line("Credit card surcharge", money(order.processingFee || 0)) : ""}
+      ${opts.showFee && (order.processingFee || 0) > 0 ? line("Card processing fee", money(order.processingFee || 0)) : ""}
       <tr><td colspan="4" style="padding-top:6px;"><div style="border-top:1px solid #e2e8f0;"></div></td></tr>
       ${line(opts.totalLabel, money(opts.total), true)}
     </table>`
@@ -236,9 +235,8 @@ export function buildInvoiceEmail(order: EmailOrder, payUrl: string) {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
         <tr><td style="padding:16px 18px;font-size:13px;line-height:1.7;color:#475569;">
           <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-bottom:6px;">Payment Options</div>
-          <strong style="color:#0f172a;">ACH Bank Transfer</strong> &mdash; no fee<br/>
-          <strong style="color:#0f172a;">Debit Card</strong> &mdash; no fee<br/>
-          <strong style="color:#0f172a;">Credit Card</strong> &mdash; ${surcharge}% surcharge, shown before you pay
+          <strong style="color:#0f172a;">ACH Bank Transfer</strong> &mdash; $0.00 fee (Free)<br/>
+          <strong style="color:#0f172a;">Credit &amp; Debit Card</strong> &mdash; 2.9% + $0.30 processing fee
         </td></tr>
       </table>
       <div style="margin-top:16px;font-size:12px;line-height:1.6;color:#94a3b8;text-align:center;">

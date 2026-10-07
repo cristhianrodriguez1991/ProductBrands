@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import type Stripe from "stripe"
 import { prisma } from "@/lib/prisma"
 import { stripe } from "@/lib/stripe"
-import { computeSurchargeCents, formatInvoiceNumber, getCardSurchargePercent, toCents } from "@/lib/invoice"
+import { computeCardProcessingFeeCents, formatInvoiceNumber, toCents } from "@/lib/invoice"
 import { syncOrderWithPaymentIntent } from "@/lib/customer-order-payments"
 
 export const dynamic = "force-dynamic"
@@ -51,18 +51,16 @@ export async function POST(
     const funding = methodType === "card" ? preview?.card?.funding || "unknown" : null
 
     const baseCents = toCents(order.totalAmount)
-    const percent = getCardSurchargePercent()
-    const feeCents = computeSurchargeCents(baseCents, methodType, funding, percent)
+    const feeCents = methodType === "card" ? computeCardProcessingFeeCents(baseCents) : 0
     const totalCents = baseCents + feeCents
 
-    // Disclose the surcharge before charging
+    // Disclose the fee before charging
     if (feeCents > 0 && Number(acceptedFeeCents) !== feeCents) {
       return NextResponse.json({
         requiresFeeConfirmation: true,
         feeCents,
         baseCents,
         totalCents,
-        surchargePercent: percent,
         funding,
       })
     }

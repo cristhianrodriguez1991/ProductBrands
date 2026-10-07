@@ -36,15 +36,20 @@ export async function syncOrderWithPaymentIntent(orderId: string, intent: Stripe
     return prisma.customerOrder.findUnique({ where: { id: orderId }, include: { items: true } })
   }
 
-  // Atomic transition guard so the receipt is only sent once
+  const updateData: any = {
+    status: nextStatus,
+    stripePaymentIntent: intent.id,
+  }
+  if (feeCents > 0) {
+    updateData.processingFee = feeCents / 100
+  }
+  if (methodType) {
+    updateData.paymentMethodType = methodType
+  }
+
   const result = await prisma.customerOrder.updateMany({
     where: { id: orderId, status: { not: "PAID" } },
-    data: {
-      status: nextStatus,
-      stripePaymentIntent: intent.id,
-      processingFee: feeCents / 100,
-      ...(methodType ? { paymentMethodType: methodType } : {}),
-    },
+    data: updateData,
   })
 
   const order = await prisma.customerOrder.findUnique({ where: { id: orderId }, include: { items: true } })

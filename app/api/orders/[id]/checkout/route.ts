@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { stripe } from "@/lib/stripe"
+import { computeCardProcessingFeeCents, toCents } from "@/lib/invoice"
 
 export const dynamic = "force-dynamic"
 
@@ -9,6 +10,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { paymentMethod } = await req.json().catch(() => ({}))
+    const isCard = paymentMethod === "card"
     const order = await prisma.customerOrder.findUnique({
       where: { id: params.id },
       include: {
@@ -75,32 +78,69 @@ export async function POST(
       })
     }
 
-    // Create checkout session with ACH (us_bank_account) and Card
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["us_bank_account", "card"],
-      payment_method_options: {
-        us_bank_account: {
-          financial_connections: {
-            permissions: ["payment_method"],
+    // Add card processing fee if customer selected Credit or Debit card
+    let cardFeeCents = 0
+    if (isCard) {
+      cardFeeCents = computeCardProcessingFeeCents(toCents(order.totalAmount))
+      if (cardFeeCents > 0) {
+        lineItems.push({
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "Card Processing Fee (Credit & Debit)",
+              description: "Stripe standard 2.9% + $0.30 processing fee",
+            },
+            unit_amount: cardFeeCents,
           },
-        },
-      },
+          quantity: 1,
+        })
+      }
+    }
+
+    // Configure session payment methods
+    const sessionConfig: any = {
       customer_email: order.customerEmail || undefined,
       line_items: lineItems,
       mode: "payment",
       metadata: {
         orderId: order.id,
+        paymentMethodType: isCard ? "card" : "us_bank_account",
+        feeCents: String(cardFeeCents),
+      },
+      payment_intent_data: {
+        metadata: {
+          orderId: order.id,
+          paymentMethodType: isCard ? "card" : "us_bank_account",
+          processingFeeCents: String(cardFeeCents),
+        },
       },
       client_reference_id: order.id,
       success_url: `${origin}/pay/${order.id}?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/pay/${order.id}?canceled=true`,
-    })
+    }
+
+    if (isCard) {
+      sessionConfig.payment_method_types = ["card"]
+    } else {
+      sessionConfig.payment_method_types = ["us_bank_account"]
+      sessionConfig.payment_method_options = {
+        us_bank_account: {
+          financial_connections: {
+            permissions: ["payment_method"],
+          },
+        },
+      }
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig)
 
     // Update order with session id and status
     await prisma.customerOrder.update({
       where: { id: order.id },
       data: {
         stripeSessionId: session.id,
+        processingFee: isCard ? cardFeeCents / 100 : 0,
+        paymentMethodType: isCard ? "card" : "us_bank_account",
         status: order.status === "DRAFT" ? "SENT" : order.status,
       },
     })
