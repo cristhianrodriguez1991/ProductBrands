@@ -1312,6 +1312,15 @@ model CustomerOrder {
   completionNotes     String?  @db.Text
   receivedDate        DateTime?
   
+  // Proof of Delivery (POD) & Electronic Signature
+  deliveryPhotos      String[]  @default([])
+  signatureDataUrl    String?   @db.Text
+  signedByName        String?
+  signedAt            DateTime?
+  noSignatureRequired Boolean   @default(false)
+  deliveredAt         DateTime?
+  deliveryNotes       String?   @db.Text
+  
   stripeSessionId     String?  @unique
   stripePaymentIntent String?  @unique
   

@@ -17,7 +17,10 @@ import {
   Check,
   Eye,
   Receipt,
-  Loader2
+  Loader2,
+  Printer,
+  FileCheck2,
+  QrCode
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
@@ -126,6 +129,8 @@ export default function CustomerOrdersPage() {
     if (!matchesSearch) return false
 
     if (statusFilter === "PAID") return o.status === "PAID"
+    if (statusFilter === "CONFIRMED") return o.status === "CONFIRMED"
+    if (statusFilter === "DELIVERED") return o.status === "DELIVERED"
     if (statusFilter === "COMPLETED") return o.status === "COMPLETED"
     if (statusFilter === "UNPAID") return o.status === "SENT" || o.status === "DRAFT"
 
@@ -133,6 +138,8 @@ export default function CustomerOrdersPage() {
   })
 
   const countPaid = orders.filter(o => o.status === "PAID").length
+  const countConfirmed = orders.filter(o => o.status === "CONFIRMED").length
+  const countDelivered = orders.filter(o => o.status === "DELIVERED").length
   const countCompleted = orders.filter(o => o.status === "COMPLETED").length
   const countUnpaid = orders.filter(o => o.status === "SENT" || o.status === "DRAFT").length
 
@@ -142,7 +149,21 @@ export default function CustomerOrdersPage() {
         return (
           <Badge className="bg-indigo-600 hover:bg-indigo-600 text-white flex items-center gap-1 font-semibold">
             <CheckCircle2 className="h-3 w-3" />
-            Order Completed
+            Finished
+          </Badge>
+        )
+      case "DELIVERED":
+        return (
+          <Badge className="bg-purple-600 hover:bg-purple-600 text-white flex items-center gap-1 font-semibold">
+            <CheckCircle2 className="h-3 w-3" />
+            Delivered
+          </Badge>
+        )
+      case "CONFIRMED":
+        return (
+          <Badge className="bg-sky-600 hover:bg-sky-600 text-white flex items-center gap-1 font-semibold">
+            <CheckCircle2 className="h-3 w-3" />
+            Confirmed
           </Badge>
         )
       case "PAID":
@@ -215,12 +236,28 @@ export default function CustomerOrdersPage() {
                 Paid ({countPaid})
               </Button>
               <Button
+                variant={statusFilter === "CONFIRMED" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter("CONFIRMED")}
+                className={`h-8 px-2.5 text-xs font-semibold ${statusFilter === "CONFIRMED" ? "bg-sky-600 text-white hover:bg-sky-700" : "text-sky-700 border-sky-200 hover:bg-sky-50"}`}
+              >
+                Confirmed ({countConfirmed})
+              </Button>
+              <Button
+                variant={statusFilter === "DELIVERED" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter("DELIVERED")}
+                className={`h-8 px-2.5 text-xs font-semibold ${statusFilter === "DELIVERED" ? "bg-purple-600 text-white hover:bg-purple-700" : "text-purple-700 border-purple-200 hover:bg-purple-50"}`}
+              >
+                Delivered ({countDelivered})
+              </Button>
+              <Button
                 variant={statusFilter === "COMPLETED" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setStatusFilter("COMPLETED")}
                 className={`h-8 px-2.5 text-xs font-semibold ${statusFilter === "COMPLETED" ? "bg-indigo-600 text-white hover:bg-indigo-700" : "text-indigo-700 border-indigo-200 hover:bg-indigo-50"}`}
               >
-                Completed ({countCompleted})
+                Finished ({countCompleted})
               </Button>
               <Button
                 variant={statusFilter === "UNPAID" ? "default" : "outline"}
@@ -348,10 +385,22 @@ export default function CustomerOrdersPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 px-2 text-xs"
-                              title="View Invoice Page"
+                              className="h-8 px-2 text-xs text-slate-600 hover:text-slate-900"
+                              title="View Customer Invoice"
                             >
                               <ExternalLink className="h-3.5 w-3.5" />
+                            </Button>
+                          </Link>
+
+                          {/* Quick Proof of Delivery (POD) / Sign Link */}
+                          <Link href={`/orders/${order.id}/pod/print`} target="_blank">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-xs text-slate-600 hover:text-slate-900"
+                              title="Proof of Delivery (PDF / BOL)"
+                            >
+                              <Printer className="h-3.5 w-3.5" />
                             </Button>
                           </Link>
 
