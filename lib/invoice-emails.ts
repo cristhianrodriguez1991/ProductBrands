@@ -340,11 +340,11 @@ function deliveredItemsTable(order: EmailOrder) {
     </table>`
 }
 
-/** Delivery Confirmation & Proof of Delivery (POD) email with photos, signature, and PDF link. */
+/** Delivery Confirmation & Proof of Delivery (POD) email with everything embedded directly in the email body. */
 export function buildDeliveryConfirmationEmail(order: EmailOrder) {
   const num = formatInvoiceNumber(order)
-  const firstName = esc((order.customerName || "").split(" ")[0] || order.customerName)
   const podPrintUrl = `${SITE_URL}/orders/${order.id}/pod/print`
+  const signatureSrc = `${SITE_URL}/api/orders/${order.id}/image?type=signature`
 
   const deliveryTimestamp = order.deliveredAt
     ? new Date(order.deliveredAt).toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" })
@@ -356,139 +356,196 @@ export function buildDeliveryConfirmationEmail(order: EmailOrder) {
     ? new Date(order.signedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })
     : deliveryTimestamp
 
+  const totalUnits = order.items.reduce((acc, it) => acc + (it.quantity || 0), 0)
+
   const photosHtml = order.deliveryPhotos && order.deliveryPhotos.length > 0
     ? `
-      <tr><td style="padding:0 32px 24px 32px;">
-        <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-bottom:10px;">
-          Delivery Confirmation Photos (${order.deliveryPhotos.length})
-        </div>
-        <div style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;text-align:center;">
-          ${order.deliveryPhotos.map(url => `
-            <a href="${podPrintUrl}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-block;margin:6px;">
-              <img src="${url}" alt="Proof of Delivery Photo" width="260" style="width:260px;max-width:100%;height:auto;border-radius:8px;border:1px solid #cbd5e1;display:block;box-shadow:0 1px 3px rgba(0,0,0,0.08);" />
-            </a>
-          `).join("")}
-          <div style="margin-top:8px;font-size:11px;color:#64748b;">
-            Captured on delivery &middot; Click photo to view official PDF proof
+      <tr>
+        <td style="padding:16px 28px;border-top:1px solid #e2e8f0;">
+          <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#475569;font-weight:800;margin-bottom:10px;">
+            Delivery Confirmation Photos (${order.deliveryPhotos.length})
           </div>
-        </div>
-      </td></tr>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center">
+                ${order.deliveryPhotos.map((url, idx) => {
+                  const photoSrc = (url.startsWith("data:") || url.startsWith("/"))
+                    ? `${SITE_URL}/api/orders/${order.id}/image?type=photo&index=${idx}`
+                    : url
+                  return `
+                    <div style="display:inline-block;margin:6px;text-align:center;">
+                      <img src="${photoSrc}" alt="Delivery Proof ${idx + 1}" width="300" style="width:300px;max-width:100%;height:auto;border-radius:8px;border:1px solid #cbd5e1;display:block;" />
+                    </div>
+                  `
+                }).join("")}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
     `
     : ""
 
-  const signatureHtml = order.signatureDataUrl
+  const signatureHtml = order.noSignatureRequired
     ? `
-      <tr><td style="padding:0 32px 24px 32px;">
-        <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-bottom:10px;">
-          Authorized Signature &amp; Acceptance
+      <div style="padding:14px;font-size:12px;font-weight:800;color:#854d0e;background-color:#fefce8;border-radius:6px;text-align:center;">
+        DELIVERED WITHOUT SIGNATURE (PHOTO VERIFIED)
+      </div>
+    `
+    : order.signatureDataUrl
+      ? `
+        <div style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:6px;padding:6px;display:inline-block;">
+          <img src="${signatureSrc}" alt="Customer Signature" style="max-height:75px;max-width:240px;display:block;margin:0 auto;" />
         </div>
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+      `
+      : `
+        <div style="padding:14px;font-size:11px;color:#94a3b8;text-align:center;">Signature on file</div>
+      `
+
+  const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proof of Delivery — ${num}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:${FONT};color:#0f172a;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Official Proof of Delivery (POD) for Order #${num}. Complete fulfillment confirmation with verified photos and authorized signature.</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;">
+    <tr>
+      <td align="center" style="padding:24px 10px;">
+        <table role="presentation" width="660" cellpadding="0" cellspacing="0" style="width:100%;max-width:660px;background-color:#ffffff;border:1px solid #cbd5e1;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+          
           <tr>
-            <td style="padding:10px 16px;background-color:#f1f5f9;border-bottom:1px solid #e2e8f0;">
-              <table role="presentation" width="100%">
+            <td style="padding:24px 28px 18px 28px;border-bottom:2px solid #0f172a;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#475569;">Authorized Signature</td>
-                  <td align="right" style="font-size:11px;font-weight:700;color:#16a34a;">&#10003; Verified Electronic Signature</td>
+                  <td valign="top" width="55%">
+                    <a href="${SITE_URL}" target="_blank" rel="noopener" style="text-decoration:none;">
+                      <img src="${LOGO_URL}" width="220" alt="Product Brands" style="display:block;width:220px;max-width:100%;height:auto;border:0;" />
+                    </a>
+                    <div style="margin-top:6px;font-size:9px;letter-spacing:1.8px;text-transform:uppercase;color:#64748b;font-weight:700;">Wholesale Distribution &amp; Commercial Supply</div>
+                  </td>
+                  <td valign="top" width="45%" align="right">
+                    <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;font-weight:800;">Official Document</div>
+                    <div style="font-size:16px;font-weight:900;color:#0f172a;text-transform:uppercase;letter-spacing:-0.3px;margin-top:2px;">Proof of Delivery (POD)</div>
+                    <div style="font-size:16px;font-weight:900;font-family:monospace;color:#0f172a;margin-top:2px;">${num}</div>
+                  </td>
                 </tr>
               </table>
             </td>
           </tr>
+
           <tr>
-            <td align="center" style="padding:16px 18px;">
-              <div style="display:inline-block;background-color:#ffffff;border:1px solid #cbd5e1;border-radius:6px;padding:8px;max-width:280px;">
-                <img src="${order.signatureDataUrl}" alt="Customer Signature" style="max-height:85px;max-width:260px;display:block;margin:0 auto;" />
-              </div>
-              <div style="margin-top:10px;font-size:13px;font-weight:700;color:#0f172a;">
-                Signed by: ${esc(order.signedByName || order.customerName)}
-              </div>
-              <div style="font-size:11px;color:#64748b;margin-top:2px;">
-                Timestamp: ${signedTimestamp}
-              </div>
+            <td style="padding:16px 28px;border-bottom:1px solid #e2e8f0;background-color:#f8fafc;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td valign="top" width="50%" style="font-size:12px;line-height:1.5;color:#475569;padding-right:12px;">
+                    <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;font-weight:800;margin-bottom:4px;">Delivered To / Recipient</div>
+                    <div style="font-size:14px;font-weight:800;color:#0f172a;">${esc(order.customerName)}</div>
+                    ${order.companyName ? `<div style="font-weight:600;color:#334155;margin-top:2px;">${esc(order.companyName)}</div>` : ""}
+                    ${order.customerPhone ? `<div style="margin-top:2px;">${esc(order.customerPhone)}</div>` : ""}
+                    <div style="margin-top:2px;">${esc(order.customerEmail)}</div>
+                  </td>
+                  <td valign="top" width="50%" align="right" style="font-size:12px;line-height:1.5;color:#475569;padding-left:12px;">
+                    <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;font-weight:800;margin-bottom:4px;">Fulfillment Verification</div>
+                    <div style="font-size:14px;font-weight:800;color:#0f172a;">${order.deliveryType === "PICKUP" ? "Warehouse Pickup" : "Freight Delivery"}</div>
+                    <div style="font-weight:600;color:#334155;margin-top:2px;">${deliveryTimestamp}</div>
+                    ${order.deliveryNotes ? `<div style="font-size:11px;color:#64748b;font-style:italic;margin-top:4px;">Note: ${esc(order.deliveryNotes)}</div>` : ""}
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
+
+          <tr>
+            <td style="padding:18px 28px 12px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+                <tr>
+                  <td style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#475569;font-weight:800;">
+                    Delivered Inventory &amp; Specifications
+                  </td>
+                  <td align="right" style="font-size:11px;color:#64748b;font-weight:600;">
+                    Total Units Delivered: <strong style="color:#0f172a;">${totalUnits} units</strong>
+                  </td>
+                </tr>
+              </table>
+              ${deliveredItemsTable(order)}
+            </td>
+          </tr>
+
+          ${photosHtml}
+
+          <tr>
+            <td style="padding:18px 28px 22px 28px;border-top:2px solid #0f172a;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td valign="bottom" width="48%" style="padding-right:12px;font-size:11px;line-height:1.5;color:#64748b;">
+                    <strong style="color:#0f172a;font-size:10px;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:4px;">
+                      Receipt &amp; Acceptance Agreement
+                    </strong>
+                    By signing, receiver certifies that the goods listed above have been delivered, inspected, and received in full and satisfactory condition without damage or missing items.<br/>
+                    <span style="font-size:10px;color:#94a3b8;display:block;margin-top:4px;">
+                      Southern Basics LLC &bull; Wholesale Terms of Sale apply &bull; 48-Hour Inspection window
+                    </span>
+                  </td>
+                  <td valign="top" width="52%" style="padding-left:12px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;overflow:hidden;">
+                      <tr>
+                        <td style="padding:8px 14px;background-color:#f1f5f9;border-bottom:1px solid #cbd5e1;">
+                          <table role="presentation" width="100%">
+                            <tr>
+                              <td style="font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#475569;">Authorized Signature</td>
+                              <td align="right" style="font-size:10px;font-weight:800;color:#16a34a;">&#10003; Verified</td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding:12px 14px 10px 14px;">
+                          ${signatureHtml}
+                          <table role="presentation" width="100%" style="margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0;font-size:11px;">
+                            <tr>
+                              <td align="left">
+                                <span style="font-size:9px;text-transform:uppercase;font-weight:700;color:#94a3b8;display:block;">Signer Name</span>
+                                <strong style="color:#0f172a;">${esc(order.signedByName || order.customerName || "Recipient")}</strong>
+                              </td>
+                              <td align="right">
+                                <span style="font-size:9px;text-transform:uppercase;font-weight:700;color:#94a3b8;display:block;">Timestamp</span>
+                                <span style="font-family:monospace;color:#475569;font-size:10px;">${signedTimestamp}</span>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:14px 28px;background-color:#f8fafc;border-top:1px solid #e2e8f0;font-size:10px;line-height:1.6;color:#64748b;text-align:center;">
+              <strong style="color:#334155;">${ISSUER.legalName}</strong> &bull; ${ISSUER.address} &bull; <a href="mailto:${ISSUER.email}" style="color:#334155;">${ISSUER.email}</a> &bull; <a href="${ISSUER.phoneHref}" style="color:#334155;">${ISSUER.phone}</a><br/>
+              Official Proof of Delivery (POD) &mdash; Retain for wholesale records and chargeback protection.
+            </td>
+          </tr>
+
         </table>
-      </td></tr>
-    `
-    : order.noSignatureRequired
-      ? `
-      <tr><td style="padding:0 32px 24px 32px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fefce8;border:1px solid #fef08a;border-radius:10px;">
-          <tr><td style="padding:14px 18px;">
-            <div style="font-size:13px;font-weight:700;color:#854d0e;">No Signature Required</div>
-            <div style="font-size:12px;color:#a16207;margin-top:2px;">
-              Order delivered and verified without recipient signature (photo-verified dock/door drop-off).
-            </div>
-          </td></tr>
-        </table>
-      </td></tr>
-      `
-      : ""
 
-  const inner = `
-    <tr><td style="padding:28px 32px 8px 32px;" align="center">
-      <div style="display:inline-block;padding:6px 16px;border-radius:999px;background-color:#dcfce7;color:#166534;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">
-        &#10003; Order Delivered &amp; Verified
-      </div>
-      <div style="margin-top:14px;font-size:30px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;">Proof of Delivery</div>
-      <div style="margin-top:6px;font-size:14px;color:#475569;font-weight:600;">
-        Order #${num} &middot; ${order.deliveryType === "PICKUP" ? "Warehouse Pickup" : "Freight Delivery"}
-      </div>
-    </td></tr>
+        <div style="margin-top:14px;text-align:center;font-size:11px;color:#94a3b8;">
+          Need a printable PDF version? <a href="${podPrintUrl}" target="_blank" rel="noopener" style="color:#475569;font-weight:600;text-decoration:underline;">Print or Save as PDF</a>
+        </div>
 
-    <tr><td style="padding:20px 32px 0 32px;font-size:15px;line-height:1.6;color:#334155;">
-      Hello ${firstName},<br/><br/>
-      Your order <strong>#${num}</strong> has been successfully delivered! Below is your official delivery confirmation with on-site photos and electronic signature for your records.
-    </td></tr>
-
-    <tr><td style="padding:24px 32px;">
-      ${ctaButton(podPrintUrl, "View &amp; Print Official PDF Proof of Delivery")}
-    </td></tr>
-
-    <tr><td style="padding:0 32px 24px 32px;">
-      ${detailsGrid([
-        ["Document / BOL", num],
-        ["Delivered Date", deliveryTimestamp],
-        ["Fulfillment", order.deliveryType === "PICKUP" ? "Warehouse Pickup" : "Freight Delivery"],
-      ])}
-    </td></tr>
-
-    ${order.deliveryNotes ? `
-      <tr><td style="padding:0 32px 20px 32px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
-          <tr><td style="padding:12px 16px;font-size:13px;color:#334155;">
-            <strong style="color:#0f172a;">Delivery Notes:</strong> ${esc(order.deliveryNotes)}
-          </td></tr>
-        </table>
-      </td></tr>
-    ` : ""}
-
-    ${photosHtml}
-
-    ${signatureHtml}
-
-    <tr><td style="padding:0 32px 24px 32px;">
-      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-bottom:10px;">
-        Delivered Inventory &amp; Specifications
-      </div>
-      ${deliveredItemsTable(order)}
-    </td></tr>
-
-    <tr><td style="padding:0 32px 24px 32px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
-        <tr><td style="padding:14px 18px;font-size:12px;line-height:1.6;color:#64748b;">
-          <strong style="color:#334155;">Receipt &amp; Acceptance Agreement:</strong><br/>
-          Receiver certifies that the goods listed above have been delivered, inspected, and received in full and satisfactory condition without damage or missing items. Southern Basics LLC Wholesale Terms of Sale apply (48-hour inspection claim window).
-        </td></tr>
-      </table>
-    </td></tr>
-
-    <tr><td style="padding:0 32px 28px 32px;font-size:12px;line-height:1.6;color:#94a3b8;text-align:center;">
-      Button not working? Access your official Proof of Delivery document here:<br/>
-      <a href="${podPrintUrl}" style="color:#475569;word-break:break-all;">${podPrintUrl}</a>
-    </td></tr>`
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
 
   return {
-    subject: `Order Delivered: Proof of Delivery for #${num} | Product Brands`,
-    html: shell(`Your order #${num} has been delivered. View official Proof of Delivery photos, signature, and PDF.`, inner),
+    subject: `Official Proof of Delivery: #${num} | Product Brands`,
+    html: fullHtml,
   }
 }
