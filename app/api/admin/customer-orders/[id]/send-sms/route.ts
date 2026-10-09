@@ -54,7 +54,7 @@ export async function POST(
     if (!origin || origin.includes("localhost")) origin = "https://www.productbrands.com"
 
     const invoiceNo = formatInvoiceNumber(order)
-    const payUrl = `${origin}/pay/${order.id}`
+    const payUrl = `${origin}/pay/${invoiceNo}`
 
     const smsText = buildInvoiceSmsMessage({
       invoiceNumber: invoiceNo,

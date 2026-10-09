@@ -14,10 +14,21 @@ export async function POST(
   try {
     const { sessionId, paymentIntentId } = await req.json().catch(() => ({}))
 
-    const order = await prisma.customerOrder.findUnique({
-      where: { id: params.id },
+    const idOrNum = params.id
+    let order = await prisma.customerOrder.findUnique({
+      where: { id: idOrNum },
       include: { items: true },
     })
+
+    if (!order && /^PB\d+$/i.test(idOrNum)) {
+      const invNum = parseInt(idOrNum.replace(/^PB/i, ""), 10) - 3000
+      if (invNum > 0) {
+        order = await prisma.customerOrder.findUnique({
+          where: { invoiceNumber: invNum },
+          include: { items: true },
+        })
+      }
+    }
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 })

@@ -27,10 +27,21 @@ export async function POST(
       return NextResponse.json({ error: "Missing payment details" }, { status: 400 })
     }
 
-    const order = await prisma.customerOrder.findUnique({
-      where: { id: params.id },
+    const idOrNum = params.id
+    let order = await prisma.customerOrder.findUnique({
+      where: { id: idOrNum },
       include: { items: true },
     })
+
+    if (!order && /^PB\d+$/i.test(idOrNum)) {
+      const invNum = parseInt(idOrNum.replace(/^PB/i, ""), 10) - 3000
+      if (invNum > 0) {
+        order = await prisma.customerOrder.findUnique({
+          where: { invoiceNumber: invNum },
+          include: { items: true },
+        })
+      }
+    }
 
     if (!order) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 })

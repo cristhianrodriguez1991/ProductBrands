@@ -84,11 +84,8 @@ export function SendInvoiceDialog({
 
   const payUrl = useMemo(() => {
     if (!order) return ""
-    if (typeof window !== "undefined") {
-      return `${window.location.origin}/pay/${order.id}`
-    }
-    return `https://www.productbrands.com/pay/${order.id}`
-  }, [order])
+    return `https://www.productbrands.com/pay/${invoiceNo}`
+  }, [order, invoiceNo])
 
   const smsText = useMemo(() => {
     if (!order) return ""
@@ -350,14 +347,45 @@ export function SendInvoiceDialog({
                 />
               </div>
 
-              {/* Message Preview */}
+              {/* Message & Rich Card Preview */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
-                  <Label className="text-xs font-semibold text-slate-700">Pre-Formatted Text Message</Label>
-                  <span className="text-[10px] text-slate-400">Includes secure payment link</span>
+                  <Label className="text-xs font-semibold text-slate-700">Message &amp; Rich Link Preview</Label>
+                  <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Rich Card on iPhone &amp; Android
+                  </span>
                 </div>
-                <div className="relative rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-800 font-mono">
-                  {smsText}
+
+                <div className="rounded-xl border border-slate-800 bg-slate-900 text-white p-3.5 space-y-2.5 text-xs shadow-inner">
+                  <div className="text-slate-200 leading-relaxed whitespace-pre-line font-sans">
+                    {`Product Brands Wholesale:\nHi ${(order.customerName || "").split(" ")[0] || "there"}, your invoice #${invoiceNo} for $${order.totalAmount.toFixed(2)} is ready. Review items and pay securely online (ACH / Card):`}
+                  </div>
+
+                  {/* Rich Link Card Preview (what iPhone & Android messages render) */}
+                  <div className="rounded-lg border border-slate-700 bg-slate-800 overflow-hidden shadow-sm">
+                    <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 p-2.5 border-b border-slate-700 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="bg-emerald-500 text-slate-950 font-black text-[10px] px-1.5 py-0.5 rounded">PB</span>
+                        <span className="font-bold text-xs text-white">Product Brands</span>
+                      </div>
+                      <Badge className="bg-emerald-500/20 text-emerald-300 border-none text-[10px]">
+                        #{invoiceNo}
+                      </Badge>
+                    </div>
+                    <div className="p-2.5 flex justify-between items-center">
+                      <div>
+                        <div className="font-bold text-xs text-white">Wholesale Invoice #{invoiceNo}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">
+                          {order.customerName} &bull; ${order.totalAmount.toFixed(2)} USD
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-mono font-bold">productbrands.com</span>
+                    </div>
+                  </div>
+
+                  <div className="text-[11px] text-sky-400 font-mono break-all pt-0.5">
+                    {payUrl}
+                  </div>
                 </div>
               </div>
 

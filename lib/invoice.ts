@@ -66,7 +66,14 @@ export function buildInvoiceSmsMessage({
 }): string {
   const firstName = (customerName || "").trim().split(" ")[0] || "there"
   const formattedTotal = `$${(totalAmount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  return `Product Brands: Hi ${firstName}, your invoice #${invoiceNumber} for ${formattedTotal} is ready. View invoice & pay securely online (ACH or Card): ${payUrl}\n\nThank you for your business!`
+  
+  // Use clean, official invoice URL format e.g. https://www.productbrands.com/pay/PB3008
+  const cleanUrl = `https://www.productbrands.com/pay/${invoiceNumber}`
+
+  return `Product Brands Wholesale:
+Hi ${firstName}, your invoice #${invoiceNumber} for ${formattedTotal} is ready. Review items and pay securely online (ACH / Card):
+
+${cleanUrl}`
 }
 
 /** Builds an sms: link compatible with iOS, Android, and macOS Messages. */
