@@ -104,6 +104,8 @@ export function OrderDetailDialog({
   const [updating, setUpdating] = useState(false)
   const [sendingReceipt, setSendingReceipt] = useState(false)
   const [sendingInvoice, setSendingInvoice] = useState(false)
+  const [sendingPodEmail, setSendingPodEmail] = useState(false)
+  const [sendCustomerCopy, setSendCustomerCopy] = useState(true)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedPodLink, setCopiedPodLink] = useState(false)
@@ -258,6 +260,23 @@ export function OrderDetailDialog({
     }
   }
 
+  const handleSendPodEmail = async () => {
+    try {
+      setSendingPodEmail(true)
+      const res = await fetch(`/api/admin/customer-orders/${order.id}/send-pod-email`, { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to send delivery proof email")
+      toast({ 
+        title: "Proof of Delivery Sent", 
+        description: `Official delivery confirmation with photos and PDF receipt dispatched to ${order.customerEmail}` 
+      })
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    } finally {
+      setSendingPodEmail(false)
+    }
+  }
+
   const handleSaveStatus = async () => {
     try {
       setUpdating(true)
@@ -273,6 +292,7 @@ export function OrderDetailDialog({
 
       if (selectedStatus === "DELIVERED" || selectedStatus === "COMPLETED") {
         payload.deliveredAt = deliveredDate ? new Date(deliveredDate).toISOString() : new Date().toISOString()
+        payload.sendCustomerCopy = sendCustomerCopy
       }
 
       if (selectedStatus === "COMPLETED") {
@@ -397,6 +417,21 @@ export function OrderDetailDialog({
                   Proof of Delivery (PDF)
                 </Button>
               </a>
+
+              {/* Email Proof of Delivery Button */}
+              {(order.status === "DELIVERED" || order.status === "COMPLETED" || order.signatureDataUrl || (order.deliveryPhotos && order.deliveryPhotos.length > 0)) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSendPodEmail}
+                  disabled={sendingPodEmail}
+                  className="h-9 text-xs font-semibold text-purple-700 border-purple-200 hover:bg-purple-50"
+                  title="Email proof of delivery photos and PDF receipt to customer"
+                >
+                  {sendingPodEmail ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <FileCheck2 className="h-3.5 w-3.5 mr-1" />}
+                  Email Proof of Delivery
+                </Button>
+              )}
 
               {order.status === "PAID" || order.status === "DELIVERED" || order.status === "COMPLETED" ? (
                 <Button
@@ -640,6 +675,25 @@ export function OrderDetailDialog({
                   </div>
                 )}
               </div>
+
+              {/* Send Copy to Customer Checkbox */}
+              {(selectedStatus === "DELIVERED" || selectedStatus === "COMPLETED") && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50/70 border border-emerald-200">
+                  <div className="flex items-center gap-2.5">
+                    <Checkbox
+                      id="adminSendCopyCheckbox"
+                      checked={sendCustomerCopy}
+                      onCheckedChange={(c) => setSendCustomerCopy(Boolean(c))}
+                    />
+                    <label htmlFor="adminSendCopyCheckbox" className="text-xs font-semibold text-slate-800 cursor-pointer">
+                      Send copy of delivery confirmation &amp; PDF receipt to customer ({order.customerEmail})
+                    </label>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] bg-white text-emerald-800 border-emerald-300">
+                    Photos + Signature + PDF
+                  </Badge>
+                </div>
+              )}
 
               {/* Save Status Action Button */}
               <div className="flex justify-end pt-1">

@@ -83,6 +83,9 @@ export default function MobileProofOfDeliveryPage() {
   const [deliveryPhotos, setDeliveryPhotos] = useState<string[]>([])
   const [deliveryNotes, setDeliveryNotes] = useState("")
   const [showItemsList, setShowItemsList] = useState(true)
+  const [sendCustomerCopy, setSendCustomerCopy] = useState(true)
+  const [customerEmailCopy, setCustomerEmailCopy] = useState("")
+  const [emailSentRecipient, setEmailSentRecipient] = useState<string | null>(null)
 
   // Canvas Signature Pad
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -107,6 +110,7 @@ export default function MobileProofOfDeliveryPage() {
       setNoSignatureRequired(Boolean(data.order.noSignatureRequired))
       setDeliveryPhotos(data.order.deliveryPhotos || [])
       setDeliveryNotes(data.order.deliveryNotes || "")
+      setCustomerEmailCopy(data.order.customerEmail || "")
       if (data.order.signatureDataUrl || data.order.deliveredAt) {
         setSubmitted(true)
       }
@@ -247,6 +251,8 @@ export default function MobileProofOfDeliveryPage() {
           deliveryNotes,
           deliveredAt: new Date().toISOString(),
           status: "DELIVERED",
+          sendCustomerCopy,
+          customerEmail: customerEmailCopy,
         }),
       })
 
@@ -255,7 +261,18 @@ export default function MobileProofOfDeliveryPage() {
 
       setOrder(data.order)
       setSubmitted(true)
-      toast({ title: "Delivery Confirmed", description: "Proof of delivery has been securely recorded." })
+      if (data.emailSent) {
+        setEmailSentRecipient(data.emailRecipient || customerEmailCopy)
+        toast({ 
+          title: "Delivery Confirmed & Emailed", 
+          description: `Proof of delivery and official PDF copy emailed to ${data.emailRecipient || customerEmailCopy}.` 
+        })
+      } else {
+        toast({ 
+          title: "Delivery Confirmed", 
+          description: "Proof of delivery has been securely recorded." 
+        })
+      }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" })
     } finally {
@@ -380,6 +397,12 @@ export default function MobileProofOfDeliveryPage() {
                   <div className="text-xs font-medium text-slate-500 mt-2 flex items-center justify-center gap-1">
                     <Clock className="h-3.5 w-3.5" />
                     <span>{new Date(order.deliveredAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</span>
+                  </div>
+                )}
+                {(emailSentRecipient || order.customerEmail) && (
+                  <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Copy &amp; PDF receipt emailed to {emailSentRecipient || order.customerEmail}</span>
                   </div>
                 )}
               </div>
@@ -612,6 +635,48 @@ export default function MobileProofOfDeliveryPage() {
                     rows={2}
                     className="mt-1 bg-white text-xs resize-none"
                   />
+                </div>
+
+                {/* Send Copy to Customer Checkbox & Email Field */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <Checkbox
+                      id="sendCustomerCopy"
+                      checked={sendCustomerCopy}
+                      onCheckedChange={(c) => setSendCustomerCopy(Boolean(c))}
+                      className="mt-0.5"
+                    />
+                    <div className="space-y-1 leading-none w-full">
+                      <label
+                        htmlFor="sendCustomerCopy"
+                        className="text-xs font-bold text-slate-900 cursor-pointer flex items-center justify-between"
+                      >
+                        <span>Send copy to customer</span>
+                        <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold">
+                          Photos &amp; PDF Proof
+                        </Badge>
+                      </label>
+                      <p className="text-[11px] text-slate-500">
+                        Customer will receive an email with delivery photos, signature, and official PDF link.
+                      </p>
+
+                      {sendCustomerCopy && (
+                        <div className="pt-2">
+                          <Label htmlFor="customerEmailInput" className="text-[11px] font-semibold text-slate-600">
+                            Recipient Email Address
+                          </Label>
+                          <Input
+                            id="customerEmailInput"
+                            type="email"
+                            value={customerEmailCopy}
+                            onChange={(e) => setCustomerEmailCopy(e.target.value)}
+                            placeholder="customer@email.com"
+                            className="mt-1 h-9 text-xs bg-white border-slate-200"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Submit Button */}

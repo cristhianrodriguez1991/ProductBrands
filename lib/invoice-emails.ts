@@ -40,6 +40,13 @@ type EmailOrder = {
   stripePaymentIntent?: string | null
   terms?: string | null
   createdAt: Date | string
+  deliveryPhotos?: string[]
+  signatureDataUrl?: string | null
+  signedByName?: string | null
+  signedAt?: Date | string | null
+  noSignatureRequired?: boolean
+  deliveredAt?: Date | string | null
+  deliveryNotes?: string | null
   items: EmailOrderItem[]
 }
 
@@ -297,5 +304,191 @@ export function buildReceiptEmail(order: EmailOrder) {
   return {
     subject: `Order Confirmed: Invoice ${num} from Product Brands`,
     html: shell(`Your order #${num} has been confirmed. Total paid: ${money(paidTotal)}.`, inner),
+  }
+}
+
+function deliveredItemsTable(order: EmailOrder) {
+  const rows = order.items
+    .map(
+      (it) => `
+      <tr>
+        <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#0f172a;">
+          <div style="font-weight:600;">${esc(it.productName)}</div>
+          <div style="font-size:11px;color:#64748b;margin-top:2px;">${[it.sku ? `SKU: ${esc(it.sku)}` : "", it.weight ? esc(it.weight) : ""].filter(Boolean).join(" &middot; ")}</div>
+        </td>
+        <td align="center" style="padding:10px 8px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a;white-space:nowrap;">${it.quantity}</td>
+        <td align="right" style="padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:12px;font-weight:600;color:#16a34a;white-space:nowrap;">&#10003; Received / Complete</td>
+      </tr>`
+    )
+    .join("")
+
+  const totalUnits = order.items.reduce((sum, it) => sum + (it.quantity || 0), 0)
+
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <th align="left" style="padding:0 0 8px 0;border-bottom:2px solid #0f172a;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#475569;">Item Description</th>
+        <th align="center" style="padding:0 8px 8px 8px;border-bottom:2px solid #0f172a;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#475569;">Qty Delivered</th>
+        <th align="right" style="padding:0 0 8px 0;border-bottom:2px solid #0f172a;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#475569;">Condition</th>
+      </tr>
+      ${rows}
+      <tr>
+        <td colspan="3" align="right" style="padding:10px 0 0 0;font-size:12px;color:#64748b;font-weight:600;">
+          Total Units Delivered: <strong style="color:#0f172a;">${totalUnits} units</strong>
+        </td>
+      </tr>
+    </table>`
+}
+
+/** Delivery Confirmation & Proof of Delivery (POD) email with photos, signature, and PDF link. */
+export function buildDeliveryConfirmationEmail(order: EmailOrder) {
+  const num = formatInvoiceNumber(order)
+  const firstName = esc((order.customerName || "").split(" ")[0] || order.customerName)
+  const podPrintUrl = `${SITE_URL}/orders/${order.id}/pod/print`
+
+  const deliveryTimestamp = order.deliveredAt
+    ? new Date(order.deliveredAt).toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" })
+    : order.signedAt
+      ? new Date(order.signedAt).toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" })
+      : new Date().toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" })
+
+  const signedTimestamp = order.signedAt
+    ? new Date(order.signedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })
+    : deliveryTimestamp
+
+  const photosHtml = order.deliveryPhotos && order.deliveryPhotos.length > 0
+    ? `
+      <tr><td style="padding:0 32px 24px 32px;">
+        <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-bottom:10px;">
+          Delivery Confirmation Photos (${order.deliveryPhotos.length})
+        </div>
+        <div style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;text-align:center;">
+          ${order.deliveryPhotos.map(url => `
+            <a href="${podPrintUrl}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-block;margin:6px;">
+              <img src="${url}" alt="Proof of Delivery Photo" width="260" style="width:260px;max-width:100%;height:auto;border-radius:8px;border:1px solid #cbd5e1;display:block;box-shadow:0 1px 3px rgba(0,0,0,0.08);" />
+            </a>
+          `).join("")}
+          <div style="margin-top:8px;font-size:11px;color:#64748b;">
+            Captured on delivery &middot; Click photo to view official PDF proof
+          </div>
+        </div>
+      </td></tr>
+    `
+    : ""
+
+  const signatureHtml = order.signatureDataUrl
+    ? `
+      <tr><td style="padding:0 32px 24px 32px;">
+        <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-bottom:10px;">
+          Authorized Signature &amp; Acceptance
+        </div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+          <tr>
+            <td style="padding:10px 16px;background-color:#f1f5f9;border-bottom:1px solid #e2e8f0;">
+              <table role="presentation" width="100%">
+                <tr>
+                  <td style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#475569;">Authorized Signature</td>
+                  <td align="right" style="font-size:11px;font-weight:700;color:#16a34a;">&#10003; Verified Electronic Signature</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:16px 18px;">
+              <div style="display:inline-block;background-color:#ffffff;border:1px solid #cbd5e1;border-radius:6px;padding:8px;max-width:280px;">
+                <img src="${order.signatureDataUrl}" alt="Customer Signature" style="max-height:85px;max-width:260px;display:block;margin:0 auto;" />
+              </div>
+              <div style="margin-top:10px;font-size:13px;font-weight:700;color:#0f172a;">
+                Signed by: ${esc(order.signedByName || order.customerName)}
+              </div>
+              <div style="font-size:11px;color:#64748b;margin-top:2px;">
+                Timestamp: ${signedTimestamp}
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+    `
+    : order.noSignatureRequired
+      ? `
+      <tr><td style="padding:0 32px 24px 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fefce8;border:1px solid #fef08a;border-radius:10px;">
+          <tr><td style="padding:14px 18px;">
+            <div style="font-size:13px;font-weight:700;color:#854d0e;">No Signature Required</div>
+            <div style="font-size:12px;color:#a16207;margin-top:2px;">
+              Order delivered and verified without recipient signature (photo-verified dock/door drop-off).
+            </div>
+          </td></tr>
+        </table>
+      </td></tr>
+      `
+      : ""
+
+  const inner = `
+    <tr><td style="padding:28px 32px 8px 32px;" align="center">
+      <div style="display:inline-block;padding:6px 16px;border-radius:999px;background-color:#dcfce7;color:#166534;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">
+        &#10003; Order Delivered &amp; Verified
+      </div>
+      <div style="margin-top:14px;font-size:30px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;">Proof of Delivery</div>
+      <div style="margin-top:6px;font-size:14px;color:#475569;font-weight:600;">
+        Order #${num} &middot; ${order.deliveryType === "PICKUP" ? "Warehouse Pickup" : "Freight Delivery"}
+      </div>
+    </td></tr>
+
+    <tr><td style="padding:20px 32px 0 32px;font-size:15px;line-height:1.6;color:#334155;">
+      Hello ${firstName},<br/><br/>
+      Your order <strong>#${num}</strong> has been successfully delivered! Below is your official delivery confirmation with on-site photos and electronic signature for your records.
+    </td></tr>
+
+    <tr><td style="padding:24px 32px;">
+      ${ctaButton(podPrintUrl, "View &amp; Print Official PDF Proof of Delivery")}
+    </td></tr>
+
+    <tr><td style="padding:0 32px 24px 32px;">
+      ${detailsGrid([
+        ["Document / BOL", num],
+        ["Delivered Date", deliveryTimestamp],
+        ["Fulfillment", order.deliveryType === "PICKUP" ? "Warehouse Pickup" : "Freight Delivery"],
+      ])}
+    </td></tr>
+
+    ${order.deliveryNotes ? `
+      <tr><td style="padding:0 32px 20px 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+          <tr><td style="padding:12px 16px;font-size:13px;color:#334155;">
+            <strong style="color:#0f172a;">Delivery Notes:</strong> ${esc(order.deliveryNotes)}
+          </td></tr>
+        </table>
+      </td></tr>
+    ` : ""}
+
+    ${photosHtml}
+
+    ${signatureHtml}
+
+    <tr><td style="padding:0 32px 24px 32px;">
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-bottom:10px;">
+        Delivered Inventory &amp; Specifications
+      </div>
+      ${deliveredItemsTable(order)}
+    </td></tr>
+
+    <tr><td style="padding:0 32px 24px 32px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+        <tr><td style="padding:14px 18px;font-size:12px;line-height:1.6;color:#64748b;">
+          <strong style="color:#334155;">Receipt &amp; Acceptance Agreement:</strong><br/>
+          Receiver certifies that the goods listed above have been delivered, inspected, and received in full and satisfactory condition without damage or missing items. Southern Basics LLC Wholesale Terms of Sale apply (48-hour inspection claim window).
+        </td></tr>
+      </table>
+    </td></tr>
+
+    <tr><td style="padding:0 32px 28px 32px;font-size:12px;line-height:1.6;color:#94a3b8;text-align:center;">
+      Button not working? Access your official Proof of Delivery document here:<br/>
+      <a href="${podPrintUrl}" style="color:#475569;word-break:break-all;">${podPrintUrl}</a>
+    </td></tr>`
+
+  return {
+    subject: `Order Delivered: Proof of Delivery for #${num} | Product Brands`,
+    html: shell(`Your order #${num} has been delivered. View official Proof of Delivery photos, signature, and PDF.`, inner),
   }
 }

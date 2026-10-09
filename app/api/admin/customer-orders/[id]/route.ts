@@ -62,14 +62,31 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
 
     const body = await req.json()
+    const { sendCustomerCopy, ...cleanData } = body
     
-    // Only allow updating status or basic info for now
     const order = await prisma.customerOrder.update({
       where: { id: params.id },
-      data: {
-        ...body
+      data: cleanData,
+      include: {
+        items: true
       }
     })
+
+    if (sendCustomerCopy && order.customerEmail && (order.status === "DELIVERED" || order.status === "COMPLETED")) {
+      try {
+        const { sendEmail } = await import("@/lib/email")
+        const { buildDeliveryConfirmationEmail, INVOICE_EMAIL_FROM } = await import("@/lib/invoice-emails")
+        const { subject, html } = buildDeliveryConfirmationEmail(order as any)
+        await sendEmail({
+          to: order.customerEmail,
+          subject,
+          html,
+          from: INVOICE_EMAIL_FROM,
+        })
+      } catch (emailErr) {
+        console.error("[ADMIN_ORDER_PATCH_EMAIL_ERR]", emailErr)
+      }
+    }
 
     return NextResponse.json(order)
   } catch (error) {

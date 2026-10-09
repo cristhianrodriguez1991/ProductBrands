@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { sendEmail } from "@/lib/email"
+import { buildDeliveryConfirmationEmail, INVOICE_EMAIL_FROM } from "@/lib/invoice-emails"
 
 export const dynamic = "force-dynamic"
 
@@ -43,6 +45,8 @@ export async function POST(
       deliveryNotes,
       deliveredAt,
       status,
+      sendCustomerCopy,
+      customerEmail,
     } = body
 
     const existing = await prisma.customerOrder.findUnique({
@@ -58,6 +62,10 @@ export async function POST(
       deliveredAt: deliveredAt ? new Date(deliveredAt) : (existing.deliveredAt || now),
       noSignatureRequired: Boolean(noSignatureRequired),
       updatedAt: now,
+    }
+
+    if (customerEmail && typeof customerEmail === "string" && customerEmail.includes("@")) {
+      updateData.customerEmail = customerEmail.trim()
     }
 
     if (deliveryPhotos && Array.isArray(deliveryPhotos)) {
@@ -98,7 +106,38 @@ export async function POST(
       },
     })
 
-    return NextResponse.json({ success: true, order: updated })
+    // Send copy to customer if requested (or default if recipient email exists)
+    let emailSent = false
+    let emailError: string | null = null
+
+    if (sendCustomerCopy && updated.customerEmail) {
+      try {
+        const { subject, html } = buildDeliveryConfirmationEmail(updated as any)
+        const emailRes = await sendEmail({
+          to: updated.customerEmail,
+          subject,
+          html,
+          from: INVOICE_EMAIL_FROM,
+        })
+        if (emailRes.success) {
+          emailSent = true
+        } else {
+          emailError = (emailRes.error as any)?.message || "Email provider error"
+          console.error("[POD_SEND_EMAIL_FAILED]", emailError)
+        }
+      } catch (err: any) {
+        emailError = err?.message || "Failed to dispatch email"
+        console.error("[POD_SEND_EMAIL_EXCEPTION]", err)
+      }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      order: updated,
+      emailSent,
+      emailRecipient: updated.customerEmail,
+      emailError 
+    })
   } catch (error: any) {
     console.error("[POD_SUBMIT_ERROR]", error)
     return NextResponse.json(
