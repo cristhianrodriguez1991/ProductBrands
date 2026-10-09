@@ -39,8 +39,10 @@ import {
   PenTool,
   Printer,
   ShieldCheck,
-  Eye
+  Eye,
+  Smartphone
 } from "lucide-react"
+import { SendInvoiceDialog } from "./SendInvoiceDialog"
 
 interface LineItem {
   id: string
@@ -125,6 +127,7 @@ export function OrderDetailDialog({
   const [deliveryNotes, setDeliveryNotes] = useState<string>(order?.deliveryNotes || "")
   const [deliveryPhotos, setDeliveryPhotos] = useState<string[]>(order?.deliveryPhotos || [])
   const [noSignatureRequired, setNoSignatureRequired] = useState<boolean>(Boolean(order?.noSignatureRequired))
+  const [showSendInvoiceDialog, setShowSendInvoiceDialog] = useState(false)
 
   // Reset form when order changes
   const prevId = order?.id
@@ -445,16 +448,18 @@ export function OrderDetailDialog({
                   Send Confirmation Receipt
                 </Button>
               ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSendInvoiceEmail}
-                  disabled={sendingInvoice}
-                  className="h-9 text-xs font-semibold"
-                >
-                  {sendingInvoice ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1" />}
-                  Send Invoice Email
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowSendInvoiceDialog(true)}
+                    className="h-9 text-xs font-semibold bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 shadow-sm"
+                    title="Send via Google Voice (SMS), Phone, or Email"
+                  >
+                    <Smartphone className="h-3.5 w-3.5 mr-1 text-emerald-600" />
+                    Send to Phone / Email
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -932,6 +937,14 @@ export function OrderDetailDialog({
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Send Invoice Modal (Google Voice / SMS / Email) */}
+      <SendInvoiceDialog
+        order={order}
+        open={showSendInvoiceDialog}
+        onOpenChange={setShowSendInvoiceDialog}
+        onSent={onOrderUpdated}
+      />
     </>
   )
 }

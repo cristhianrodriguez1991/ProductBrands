@@ -51,3 +51,26 @@ export function computeCardProcessingFeeCents(baseCents: number): number {
 }
 
 export const toCents = (amount: number) => Math.round((amount || 0) * 100)
+
+/** Builds standard professional SMS message text for customer invoices. */
+export function buildInvoiceSmsMessage({
+  invoiceNumber,
+  customerName,
+  totalAmount,
+  payUrl,
+}: {
+  invoiceNumber: string
+  customerName: string
+  totalAmount: number
+  payUrl: string
+}): string {
+  const firstName = (customerName || "").trim().split(" ")[0] || "there"
+  const formattedTotal = `$${(totalAmount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `Product Brands: Hi ${firstName}, your invoice #${invoiceNumber} for ${formattedTotal} is ready. View invoice & pay securely online (ACH or Card): ${payUrl}\n\nThank you for your business!`
+}
+
+/** Builds an sms: link compatible with iOS, Android, and macOS Messages. */
+export function buildSmsHref(phone: string, body: string): string {
+  const cleanPhone = (phone || "").replace(/[^\d+]/g, "")
+  return `sms:${cleanPhone}?&body=${encodeURIComponent(body)}`
+}

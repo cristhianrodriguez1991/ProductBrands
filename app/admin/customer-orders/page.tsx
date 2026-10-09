@@ -20,7 +20,8 @@ import {
   Loader2,
   Printer,
   FileCheck2,
-  QrCode
+  QrCode,
+  Smartphone
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
@@ -28,6 +29,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { formatCurrency } from "@/lib/utils"
 import { formatInvoiceNumber } from "@/lib/invoice"
 import { OrderDetailDialog } from "@/components/admin/OrderDetailDialog"
+import { SendInvoiceDialog } from "@/components/admin/SendInvoiceDialog"
 
 export default function CustomerOrdersPage() {
   const [orders, setOrders] = useState<any[]>([])
@@ -38,6 +40,8 @@ export default function CustomerOrdersPage() {
   const [detailOpen, setDetailOpen] = useState(false)
   const [sendingId, setSendingId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [sendOrder, setSendOrder] = useState<any | null>(null)
+  const [sendDialogOpen, setSendDialogOpen] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -404,23 +408,19 @@ export default function CustomerOrdersPage() {
                             </Button>
                           </Link>
 
-                          {/* Send Email */}
+                          {/* Send Invoice (Phone / Google Voice / Email / Both) */}
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 px-2 text-xs"
-                            disabled={sendingId === order.id}
-                            onClick={() => handleSendEmail(order.id)}
-                            title="Send invoice link to customer email"
+                            className="h-8 px-2.5 text-xs font-semibold bg-emerald-50/80 hover:bg-emerald-100 text-emerald-800 border-emerald-300 shadow-sm"
+                            onClick={() => {
+                              setSendOrder(order)
+                              setSendDialogOpen(true)
+                            }}
+                            title="Send invoice via Google Voice (SMS), Email, or Both"
                           >
-                            {sendingId === order.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Send className="h-3.5 w-3.5" />
-                            )}
-                            <span className="ml-1 hidden md:inline">
-                              {order.status === "DRAFT" ? "Send" : "Resend"}
-                            </span>
+                            <Send className="h-3.5 w-3.5 mr-1 text-emerald-600" />
+                            <span>{order.status === "DRAFT" ? "Send" : "Resend"}</span>
                           </Button>
 
                           {/* Delete */}
@@ -450,6 +450,14 @@ export default function CustomerOrdersPage() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         onOrderUpdated={fetchOrders}
+      />
+
+      {/* Send Invoice Modal (Google Voice / SMS / Email) */}
+      <SendInvoiceDialog
+        order={sendOrder}
+        open={sendDialogOpen}
+        onOpenChange={setSendDialogOpen}
+        onSent={fetchOrders}
       />
     </div>
   )

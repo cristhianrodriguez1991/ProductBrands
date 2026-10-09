@@ -54,8 +54,8 @@ export async function POST(req: Request) {
       items
     } = body
 
-    if (!customerName || !customerEmail || !items || !items.length) {
-      return new NextResponse("Missing required fields", { status: 400 })
+    if (!customerName || (!customerEmail && !customerPhone) || !items || !items.length) {
+      return new NextResponse("Missing required fields (Customer Name, Email or Phone, and Items)", { status: 400 })
     }
 
     // Calculate subtotal and total
@@ -124,8 +124,8 @@ export async function POST(req: Request) {
     const order = await prisma.customerOrder.create({
       data: {
         customerName,
-        customerEmail,
-        customerPhone,
+        customerEmail: customerEmail || "",
+        customerPhone: customerPhone || null,
         companyName,
         deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
         deliveryType,

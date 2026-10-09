@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 import { 
   Trash2, 
   Plus, 
@@ -17,13 +18,19 @@ import {
   Bookmark, 
   Search, 
   Check,
-  Package
+  Package,
+  Smartphone,
+  Mail,
+  Sparkles,
+  FileText,
+  Send
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
 import Image from "next/image"
 import { InvoicePreviewDialog } from "@/components/admin/InvoicePreviewDialog"
+import { SendInvoiceDialog } from "@/components/admin/SendInvoiceDialog"
 interface LineItem {
   id: string
   productName: string
@@ -62,6 +69,11 @@ export default function NewCustomerOrderPage() {
   // Terms & Notes
   const [terms, setTerms] = useState(DEFAULT_TERMS)
   const [notes, setNotes] = useState("")
+
+  // Delivery & Notification Destination
+  const [sendDestination, setSendDestination] = useState<"PHONE" | "EMAIL" | "BOTH" | "DRAFT">("BOTH")
+  const [createdOrderForDialog, setCreatedOrderForDialog] = useState<any | null>(null)
+  const [showSendDialog, setShowSendDialog] = useState(false)
 
   // Presets from database
   const [presets, setPresets] = useState<any[]>([])
@@ -172,10 +184,37 @@ export default function NewCustomerOrderPage() {
   const total = subtotal + (parseFloat(shippingCost) || 0)
 
   const handleSave = async () => {
-    if (!customerName || !customerEmail || items.some(i => !i.productName)) {
+    if (!customerName || items.some(i => !i.productName)) {
       toast({ 
         title: "Validation Error", 
-        description: "Please fill in Customer Name, Customer Email, and Product Name for all items.", 
+        description: "Please fill in Customer Name and Product Name for all items.", 
+        variant: "destructive" 
+      })
+      return
+    }
+
+    if (sendDestination === "EMAIL" && !customerEmail) {
+      toast({ 
+        title: "Email Required", 
+        description: "Please provide the customer's email address to send via email.", 
+        variant: "destructive" 
+      })
+      return
+    }
+
+    if (sendDestination === "PHONE" && !customerPhone) {
+      toast({ 
+        title: "Phone Required", 
+        description: "Please provide the customer's phone number to send via Google Voice / SMS.", 
+        variant: "destructive" 
+      })
+      return
+    }
+
+    if (sendDestination === "BOTH" && (!customerEmail || !customerPhone)) {
+      toast({ 
+        title: "Email & Phone Required", 
+        description: "Please provide both Customer Email and Phone Number to send to both.", 
         variant: "destructive" 
       })
       return
@@ -210,9 +249,38 @@ export default function NewCustomerOrderPage() {
       })
 
       if (!res.ok) throw new Error("Failed to create invoice")
-      
-      toast({ title: "Invoice Created", description: "Your customer invoice has been generated." })
-      router.push("/admin/customer-orders")
+      const createdOrder = await res.json()
+
+      // If EMAIL or BOTH, automatically dispatch the official email
+      if (sendDestination === "EMAIL" || sendDestination === "BOTH") {
+        try {
+          await fetch(`/api/admin/customer-orders/${createdOrder.id}/send-email`, {
+            method: "POST",
+          })
+        } catch (mailErr) {
+          console.error("Failed to auto-send email:", mailErr)
+        }
+      }
+
+      // If PHONE or BOTH, open the Google Voice / SMS dialog immediately
+      if (sendDestination === "PHONE" || sendDestination === "BOTH") {
+        setCreatedOrderForDialog(createdOrder)
+        setShowSendDialog(true)
+        toast({
+          title: "Invoice Generated!",
+          description: sendDestination === "BOTH"
+            ? "Email dispatched! Ready to text customer via Google Voice or SMS."
+            : "Ready to text customer via Google Voice or SMS."
+        })
+      } else {
+        toast({
+          title: sendDestination === "EMAIL" ? "Invoice Generated & Emailed!" : "Invoice Saved as Draft",
+          description: sendDestination === "EMAIL"
+            ? `Official invoice dispatched to ${customerEmail}.`
+            : "Your customer invoice has been saved as draft."
+        })
+        router.push("/admin/customer-orders")
+      }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" })
     } finally {
@@ -254,7 +322,14 @@ export default function NewCustomerOrderPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Customer Email *</Label>
+                <div className="flex justify-between items-center">
+                  <Label className="text-xs">
+                    Customer Email {sendDestination === "EMAIL" || sendDestination === "BOTH" ? "*" : "(Optional)"}
+                  </Label>
+                  {(sendDestination === "EMAIL" || sendDestination === "BOTH") && (
+                    <span className="text-[10px] text-blue-600 font-semibold">Required for email</span>
+                  )}
+                </div>
                 <Input 
                   type="email" 
                   value={customerEmail} 
@@ -263,7 +338,14 @@ export default function NewCustomerOrderPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Phone Number</Label>
+                <div className="flex justify-between items-center">
+                  <Label className="text-xs">
+                    Phone Number {sendDestination === "PHONE" || sendDestination === "BOTH" ? "*" : "(Optional)"}
+                  </Label>
+                  {(sendDestination === "PHONE" || sendDestination === "BOTH") && (
+                    <span className="text-[10px] text-emerald-600 font-semibold">Required for Google Voice / SMS</span>
+                  )}
+                </div>
                 <Input 
                   value={customerPhone} 
                   onChange={e => setCustomerPhone(e.target.value)} 
@@ -562,6 +644,102 @@ export default function NewCustomerOrderPage() {
             </CardContent>
           </Card>
 
+          {/* Send Destination Card */}
+          <Card className="border-slate-200 shadow-sm overflow-hidden">
+            <CardHeader className="p-4 pb-3 bg-slate-50 border-b border-slate-100">
+              <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
+                <span>Where to Send Invoice?</span>
+                <Badge variant="outline" className="text-[10px] uppercase font-bold text-slate-600 bg-white">
+                  Send Options
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 space-y-2">
+              {/* Option 1: Phone */}
+              <div 
+                onClick={() => setSendDestination("PHONE")}
+                className={`p-3 rounded-lg border cursor-pointer transition-all flex items-start gap-3 ${
+                  sendDestination === "PHONE" 
+                    ? "border-emerald-500 bg-emerald-50/70 ring-1 ring-emerald-500" 
+                    : "border-slate-200 hover:border-slate-300 bg-white"
+                }`}
+              >
+                <div className={`p-2 rounded-md ${sendDestination === "PHONE" ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600"}`}>
+                  <Smartphone className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900">To Customer Phone</span>
+                    {sendDestination === "PHONE" && <Check className="h-3.5 w-3.5 text-emerald-600" />}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                    Text payment link via Google Voice or phone SMS
+                  </p>
+                </div>
+              </div>
+
+              {/* Option 2: Email */}
+              <div 
+                onClick={() => setSendDestination("EMAIL")}
+                className={`p-3 rounded-lg border cursor-pointer transition-all flex items-start gap-3 ${
+                  sendDestination === "EMAIL" 
+                    ? "border-blue-500 bg-blue-50/70 ring-1 ring-blue-500" 
+                    : "border-slate-200 hover:border-slate-300 bg-white"
+                }`}
+              >
+                <div className={`p-2 rounded-md ${sendDestination === "EMAIL" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"}`}>
+                  <Mail className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900">To Customer Email</span>
+                    {sendDestination === "EMAIL" && <Check className="h-3.5 w-3.5 text-blue-600" />}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                    Send official branded invoice email with line items
+                  </p>
+                </div>
+              </div>
+
+              {/* Option 3: Both */}
+              <div 
+                onClick={() => setSendDestination("BOTH")}
+                className={`p-3 rounded-lg border cursor-pointer transition-all flex items-start gap-3 ${
+                  sendDestination === "BOTH" 
+                    ? "border-purple-500 bg-purple-50/70 ring-1 ring-purple-500" 
+                    : "border-slate-200 hover:border-slate-300 bg-white"
+                }`}
+              >
+                <div className={`p-2 rounded-md ${sendDestination === "BOTH" ? "bg-purple-600 text-white" : "bg-slate-100 text-slate-600"}`}>
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900">Both (Phone & Email)</span>
+                    {sendDestination === "BOTH" && <Check className="h-3.5 w-3.5 text-purple-600" />}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                    Official email + instant Google Voice / SMS text
+                  </p>
+                </div>
+              </div>
+
+              {/* Option 4: Draft */}
+              <div 
+                onClick={() => setSendDestination("DRAFT")}
+                className={`p-2.5 rounded-lg border cursor-pointer transition-all flex items-center gap-2.5 ${
+                  sendDestination === "DRAFT" 
+                    ? "border-slate-400 bg-slate-100 text-slate-900" 
+                    : "border-dashed border-slate-200 text-slate-500 hover:bg-slate-50"
+                }`}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                <span className="text-[11px] font-medium flex-1">Save as Draft (Do not send yet)</span>
+                {sendDestination === "DRAFT" && <Check className="h-3.5 w-3.5" />}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Pricing Summary Card */}
           <Card className="bg-slate-900 text-white shadow-md">
             <CardContent className="p-6 space-y-4">
@@ -580,12 +758,36 @@ export default function NewCustomerOrderPage() {
                 <span className="font-black text-2xl text-emerald-400">${total.toFixed(2)}</span>
               </div>
               <Button 
-                className="w-full mt-4 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold h-12 text-sm shadow-md" 
+                className={`w-full mt-4 font-bold h-12 text-sm shadow-md transition-all ${
+                  sendDestination === "PHONE" 
+                    ? "bg-emerald-500 hover:bg-emerald-600 text-slate-950" 
+                    : sendDestination === "EMAIL"
+                    ? "bg-blue-600 hover:bg-blue-700 text-white"
+                    : sendDestination === "BOTH"
+                    ? "bg-purple-600 hover:bg-purple-700 text-white"
+                    : "bg-slate-700 hover:bg-slate-800 text-white"
+                }`} 
                 onClick={handleSave} 
                 disabled={loading}
               >
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Generate Professional Invoice
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : sendDestination === "PHONE" ? (
+                  <Smartphone className="mr-2 h-4 w-4" />
+                ) : sendDestination === "EMAIL" ? (
+                  <Mail className="mr-2 h-4 w-4" />
+                ) : sendDestination === "BOTH" ? (
+                  <Sparkles className="mr-2 h-4 w-4" />
+                ) : (
+                  <FileText className="mr-2 h-4 w-4" />
+                )}
+                {sendDestination === "PHONE"
+                  ? "Generate & Send via Phone"
+                  : sendDestination === "EMAIL"
+                  ? "Generate & Send via Email"
+                  : sendDestination === "BOTH"
+                  ? "Generate & Send (Email + Phone)"
+                  : "Save Invoice as Draft"}
               </Button>
               <InvoicePreviewDialog 
                 data={{
@@ -606,6 +808,22 @@ export default function NewCustomerOrderPage() {
           </Card>
         </div>
       </div>
+
+      {/* Send Invoice Modal (for Google Voice / SMS / Email) */}
+      <SendInvoiceDialog
+        open={showSendDialog}
+        onOpenChange={(open) => {
+          setShowSendDialog(open)
+          if (!open) {
+            router.push("/admin/customer-orders")
+          }
+        }}
+        order={createdOrderForDialog}
+        initialTab={sendDestination === "BOTH" ? "both" : "phone"}
+        onSent={() => {
+          router.push("/admin/customer-orders")
+        }}
+      />
     </div>
   )
 }
