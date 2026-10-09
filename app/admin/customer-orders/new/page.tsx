@@ -262,16 +262,42 @@ export default function NewCustomerOrderPage() {
         }
       }
 
-      // If PHONE or BOTH, open the Google Voice / SMS dialog immediately
+      // If PHONE or BOTH, attempt automated Twilio background send first
       if (sendDestination === "PHONE" || sendDestination === "BOTH") {
-        setCreatedOrderForDialog(createdOrder)
-        setShowSendDialog(true)
-        toast({
-          title: "Invoice Generated!",
-          description: sendDestination === "BOTH"
-            ? "Email dispatched! Ready to text customer via Google Voice or SMS."
-            : "Ready to text customer via Google Voice or SMS."
-        })
+        let sentViaTwilio = false
+        try {
+          const smsRes = await fetch(`/api/admin/customer-orders/${createdOrder.id}/send-sms`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone: customerPhone }),
+          })
+          const smsData = await smsRes.json()
+          if (smsRes.ok && smsData.success) {
+            sentViaTwilio = true
+          }
+        } catch (smsErr) {
+          console.error("Automated SMS check failed:", smsErr)
+        }
+
+        if (sentViaTwilio) {
+          toast({
+            title: "Invoice Generated & Texted!",
+            description: sendDestination === "BOTH"
+              ? `Email and automated text message dispatched to ${customerPhone} via Twilio!`
+              : `Automated text message dispatched to ${customerPhone} via Twilio!`,
+          })
+          router.push("/admin/customer-orders")
+        } else {
+          // If Twilio not configured yet, open dialog for Google Voice / Messages
+          setCreatedOrderForDialog(createdOrder)
+          setShowSendDialog(true)
+          toast({
+            title: "Invoice Generated!",
+            description: sendDestination === "BOTH"
+              ? "Email dispatched! Ready to text customer via Google Voice or SMS."
+              : "Ready to text customer via Google Voice or SMS."
+          })
+        }
       } else {
         toast({
           title: sendDestination === "EMAIL" ? "Invoice Generated & Emailed!" : "Invoice Saved as Draft",

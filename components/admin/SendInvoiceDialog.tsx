@@ -64,6 +64,8 @@ export function SendInvoiceDialog({
   const [sendingEmail, setSendingEmail] = useState(false)
   const [emailSentSuccess, setEmailSentSuccess] = useState(false)
   const [smsSentSuccess, setSmsSentSuccess] = useState(false)
+  const [sendingTwilioSms, setSendingTwilioSms] = useState(false)
+  const [twilioSuccess, setTwilioSuccess] = useState(false)
 
   useEffect(() => {
     if (order) {
@@ -72,6 +74,7 @@ export function SendInvoiceDialog({
       setTab(initialTab)
       setEmailSentSuccess(false)
       setSmsSentSuccess(false)
+      setTwilioSuccess(false)
     }
   }, [order, initialTab, open])
 
@@ -138,6 +141,55 @@ export function SendInvoiceDialog({
         description: "Please copy the text message manually below.",
         variant: "destructive",
       })
+    }
+  }
+
+  // Action: Send Automated SMS via Twilio API
+  const handleSendTwilioSms = async () => {
+    const targetPhone = phone || order.customerPhone || ""
+    if (!targetPhone) {
+      toast({
+        title: "Missing Phone Number",
+        description: "Please provide a valid phone number.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSendingTwilioSms(true)
+    try {
+      const res = await fetch(`/api/admin/customer-orders/${order.id}/send-sms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: targetPhone }),
+      })
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        if (data.configured === false) {
+          toast({
+            title: "Twilio Credentials Needed",
+            description: "Once your Twilio credentials are added to .env, this button sends 100% automatically in the background. In the meantime, use Open in Google Voice below!",
+          })
+          return
+        }
+        throw new Error(data.error || "Failed to send SMS via Twilio")
+      }
+
+      setTwilioSuccess(true)
+      toast({
+        title: "SMS Dispatched via Twilio!",
+        description: `Text message with payment link sent to ${targetPhone} in the background.`,
+      })
+      onSent?.()
+    } catch (err: any) {
+      toast({
+        title: "Twilio SMS Notice",
+        description: err.message,
+        variant: "destructive",
+      })
+    } finally {
+      setSendingTwilioSms(false)
     }
   }
 
@@ -234,7 +286,7 @@ export function SendInvoiceDialog({
   // Action: Send Both
   const handleSendBoth = async () => {
     await handleSendEmail()
-    await handleOpenGoogleVoice()
+    await handleSendTwilioSms()
   }
 
   return (
@@ -310,28 +362,51 @@ export function SendInvoiceDialog({
               </div>
 
               {/* Action Buttons for Phone */}
-              <div className="space-y-2 pt-1">
+              <div className="space-y-2.5 pt-1">
+                {/* 1-Click Automated Twilio SMS */}
+                <Button
+                  onClick={handleSendTwilioSms}
+                  disabled={sendingTwilioSms || !phone}
+                  className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-2 shadow-sm"
+                >
+                  {sendingTwilioSms ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : twilioSuccess ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-200" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  <span>{twilioSuccess ? "SMS Sent Automatically! (Send Again)" : "Send Automated Text (Twilio)"}</span>
+                </Button>
+
+                <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-slate-200"></div>
+                  <span className="flex-shrink mx-3 text-[10px] uppercase font-bold text-slate-400">or send via Google Voice / SMS App</span>
+                  <div className="flex-grow border-t border-slate-200"></div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Button
                     onClick={handleOpenGoogleVoice}
-                    className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-2 shadow-sm"
+                    variant="outline"
+                    className="h-10 border-slate-300 hover:bg-slate-100 font-semibold text-xs gap-2 text-slate-800"
                   >
-                    <Smartphone className="h-4 w-4" />
+                    <Smartphone className="h-3.5 w-3.5 text-blue-600" />
                     <span>Open in Google Voice</span>
-                    <ExternalLink className="h-3 w-3 opacity-75" />
+                    <ExternalLink className="h-3 w-3 opacity-70" />
                   </Button>
 
                   <Button
                     onClick={handleOpenNativeSms}
                     variant="outline"
-                    className="h-11 border-slate-300 hover:bg-slate-100 font-semibold text-xs gap-2 text-slate-800"
+                    className="h-10 border-slate-300 hover:bg-slate-100 font-semibold text-xs gap-2 text-slate-800"
                   >
-                    <MessageSquare className="h-4 w-4 text-emerald-600" />
+                    <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
                     <span>Open in Messages (SMS)</span>
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="grid grid-cols-2 gap-2 pt-0.5">
                   <Button
                     variant="ghost"
                     size="sm"
